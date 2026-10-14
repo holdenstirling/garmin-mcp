@@ -24,6 +24,9 @@ import { athleteChat, getCoaches } from '@/lib/coach'
 import { TodayCard } from '@/components/today/TodayCard'
 import { RecapPill, RecapSheet } from '@/components/recap/RecapSheet'
 import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
+import { WorkoutDayScreen } from '@/components/workout/WorkoutDayScreen'
+import { ReactionCard } from '@/components/workout/ReactionCard'
+import { markReactionShown, reactionShown } from '@/lib/workout'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { SettingsPanels } from '@/components/SettingsPanels'
@@ -216,6 +219,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Today card (today.py): one recommendation; it replaces the race-soon and adjust banners.
   const [today, setToday] = useState<Today | null>(null)
   const loadToday = useCallback(() => { getToday().then(setToday, () => {}) }, [])
+  // Workout day: the pre-workout screen (from Today / the plan) and the post-workout reaction.
+  const [workout, setWorkout] = useState<{ sessionId?: string } | null>(null)
+  const [reaction, setReaction] = useState<number | null>(null)
   useEffect(() => { if (homeInView) loadToday() }, [homeInView, me, loadToday])
   const todayAction = (kind: TodayActionKind) => {
     if (kind === 'open_racepack') showScreen('racepack')
@@ -240,6 +246,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         loadToday()
         loadWeek()
         const a = r.new[r.new.length - 1]
+        if (a?.id != null && !reactionShown(a.id)) { markReactionShown(a.id); setReaction(a.id); return }
         const xp = p && p.gained > 0 ? ` · +${p.gained} XP` : ''
         showToast(a ? `Workout synced: ${a.name}${xp}` : `Workout synced${xp}`)
       } catch { /* offline or signed out: try again next time */ } finally {
@@ -545,7 +552,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
 
       {isCoach && today && (today.garmin || !!goal) && (
-        <TodayCard key={today.date} today={today} onAction={todayAction} onAsk={tellRabbit} />
+        <TodayCard key={today.date} today={today} onAction={todayAction} onAsk={tellRabbit} onOpenWorkout={(id) => setWorkout({ sessionId: id })} />
       )}
       {isCoach && recapPillWeek && recapDismissed !== recapPillWeek && (
         <RecapPill onOpen={() => setRecap({ week: recapPillWeek })} onDismiss={() => dismissRecapPill(recapPillWeek)} />
@@ -751,7 +758,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onChanged={() => { void refreshThreads(); loadWeek() }}
           onMeChanged={onChange}
           onOpenEvents={() => setPlanScreen('events')}
-          onMessage={me.coaches > 0 ? (s) => void messageCoach(s) : undefined} messageLabel="Message coach" />
+          onMessage={me.coaches > 0 ? (s) => void messageCoach(s) : undefined} messageLabel="Message coach"
+          onOpenWorkout={(id) => setWorkout({ sessionId: id })} />
       )}
       {planScreen === 'coach' && (
         <CoachInbox openThreadId={coachMsgThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
@@ -767,6 +775,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'stats' && (
         <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined}
           onOpenRecap={() => setRecap({})} />
+      )}
+      {workout && (
+        <WorkoutDayScreen key={workout.sessionId ?? 'today'} sessionId={workout.sessionId} imperial={me.athlete.units === 'imperial'}
+          onClose={() => setWorkout(null)} onAsk={(t) => { setWorkout(null); tellRabbit(t) }} />
+      )}
+      {reaction != null && (
+        <ReactionCard key={reaction} activityId={reaction} imperial={me.athlete.units === 'imperial'}
+          onClose={() => setReaction(null)} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       )}
       {recap && <RecapSheet week={recap.week} onClose={() => setRecap(null)} onAsk={(t) => { setRecap(null); tellRabbit(t) }} />}
       {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}

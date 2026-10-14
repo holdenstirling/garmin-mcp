@@ -25,7 +25,7 @@ import { athleteChat } from '@/lib/coach'
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
   me: Me
   goalTitle: string
   onClose: () => void
@@ -39,6 +39,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   readOnly?: boolean       // no edit permission
   onMessage?: (s: { id: string; title: string; date: string }) => void
   messageLabel?: string
+  /** today's session: open the pre-workout screen */
+  onOpenWorkout?: (sessionId: string) => void
 }) {
   const [plan, setPlan] = useState<BuiltPlan | null | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -337,6 +339,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             applied(r.plan)
           } : undefined}
           readOnly={readOnly}
+          onOpenWorkout={editing.session && onOpenWorkout && !coachMode ? () => {
+            const id = editing.session!.id
+            setEditing(null)
+            onOpenWorkout(id)
+          } : undefined}
           onMessage={editing.session && onMessage ? () => {
             const s = editing.session!
             setEditing(null)

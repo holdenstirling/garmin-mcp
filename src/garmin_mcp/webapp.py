@@ -940,6 +940,28 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except RecapError as e:
             return _err(400, str(e))
 
+    # Workout day (workoutday.py): the "Ready to go" screen and the post-workout reaction.
+    def _workout_day() -> Any:
+        from .workoutday import WorkoutDay
+        assert chat is not None
+        return WorkoutDay(chat.agent, auth.oura,
+                          gear=(lambda uid: _gear_items(uid)[0]) if gear_store is not None else None)
+
+    async def workout_today_get(request: Request, user_id: str) -> Response:
+        sid = request.query_params.get("session_id") or None
+        if sid is not None and (len(sid) > 40 or not sid.isalnum()):
+            raise ValueError("session_id")
+        return JSONResponse(await _workout_day().today(user_id, sid))
+
+    async def workout_reaction_get(request: Request, user_id: str) -> Response:
+        raw = request.query_params.get("activity_id") or ""
+        if not raw.isdigit() or len(raw) > 20:
+            raise ValueError("activity_id")
+        out = await _workout_day().reaction(user_id, int(raw))
+        if out is None:
+            return _err(404, "That workout hasn't synced yet. Try again in a minute.")
+        return JSONResponse(out)
+
     # ---------------------------------------------------------------- gear --
     # Gear garage (gear.py): items in the encrypted ``gear`` doc, mileage from the cached
     # year of activities, Garmin gear import on request (read-only Garmin calls).
@@ -1749,6 +1771,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/sync", _plan_api(sync_post, mutating=True), methods=["POST"]),
         Route("/app/api/today", _plan_api(today_get, mutating=False), methods=["GET"]),
         Route("/app/api/recap", _plan_api(recap_get, mutating=False), methods=["GET"]),
+        Route("/app/api/workout/today", _plan_api(workout_today_get, mutating=False), methods=["GET"]),
+        Route("/app/api/workout/reaction", _plan_api(workout_reaction_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_create, mutating=True), methods=["POST"]),
         Route("/app/api/gear/import-garmin", _plan_api(gear_import, mutating=True), methods=["POST"]),

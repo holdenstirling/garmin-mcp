@@ -29,13 +29,16 @@ function writeCollapsed(day: string, on: boolean) {
   } catch { /* storage unavailable: just this session */ }
 }
 
-export function TodayCard({ today, onAction, onAsk }: {
+export function TodayCard({ today, onAction, onAsk, onOpenWorkout }: {
   today: Today; onAction: (kind: TodayActionKind) => void; onAsk: (text: string) => void
+  /** today's planned session: the primary action opens the pre-workout screen */
+  onOpenWorkout?: (sessionId: string) => void
 }) {
   const [collapsedDay, setCollapsedDay] = useState<string | null>(() => (readCollapsed(today.date) ? today.date : null))
   const collapsed = collapsedDay === today.date
   const t = TONE[today.tone] ?? TONE.go
   const Icon = t.icon
+  const workoutId = today.action.kind === 'open_session' ? today.session?.id ?? null : null
   const toggle = () => {
     const next = !collapsed
     writeCollapsed(today.date, next)
@@ -70,7 +73,7 @@ export function TodayCard({ today, onAction, onAsk }: {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" onClick={() => onAction(today.action.kind)}>
+            <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" onClick={() => (workoutId && onOpenWorkout ? onOpenWorkout(workoutId) : onAction(today.action.kind))}>
               {today.action.label}
             </Button>
             <button type="button" className="text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline"

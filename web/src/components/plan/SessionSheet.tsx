@@ -1,7 +1,7 @@
 // Bottom sheet for one plan session: see its structure, change sport/type/length/day,
 // rename it, add notes, or delete it. In add mode it creates a new session on a day.
 import { useState } from 'react'
-import { MessageCircle, Send, Trash2, X } from 'lucide-react'
+import { MessageCircle, Send, Trash2, X, Zap } from 'lucide-react'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
 import type { Sport } from '@/lib/api'
@@ -13,7 +13,7 @@ export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: 
 
 const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
 
-export function SessionSheet({ session, date, kinds, sports, raceDate, today = todayStr(), onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onClose, onDismissed, closing }: {
+export function SessionSheet({ session, date, kinds, sports, raceDate, today = todayStr(), onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onOpenWorkout, onClose, onDismissed, closing }: {
   session: PlanSession | null          // null = add mode
   date: string
   kinds: Record<string, string[]>
@@ -27,6 +27,8 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
   onMessage?: () => void
   messageLabel?: string
   readOnly?: boolean
+  /** today's session: open the pre-workout screen */
+  onOpenWorkout?: () => void
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const drag = useSheetDrag(onDismissed)
@@ -184,6 +186,11 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
 
           {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
 
+          {onOpenWorkout && session && date === today && session.sport !== 'rest' && session.kind !== 'race' && (
+            <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onOpenWorkout}>
+              <Zap className="size-4" /> Today's workout
+            </Button>
+          )}
           <div className="flex flex-wrap gap-2">
             {onAsk && (
               <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onAsk}>
