@@ -1,0 +1,199 @@
+/* Text size follows the iPhone's Settings > Display & Brightness > Text Size (Dynamic Type):
+   -apple-system-body is 17px at the default size, like iMessage, and every rem scales with it.
+   iOS only (on macOS Safari it would be 13px); other browsers keep their own default. */
+@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+  html { font: -apple-system-body; }
+}
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@supports not ((font: -apple-system-body) and (-webkit-touch-callout: none)) {
+  html { font-size: 106.25%; } /* 17px with the browser default, matching iOS */
+}
+/* Conversation text reads like iMessage: the proportional system font, not DM Mono. */
+.chat-text, .chat-text .prose { font-family: var(--font); letter-spacing: normal; }
+/* Settings: system font like iOS Settings; section labels stay in DM Mono. */
+.settings { font-family: var(--font); letter-spacing: normal; }
+.settings-group > * + * { border-top: 1px solid var(--border); }
+
+/* Rabbit-specific additions on top of Dolly's globals. */
+html, body, #root { height: 100%; }
+/* No iOS tap-highlight flash: Rabbit gives its own press feedback (bubbles shrink/lift). */
+html { -webkit-tap-highlight-color: transparent; }
+body { overscroll-behavior: none; }
+
+/* The page itself never scrolls; only the chat feed does. The shell is a fixed frame that
+   tracks the *visual* viewport (lib/viewport.ts sets --vv-h / --vv-top): when the iOS
+   keyboard opens, iOS shifts the visual viewport instead of resizing the page, and the
+   frame follows it, so the header stays put and the composer sits on the keyboard. */
+html, body { overflow: hidden; }
+.app-shell {
+  position: fixed;
+  left: 0; right: 0; top: 0;
+  height: var(--vv-h, 100dvh);
+  transform: translateY(var(--vv-top, 0px));
+  display: flex;
+  flex-direction: column;
+  /* Top/bottom safe areas are handled by each screen (the chat header and
+     composer pad themselves so the feed can scroll edge to edge). */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  background: var(--bg);
+}
+
+.rabbit-logo { color: var(--brand); }
+.logo-tile .rabbit-logo { color: var(--bg); } /* cream mark on the brand tile */
+
+/* "Thinking" state: a small hop, the counterpart to Dolly's head tilt. */
+@keyframes rabbit-hop {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-14%) rotate(-6deg); }
+  55% { transform: translateY(0) rotate(0); }
+}
+.rabbit-logo.is-thinking { animation: rabbit-hop 0.9s var(--transition) infinite; transform-origin: 50% 80%; }
+@media (prefers-reduced-motion: reduce) { .rabbit-logo.is-thinking { animation: none; } }
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+
+/* Bottom sheets on iPhone: drags on the dimmed backdrop or the sheet must never
+   scroll the chat behind it, and the sheet body scrolls on its own. */
+html, body { overscroll-behavior: none; }
+.modal-overlay { touch-action: none; }
+.modal { touch-action: none; }
+.modal-body { touch-action: pan-y; overscroll-behavior: contain; }
+.sheet-handle {
+  width: 40px; height: 5px; border-radius: 999px; background: var(--border-strong);
+  margin: 8px auto 0; flex-shrink: 0;
+}
+
+/* Charts (ported from CPM). Categorical order validated with the dataviz validator
+   against Rabbit's surfaces: light #fafaf8 and dark #1b1d1c (all checks pass; light
+   contrast WARN is relieved by tooltips, legend and the "Show data" table). A single
+   series uses --accent. */
+:root {
+  --chart-1: #2a78d6; --chart-2: #eb6834; --chart-3: #1baf7a; --chart-4: #eda100;
+  --chart-5: #e87ba4; --chart-6: #008300; --chart-7: #4a3aa7; --chart-8: #e34948;
+  --chart-grid: rgba(10, 15, 12, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
+    --chart-5: #d55181; --chart-6: #008300; --chart-7: #9085e9; --chart-8: #e66767;
+    --chart-grid: rgba(255, 255, 255, 0.10);
+  }
+}
+:root.dark {
+  --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
+  --chart-5: #d55181; --chart-6: #008300; --chart-7: #9085e9; --chart-8: #e66767;
+  --chart-grid: rgba(255, 255, 255, 0.10);
+}
+@keyframes cpm-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes cpm-draw { to { stroke-dashoffset: 0; } }
+@keyframes cpm-fade-in { from { opacity: 0; } to { opacity: var(--cpm-fade-to, 1); } }
+@keyframes cpm-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.cpm-bar { transform-box: fill-box; transform-origin: 50% 100%; animation: cpm-bar-grow 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.cpm-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: cpm-draw 0.7s ease-out both; }
+.cpm-fade { animation: cpm-fade-in 0.5s ease-out both; }
+.cpm-rise { animation: cpm-rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+/* Message context menu. On touch devices the bubble stays selectable so iOS's own
+   long-press (and its haptic tick) still happens, but the native callout is off and the
+   selection highlight is invisible: useLongPress clears the selection the moment it
+   starts and opens Rabbit's menu instead. "Select text" offers real selection. */
+@media (hover: none) {
+  .msg-press { -webkit-user-select: text; user-select: text; -webkit-touch-callout: none; }
+  .msg-press ::selection, .msg-press::selection { background: transparent; color: inherit; }
+}
+.selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.msg-press { transition: transform 0.15s ease; }
+.msg-press:active { transform: scale(0.985); }
+/* While the menu is open nothing on the page is selectable: when the finger lifts, iOS
+   tries to finish its selection gesture and would otherwise land on the nearest
+   selectable text (drawing handles / the Copy bar). The Select-text sheet opts back in. */
+html.msg-menu-open, html.msg-menu-open * { -webkit-user-select: none !important; user-select: none !important; }
+html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-select: text !important; user-select: text !important; }
+.msg-lifted {
+  position: relative; z-index: 60;
+  animation: msg-lift 0.32s cubic-bezier(0.2, 0.9, 0.25, 1.15) forwards;
+}
+@keyframes msg-lift {
+  0% { transform: scale(0.985); filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0)); }
+  100% { transform: scale(1.035); filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.22)); }
+}
+.msg-menu-backdrop {
+  position: fixed; inset: 0; z-index: 55;
+  background: rgba(10, 15, 12, 0.18);
+  -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%);
+  animation: modal-fade-in 0.2s ease-out both;
+}
+.msg-menu {
+  position: fixed; z-index: 61; min-width: 210px; overflow: hidden;
+  border-radius: 14px; border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-lg);
+  animation: msg-menu-in 0.26s cubic-bezier(0.2, 0.9, 0.25, 1.1) both;
+}
+/* Long-press peek at a chat from the coach log: preview card + menu, centered. */
+.thread-peek {
+  position: fixed; inset: 0; z-index: 61; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+.thread-peek-card {
+  display: block; width: 100%; max-width: 30rem; overflow: hidden; text-align: left;
+  border-radius: 16px; border: 1px solid var(--border); background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+  animation: msg-menu-in 0.28s cubic-bezier(0.2, 0.9, 0.25, 1.1) both; transform-origin: center bottom;
+}
+.thread-peek-menu { position: static; width: 100%; max-width: 30rem; transform-origin: center top; }
+.msg-menu > button + button { border-top: 1px solid var(--border); }
+@keyframes msg-menu-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+.rabbit-toast {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 70;
+  transform: translateX(-50%); padding: 6px 14px; border-radius: 999px;
+  background: var(--text); color: var(--bg); font-size: 0.7647rem; box-shadow: var(--shadow-md); pointer-events: none;
+  animation: toast-in 1.6s ease both;
+}
+@keyframes toast-in {
+  0% { opacity: 0; transform: translate(-50%, 8px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-lifted, .msg-menu, .msg-menu-backdrop, .rabbit-toast { animation-duration: 0.01ms; }
+}
+
+/* Keyboard open (lib/viewport.ts): the home indicator is under the keyboard, so the
+   composer doesn't need its safe-area padding. Layout is otherwise left to iOS. */
+html.kb-open .composer-bar { padding-bottom: 4px; }
+/* Typing: give the feed the room; the pinned plan cards come back when the keyboard closes. */
+html.kb-open .coach-pins { display: none; }
+/* Typing: fade the suggestions out without changing layout (removing them made the
+   centered empty state jump while the keyboard animated). */
+.chat-suggestions { transition: opacity 0.2s ease; }
+html.kb-open .chat-suggestions { opacity: 0; pointer-events: none; }
+.empty-hero { transform: translateY(var(--hero-shift, 0px)); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.kb-open .empty-hero { transform: none; }
+/* The expanded week: a drawer that slides down over the feed while everything else dims. */
+.week-dim { position: fixed; inset: 0; z-index: 45; background: rgba(0, 0, 0, 0.45);
+  opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
+.week-dim--open { opacity: 1; pointer-events: auto; }
+.week-drawer {
+  display: grid; grid-template-rows: 0fr; visibility: hidden;
+  /* closing: the card's rounded bottom rides up with the edge */
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
+}
+.week-drawer--open { grid-template-rows: 1fr; visibility: visible;
+  transition: grid-template-rows 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s; }
+/* A session's details open accordion-style under its line. */
+.session-detail { display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s ease; }
+.session-detail--open { grid-template-rows: 1fr; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .week-drawer, .week-dim, .session-detail { transition: none; } }
+
+/* Chat loading: fade in after a beat so very quick loads don't flash it. */
+.chat-loading { animation: modal-fade-in 0.2s ease-out 0.1s both; }

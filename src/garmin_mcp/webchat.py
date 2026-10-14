@@ -1,0 +1,183 @@
+"""Detached chat turns for Rabbit.
+
+A turn runs as its own task, independent of the HTTP request that started it,
+so a phone that backgrounds the app (and drops the stream) still gets the
+reply saved to history; the client can re-attach with ``events?from=N``.
+
+One turn at a time per user, and at most ``max_concurrent`` turns server-wide
+(e2-micro). Finished turns are kept briefly for re-attachment, then dropped.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import secrets
+import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
+from typing import Any
+
+from .agent import Agent
+
+KEEP_FINISHED = 300
+HEARTBEAT = 15.0
+APPROVAL_TIMEOUT = 600.0
+
+
+class TurnBusy(Exception):
+    def __init__(self, turn_id: str) -> None:
+        super().__init__(turn_id)
+        self.turn_id = turn_id
+
+
+@dataclass
+class Turn:
+    id: str
+    user_id: str
+    created: float
+    thread_id: str = ""
+    events: list[dict[str, Any]] = field(default_factory=list)
+    done: bool = False
+    finished_at: float = 0.0
+    record: dict[str, Any] | None = None  # the stored turn, once finished
+    _subs: list[asyncio.Queue] = field(default_factory=list, repr=False)
+    _finished: asyncio.Event = field(default_factory=asyncio.Event, repr=False)
+    _task: asyncio.Task | None = field(default=None, repr=False)
+    _approvals: dict[str, asyncio.Future] = field(default_factory=dict, repr=False)
+
+    async def ask(self, request: dict[str, Any]) -> tuple[bool, str | None]:
+        """Wait for the athlete to approve or decline (declined after the timeout)."""
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        self._approvals[request["id"]] = fut
+        try:
+            return await asyncio.wait_for(fut, timeout=APPROVAL_TIMEOUT)
+        except TimeoutError:
+            return False, "no answer within 10 minutes"
+        finally:
+            self._approvals.pop(request["id"], None)
+
+    def emit(self, event: dict[str, Any]) -> None:
+        self.events.append(event)
+        for q in self._subs:
+            q.put_nowait(event)
+
+    def close(self) -> None:
+        self.done = True
+        self.finished_at = time.time()
+        self._finished.set()
+        for q in self._subs:
+            q.put_nowait(None)
+
+    async def wait(self) -> dict[str, Any] | None:
+        await self._finished.wait()
+        return self.record
+
+
+class ChatRunner:
+    def __init__(self, agent: Agent, *, max_concurrent: int = 2) -> None:
+        self.agent = agent
+        self._max = max_concurrent
+        self._sem: asyncio.Semaphore | None = None
+        self._turns: dict[str, Turn] = {}
+        self._active: dict[str, str] = {}  # user_id -> running turn id
+        self._tasks: set[asyncio.Task] = set()
+
+    def _prune(self) -> None:
+        now = time.time()
+        for tid, t in list(self._turns.items()):
+            if t.done and now - t.finished_at > KEEP_FINISHED:
+                del self._turns[tid]
+
+    def active(self, user_id: str) -> Turn | None:
+        tid = self._active.get(user_id)
+        return self._turns.get(tid) if tid else None
+
+    def get(self, user_id: str, turn_id: str) -> Turn | None:
+        t = self._turns.get(turn_id)
+        return t if t is not None and t.user_id == user_id else None
+
+    def start(self, user_id: str, text: str, *, thread_id: str, kind: str = "chat",
+              label: str | None = None, attachments: list[dict[str, Any]] | None = None,
+              content_blocks: list[dict[str, Any]] | None = None) -> Turn:
+        self._prune()
+        running = self.active(user_id)
+        if running is not None and not running.done:
+            raise TurnBusy(running.id)
+        if self._sem is None:
+            self._sem = asyncio.Semaphore(self._max)
+        turn = Turn("t" + secrets.token_hex(8), user_id, time.time(), thread_id)
+        self._turns[turn.id] = turn
+        self._active[user_id] = turn.id
+        sem = self._sem
+
+        async def go() -> None:
+            try:
+                async with sem:
+                    turn.record = await self.agent.run(
+                        user_id, text, turn.emit, thread_id=thread_id, turn_id=turn.id,
+                        kind=kind, label=label, attachments=attachments,
+                        content_blocks=content_blocks,
+                        approve=turn.ask if kind == "chat" else None)
+            except asyncio.CancelledError:
+                pass  # stopped by the user; agent.run already saved the partial turn
+            except Exception as e:  # agent.run handles its own errors; this is a backstop
+                turn.emit({"type": "result", "response": {
+                    "status": "error", "turnId": turn.id,
+                    "error": f"Internal error ({type(e).__name__})", "steps": 0}})
+            finally:
+                turn.close()
+                if self._active.get(user_id) == turn.id:
+                    del self._active[user_id]
+
+        task = asyncio.get_running_loop().create_task(go())
+        turn._task = task
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return turn
+
+    def resolve(self, user_id: str, turn_id: str, approval_id: str, approved: bool,
+                reason: str | None) -> bool:
+        turn = self.get(user_id, turn_id)
+        fut = turn._approvals.get(approval_id) if turn is not None else None
+        if fut is None or fut.done():
+            return False
+        fut.set_result((approved, reason))
+        return True
+
+    def cancel(self, user_id: str, turn_id: str) -> bool:
+        """Stop a running turn; the agent saves what was written so far."""
+        turn = self.get(user_id, turn_id)
+        if turn is None or turn.done or turn._task is None:
+            return False
+        turn._task.cancel()
+        return True
+
+    async def events(self, turn: Turn, start: int = 0) -> AsyncIterator[dict[str, Any] | None]:
+        """Replay events from ``start``, then follow live ones. Yields None as a heartbeat."""
+        q: asyncio.Queue = asyncio.Queue()
+        for e in turn.events[start:]:
+            q.put_nowait(e)
+        if turn.done:
+            q.put_nowait(None)  # end marker
+        else:
+            turn._subs.append(q)
+        try:
+            while True:
+                try:
+                    e = await asyncio.wait_for(q.get(), timeout=HEARTBEAT)
+                except TimeoutError:
+                    yield None
+                    continue
+                if e is None:
+                    return
+                yield e
+        finally:
+            with contextlib.suppress(ValueError):
+                turn._subs.remove(q)
+
+    async def wait_idle(self) -> None:
+        """Tests: wait for running turns to finish."""
+        while self._tasks:
+            await asyncio.gather(*list(self._tasks), return_exceptions=True)
+
