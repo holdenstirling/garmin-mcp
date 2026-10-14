@@ -1,6 +1,6 @@
 // The "Me" tab: who you are and everything around your training that isn't the plan,
 // progress or races. Rows open the existing screens and the Settings sheet.
-import { Brain, ClipboardList, Mail, Settings, User, Users, Whistle, Wrench } from 'lucide-react'
+import { Brain, ClipboardList, Mail, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -57,7 +57,7 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
             trailing={me.coach_unread ? <Count n={me.coach_unread} label={`${me.coach_unread} unread`} /> : undefined}
             onClick={() => onOpen('inbox')} />
         )}
-        <Row icon={<Icon><Whistle /></Icon>} title="Coaches"
+        <Row icon={<Icon><UserCheck /></Icon>} title="Coaches"
           subtitle={me.coaches ? `${me.coaches} coach${me.coaches === 1 ? '' : 'es'}` : 'Invite a coach by email'}
           onClick={() => onOpen('coaches')} />
         {me.coaching > 0 && (
