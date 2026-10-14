@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from datetime import date
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -49,6 +50,31 @@ from .webpush import WebPush, parse_subscription
 logger = logging.getLogger(__name__)
 # The only API paths a coach-only account (not an allowlisted athlete) may call.
 COACH_PATHS = ("/app/api/me", "/app/api/coach/", "/app/api/push/")
+# Goal fields a coach always sees; the athlete's private notes and Rabbit's plan for the goal
+# only with ``can_see_rabbit_chats``.
+COACH_GOAL_FIELDS = ("id", "title", "date", "distance", "type", "goal_type", "target_time", "priority",
+                     "location", "status", "created")
+COACH_GOAL_PRIVATE = ("notes", "plan")
+COACH_EVENT_PRIVATE = ("notes", "debrief", "plan")  # same rule for events on the calendar
+PUSH_THREAD_INTERVAL = 60   # at most one coach-chat push per thread per minute
+PUSH_TEST_PER_HOUR = 5
+
+
+def _is_coach_account(user_id: str | None) -> bool:
+    return bool(user_id and user_id.startswith("coach_"))
+
+
+def coach_goal_view(goal: dict[str, Any] | None, link: dict[str, Any]) -> dict[str, Any] | None:
+    if not goal:
+        return None
+    keys = COACH_GOAL_FIELDS + (COACH_GOAL_PRIVATE if link.get("can_see_rabbit_chats") else ())
+    return {k: goal[k] for k in keys if k in goal}
+
+
+def coach_event_view(event: dict[str, Any], link: dict[str, Any]) -> dict[str, Any]:
+    if link.get("can_see_rabbit_chats"):
+        return event
+    return {k: v for k, v in event.items() if k not in COACH_EVENT_PRIVATE}
 
 WEB_DIST = Path(__file__).parent / "web_dist"
 MAX_BODY = 16 * 1024
@@ -112,6 +138,16 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                      dev: dict[str, Callable[[str], Any]] | None = None,
                      default_tz: str = "America/Denver") -> list[BaseRoute]:
     local = settings.public_host.split(":")[0] in {"localhost", "127.0.0.1"}
+    push_times: dict[str, list[float]] = {}  # rate-limit key -> recent push send times
+
+    def push_allowed(key: str, limit: int, window: float) -> bool:
+        now = time.monotonic()
+        recent = [t for t in push_times.get(key, []) if now - t < window]
+        if len(recent) >= limit:
+            push_times[key] = recent
+            return False
+        push_times[key] = recent + [now]
+        return True
 
     def host_ok(request: Request) -> bool:
         host = request.headers.get("host", "")
@@ -206,6 +242,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def push_test(request: Request, user_id: str) -> Response:
         if push is None:
             return _err(503, "push not configured")
+        if not push_allowed(f"test:{user_id}", PUSH_TEST_PER_HOUR, 3600):
+            return _err(429, "Too many test notifications. Try again in an hour.")
         results = await anyio.to_thread.run_sync(
             lambda: push.send(user_id, "Rabbit", "Notifications are working.")
         )
@@ -286,6 +324,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(401, "not signed in")
         if request.headers.get("origin", "") != settings.public_base_url:
             return _err(403, "bad origin")
+        if _is_coach_account(user_id):
+            return _err(403, "Coach accounts can only use the coach view.")
         if atts is None:
             return _err(503, "Chat isn't configured on this server.")
         try:
@@ -820,9 +860,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 return {"id": sid, "date": day, "title": x["title"]}
         raise CoachError("That session isn't in the plan anymore.")
 
-    def _notify(to_user: str | None, title: str, body: str) -> None:
+    def _notify(to_user: str | None, title: str, body: str, *, thread: str = "") -> None:
         if push is None or not to_user:
             return
+        if thread and not push_allowed(f"thread:{to_user}:{thread}", 1, PUSH_THREAD_INTERVAL):
+            return  # coalesce: the message is saved, the unread badge shows the rest
         try:
             push.send(to_user, title, body[:140], url="/app/")
         except Exception as e:  # notifications are best effort
@@ -842,7 +884,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if not isinstance(body, dict):
             raise ValueError("body")
         await _plan_call(lambda: links.invite(user_id, body.get("email", ""),
-                                              can_edit_plan=body.get("can_edit_plan", True) is True,
+                                              can_edit_plan=body.get("can_edit_plan") is True,
                                               can_see_rabbit_chats=body.get("can_see_rabbit_chats") is True))
         return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]}, status_code=201)
 
@@ -896,7 +938,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         t = coach_chat.thread(user_id, tid)
         link = next((c for c in links.coaches_of(user_id) if c["email"] == t["coach"]), None)
         _notify((link or {}).get("coach_user_id"), f"{auth.profile(user_id).get('name') or 'Your athlete'}",
-                msg["text"])
+                msg["text"], thread=tid)
         return JSONResponse({"message": msg}, status_code=201)
 
     async def athlete_notes(request: Request, user_id: str) -> Response:
@@ -923,8 +965,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         coach = _coach()
         return JSONResponse({
             "athlete_id": aid, "profile": auth.profile(aid), "link": _coach_view(link),
-            "athlete": coach.athlete(aid), "goal": coach.active_goal(aid),
-            "events": chat.agent.events.list(aid) if chat else [],
+            "athlete": coach.athlete(aid), "goal": coach_goal_view(coach.active_goal(aid), link),
+            "events": [coach_event_view(e, link) for e in chat.agent.events.list(aid)] if chat else [],
             "notes": coach_notes.list(aid, coach=link["email"]),
             "unread": coach_chat.unread(aid, "coach", coach=link["email"]),
         })
@@ -1010,7 +1052,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             link = links.require(user_id, aid)
             return coach_chat.post(aid, tid, sender="coach", text=body.get("text"), coach=link["email"])
         msg = await _plan_call(run)
-        _notify(aid, f"{auth.profile(user_id).get('name') or 'Your coach'}", msg["text"])
+        _notify(aid, f"{auth.profile(user_id).get('name') or 'Your coach'}", msg["text"], thread=tid)
         return JSONResponse({"message": msg}, status_code=201)
 
     async def coach_note_add(request: Request, user_id: str) -> Response:
@@ -1091,6 +1133,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def calendar_start(request: Request) -> Response:
         if not host_ok(request):
             return _err(400, "bad host")
+        if _is_coach_account(auth.user_for(request)):
+            return _err(403, "Coach accounts can only use the coach view.")
         return await auth.start_calendar(request)
 
     async def oura_get(request: Request, user_id: str) -> Response:
@@ -1120,11 +1164,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def oura_start(request: Request) -> Response:
         if not host_ok(request):
             return _err(400, "bad host")
+        if _is_coach_account(auth.user_for(request)):
+            return _err(403, "Coach accounts can only use the coach view.")
         return await auth.start_oura(request)
 
     async def oura_callback(request: Request) -> Response:
         if not host_ok(request):
             return _err(400, "bad host")
+        if _is_coach_account(auth.user_for(request)):
+            return _err(403, "Coach accounts can only use the coach view.")
         return await auth.oura_callback(request)
 
     async def _proposal(user_id: str) -> dict[str, Any]:

@@ -193,6 +193,9 @@ Emit = Callable[[dict[str, Any]], None]
 # (approval request) -> (approved, reason). None in background turns: no one to ask.
 Approver = Callable[[dict[str, Any]], Awaitable[tuple[bool, str | None]]]
 
+# Memory writes that run freely when the athlete is chatting, but not in a background turn
+# (no user message): there, coach notes or web data in context could steer them.
+BACKGROUND_GATED = ("update_notes", "update_athlete_profile")
 _GOAL_FIELDS = ("title", "event", "date", "distance", "target", "priorities")
 _FIELD_LABELS = {"title": "Goal", "event": "Event", "date": "Date", "distance": "Distance",
                  "target": "Target", "priorities": "Priorities"}
@@ -707,7 +710,8 @@ class Agent:
             emit({"type": "text-delta", "text": t})
 
         try:
-            return await self._loop(user_id, backend, messages, st, emit, on_text, finish, approve)
+            return await self._loop(user_id, backend, messages, st, emit, on_text, finish, approve,
+                                    background=user_text is None)
         except asyncio.CancelledError:
             if st.text:
                 st.add_text(" …(stopped)")
@@ -717,7 +721,7 @@ class Agent:
     async def _loop(self, user_id: str, backend: ModelBackend, messages: list[dict[str, Any]], st: _TurnState,
                     emit: Emit, on_text: Callable[[str], Awaitable[None]],
                     finish: Callable[..., dict[str, Any]],
-                    approve: Approver | None) -> dict[str, Any]:
+                    approve: Approver | None, *, background: bool = False) -> dict[str, Any]:
         for _ in range(MAX_ITERATIONS):
             fresh = [True]
 
@@ -763,6 +767,9 @@ class Agent:
                                         "toolName": block.name, "params": params}
                 st.parts.append(part)
                 gate = self.approval_needed(user_id, block.name, block.input)
+                if gate is None and background and block.name in BACKGROUND_GATED:
+                    gate = {"title": "Save this to Rabbit's memory?",
+                            "changes": [{"field": "Memory", "from": None, "to": _snip(params)}]}
                 if gate is not None:
                     if approve is None:
                         ok, reason = False, "background message: changes need the athlete's OK in chat"
@@ -777,7 +784,11 @@ class Agent:
                               tool=block.name, approved=ok)
                     if not ok:
                         msg = "The athlete declined this change." + (f" Their reason: {reason}" if reason else "")
-                        if approve is None:
+                        if approve is None and block.name in BACKGROUND_GATED:
+                            msg = ("Not saved: notes and profile changes need the athlete's OK, which "
+                                   "can't happen in a background message. Mention it in your message "
+                                   "and they can confirm in chat.")
+                        elif approve is None:
                             msg = ("Not saved: changes to an existing goal or plan need the athlete's "
                                    "approval, which can't happen in a background message. Suggest it "
                                    "in your message and they can confirm in chat.")
