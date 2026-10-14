@@ -29,6 +29,7 @@ export type Me = {
   coaching: number        // athletes this user coaches
   coaches: number         // coaches this athlete has
   coach_unread: number
+  calendar: { available: boolean; connected: boolean }
   profile: { name: string; picture: string }
   chat: { available: boolean; active_turn: string | null }
   settings: CoachSettings

@@ -215,6 +215,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   // Tapping a brief or workout-note notification opens the coach log: from a cold start
   // via ?open=coach, or (app already running) via a message from the service worker.
+  // Back from connecting Google Calendar.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('calendar')
+    if (!q) return
+    window.history.replaceState(null, '', '/app/')
+    showToast(q === 'connected' ? 'Google Calendar connected' : "Couldn't connect Google Calendar")
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const openCoach = useRef(new URLSearchParams(window.location.search).get('open') === 'coach')
   useEffect(() => {
     if (openCoach.current) window.history.replaceState(null, '', '/app/')

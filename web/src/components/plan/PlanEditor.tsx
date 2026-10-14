@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus, RefreshCw, Trash2, Watch } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plane, Plus, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -16,6 +16,8 @@ import { Card, Chip, ChipRow, Field, Screen } from './ui'
 import { PhaseStrip, SessionLine, fmtDay, todayStr, weekPhaseLabel } from './PlanParts'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
+import { TravelSheet } from './TravelSheet'
+import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/lib/calendar'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
@@ -47,6 +49,13 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
+  const [cal, setCal] = useState<CalendarSummary | null>(null)
+  const [travel, setTravel] = useState<{ start: string; end: string; label: string } | 'new' | null>(null)
+  const [travelClosing, setTravelClosing] = useState(false)
+  useEffect(() => {
+    if (coachMode || !me.calendar?.connected) return
+    getCalendar(56).then(setCal, () => {})
+  }, [coachMode, me.calendar?.connected])
 
   const load = useCallback(() => {
     api.getPlan().then((r) => {
@@ -131,6 +140,14 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     if (target && target.index !== week.index) setWeekIdx(target.index)
   }
 
+  const closeTravel = () => { setTravelClosing(true); setTimeout(() => { setTravel(null); setTravelClosing(false) }, 200) }
+  const coveredBy = (t: { start: string; end: string }) => plan.trips.some((x) => x.start <= t.end && x.end >= t.start)
+  const suggestions = (cal?.travel ?? []).filter((t) => t.end >= today && !coveredBy(t)).slice(0, 2)
+  const busyLabel = (d: string) => {
+    const m = cal?.busy?.[d] ?? 0
+    return m >= 60 ? `${Math.round(m / 60)}h busy` : m >= 30 ? `${m}m busy` : ''
+  }
+
   const synced = plan.weeks.reduce((n, w) => n + w.days.reduce((m, d) => m + d.sessions.filter((s) => s.synced).length, 0), 0)
 
   return (
@@ -145,6 +162,15 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
       </div>
+      {!coachMode && suggestions.map((t) => (
+        <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
+          <Plane className="size-4 shrink-0 text-(--accent)" />
+          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+            On your calendar: <span className="text-(--text)">{t.title}</span>, {fmtDay(t.start, { month: 'short', day: 'numeric' })}{t.end !== t.start ? ` – ${fmtDay(t.end, { month: 'short', day: 'numeric' })}` : ''}
+          </p>
+          <Button variant="default" className="h-8 px-3 text-[0.7059rem]" onClick={() => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.title.slice(0, 60) })}>Plan around it</Button>
+        </div>
+      ))}
       {!coachMode && (plan.events_changed || plan.race_changed) && (
         <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
           <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">
@@ -193,6 +219,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                       {fmtDay(d.date, { weekday: 'short' })}
                     </span>
                     <span className="block text-[0.7647rem] text-(--text-secondary)">{fmtDay(d.date, { day: 'numeric' })}</span>
+                    {busyLabel(d.date) && <span className="mt-0.5 block text-[0.5294rem] leading-tight text-(--warning)">{busyLabel(d.date)}</span>}
+                    {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     {d.sessions.map((s) => (
@@ -255,6 +283,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           onClick={() => { close(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races; they go into the plan"
           onClick={onOpenEvents} />
+        <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
+          onClick={() => setTravel('new')} />
+        {plan.trips.map((t) => (
+          <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
+            trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-[0.7059rem]" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>} />
+        ))}
         <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
           onClick={onRebuild} />
         {confirmDelete ? (
@@ -269,6 +303,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       </Group>
       </>}
 
+      {travel && (
+        <TravelSheet initial={travel === 'new' ? undefined : travel} raceDate={plan.race_date} closing={travelClosing}
+          onClose={closeTravel} onDismissed={() => { setTravel(null); setTravelClosing(false) }}
+          onApply={async (b) => { applied((await addTravel(b)).plan) }} />
+      )}
       {editing && (
         <SessionSheet key={editing.session?.id ?? `new-${editing.date}`}
           session={editing.session} date={editing.date} kinds={plan.kinds} sports={sports as Sport[]}

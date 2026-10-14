@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
+import { Bell, CalendarClock, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
+import { CALENDAR_CONNECT_URL, disconnectCalendar } from '@/lib/calendar'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
@@ -120,6 +121,27 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
           <Row title="Fake Garmin (dev)" subtitle="Try mfa@, wrong@, 429@ or cf@ emails; MFA code 123456" />
         )}
       </Group>
+
+      {me.calendar.available && (
+        <Group label="Calendar" footer="Read-only. Rabbit spots trips and busy days so your plan can work around them.">
+          {me.calendar.connected ? (
+            <>
+              <Row icon={<Icon><CalendarClock /></Icon>} title="Google Calendar"
+                trailing={<span className="flex items-center gap-1.5 text-[0.7647rem] text-(--accent)"><span className="size-2 rounded-full bg-(--accent)" />Connected</span>} />
+              <Row title="Disconnect Google Calendar" danger disabled={busy} center
+                onClick={() => { setBusy(true); void disconnectCalendar().finally(() => { setBusy(false); onChange() }) }} />
+            </>
+          ) : (
+            <a href={CALENDAR_CONNECT_URL} className="settings-row flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
+              <Icon><CalendarClock /></Icon>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9412rem] text-(--text)">Connect Google Calendar</span>
+                <span className="block text-[0.7647rem] text-(--text-muted)">See travel and busy days in your plan</span>
+              </span>
+            </a>
+          )}
+        </Group>
+      )}
 
       {me.garmin.connected && me.chat.available && (
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />

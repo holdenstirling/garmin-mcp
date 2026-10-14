@@ -7,7 +7,7 @@ export type Step =
 
 export type PlanSession = {
   id: string; sport: Sport; kind: string; title: string; minutes: number | null
-  detail: string; meters?: number | null; edited?: boolean; synced: boolean
+  detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null
   steps: Step[]; legs: { sport: Sport; minutes: number; steps: Step[] }[]
 }
 export type PlanDay = { date: string; sessions: PlanSession[] }
@@ -25,6 +25,7 @@ export type BuiltPlan = {
   events: { id: string; name: string; date: string; priority: 'B' | 'C' }[]
   events_changed: boolean
   race_changed: boolean
+  trips: { id: string; start: string; end: string; label: string; has: Record<'gym' | 'treadmill' | 'pool' | 'bike', boolean> }[]
 }
 export type SyncResult = {
   uploaded: number; unchanged: number; removed: number; skipped: number

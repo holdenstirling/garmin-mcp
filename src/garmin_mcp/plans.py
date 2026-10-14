@@ -31,6 +31,7 @@ from .planbuilder import (
     garmin_workouts,
     iter_sessions,
     make_session,
+    new_id as new_session_id,
     rebuild_session,
     recompute_week,
     session_hash,
@@ -338,6 +339,108 @@ class PlanService:
             recompute_week(w)
         return self._edit(user_id, fn)
 
+    # ------------------------------------------------------------ travel --
+    def add_travel(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Travel mode: rework sessions on days away for what the athlete has there, and
+        move long sessions to the nearest home day of the same week. Undoable: the
+        originals are kept with the trip."""
+        try:
+            start = date.fromisoformat(str(body.get("start")))
+            end = date.fromisoformat(str(body.get("end")))
+        except ValueError:
+            raise PlanError("Pick the days you're away.") from None
+        if end < start:
+            start, end = end, start
+        if (end - start).days > 60:
+            raise PlanError("Travel mode covers up to 60 days at a time.")
+        has = {k: body.get(k) is True for k in ("gym", "treadmill", "pool", "bike")}
+        label = str(body.get("label") or "Travel").strip()[:60] or "Travel"
+
+        def fn(plan: dict[str, Any], today: date) -> None:
+            first = max(start, today)
+            if first > end:
+                raise PlanError("Those days have already passed.")
+            trips = plan.setdefault("trips", [])
+            away = {(first + timedelta(days=i)).isoformat() for i in range((end - first).days + 1)}
+            if any(away & {(date.fromisoformat(t["start"]) + timedelta(days=i)).isoformat()
+                           for i in range((date.fromisoformat(t["end"]) - date.fromisoformat(t["start"])).days + 1)}
+                   for t in trips):
+                raise PlanError("Those days overlap a trip that's already in travel mode.")
+            trip = {"id": "t" + new_session_id()[:8], "start": first.isoformat(), "end": end.isoformat(),
+                    "label": label, "has": has, "original": {}}
+            swim_pace = plan.get("swim_pace", 125.0)
+            touched: set[str] = set()
+
+            def keep(day: str) -> None:
+                if day not in trip["original"]:
+                    w = week_for(plan, date.fromisoformat(day))
+                    if w is not None:
+                        trip["original"][day] = [dict(x) for x in w["days"].get(day, [])]
+
+            for w in plan["weeks"]:
+                for day in sorted(w["days"]):
+                    if day not in away:
+                        continue
+                    new: list[dict[str, Any]] = []
+                    for x in w["days"][day]:
+                        if x["sport"] == "rest" or x.get("kind") == "race":
+                            new.append(x)
+                            continue
+                        keep(day)
+                        self._orphan(plan, x)
+                        if x.get("kind") in ("long", "brick"):
+                            target = self._home_day(w, day, away, today)
+                            if target is not None:
+                                keep(target)
+                                moved = {k: v for k, v in x.items() if k != "garmin"} | {"edited": True, "travel": trip["id"]}
+                                w["days"][target] = [y for y in w["days"][target] if y["sport"] != "rest"] + [moved]
+                                touched.add(w["start"])
+                                continue
+                        new.append(_travel_swap(x, has, swim_pace, w["phase"], trip["id"]))
+                    if new != w["days"][day]:
+                        w["days"][day] = new or [make_session("rest", "rest", 0)]
+                        touched.add(w["start"])
+            for w in plan["weeks"]:
+                if w["start"] in touched:
+                    recompute_week(w)
+            trips.append(trip)
+        return self._edit(user_id, fn)
+
+    @staticmethod
+    def _home_day(w: dict[str, Any], day: str, away: set[str], today: date) -> str | None:
+        """Nearest day of the same week that isn't away, has no long session or race, and
+        isn't in the past (the caller only passes today onward via ``away``)."""
+        d0 = date.fromisoformat(day)
+        today_floor = today.isoformat()
+        options = []
+        for k in w["days"]:
+            if k in away or k < today_floor:
+                continue
+            ss = w["days"][k]
+            if any(x.get("kind") in ("long", "brick", "race") for x in ss) or len([x for x in ss if x["sport"] != "rest"]) >= MAX_SESSIONS_PER_DAY:
+                continue
+            options.append((abs((date.fromisoformat(k) - d0).days), k))
+        return min(options)[1] if options else None
+
+    def remove_travel(self, user_id: str, trip_id: str) -> dict[str, Any]:
+        def fn(plan: dict[str, Any], today: date) -> None:
+            trips = plan.get("trips", [])
+            trip = next((t for t in trips if t["id"] == trip_id), None)
+            if trip is None:
+                raise PlanError("That trip isn't in your plan.")
+            for day, sessions in trip["original"].items():
+                if day < today.isoformat():
+                    continue
+                w = week_for(plan, date.fromisoformat(day))
+                if w is None:
+                    continue
+                for x in w["days"].get(day, []):
+                    self._orphan(plan, x)
+                w["days"][day] = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions]
+                recompute_week(w)
+            plan["trips"] = [t for t in trips if t["id"] != trip_id]
+        return self._edit(user_id, fn)
+
     # -------------------------------------------------------------- sync --
     def _lock(self, user_id: str) -> threading.Lock:
         with self._guard:
@@ -530,6 +633,35 @@ class PlanService:
         return self._need_service().training_numbers(user_id)
 
 
+def _travel_swap(x: dict[str, Any], has: dict[str, bool], swim_pace: float, phase: str,
+                 trip_id: str) -> dict[str, Any]:
+    """One session, reworked for what's available on the road. Capped at 75 minutes."""
+    minutes = min(75, int(x.get("minutes") or 45))
+    sport, kind = x["sport"], x.get("kind") or "easy"
+    note = ""
+    if sport == "bike" and not has.get("bike"):
+        if has.get("gym"):
+            note = "Hotel gym: use a spin or stationary bike."
+        else:
+            sport, kind, minutes = "run", ("easy" if kind in ("long", "endurance", "recovery", "easy") else "tempo"), min(minutes, 50)
+            note = "No bike while away: swapped for a run."
+    elif sport == "swim" and not has.get("pool"):
+        sport, kind, minutes = "strength", "strength", 30
+        note = "No pool while away: strength and core instead."
+    elif sport == "run" and kind in ("vo2", "threshold") and not has.get("treadmill"):
+        note = "Unfamiliar roads: run this by effort, not pace."
+    if sport == "brick":
+        sport, kind = "run", "easy"
+    if kind not in KINDS_BY_SPORT.get(sport, ("easy",)):
+        kind = KINDS_BY_SPORT.get(sport, ("easy",))[0]
+    new = make_session(sport, kind, minutes, swim_pace=swim_pace, phase=phase)
+    new["id"] = x["id"]
+    new["edited"], new["travel"] = True, trip_id
+    if note:
+        new["detail"] = f"{note} {new.get('detail', '')}".strip()[:400]
+    return new
+
+
 def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | None:
     """What the app shows: drops internal fields, adds per-session sync state."""
     if plan is None:
@@ -542,7 +674,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
             for s in w["days"][d]:
                 g = s.get("garmin") or {}
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
-                                                 "detail", "meters", "edited")}
+                                                 "detail", "meters", "edited", "travel")}
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or []})
             days.append({"date": d, "sessions": ss})
@@ -553,6 +685,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                                      "level", "peak_hours", "start_hours", "note", "created",
                                      "updated")} | {
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
+        "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
         "race_changed": bool(plan.get("race_changed"))} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,
         "garmin": plan.get("garmin") or {}, "pending_removals": len(plan.get("garmin_orphans", [])),

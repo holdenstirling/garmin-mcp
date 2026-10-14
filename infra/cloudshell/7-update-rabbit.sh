@@ -28,6 +28,9 @@ TRAININGPEAKS_ALLOW_WRITES=true
 ENV
 fi
 gcloud config set project training-project-511604 >/dev/null 2>&1 || true
+# APIs Rabbit calls for the athlete (idempotent; quiet when already on).
+gcloud services enable calendar-json.googleapis.com --project training-project-511604 --quiet >/dev/null 2>&1 \
+  || echo "(couldn't enable the Google Calendar API here; enable it in the Cloud console)"
 
 if ! command -v bun >/dev/null; then
   echo "==> Installing bun"

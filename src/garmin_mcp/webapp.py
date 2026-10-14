@@ -33,6 +33,7 @@ from .planbuilder import PlanError, build_plan
 from .plans import public_plan
 from .events import TYPE_DISTANCES, TYPES
 from .coaches import CoachChat, CoachNotes
+from .gcalendar import CalendarError, CalendarNotConnected
 from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -144,6 +145,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "role": "coach" if user_id.startswith("coach_") else "athlete",
             "coaching": len(auth.coach_links.athletes_of(user_id)),
             "coaches": len(auth.coach_links.coaches_of(user_id)),
+            "calendar": {"available": auth.calendar is not None,
+                         "connected": bool(auth.calendar and auth.calendar.connected(user_id))},
             "coach_unread": coach_chat.unread(user_id, "athlete")
             if coach_chat is not None and not user_id.startswith("coach_") else 0,
             "profile": auth.profile(user_id),
@@ -1012,6 +1015,47 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return JSONResponse({"thread": _thread_view(thread),
                              "turns": [{k: t.get(k) for k in keys if k in t} for t in turns]})
 
+    # ------------------------------------------------- calendar / travel --
+    async def calendar_get(request: Request, user_id: str) -> Response:
+        cal = auth.calendar
+        if cal is None or not cal.connected(user_id):
+            return JSONResponse({"connected": False, "available": cal is not None})
+        try:
+            days = int(request.query_params.get("days", "42"))
+        except ValueError:
+            days = 42
+        today = plans.today(user_id) if plans else date.today()
+        prof = store.user_doc(user_id, "profile").load() if store else {}
+        tz = prof.get("timezone") or default_tz
+        try:
+            return JSONResponse(await cal.summary(user_id, today, days, tz) | {"available": True})
+        except CalendarNotConnected as e:
+            return JSONResponse({"connected": False, "available": True, "error": str(e)})
+        except CalendarError as e:
+            return _err(502, str(e))
+
+    async def calendar_delete(request: Request, user_id: str) -> Response:
+        if auth.calendar is not None:
+            await auth.calendar.disconnect(user_id)
+        return JSONResponse({"connected": False})
+
+    async def calendar_start(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        return await auth.start_calendar(request)
+
+    async def travel_add(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        return _plan_resp(user_id, await _plan_call(lambda: plans.add_travel(user_id, body)), 201)
+
+    async def travel_remove(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        tid = request.path_params["trip_id"]
+        return _plan_resp(user_id, await _plan_call(lambda: plans.remove_travel(user_id, tid)))
+
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
@@ -1100,6 +1144,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
+        Route("/app/api/calendar", _plan_api(calendar_get, mutating=False), methods=["GET"]),
+        Route("/app/api/calendar", _plan_api(calendar_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/auth/calendar/start", calendar_start, methods=["GET"]),
+        Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
         Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),
         Route("/app/api/coaches/{email}", _plan_api(coach_patch, mutating=True), methods=["PATCH"]),

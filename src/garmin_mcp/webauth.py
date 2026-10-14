@@ -37,6 +37,8 @@ from starlette.responses import RedirectResponse, Response
 from .appstore import AppStore
 from .config import Settings
 from .coaches import CoachLinks
+from .gcalendar import SCOPE as CALENDAR_SCOPE
+from .gcalendar import GoogleCalendar
 from .logs import log_event
 
 logger = logging.getLogger(__name__)
@@ -70,6 +72,8 @@ def _is_google_photo(url: str) -> bool:
 class _Pending:
     verifier: str
     created: float
+    kind: str = "login"            # or "calendar": connecting Google Calendar
+    user_id: str | None = None     # who asked (calendar flow)
 
 
 class WebAuth:
@@ -88,6 +92,9 @@ class WebAuth:
         self._identities_doc = store.global_doc("identities")
         self._sessions: dict[str, dict[str, Any]] = self._sessions_doc.load()
         # Human coaches invited by an allowlisted athlete may sign in too (see coaches.py).
+        self.calendar: GoogleCalendar | None = (
+            GoogleCalendar(store, settings.google_client_id, google_client_secret, http=http, clock=clock)
+            if settings.google_client_id else None)
         self.coach_links = CoachLinks(store, athlete_emails=lambda: {
             k.lower(): v for k, v in self.s.allowed_google_users.items()}, clock=clock)
         secure = settings.is_https
@@ -135,6 +142,53 @@ class WebAuth:
         self._cookie(resp, self.state_cookie, state, PENDING_TTL)
         return resp
 
+    # ------------------------------------------------------------ calendar --
+    async def start_calendar(self, request: Request) -> Response:
+        """Connect Google Calendar (read-only) for the signed-in athlete. Same client and
+        callback as sign-in; the pending record remembers who asked."""
+        user_id = self.user_for(request)
+        if user_id is None or self.calendar is None:
+            return self._fail("not_allowed")
+        state = secrets.token_urlsafe(32)
+        verifier, challenge = _pkce_pair()
+        now = self._clock()
+        with self._lock:
+            self._pending = {k: v for k, v in self._pending.items() if now - v.created < PENDING_TTL}
+            if len(self._pending) >= MAX_PENDING:
+                return self._fail("busy")
+            self._pending[state] = _Pending(verifier, now, kind="calendar", user_id=user_id)
+        query = urlencode({
+            "client_id": self.s.google_client_id, "redirect_uri": self.s.google_callback_url,
+            "response_type": "code", "scope": f"openid email {CALENDAR_SCOPE}", "state": state,
+            "code_challenge": challenge, "code_challenge_method": "S256",
+            "access_type": "offline", "prompt": "consent", "include_granted_scopes": "true",
+        })
+        resp = RedirectResponse(f"{GOOGLE_AUTH_URL}?{query}", status_code=302)
+        self._cookie(resp, self.state_cookie, state, PENDING_TTL)
+        return resp
+
+    async def _finish_calendar(self, request: Request, pending: _Pending, code: str) -> Response:
+        if self.user_for(request) != pending.user_id or self.calendar is None:
+            return self._fail("not_allowed")
+        client = self._http or httpx2.AsyncClient(timeout=10)
+        try:
+            r = await client.post(GOOGLE_TOKEN_URL, data={
+                "client_id": self.s.google_client_id, "client_secret": self._secret, "code": code,
+                "code_verifier": pending.verifier, "grant_type": "authorization_code",
+                "redirect_uri": self.s.google_callback_url}, headers={"Accept": "application/json"})
+            r.raise_for_status()
+            self.calendar.save_tokens(str(pending.user_id), r.json())
+        except Exception as e:
+            log_event(logger, logging.WARNING, "gcal_connect_failed", error=type(e).__name__)
+            return RedirectResponse("/app/?calendar=failed", status_code=302)
+        finally:
+            if self._http is None:
+                await client.aclose()
+        log_event(logger, logging.INFO, "gcal_connected", user_id=pending.user_id)
+        resp = RedirectResponse("/app/?calendar=connected", status_code=302)
+        resp.delete_cookie(self.state_cookie, path="/", secure=self._secure, httponly=True, samesite="lax")
+        return resp
+
     async def callback(self, request: Request) -> Response:
         state = request.query_params.get("state", "")
         code = request.query_params.get("code", "")
@@ -146,6 +200,8 @@ class WebAuth:
             return self._fail("expired")
         if not code:
             return self._fail("cancelled")
+        if pending.kind == "calendar":
+            return await self._finish_calendar(request, pending, code)
         try:
             sub, email, verified, profile = await self._google_identity(code, pending.verifier)
         except Exception as e:
