@@ -320,7 +320,12 @@ def clean_info(raw: Any) -> dict[str, Any] | None:
     for k in INFO_KEYS:
         v = raw.get(k)
         if isinstance(v, str | int | float) and not isinstance(v, bool) and str(v).strip():
-            out[k] = " ".join(str(v).split())[:400 if k == "summary" else 200]
+            t = " ".join(str(v).split())
+            cap = 700 if k == "summary" else 240
+            if len(t) > cap:  # cut at the last sentence or word that fits
+                cut = t[:cap]
+                t = cut[: cut.rfind(". ") + 1] if ". " in cut else cut.rsplit(" ", 1)[0] + "\u2026"
+            out[k] = t
     if out.get("suggested_type") not in TYPES:
         out.pop("suggested_type", None)
     allowed = {d for ds in TYPE_DISTANCES.values() for d in ds}
