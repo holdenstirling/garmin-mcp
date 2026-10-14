@@ -1721,6 +1721,76 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         await _plan_call(lambda: links.require(user_id, aid))
         return JSONResponse({"races": await _plan_call(lambda: _readiness.upcoming(aid))})
 
+    # ----------------------------------------------------------- insights --
+    # "What your data says" (insights.py): deterministic patterns over Garmin, load, plan,
+    # check-ins, gear and the chosen recovery/sleep source. Oura-derived insights are shown
+    # to the athlete only: never to coaches, never in Rabbit's context (context_lines).
+    from . import insights as _insights_mod
+    from .load import compute as _load_compute
+    from .sources import effective as _src_effective
+    from .stats import adherence as _adherence
+
+    async def _insight_inputs(uid: str) -> dict[str, Any]:
+        assert chat is not None
+        agent = chat.agent
+        try:
+            today, acts = await anyio.to_thread.run_sync(lambda: agent.stats.activities(uid))
+        except Exception:  # Garmin not connected or down: the plan/check-in rules still run
+            today, acts = agent._now(uid).date(), []
+        athlete = agent.coach.athlete(uid)
+        plan = plans.get(uid) if plans is not None else None
+        connected = bool(auth.oura is not None and auth.oura.connected(uid))
+        prefs, _ = prefs_for(store, uid, connected) if store is not None else ({}, False)
+        rec_src, sleep_src = _src_effective(prefs, connected), _src_effective(prefs, connected, "sleep")
+        recovery = None
+        try:
+            if rec_src == "oura":
+                recovery, _ = await recovery_for(agent, auth.oura, uid, today)
+            else:  # 10 days of cached Garmin reads (readiness + sleep): enough for patterns
+                recovery = await anyio.to_thread.run_sync(garmin_recovery, agent._service, uid, today, 10)
+        except Exception:
+            recovery = None
+        try:
+            proposal = await _proposal(uid)
+        except Exception:
+            proposal = None
+        try:
+            gear = (await anyio.to_thread.run_sync(lambda: _gear_items(uid)))[0] if gear_store is not None else []
+        except Exception:
+            gear = []
+        adh = _adherence(plan, acts, today) if plan else None
+        return {"today": today, "acts": acts, "athlete": athlete, "plan": plan,
+                "load": _load_compute(acts, today, threshold_hr=athlete.get("threshold_hr"), plan=plan),
+                "checkins": agent.checkins.list(uid, 60), "recovery": recovery, "recovery_source": rec_src,
+                "sleep": recovery if sleep_src == rec_src else None, "sleep_source": sleep_src,
+                "events": agent.events.list(uid), "gear": gear, "proposal": proposal,
+                "adherence_pct": ((adh or {}).get("to_date") or {}).get("pct")}
+
+    _insights = (_insights_mod.InsightsService(store, gather=_insight_inputs, today=lambda uid: chat.agent._now(uid).date())
+                 if store is not None and chat is not None else None)
+
+    async def insights_get(request: Request, user_id: str) -> Response:
+        if _insights is None:
+            return _err(503, "Insights aren't available on this server.")
+        return JSONResponse(await _insights.for_athlete(user_id, fresh=request.query_params.get("fresh") == "1"))
+
+    async def insight_dismiss(request: Request, user_id: str) -> Response:
+        if _insights is None:
+            return _err(503, "Insights aren't available on this server.")
+        body = await read_json(request)
+        days = (body or {}).get("days", _insights_mod.SNOOZE_DAYS) if isinstance(body, dict) else _insights_mod.SNOOZE_DAYS
+        if not isinstance(days, int) or isinstance(days, bool):
+            raise ValueError("days")
+        until = _insights.dismiss(user_id, request.path_params["insight_id"], days)
+        return JSONResponse({"ok": True, "until": until})
+
+    async def coach_athlete_insights(request: Request, user_id: str) -> Response:
+        if _insights is None:
+            return _err(503, "Insights aren't available on this server.")
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        return JSONResponse(await _insights.for_coach(aid))
+
     # ------------------------------------------------------------ explore --
     # Race discovery (explore.py): RunSignup search with fit hints, "Find more with Rabbit"
     # (web research, daily allowance, never any Oura data), and "Add to my races".
@@ -2248,6 +2318,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/challenges/{cid}/invite", _chal_api(challenges_invite, mutating=True), methods=["POST"]),
         Route("/app/api/challenges/{cid}/accept", _chal_api(challenges_accept, mutating=True), methods=["POST"]),
         Route("/app/api/challenges/{cid}/decline", _chal_api(challenges_decline, mutating=True), methods=["POST"]),
+        Route("/app/api/insights", _plan_api(insights_get, mutating=False), methods=["GET"]),
+        Route("/app/api/insights/{insight_id}/dismiss", _plan_api(insight_dismiss, mutating=True), methods=["POST"]),
+        Route("/app/api/coach/athletes/{athlete_id}/insights", _plan_api(coach_athlete_insights, mutating=False),
+              methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
         Route("/app/api/events/{event_id}/readiness", _plan_api(event_readiness, mutating=False), methods=["GET"]),

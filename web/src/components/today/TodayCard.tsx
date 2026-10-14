@@ -2,7 +2,7 @@
 // line of detail, up to 3 signal chips, one primary action and an "Ask Rabbit" link.
 // Open the first time you see it each day, then collapsed to one line with the week's dots.
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, Flag, Moon, Sparkles, Waves, Zap } from 'lucide-react'
+import { Check, ChevronDown, Flag, Lightbulb, Moon, Sparkles, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import type { Term } from '@/lib/glossary'
@@ -32,12 +32,14 @@ function seenToday(day: string): boolean {
   try { return window.localStorage.getItem(KEY) === day } catch { return false }
 }
 
-export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout }: {
+export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight, onOpenInsight }: {
   today: Today; onAction: (kind: TodayActionKind) => void; onAsk: (text: string) => void
   /** this plan week's days: dots in the collapsed row */
   week?: WeekDay[] | null
   /** today's planned session: the primary action opens the pre-workout screen */
   onOpenWorkout?: (sessionId: string) => void
+  /** top "do this" insight from Progress -> What your data says (one line, optional) */
+  insight?: string | null; onOpenInsight?: () => void
 }) {
   const [collapsed, setCollapsed] = useState(() => seenToday(today.date))
   const t = TONE[today.tone] ?? TONE.go
@@ -77,6 +79,13 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout }: {
                 </span>
               ))}
             </div>
+          )}
+          {insight && (
+            <button type="button" onClick={onOpenInsight} disabled={!onOpenInsight}
+              className="hit-44 flex items-center gap-1.5 text-left text-[0.7059rem] leading-snug text-(--text-secondary)">
+              <Lightbulb className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
+              <span className="min-w-0 truncate"><span className="font-semibold">Insight:</span> {insight}</span>
+            </button>
           )}
           <div className="flex items-center gap-3">
             <Button variant="primary" className="hit-44 h-8 px-3 text-[0.7059rem]" onClick={() => (workoutId && onOpenWorkout ? onOpenWorkout(workoutId) : onAction(today.action.kind))}>

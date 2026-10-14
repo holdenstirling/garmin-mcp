@@ -18,11 +18,14 @@ import { fmtDuration } from '@/lib/format'
 import { MainRaceGrade } from '@/components/events/Readiness'
 import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 import { ChallengesCard } from '@/components/challenges/ChallengesCard'
+import { InsightsCard } from '@/components/insights/InsightsCard'
 
 type Period = 'week' | 'month' | 'year'
 
-export function StatsScreen({ onClose, onOpenPlan, onOpenRecap }: {
+export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGear, onOpenSession }: {
   onClose: () => void; onOpenPlan?: () => void; oura?: boolean; onOpenRecap?: () => void
+  /** insight actions ("What your data says") */
+  onAsk?: (text: string) => void; onOpenGear?: () => void; onOpenSession?: (sessionId: string) => void
 }) {
   const [s, setS] = useState<Stats | null>(null)
   const [p, setP] = useState<Progress | null>(null)
@@ -69,15 +72,18 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap }: {
       {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => load(true)} compact={!!s} />}
       {s && <MainRaceGrade onOpen={setFitId} />}
       {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
-        recovery={<><ChallengesCard imperial={s.units === 'imperial'} /><Recovery /></>} more={<CheckinsCard />} />}
+        recovery={<><ChallengesCard imperial={s.units === 'imperial'} /><Recovery /></>} more={<CheckinsCard />}
+        insights={<InsightsCard refresh={loadKey} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />} />}
       {fitId && <RaceFitScreen eventId={fitId} onClose={() => setFitId(null)} />}
     </Screen>
   )
 }
 
 /** The stats sections, most important first (also used in the coach's view of an athlete). */
-export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery, more: moreExtra }: {
+export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery, insights, more: moreExtra }: {
   s: Stats; progress?: Progress | null; onOpenPlan?: () => void; loadBase?: string; loadKey?: number; recovery?: React.ReactNode
+  /** "What your data says", right after fitness & form */
+  insights?: React.ReactNode
   /** extra sections under "More stats" (the athlete's own check-ins) */
   more?: React.ReactNode
 }) {
@@ -89,6 +95,7 @@ export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery
         : <StreakHero s={s} />}
       {recovery}
       {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
+      {insights}
       <WeeklyBars s={s} />
       <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
         className="flex items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
