@@ -41,6 +41,7 @@ from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
+from .stats import StatsService
 from .events import LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
@@ -336,6 +337,8 @@ class Agent:
         self.events = EventStore(store, self.coach, clock=clock)
         self.plans = PlanService(store, self.coach, service, now=self._now, clock=clock,
                                  events=self.events)
+        self.stats = StatsService(service, now=self._now, athlete=self.coach.athlete,
+                                  plan=self.plans.get, clock=clock)
 
     async def lookup_event(self, user_id: str, name: str, etype: str | None = None,
                            when: str | None = None, location: str | None = None) -> dict[str, Any]:

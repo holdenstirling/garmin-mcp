@@ -1,6 +1,6 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
+import { CalendarDays, ChevronLeft, Flame, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { MemorySheet } from '@/components/MemorySheet'
@@ -10,6 +10,7 @@ import { PlanEditor } from '@/components/plan/PlanEditor'
 import { SetupWizard } from '@/components/plan/SetupWizard'
 import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { EventsScreen } from '@/components/events/EventsScreen'
+import { StatsScreen } from '@/components/stats/StatsScreen'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -74,7 +75,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -420,10 +421,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <PlanPins goal={goal} week={week} loading={weekLoading}
           onOpenPlan={openPlan} onAskDay={askDay} />
       )}
-      {isCoach && goal && (
-        <nav aria-label="Training" className="flex shrink-0 justify-center gap-2 border-b border-(--border) px-3 pb-2.5">
+      {isCoach && (goal || items.length > 0) && (
+        <nav aria-label="Training" className="no-scrollbar flex shrink-0 justify-start gap-1.5 overflow-x-auto border-b border-(--border) px-3 pb-2.5 min-[400px]:justify-center">
           <HomeButton icon={builtPlan ? MapIcon : Sparkles} primary={!builtPlan}
             onClick={() => showScreen(builtPlan ? 'planner' : 'setup')}>{builtPlan ? 'My plan' : 'Build my plan'}</HomeButton>
+          <HomeButton icon={Flame} onClick={() => showScreen('stats')}>Stats</HomeButton>
           <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
           <HomeButton icon={User} onClick={() => showScreen('profile')}>Profile</HomeButton>
         </nav>
@@ -607,6 +609,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={() => setPlanScreen('planner')} onBuildPlan={() => setPlanScreen('setup')} />
       )}
+      {planScreen === 'stats' && (
+        <StatsScreen onClose={() => setPlanScreen(null)} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
+      )}
       {planScreen === 'profile' && (
         <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
           onSaved={onChange} onRebuild={() => setPlanScreen('setup')} />
@@ -637,7 +642,7 @@ function HomeButton({ icon: Icon, primary, onClick, children }: {
 }) {
   return (
     <button type="button" onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[0.7059rem] font-medium transition-colors active:opacity-70 ${
+      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[0.7059rem] font-medium transition-colors active:opacity-70 ${
         primary ? 'border-(--accent) bg-(--accent) text-white dark:bg-(--accent-subtle) dark:text-(--accent)'
           : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)'}`}>
       <Icon className="size-3.5" />{children}

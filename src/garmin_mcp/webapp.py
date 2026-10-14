@@ -746,6 +746,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             await _plan_call(lambda: _events().update(user_id, eid, {"info": info}))
         return JSONResponse({"info": info})
 
+    async def stats_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        fresh = request.query_params.get("fresh") == "1"
+        return JSONResponse(await _plan_call(lambda: chat.agent.stats.get(user_id, fresh=fresh)))
+
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
@@ -833,6 +838,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["DELETE"]),
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
+        Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
         Route("/app/api/garmin/numbers", _plan_api(garmin_numbers, mutating=False),
               methods=["GET"]),
         Route("/app/api/garmin/login", _api(garmin_login, mutating=True), methods=["POST"]),

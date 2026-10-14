@@ -233,3 +233,6 @@ html.kb-open .empty-hero { transform: none; }
 .phase-race { background: var(--brand); }
 .phase-recovery { background: var(--bg-elevated); }
 @media (prefers-reduced-motion: reduce) { .plan-screen, .plan-screen--exit { animation-duration: 0.01ms; } }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
