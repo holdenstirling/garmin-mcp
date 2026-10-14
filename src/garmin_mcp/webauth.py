@@ -39,6 +39,7 @@ from .config import Settings
 from .coaches import CoachLinks
 from .gcalendar import SCOPE as CALENDAR_SCOPE
 from .gcalendar import GoogleCalendar
+from .oura import OuraClient
 from .logs import log_event
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ class WebAuth:
         self.calendar: GoogleCalendar | None = (
             GoogleCalendar(store, settings.google_client_id, google_client_secret, http=http, clock=clock)
             if settings.google_client_id else None)
+        self.oura: OuraClient | None = None  # set by the server when an Oura app is configured
         self.coach_links = CoachLinks(store, athlete_emails=lambda: {
             k.lower(): v for k, v in self.s.allowed_google_users.items()}, clock=clock)
         secure = settings.is_https
@@ -186,6 +188,43 @@ class WebAuth:
                 await client.aclose()
         log_event(logger, logging.INFO, "gcal_connected", user_id=pending.user_id)
         resp = RedirectResponse("/app/?calendar=connected", status_code=302)
+        resp.delete_cookie(self.state_cookie, path="/", secure=self._secure, httponly=True, samesite="lax")
+        return resp
+
+    # ---------------------------------------------------------------- oura --
+    async def start_oura(self, request: Request) -> Response:
+        user_id = self.user_for(request)
+        if user_id is None or self.oura is None:
+            return self._fail("not_allowed")
+        state = secrets.token_urlsafe(32)
+        now = self._clock()
+        with self._lock:
+            self._pending = {k: v for k, v in self._pending.items() if now - v.created < PENDING_TTL}
+            if len(self._pending) >= MAX_PENDING:
+                return self._fail("busy")
+            self._pending[state] = _Pending("", now, kind="oura", user_id=user_id)
+        resp = RedirectResponse(self.oura.authorize_url(state), status_code=302)
+        self._cookie(resp, self.state_cookie, state, PENDING_TTL)
+        return resp
+
+    async def oura_callback(self, request: Request) -> Response:
+        state = request.query_params.get("state", "")
+        code = request.query_params.get("code", "")
+        cookie_state = request.cookies.get(self.state_cookie, "")
+        with self._lock:
+            pending = self._pending.pop(state, None) if state else None
+        if (pending is None or pending.kind != "oura" or self._clock() - pending.created > PENDING_TTL
+                or not secrets.compare_digest(state, cookie_state) or self.oura is None):
+            return RedirectResponse("/app/?oura=failed", status_code=302)
+        if not code or self.user_for(request) != pending.user_id:
+            return RedirectResponse("/app/?oura=failed", status_code=302)
+        try:
+            await self.oura.exchange(str(pending.user_id), code)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "oura_connect_failed", error=type(e).__name__)
+            return RedirectResponse("/app/?oura=failed", status_code=302)
+        log_event(logger, logging.INFO, "oura_connected", user_id=pending.user_id)
+        resp = RedirectResponse("/app/?oura=connected", status_code=302)
         resp.delete_cookie(self.state_cookie, path="/", secure=self._secure, httponly=True, samesite="lax")
         return resp
 

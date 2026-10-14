@@ -118,6 +118,8 @@ class Settings:
     app_session_ttl_seconds: int = 90 * 24 * 3600
     vapid_private_key_secret_name: str = ""
     vapid_subject: str = ""  # mailto: contact sent to push services
+    oura_client_id: str = ""            # Oura developer app (optional)
+    oura_client_secret_name: str = ""
 
     # Rabbit coach agent (Claude API)
     anthropic_api_key_secret_name: str = ""
@@ -233,6 +235,8 @@ class Settings:
                 "VAPID_PRIVATE_KEY_SECRET_NAME", "garmin-mcp-vapid-private-key"
             ),
             vapid_subject=os.environ.get("VAPID_SUBJECT", "").strip(),
+            oura_client_id=os.environ.get("OURA_CLIENT_ID", "").strip(),
+            oura_client_secret_name=os.environ.get("OURA_CLIENT_SECRET_NAME", "garmin-mcp-oura-client-secret"),
             anthropic_api_key_secret_name=os.environ.get(
                 "ANTHROPIC_API_KEY_SECRET_NAME", "garmin-mcp-anthropic-api-key"
             ),

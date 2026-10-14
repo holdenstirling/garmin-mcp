@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { getOura, type OuraRecovery } from '@/lib/oura'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
 
 type Period = 'week' | 'month' | 'year'
 
-export function StatsScreen({ onClose, onOpenPlan }: { onClose: () => void; onOpenPlan?: () => void }) {
+export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void; onOpenPlan?: () => void; oura?: boolean }) {
   const [s, setS] = useState<Stats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
@@ -39,6 +40,7 @@ export function StatsScreen({ onClose, onOpenPlan }: { onClose: () => void; onOp
         </div>
       )}
       {error && !s && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
+      {s && oura && <Recovery />}
       {s && <StatsBody s={s} onOpenPlan={onOpenPlan} />}
     </Screen>
   )
@@ -347,6 +349,51 @@ function RecentCard({ s }: { s: Stats }) {
             </div>
           ))}
         </div>
+      </Card>
+    </section>
+  )
+}
+
+/** Oura readiness, HRV, resting HR and sleep vs your own baseline (app-only data). */
+function Recovery() {
+  const [r, setR] = useState<OuraRecovery | null>(null)
+  useEffect(() => { getOura(28).then(setR, () => {}) }, [])
+  if (!r?.connected || !r.days?.length) return null
+  const last = r.latest ?? r.days[r.days.length - 1]!
+  const b = r.baseline
+  const delta = (v: number | undefined, base: number | null | undefined, unit: string, higherIsBetter: boolean) => {
+    if (v == null || base == null) return null
+    const d = Math.round((v - base) * 10) / 10
+    const good = higherIsBetter ? d >= 0 : d <= 0
+    return <span className={good ? 'text-(--accent)' : 'text-(--warning)'}>{d >= 0 ? '+' : ''}{d}{unit} vs usual</span>
+  }
+  const tiles: [string, string, React.ReactNode][] = [
+    ['Readiness', last.readiness != null ? String(last.readiness) : '–', delta(last.readiness, b?.readiness, '', true)],
+    ['HRV', last.hrv != null ? `${last.hrv} ms` : '–', delta(last.hrv, b?.hrv, ' ms', true)],
+    ['Resting HR', last.resting_hr != null ? `${last.resting_hr} bpm` : '–', delta(last.resting_hr, b?.resting_hr, ' bpm', false)],
+    ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–', delta(last.sleep_hours, b?.sleep_hours, ' h', true)],
+  ]
+  const days = r.days.slice(-14)
+  return (
+    <section className="flex flex-col gap-2">
+      <SectionLabel>Recovery · Oura · {new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</SectionLabel>
+      <div className="grid grid-cols-2 gap-2">
+        {tiles.map(([label, v, d]) => (
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
+            <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
+            <span className="mt-1 block font-display text-[1.3rem] leading-tight text-(--text)">{v}</span>
+            {d && <span className="text-[0.6471rem]">{d}</span>}
+          </div>
+        ))}
+      </div>
+      <Card className="p-4">
+        <div className="flex h-16 items-end gap-1" aria-label="Readiness, last 14 days">
+          {days.map((x) => (
+            <span key={x.date} title={`${x.date}: ${x.readiness ?? '–'}`} className="flex-1 rounded-t-[3px]"
+              style={{ height: `${Math.max(8, (x.readiness ?? 0))}%`, background: (x.readiness ?? 0) >= 85 ? 'var(--accent)' : (x.readiness ?? 0) >= 70 ? 'color-mix(in srgb, var(--accent) 55%, var(--bg-elevated))' : 'var(--warning)' }} />
+          ))}
+        </div>
+        <p className="mt-2 text-[0.6471rem] text-(--text-muted)">Readiness, last 14 days. Shown here only; Oura data isn't sent to the AI coach.</p>
       </Card>
     </section>
   )

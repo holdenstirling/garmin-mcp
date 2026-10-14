@@ -24,6 +24,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from .agent import Agent, AnthropicBackend
+from .oura import OuraClient
 from .appstore import AppStore
 from .garminlogin import LoginManager
 from .proactive import AgentDelivery, Proactive, ProactiveThread
@@ -287,6 +288,13 @@ def build_rabbit(settings: Settings, fernet_key: str, token_store: EncryptedFile
     else:
         google_secret = ""
     auth = WebAuth(settings, store, google_secret, dev_user=dev_user)
+    if settings.oura_client_id:
+        try:
+            oura_secret = get_secret(settings.oura_client_secret_name, "OURA_CLIENT_SECRET", settings.gcp_project)
+            auth.oura = OuraClient(store, settings.oura_client_id, oura_secret,
+                                   f"{settings.public_base_url.rstrip('/')}/app/auth/oura/callback")
+        except Exception as e:  # Oura is optional; the app works without it
+            log_event(logger, logging.ERROR, "oura_disabled", error=type(e).__name__)
     push = None
     if settings.vapid_subject:
         try:

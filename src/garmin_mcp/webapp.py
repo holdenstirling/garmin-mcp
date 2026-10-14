@@ -34,6 +34,7 @@ from .plans import public_plan
 from .events import TYPE_DISTANCES, TYPES
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
+from .oura import OuraError, OuraNotConnected
 from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -145,6 +146,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "role": "coach" if user_id.startswith("coach_") else "athlete",
             "coaching": len(auth.coach_links.athletes_of(user_id)),
             "coaches": len(auth.coach_links.coaches_of(user_id)),
+            "oura": {"available": auth.oura is not None,
+                     "connected": bool(auth.oura and auth.oura.connected(user_id))},
             "calendar": {"available": auth.calendar is not None,
                          "connected": bool(auth.calendar and auth.calendar.connected(user_id))},
             "coach_unread": coach_chat.unread(user_id, "athlete")
@@ -1044,6 +1047,37 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(400, "bad host")
         return await auth.start_calendar(request)
 
+    async def oura_get(request: Request, user_id: str) -> Response:
+        o = auth.oura
+        if o is None or not o.connected(user_id):
+            return JSONResponse({"connected": False, "available": o is not None})
+        try:
+            days = int(request.query_params.get("days", "28"))
+        except ValueError:
+            days = 28
+        today = plans.today(user_id) if plans else date.today()
+        try:
+            return JSONResponse(await o.recovery(user_id, today, days) | {"available": True})
+        except OuraNotConnected as e:
+            return JSONResponse({"connected": False, "available": True, "error": str(e)})
+        except OuraError as e:
+            return _err(502, str(e))
+
+    async def oura_delete(request: Request, user_id: str) -> Response:
+        if auth.oura is not None:
+            auth.oura.disconnect(user_id)
+        return JSONResponse({"connected": False})
+
+    async def oura_start(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        return await auth.start_oura(request)
+
+    async def oura_callback(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        return await auth.oura_callback(request)
+
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
         body = await read_json(request)
@@ -1147,6 +1181,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/calendar", _plan_api(calendar_get, mutating=False), methods=["GET"]),
         Route("/app/api/calendar", _plan_api(calendar_delete, mutating=True), methods=["DELETE"]),
         Route("/app/auth/calendar/start", calendar_start, methods=["GET"]),
+        Route("/app/api/oura", _plan_api(oura_get, mutating=False), methods=["GET"]),
+        Route("/app/api/oura", _plan_api(oura_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/auth/oura/start", oura_start, methods=["GET"]),
+        Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),

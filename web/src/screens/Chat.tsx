@@ -217,10 +217,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // via ?open=coach, or (app already running) via a message from the service worker.
   // Back from connecting Google Calendar.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('calendar')
-    if (!q) return
+    const params = new URLSearchParams(window.location.search)
+    const cal = params.get('calendar'), oura = params.get('oura')
+    if (!cal && !oura) return
     window.history.replaceState(null, '', '/app/')
-    showToast(q === 'connected' ? 'Google Calendar connected' : "Couldn't connect Google Calendar")
+    if (cal) showToast(cal === 'connected' ? 'Google Calendar connected' : "Couldn't connect Google Calendar")
+    if (oura) showToast(oura === 'connected' ? 'Oura connected' : "Couldn't connect Oura")
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const openCoach = useRef(new URLSearchParams(window.location.search).get('open') === 'coach')
   useEffect(() => {
@@ -644,7 +646,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onOpenPlan={() => setPlanScreen('planner')} onBuildPlan={() => setPlanScreen('setup')} />
       )}
       {planScreen === 'stats' && (
-        <StatsScreen onClose={() => setPlanScreen(null)} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
+        <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
       )}
       {planScreen === 'profile' && (
         <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}

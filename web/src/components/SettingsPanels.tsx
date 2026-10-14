@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarClock, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
+import { Bell, CalendarClock, CircleDot, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
 import { CALENDAR_CONNECT_URL, disconnectCalendar } from '@/lib/calendar'
+import { OURA_CONNECT_URL, disconnectOura } from '@/lib/oura'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
@@ -142,6 +143,29 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
           )}
         </Group>
       )}
+
+      <Group label="Oura" footer={me.oura.available
+        ? 'Readiness, sleep and HRV appear in Stats and help Rabbit adjust your week. Oura data stays in the app: it is never sent to the AI coach (Oura\'s API terms).'
+        : 'Oura needs a one-time server setup (an Oura developer app). Run 8-oura.sh in Cloud Shell.'}>
+        {me.oura.connected ? (
+          <>
+            <Row icon={<Icon><CircleDot /></Icon>} title="Oura Ring"
+              trailing={<span className="flex items-center gap-1.5 text-[0.7647rem] text-(--accent)"><span className="size-2 rounded-full bg-(--accent)" />Connected</span>} />
+            <Row title="Disconnect Oura" danger disabled={busy} center
+              onClick={() => { setBusy(true); void disconnectOura().finally(() => { setBusy(false); onChange() }) }} />
+          </>
+        ) : me.oura.available ? (
+          <a href={OURA_CONNECT_URL} className="settings-row flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
+            <Icon><CircleDot /></Icon>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.9412rem] text-(--text)">Connect Oura</span>
+              <span className="block text-[0.7647rem] text-(--text-muted)">Readiness, sleep and HRV</span>
+            </span>
+          </a>
+        ) : (
+          <Row icon={<Icon tone="muted"><CircleDot /></Icon>} title="Oura Ring" subtitle="Not set up on this server yet" />
+        )}
+      </Group>
 
       {me.garmin.connected && me.chat.available && (
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />
