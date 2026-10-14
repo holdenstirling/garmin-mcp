@@ -765,6 +765,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
         "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
         "race_changed": bool(plan.get("race_changed"))} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,
+        "today": today.isoformat(),  # the athlete's local date (the device clock may differ)
         "garmin": plan.get("garmin") or {}, "pending_removals": len(plan.get("garmin_orphans", [])),
         "kinds": {k: list(v) for k, v in KINDS_BY_SPORT.items()},
     }

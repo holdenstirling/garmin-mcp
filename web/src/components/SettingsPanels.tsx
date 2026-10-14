@@ -148,7 +148,7 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
 
       <Group label="Oura" footer={me.oura.available
         ? 'Readiness, sleep and HRV appear in Stats and help Rabbit adjust your week. Oura data stays in the app: it is never sent to the AI coach (Oura\'s API terms).'
-        : 'Oura needs a one-time server setup (an Oura developer app). Run 8-oura.sh in Cloud Shell.'}>
+        : 'Oura needs a one-time server setup: create an app at developer.ouraring.com, then run 8-oura.sh in Cloud Shell.'}>
         {me.oura.connected ? (
           <>
             <Row icon={<Icon><CircleDot /></Icon>} title="Oura Ring"

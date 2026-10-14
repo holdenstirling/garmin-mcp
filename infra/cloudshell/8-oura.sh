@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Cloud Shell: connect an Oura developer app to Rabbit (optional).
-# Before running: create an app at https://developer.ouraring.com (or cloud.ouraring.com/oauth/applications)
+# Before running: create an app at https://developer.ouraring.com (since Oct 2025 new apps can't be
+# created on the old cloud.ouraring.com/oauth/applications page; it only edits existing ones)
 # with redirect URI  https://34-45-18-209.sslip.io/app/auth/oura/callback
 # Asks for the client ID and the client secret (hidden). The secret goes to Secret Manager.
 set -euo pipefail

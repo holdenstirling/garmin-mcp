@@ -9,14 +9,32 @@ import { InfoBlock } from './EventForm'
 
 const cToF = (c: number) => Math.round(c * 9 / 5 + 32)
 
+function readGear(key: string): string[] | null {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(key) ?? 'null')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : null
+  } catch { return null }
+}
+
 export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: string; imperial: boolean; onClose: () => void }) {
   const [p, setP] = useState<RacePack | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
-  const key = `rabbit.gear.${eventId ?? 'main'}`
-  const [checked, setChecked] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(key) ?? '[]') } catch { return [] } })
+  // Gear checks are stored per event, under the event the pack resolved to (also when it
+  // was opened as "the main event"), so they follow that race if the main one changes.
+  const key = p ? `rabbit.gear.${p.event.id}` : null
+  const [checked, setChecked] = useState<string[] | null>(null) // null until the pack loads
   useEffect(() => { getRacePack(eventId).then(setP, (e) => setError((e as Error).message)) }, [eventId])
-  useEffect(() => { try { localStorage.setItem(key, JSON.stringify(checked)) } catch { /* ignore */ } }, [checked, key])
+  useEffect(() => {
+    if (!key) return
+    // Earlier versions kept the main event's checks under "main".
+    setChecked(readGear(key) ?? (eventId ? null : readGear('rabbit.gear.main')) ?? [])
+  }, [key, eventId])
+  useEffect(() => {
+    if (!key || !checked) return
+    try { localStorage.setItem(key, JSON.stringify(checked)) } catch { /* ignore */ }
+  }, [checked, key])
+  const done = checked ?? []
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   const temp = (c: number | null) => c == null ? '–' : imperial ? `${cToF(c)}°F` : `${Math.round(c)}°C`
 
@@ -61,12 +79,13 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
             </Field>
           </Card>
           <Card>
-            <Field label={`Gear checklist · ${checked.filter((c) => p.gear.includes(c)).length}/${p.gear.length}`}>
+            <Field label={`Gear checklist · ${done.filter((c) => p.gear.includes(c)).length}/${p.gear.length}`}>
               <div className="flex flex-col">
                 {p.gear.map((g) => {
-                  const on = checked.includes(g)
+                  const on = done.includes(g)
                   return (
-                    <button key={g} type="button" onClick={() => setChecked((c) => on ? c.filter((x) => x !== g) : [...c, g])}
+                    <button key={g} type="button"
+                      onClick={() => setChecked((c) => on ? (c ?? []).filter((x) => x !== g) : [...(c ?? []), g])}
                       className="flex items-center gap-2.5 py-1.5 text-left text-[0.8235rem]">
                       {on ? <CheckSquare className="size-4 shrink-0 text-(--accent)" /> : <Square className="size-4 shrink-0 text-(--text-muted)" />}
                       <span className={on ? 'text-(--text-muted) line-through' : 'text-(--text)'}>{g}</span>

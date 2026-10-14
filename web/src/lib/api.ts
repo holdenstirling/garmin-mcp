@@ -32,12 +32,12 @@ export type Me = {
   calendar: { available: boolean; connected: boolean }
   oura: { available: boolean; connected: boolean }
   profile: { name: string; picture: string }
-  chat: { available: boolean; active_turn: string | null }
+  /** the reply still running server-side, and the thread it belongs to */
+  chat: { available: boolean; active_turn: string | null; active_thread: string | null }
   settings: CoachSettings
   athlete: Athlete
   goal: Goal | null
   dev: { fake_garmin: boolean; tools: string[] }
-  garmin_connected: boolean
   garmin: {
     connected: boolean
     can_connect: boolean
@@ -117,11 +117,8 @@ export async function sendJSON<T>(method: string, path: string, body?: unknown):
 export const listThreads = () => getJSON<{ goal: Goal | null; threads: Thread[] }>('/api/threads')
 export const createThread = (from?: { thread_id: string; turn_id: string }) =>
   sendJSON<Thread>('POST', '/api/threads', from ? { from } : {})
-export const renameThread = (id: string, title: string) => sendJSON<Thread>('PATCH', `/api/threads/${id}`, { title })
 export const deleteThread = (id: string) => sendJSON<{ ok: boolean }>('DELETE', `/api/threads/${id}`)
-export const createGoal = (g: Partial<Goal>) => sendJSON<Goal>('POST', '/api/goals', g)
 export const updateGoal = (id: string, g: Partial<Goal>) => sendJSON<Goal>('PATCH', `/api/goals/${id}`, g)
-export const archiveGoal = (id: string) => sendJSON<{ ok: boolean }>('POST', `/api/goals/${id}/archive`)
 export const putAthlete = (a: Athlete) => sendJSON<Athlete>('PUT', '/api/athlete', a)
 
 /** "36 wks · base" style summary for headers. */

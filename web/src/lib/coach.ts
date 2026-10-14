@@ -1,7 +1,6 @@
 // Human coaches: the athlete's side (invite, permissions, messages, shared notes) and the
 // coach's side (athletes, plan, messages, notes, Rabbit chats when allowed).
 import { getJSON, sendJSON, type Athlete, type Goal } from '@/lib/api'
-import type { BuiltPlan } from '@/lib/plan'
 import type { RaceEvent } from '@/lib/events'
 import type { Stats } from '@/lib/stats'
 
@@ -60,7 +59,6 @@ export const getRabbitThreads = (aid: string) =>
   getJSON<{ threads: { id: string; kind: string; title: string; updated: number }[] }>(`${coachBase(aid)}/rabbit`)
 export const getRabbitThread = (aid: string, tid: string) =>
   getJSON<{ thread: { id: string; title: string }; turns: { id: string; ts: number; kind: string; label?: string; user?: string; parts?: { type: string; text?: string }[] }[] }>(`${coachBase(aid)}/rabbit/${tid}`)
-export const getAthletePlan = (aid: string) => getJSON<{ plan: BuiltPlan | null }>(`${coachBase(aid)}/plan`)
 
 export function timeAgo(ts: number): string {
   const s = Math.max(0, Date.now() / 1000 - ts)

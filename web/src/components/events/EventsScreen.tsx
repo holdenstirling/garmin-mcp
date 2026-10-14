@@ -18,23 +18,23 @@ const TYPE_ICON: Record<EventType, typeof Bike> = {
   swimming: Waves, mountaineering: Mountain, other: Activity,
 }
 
-export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, startAdding, imperial = false }: {
+export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false }: {
   hasBuiltPlan: boolean
   onClose: () => void
   onChanged: () => void
   onOpenPlan: () => void
   onBuildPlan: () => void
-  startAdding?: boolean
   imperial?: boolean
 }) {
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
-  const [editing, setEditing] = useState<RaceEvent | 'new' | null>(startAdding ? 'new' : null)
+  const [editing, setEditing] = useState<RaceEvent | 'new' | null>(null)
   const [showPast, setShowPast] = useState(false)
   const [changed, setChanged] = useState(false)
 
   const load = useCallback(() => {
+    setError(null)
     listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
   }, [])
   useEffect(load, [load])
@@ -44,17 +44,21 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const past = (events ?? []).filter((e) => daysUntil(e.date) < 0).reverse()
   const saved = (list: RaceEvent[]) => { setEvents(list); setChanged(true); onChanged() }
 
+  // "Add" waits for the list: whether a new event becomes the main one depends on it.
   return (
     <>
       <Screen title="Events" subtitle="Races and challenges on your calendar" closing={closing} onClose={close}
-        footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setEditing('new')}>
+        footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={events === null}
+          onClick={() => setEditing('new')}>
           <CalendarPlus className="size-4" /> Add an event</Button>}>
         {events === null && !error ? (
           <div className="flex justify-center py-16" role="status" aria-label="Loading events">
             <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
           </div>
         ) : error ? (
-          <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>
+          <p className="px-1 text-[0.8235rem] text-(--danger)">
+            {error} <button type="button" className="underline" onClick={load}>Retry</button>
+          </p>
         ) : (
           <>
             {changed && (
@@ -96,7 +100,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         )}
       </Screen>
       {editing && (
-        <EventEditor event={editing === 'new' ? null : editing} isFirst={(events ?? []).length === 0} imperial={imperial}
+        <EventEditor event={editing === 'new' ? null : editing} isFirst={events !== null && events.length === 0} imperial={imperial}
           onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
       )}
     </>

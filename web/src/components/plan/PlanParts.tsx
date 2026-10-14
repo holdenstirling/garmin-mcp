@@ -14,10 +14,13 @@ export const SPORT_LABEL: Record<Sport, string> = {
 export function fmtDay(date: string, opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' }) {
   return new Date(`${date}T12:00:00`).toLocaleDateString([], opts)
 }
+/** The device's local date. Prefer the server's (``planToday``) where a plan is loaded. */
 export const todayStr = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+/** "Today" in the athlete's time zone, as the server sees it (the device's as a fallback). */
+export const planToday = (plan: BuiltPlan | null | undefined) => plan?.today ?? todayStr()
 
 export function weekPhaseLabel(w: PlanWeekBuilt) {
   return w.recovery && w.phase !== 'taper' && w.phase !== 'race' ? `${PHASE_LABEL[w.phase]} · recovery` : PHASE_LABEL[w.phase]

@@ -149,6 +149,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except TokenStoreError:
             connected = False
         cd = logins.cooldown(user_id) if logins else None
+        active = chat.active(user_id) if chat else None
         return JSONResponse({
             "user_id": user_id,
             "role": "coach" if user_id.startswith("coach_") else "athlete",
@@ -166,7 +167,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "athlete": chat.agent.coach.athlete(user_id) if chat else {},
             "goal": chat.agent.coach.active_goal(user_id) if chat else None,
             "chat": {"available": chat is not None,
-                     "active_turn": (t.id if chat and (t := chat.active(user_id)) else None)},
+                     "active_turn": active.id if active else None,
+                     "active_thread": (active.thread_id or None) if active else None},
             "garmin_connected": connected,
             "garmin": {
                 "connected": connected,

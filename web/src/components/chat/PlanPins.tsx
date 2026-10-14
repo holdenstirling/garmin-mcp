@@ -1,15 +1,10 @@
 // Pinned to the top of the coach log: the plan (tap to open it) and "This week",
 // which expands into planned vs. done by day. Weeks follow the plan's own weeks.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  Activity, Bike, Check, MessageCircle, ChevronRight, Dumbbell, Footprints, Layers, Map as MapIcon, Moon, Waves,
-} from 'lucide-react'
+import { Check, MessageCircle, ChevronRight, Map as MapIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Goal, PlannedSession, PlanWeek, Sport, WeekDay } from '@/lib/api'
-
-const SPORT_ICON: Record<Sport, typeof Bike> = {
-  swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
-}
+import { SPORT_ICON } from '@/components/plan/PlanParts'
 
 export function fmtMinutes(m: number): string {
   if (m < 60) return `${m}m`
@@ -55,11 +50,17 @@ function dayState(d: WeekDay): DayState {
   return d.sessions.length ? 'rest' : 'empty'
 }
 
+const DAY_STATE_LABEL: Record<DayState, string> = {
+  done: 'done', partial: 'partly done', missed: 'missed', planned: 'planned', rest: 'rest day',
+  extra: 'extra workout', empty: 'nothing planned',
+}
+
 function DayDot({ day }: { day: WeekDay }) {
   const st = dayState(day)
   return (
-    <span className="flex flex-col items-center gap-1">
-      <span className={cn('text-[0.5882rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
+    <span className="flex flex-col items-center gap-1" role="img"
+      aria-label={`${day.weekday}${day.today ? ' (today)' : ''}: ${DAY_STATE_LABEL[st]}`}>
+      <span aria-hidden className={cn('text-[0.5882rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
         {day.weekday.charAt(0)}
       </span>
       <span className={cn('flex size-[18px] items-center justify-center rounded-full border text-white',
@@ -146,10 +147,13 @@ function DayRow({ day, openKey, onToggle, onAsk }: {
   )
 }
 
-export function PlanPins({ goal, week, loading, onOpenPlan, onAskDay }: {
+export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPlan, onAskDay }: {
   goal: Goal
   week: PlanWeek | null
   loading: boolean
+  /** the week couldn't be loaded (shown only while there's no week to show) */
+  error?: boolean
+  onRetry?: () => void
   onOpenPlan: () => void
   onAskDay: (day: WeekDay, session?: PlannedSession) => void
 }) {
@@ -191,6 +195,7 @@ export function PlanPins({ goal, week, loading, onOpenPlan, onAskDay }: {
   }, [])
   const hasPlan = !!goal.plan
   const reading = loading && hasPlan && !week
+  const failed = error && !week && !loading
 
   // One line: where you are in the plan and which days (falls back to "This week").
   const where = week?.index && week.index > 0
@@ -205,7 +210,7 @@ export function PlanPins({ goal, week, loading, onOpenPlan, onAskDay }: {
       <div className={cn('relative mx-auto max-w-2xl', raised && 'z-[46]')} style={headH ? { height: headH } : undefined}>
       <div ref={cardRef} className={cn('overflow-hidden rounded-xl border border-border bg-(--bg-surface) transition-shadow duration-300',
         headH && 'absolute inset-x-0 top-0', raised ? 'shadow-lg' : 'shadow-sm')}>
-        <button ref={headRef} onClick={() => setOpen((v) => !v)} aria-expanded={open}
+        <button ref={headRef} onClick={() => (failed && onRetry ? onRetry() : setOpen((v) => !v))} aria-expanded={open}
           className="flex w-full items-center gap-2 px-3 pb-2 pt-2 text-left">
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
@@ -217,6 +222,10 @@ export function PlanPins({ goal, week, loading, onOpenPlan, onAskDay }: {
             {week ? (
               <span className="mt-1.5 flex justify-between px-1">
                 {week.days.map((d) => <DayDot key={d.date} day={d} />)}
+              </span>
+            ) : failed ? (
+              <span className="mt-1.5 flex h-[30px] items-center px-1 text-[0.7059rem] text-muted-foreground">
+                Couldn't load this week.{onRetry ? ' Tap to retry' : ''}
               </span>
             ) : (
               <span className="mt-1.5 flex justify-between px-1">

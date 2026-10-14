@@ -7,7 +7,7 @@
 // being pressed, we clear it and open our menu. The tick lands exactly as the menu
 // appears. Our own timer is the fallback (non-text targets, other platforms), and runs a
 // little later so the native path wins when it can. Moving the finger cancels.
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 const HOLD_MS = 600
 const SLOP_PX = 8
@@ -95,5 +95,7 @@ export function useLongPress(onTrigger: (el: HTMLElement) => void) {
     window.setTimeout(clear, 300)
   }, [cancel])
 
-  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: cancel, onContextMenu }
+  // Stable object, so memoized bubbles that receive it as props don't re-render.
+  return useMemo(() => ({ onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: cancel, onContextMenu }),
+    [onTouchStart, onTouchMove, onTouchEnd, cancel, onContextMenu])
 }

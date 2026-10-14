@@ -47,3 +47,33 @@ def test_oura_api_not_configured(env, tmp_path) -> None:
             assert me["oura"] == {"available": False, "connected": False}
     asyncio.run(go_())
 
+
+
+def test_concurrent_refresh_uses_single_use_token_once(env) -> None:
+    """Two requests with an expired token must not both spend the single-use refresh token."""
+    import asyncio
+
+    import httpx2
+
+    from garmin_mcp.oura import OuraClient
+
+    calls: list[str] = []
+
+    async def handler(req: httpx2.Request) -> httpx2.Response:
+        body = req.content.decode()
+        if "grant_type=refresh_token" in body:
+            calls.append(body)
+            await asyncio.sleep(0.01)
+            if "refresh_token=r1" in body:
+                return httpx2.Response(200, json={"access_token": "a2", "refresh_token": "r2", "expires_in": 86400})
+            return httpx2.Response(400, json={"error": "invalid_grant"})
+        return httpx2.Response(200, json={"data": []})
+
+    async def go_() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as http:
+            o = OuraClient(env.store, "cid", "secret", "https://x/cb", http=http, clock=lambda: 1000.0)
+            o._doc("u").save({"access_token": "a1", "refresh_token": "r1", "expires": 0})
+            toks = await asyncio.gather(o.access_token("u"), o.access_token("u"))
+            assert toks == ["a2", "a2"] and len(calls) == 1
+            assert o.connected("u") and o._doc("u").load()["refresh_token"] == "r2"
+    asyncio.run(go_())

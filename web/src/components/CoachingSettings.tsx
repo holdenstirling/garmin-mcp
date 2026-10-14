@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Clock, FlaskConical, Sunrise, Watch } from 'lucide-react'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { postJSON, putSettings, type CoachSettings, type Me } from '@/lib/api'
@@ -10,10 +10,46 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function save(patch: Partial<CoachSettings>) {
-    const prev = s
-    setS({ ...s, ...patch })
-    try { setS(await putSettings(patch)); onChange() } catch (e) { setS(prev); setMsg((e as Error).message) }
+  const sRef = useRef(s)
+  sRef.current = s
+  // Saves can overlap: only the newest one's reply (or failure) is applied.
+  const seq = useRef(0)
+  async function save(patch: Partial<CoachSettings>, prev: CoachSettings = sRef.current) {
+    const n = ++seq.current
+    setS((cur) => ({ ...cur, ...patch }))
+    try {
+      const next = await putSettings(patch)
+      if (n !== seq.current) return
+      setS(next)
+      onChange()
+    } catch (e) {
+      if (n !== seq.current) return
+      setS(prev)
+      setMsg((e as Error).message)
+    }
+  }
+  const saveRef = useRef(save)
+  saveRef.current = save
+
+  // The time picker fires on every scroll of its wheel: save once it settles (or on blur).
+  const timeTimer = useRef<number | null>(null)
+  const pendingTime = useRef<{ value: string; prev: CoachSettings } | null>(null)
+  const flushTime = () => {
+    if (timeTimer.current) window.clearTimeout(timeTimer.current)
+    timeTimer.current = null
+    const p = pendingTime.current
+    pendingTime.current = null
+    if (p) void saveRef.current({ brief_time: p.value }, p.prev)
+  }
+  const flushRef = useRef(flushTime)
+  flushRef.current = flushTime
+  useEffect(() => () => flushRef.current(), []) // closing settings still saves the last pick
+  const changeTime = (value: string) => {
+    if (!value) return
+    pendingTime.current = { value, prev: pendingTime.current?.prev ?? sRef.current }
+    setS((cur) => ({ ...cur, brief_time: value }))
+    if (timeTimer.current) window.clearTimeout(timeTimer.current)
+    timeTimer.current = window.setTimeout(() => flushRef.current(), 800)
   }
 
   async function dev(name: string, label: string) {
@@ -43,7 +79,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
         {s.brief_enabled && (
           <Row icon={<Icon><Clock /></Icon>} title="Brief time"
             trailing={<input type="time" value={s.brief_time} step={300} aria-label="Brief time"
-              onChange={(e) => e.target.value && void save({ brief_time: e.target.value })}
+              onChange={(e) => changeTime(e.target.value)} onBlur={flushTime}
               className="rounded-lg bg-(--bg-inset) px-2.5 py-1 text-right text-[0.9412rem] text-(--text) [font-family:var(--font)]" />} />
         )}
       </Group>

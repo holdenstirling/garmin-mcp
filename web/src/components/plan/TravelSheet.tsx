@@ -9,15 +9,17 @@ import type { TripOptions } from '@/lib/calendar'
 import { Card, Field, inputCls } from './ui'
 import { todayStr } from './PlanParts'
 
-export function TravelSheet({ initial, raceDate, onApply, onClose, onDismissed, closing }: {
+export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, onClose, onDismissed, closing }: {
   initial?: { start: string; end: string; label: string }
   raceDate: string
+  /** the athlete's date from the server (defaults to the device's) */
+  today?: string
   onApply: (b: { start: string; end: string; label: string } & TripOptions) => Promise<void>
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const drag = useSheetDrag(onDismissed)
-  const [start, setStart] = useState(initial?.start ?? todayStr())
-  const [end, setEnd] = useState(initial?.end ?? todayStr())
+  const [start, setStart] = useState(initial?.start ?? today)
+  const [end, setEnd] = useState(initial?.end ?? today)
   const [label, setLabel] = useState(initial?.label ?? '')
   const [has, setHas] = useState<TripOptions>({ gym: true, treadmill: false, pool: false, bike: false })
   const [busy, setBusy] = useState(false)
@@ -49,7 +51,7 @@ export function TravelSheet({ initial, raceDate, onApply, onClose, onDismissed, 
             </Field>
             <div className="grid grid-cols-2 border-t border-(--border)">
               <Field label="Leave">
-                <input type="date" className={inputCls} value={start} min={todayStr()} max={raceDate} onChange={(e) => e.target.value && setStart(e.target.value)} />
+                <input type="date" className={inputCls} value={start} min={today} max={raceDate} onChange={(e) => e.target.value && setStart(e.target.value)} />
               </Field>
               <Field label="Back">
                 <input type="date" className={inputCls} value={end} min={start} max={raceDate} onChange={(e) => e.target.value && setEnd(e.target.value)} />

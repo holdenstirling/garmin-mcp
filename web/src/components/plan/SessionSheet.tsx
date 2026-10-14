@@ -13,12 +13,14 @@ export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: 
 
 const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
 
-export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onClose, onDismissed, closing }: {
+export function SessionSheet({ session, date, kinds, sports, raceDate, today = todayStr(), onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onClose, onDismissed, closing }: {
   session: PlanSession | null          // null = add mode
   date: string
   kinds: Record<string, string[]>
   sports: Sport[]
   raceDate: string
+  /** the athlete's date from the server (defaults to the device's) */
+  today?: string
   onSave: (d: SessionDraft, changed: Partial<SessionDraft>) => Promise<void>
   onDelete?: () => Promise<void>
   onAsk?: () => void
@@ -41,7 +43,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isRace = session?.kind === 'race'
-  const past = date < todayStr()
+  const past = date < today
   const sportKinds = (kinds[d.sport] ?? []).filter((k) => k !== 'race')
   const locked = isRace || past || !!readOnly
   const choices = [...new Set([...SPORTS.filter((s) => s === 'brick' ? sports.length > 1 : s === 'strength' || s === 'rest' || sports.includes(s)), ...(session ? [session.sport] : [])])]
@@ -165,7 +167,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
                 </Field>
               )}
               <Field label="Day" className="border-t border-(--border)">
-                <input type="date" className={inputCls} value={d.date} min={todayStr()} max={raceDate}
+                <input type="date" className={inputCls} value={d.date} min={today} max={raceDate}
                   onChange={(e) => e.target.value && set({ date: e.target.value })} />
               </Field>
               <Field label="Name" className="border-t border-(--border)" hint={adding ? 'Leave blank for a name like "Easy run".' : undefined}>

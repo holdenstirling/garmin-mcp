@@ -1,8 +1,9 @@
 // Small building blocks for the plan screens, in Rabbit's existing look: grouped cards,
 // DM Mono labels, forest-green accent chips.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronLeft, Minus, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDialog } from '@/hooks/useDialog'
 
 /** Full-screen page that slides up over the app (setup wizard, plan editor). */
 export function Screen({ title, subtitle, onBack, onClose, closing, footer, children, headerExtra }: {
@@ -10,8 +11,10 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
   onBack?: () => void; onClose: () => void; closing?: boolean
   footer?: React.ReactNode; children: React.ReactNode; headerExtra?: React.ReactNode
 }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useDialog(ref, onClose)
   return (
-    <div className={cn('plan-screen', closing && 'plan-screen--exit')} role="dialog" aria-modal aria-label={title}>
+    <div ref={ref} tabIndex={-1} className={cn('plan-screen', closing && 'plan-screen--exit')} role="dialog" aria-modal aria-label={title}>
       <header className="shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
           {onBack ? (

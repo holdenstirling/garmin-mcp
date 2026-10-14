@@ -51,14 +51,30 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
   const now = useNow(until !== null)
   const coolingDown = until !== null && until > now
 
-  useEffect(() => () => { if (poll.current) clearTimeout(poll.current) }, [])
+  // Polling stops once this form is gone (a poll already in flight is ignored).
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (poll.current) clearTimeout(poll.current)
+    }
+  }, [])
 
   function handle(j: Job) {
+    if (!mounted.current) return
     setJob(j)
     if (j.state === 'pending') {
       poll.current = setTimeout(async () => {
-        try { handle(await getJSON<Job>(`/api/garmin/login/${j.job_id}`)) }
-        catch (e) { setMessage((e as Error).message); setJob(null) }
+        poll.current = null
+        if (!mounted.current) return
+        try {
+          const next = await getJSON<Job>(`/api/garmin/login/${j.job_id}`)
+          if (mounted.current) handle(next)
+        } catch (e) {
+          if (!mounted.current) return
+          setMessage((e as Error).message); setJob(null)
+        }
       }, 2000)
       return
     }
@@ -102,6 +118,8 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
       const r = await postRaw<Job & { error?: string }>('/api/garmin/mfa', { job_id: job.job_id, code: code.trim() })
       if (r.status === 202) { setCode(''); handle(r.data) }
       else setMessage(r.data?.error ?? `Error ${r.status}`)
+    } catch (err) {
+      setMessage(`Couldn't send the code: ${(err as Error).message}. Check your connection and try again.`)
     } finally {
       setSubmitting(false)
     }

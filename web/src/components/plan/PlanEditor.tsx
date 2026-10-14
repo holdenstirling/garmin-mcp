@@ -13,7 +13,7 @@ import {
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, Screen } from './ui'
-import { PhaseStrip, SessionLine, fmtDay, todayStr, weekPhaseLabel } from './PlanParts'
+import { PhaseStrip, SessionLine, fmtDay, planToday, weekPhaseLabel } from './PlanParts'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
 import { TravelSheet } from './TravelSheet'
@@ -97,7 +97,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
   const week = plan.weeks.find((w) => w.index === weekIdx) ?? plan.weeks[0]!
   const pos = plan.weeks.indexOf(week)
-  const today = todayStr()
+  const today = planToday(plan)
   const sports = sportsFor(plan.distance)
   const raceDay = fmtDay(plan.race_date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
   const daysToRace = Math.round((new Date(`${plan.race_date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86_400_000)
@@ -314,14 +314,14 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       </>}
 
       {travel && (
-        <TravelSheet initial={travel === 'new' ? undefined : travel} raceDate={plan.race_date} closing={travelClosing}
+        <TravelSheet initial={travel === 'new' ? undefined : travel} raceDate={plan.race_date} today={today} closing={travelClosing}
           onClose={closeTravel} onDismissed={() => { setTravel(null); setTravelClosing(false) }}
           onApply={async (b) => { applied((await addTravel(b)).plan) }} />
       )}
       {editing && (
         <SessionSheet key={editing.session?.id ?? `new-${editing.date}`}
           session={editing.session} date={editing.date} kinds={plan.kinds} sports={sports as Sport[]}
-          raceDate={plan.race_date} closing={sheetClosing} onClose={closeSheet}
+          raceDate={plan.race_date} today={today} closing={sheetClosing} onClose={closeSheet}
           onDismissed={() => { setEditing(null); setSheetClosing(false) }}
           onSave={saveSession}
           onDelete={editing.session && editing.session.kind !== 'race' ? async () => {

@@ -12,6 +12,7 @@ app (client id + secret) whose redirect URI is ``<PUBLIC_BASE_URL>/app/auth/oura
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections.abc import Callable
@@ -89,6 +90,7 @@ class OuraClient:
         self._http = http
         self._clock = clock
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
 
     def _doc(self, user_id: str):
         return self._s.user_doc(user_id, "oura")
@@ -135,13 +137,23 @@ class OuraClient:
             raise OuraNotConnected("Oura isn't connected.")
         if d.get("expires", 0) > self._clock():
             return str(d["access_token"])
-        try:
-            tok = await self._token({"grant_type": "refresh_token", "refresh_token": d["refresh_token"]})
-        except OuraNotConnected:
-            self._doc(user_id).delete()
-            raise
-        self._save(user_id, tok)  # Oura rotates the refresh token
-        return str(tok["access_token"])
+        # Oura refresh tokens are single use: serialize refreshes per user and re-read
+        # inside the lock so a concurrent request reuses the token another one just saved.
+        async with self._locks.setdefault(user_id, asyncio.Lock()):
+            d = self._doc(user_id).load()
+            if not d.get("refresh_token"):
+                raise OuraNotConnected("Oura isn't connected.")
+            if d.get("expires", 0) > self._clock():
+                return str(d["access_token"])
+            used = d["refresh_token"]
+            try:
+                tok = await self._token({"grant_type": "refresh_token", "refresh_token": used})
+            except OuraNotConnected:
+                if self._doc(user_id).load().get("refresh_token") == used:
+                    self._doc(user_id).delete()
+                raise
+            self._save(user_id, tok)  # Oura rotates the refresh token
+            return str(tok["access_token"])
 
     def disconnect(self, user_id: str) -> None:
         self._doc(user_id).delete()
@@ -160,6 +172,10 @@ class OuraClient:
             raise OuraNotConnected("Oura access expired. Connect it again in settings.")
         if r.status_code == 403:
             raise OuraError("Oura refused this data (an active Oura Membership is required for the API).")
+        if r.status_code == 429:
+            raise OuraError("Oura is rate limiting requests. Try again in a few minutes.")
+        if r.status_code >= 500:
+            raise OuraError("Oura is having trouble right now. Try again later.")
         r.raise_for_status()
         return list(r.json().get("data") or [])
 

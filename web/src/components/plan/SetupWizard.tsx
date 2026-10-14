@@ -1,20 +1,20 @@
 // Guided setup: race -> goal -> you -> your numbers -> your week -> review, then Rabbit
 // builds a periodized plan and (optionally) puts the next sessions on your Garmin.
 // Answers are kept as a local draft so leaving halfway loses nothing.
-import { useEffect, useMemo, useState } from 'react'
-import { Bike, CalendarDays, Check, Footprints, HeartPulse, Sparkles, Target, Upload, User, Waves, Watch } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CalendarDays, Check, HeartPulse, Sparkles, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
-import type { Me, Sport } from '@/lib/api'
+import type { Me } from '@/lib/api'
 import {
   DISTANCES, cmToFtIn, fmtPace, getGarminNumbers, kgToLb, KM_PER_MI,
   setupPlan, sportsFor, syncGarmin, weeksUntil,
   type AthleteFull, type BuiltPlan, type GoalFull, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, StepIntro, areaCls, inputCls } from './ui'
-import { PhaseStrip, WeekPreview } from './PlanParts'
+import { PhaseStrip, SPORT_ICON, WeekPreview } from './PlanParts'
 import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
 import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
@@ -25,7 +25,6 @@ const DRAFT_KEY = 'rabbit.setup.v1'
 
 type Draft = {
   goalId: string | null       // the goal this draft was started for
-  restored?: boolean
   newGoal: boolean
   event: EventFields
   goal: Partial<GoalFull>
@@ -38,6 +37,19 @@ const todayIso = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 const TIME_RE = /^(\d{1,2}):([0-5]\d)(:([0-5]\d))?$/
+
+const hasValue = (v: unknown) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0)
+/** The draft's answers for fields the server doesn't have. The server copy may be newer
+ *  than the draft (edited elsewhere since), so whatever it has wins. */
+function missingOnly<T extends object>(saved: Partial<T> | undefined, server: Partial<T> | null | undefined): Partial<T> {
+  const out: Partial<T> = {}
+  if (!saved) return out
+  for (const k of Object.keys(saved) as (keyof T)[]) {
+    const v = saved[k]
+    if (v !== undefined && !hasValue(server?.[k])) out[k] = v
+  }
+  return out
+}
 
 function initialDraft(me: Me): Draft {
   const a = (me.athlete ?? {}) as AthleteFull
@@ -65,20 +77,19 @@ function initialDraft(me: Me): Draft {
   try {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as (Draft & { at: number }) | null
     if (saved && Date.now() - saved.at < 14 * 86_400_000) {
-      const athlete = { ...fresh.athlete, ...saved.athlete }
+      const athlete = { ...fresh.athlete, ...missingOnly<AthleteFull>(saved.athlete, a) }
       // Race answers only come back for the same goal, and never a half-made "new race"
-      // (it would otherwise be applied to the current goal).
+      // (it would otherwise be applied to the current goal). The saved event's details
+      // give way to the server's below, once the events list loads.
       if (saved.goalId === fresh.goalId && !saved.newGoal) {
-        return { ...fresh, event: { ...fresh.event, ...(saved.event ?? {}) }, goal: { ...fresh.goal, ...saved.goal },
-          athlete, restored: true }
+        return { ...fresh, event: { ...fresh.event, ...(saved.event ?? {}) },
+          goal: { ...fresh.goal, ...missingOnly<GoalFull>(saved.goal, g) }, athlete }
       }
       return { ...fresh, athlete }
     }
   } catch { /* storage unavailable: start fresh */ }
   return fresh
 }
-
-const SPORT_ICON: Partial<Record<Sport, typeof Bike>> = { swim: Waves, bike: Bike, run: Footprints }
 
 export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onMeChanged }: {
   me: Me
@@ -88,7 +99,11 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
   onUploadPlan: () => void
   onMeChanged: () => void
 }) {
-  const [draft, setDraft] = useState<Draft>(() => initialDraft(me))
+  const [draft, setDraftState] = useState<Draft>(() => initialDraft(me))
+  // The draft is saved only once the user has changed something: merely opening the
+  // wizard mustn't store the server's current values as a "draft" over later edits.
+  const changed = useRef(false)
+  const setDraft: typeof setDraftState = (v) => { changed.current = true; setDraftState(v) }
   const [step, setStep] = useState<StepName>('intro')
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -100,18 +115,21 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
   // Start from the main event's real type, location and lookup details.
   useEffect(() => {
     const eid = me.goal?.event_id
-    if (!eid || draft.restored || draft.newGoal) return
+    if (!eid || draft.newGoal) return
     let live = true
     listEvents().then((r) => {
       const ev = r.events.find((e) => e.id === eid)
       if (!live || !ev) return
-      setDraft((d) => d.newGoal ? d : ({ ...d, event: { ...d.event, type: ev.type, location: ev.location, url: ev.url, info: ev.info ?? undefined } }))
+      // The server's event wins over a restored draft for whatever it has.
+      setDraftState((d) => d.newGoal ? d : ({ ...d, event: { ...d.event, type: ev.type,
+        ...(ev.location ? { location: ev.location } : {}), ...(ev.url ? { url: ev.url } : {}),
+        ...(ev.info ? { info: ev.info } : {}) } }))
     }, () => {})
     return () => { live = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (step === 'done') return
+    if (step === 'done' || !changed.current) return
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, at: Date.now() })) } catch { /* ignore */ }
   }, [draft, step])
 

@@ -90,8 +90,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [queued, setQueued] = useState<QueuedSend | null>(null)
   // A new chat is a client-side draft until its first message is sent (then it's created).
   const [pending, setPending] = useState<{ seed?: { thread_id: string; turn_id: string }; seedMsg?: ChatMessage } | null>(null)
-  const { items, ready, status, send, stop, decide, reload } =
-    useCoach(threadId, me.chat.active_turn, queued, () => setQueued(null))
+  const { items, ready, status, send, stop, decide, reload, loadError, retry } =
+    useCoach(threadId, { turn: me.chat.active_turn, thread: me.chat.active_thread }, queued, () => setQueued(null))
   const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
@@ -116,8 +116,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const waitingOnYou = items.some((it) => it.kind === 'approval' && it.status === 'pending')
   const thinking = status === 'streaming' && !waitingOnYou && !(last?.kind === 'message' && last.role === 'agent')
 
+  // Couldn't load the chat list (the thread to select once it loads, if any).
+  const [threadsError, setThreadsError] = useState<{ select?: string } | null>(null)
   const refreshThreads = useCallback(async (select?: string) => {
-    const r = await listThreads()
+    const r = await listThreads().catch(() => null)
+    if (!r) { setThreadsError({ select }); return }
+    setThreadsError(null)
     setThreads(r.threads)
     setGoal(r.goal)
     setThreadId((cur) => select ?? (cur && r.threads.some((t) => t.id === cur) ? cur
@@ -128,7 +132,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // After each reply: pick up a new thread title, or a goal/plan Rabbit just saved.
   const prevStatus = useRef(status)
   useEffect(() => {
-    if (prevStatus.current === 'streaming' && status === 'idle') { void refreshThreads(); onChange() }
+    if ((prevStatus.current === 'streaming' || prevStatus.current === 'busy') && status === 'idle') { void refreshThreads(); onChange() }
     prevStatus.current = status
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -299,10 +303,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // each reply (a plan may have changed) and when the app comes back to the foreground.
   const [week, setWeek] = useState<PlanWeek | null>(null)
   const [weekLoading, setWeekLoading] = useState(false)
+  const [weekError, setWeekError] = useState(false)
   const showPins = isCoach && !!goal
   const loadWeek = useCallback(() => {
     setWeekLoading(true)
-    getPlanWeek().then(setWeek, () => {}).finally(() => setWeekLoading(false))
+    getPlanWeek().then((w) => { setWeek(w); setWeekError(false) }, () => setWeekError(true))
+      .finally(() => setWeekLoading(false))
   }, [])
   useEffect(() => {
     if (!showPins || status !== 'idle') return
@@ -439,6 +445,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           Garmin isn't connected yet. Tap to connect so Rabbit can see your training.
         </button>
       )}
+      {threadsError && (
+        <button onClick={() => void refreshThreads(threadsError.select)}
+          className="mx-4 mt-3 rounded-(--radius) border border-(--danger)/30 bg-(--danger-subtle) px-3 py-2 text-left text-xs text-(--danger)">
+          Couldn't load your chats. Tap to retry.
+        </button>
+      )}
       {isCoach && raceSoon && (
         <button onClick={() => showScreen('racepack')}
           className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--brand)/30 bg-(--bg-surface) px-3 py-2 text-left text-xs text-(--brand)">
@@ -467,7 +479,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
 
       {showPins && goal && (
-        <PlanPins goal={goal} week={week} loading={weekLoading}
+        <PlanPins goal={goal} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek}
           onOpenPlan={openPlan} onAskDay={askDay} />
       )}
       {isCoach && (goal || items.length > 0) && (
@@ -514,6 +526,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         // Opening a chat: Rabbit hops while its messages load.
         <div className="chat-loading flex flex-1 items-center justify-center" role="status" aria-label="Loading chat">
           <RabbitLogo size={64} thinking className="text-(--brand) opacity-60" />
+        </div>
+      ) : loadError && items.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-[0.8235rem] text-muted-foreground" role="alert">
+          <p>Couldn't load this chat.</p>
+          <button type="button" className="underline" onClick={() => void retry()}>Retry</button>
         </div>
       ) : items.length === 0 && settled && isCoach && !goal ? (
         <div className="flex flex-1 flex-col justify-center overflow-y-auto px-4 py-6">
@@ -593,14 +610,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
 
       <Composer
-        disabled={pending ? (!me.chat.available || busy || status === 'streaming')
+        disabled={pending ? (!me.chat.available || busy || status === 'streaming' || status === 'busy')
           : (status !== 'idle' || !me.chat.available || !threadId || busy)}
         streaming={status === 'streaming'}
         onStop={() => void stop()}
         onSend={(t, a) => void (pending ? sendPending(t, a) : isCoach ? sendFromLog(t, a) : send(t, a))}
         draft={draft}
         placeholder={!me.chat.available ? 'Chat isn’t configured yet' : waitingOnYou ? 'Approve or decline above…'
-          : status === 'streaming' ? 'Rabbit is replying…' : isCoach ? 'Start a new chat…' : 'Ask Rabbit…'}
+          : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : isCoach ? 'Start a new chat…' : 'Ask Rabbit…'}
       />
       </div>
 

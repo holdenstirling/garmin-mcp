@@ -12,7 +12,11 @@
 //
 // The offset uses the CSS `translate` property, which composes with the sheet's
 // slide-up `transform` animation instead of fighting it.
+//
+// Every sheet is also a keyboard dialog (useDialog): focus moves in, Tab stays inside,
+// Escape dismisses it.
 import { useCallback, useRef } from 'react'
+import { useDialog } from '@/hooks/useDialog'
 
 const FLICK = 0.45      // px/ms
 const SAMPLE_MS = 80
@@ -25,6 +29,7 @@ export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolea
   const ref = useRef<HTMLDivElement | null>(null)
   const g = useRef<{ startY: number; active: boolean; samples: Sample[]; dy: number } | null>(null)
   const done = useRef(false)
+  useDialog(ref, onDismissed)
 
   const overlay = () => ref.current?.parentElement as HTMLElement | null | undefined
 

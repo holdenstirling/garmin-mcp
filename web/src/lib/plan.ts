@@ -21,6 +21,8 @@ export type BuiltPlan = {
   start: string; first_day: string; race_date: string; distance: string; race_kind: 'tri' | 'run' | 'bike' | 'general'
   level: string; peak_hours: number; start_hours: number; note: string | null
   created: number; updated: number; weeks: PlanWeekBuilt[]; current_week: number | null
+  /** the athlete's local date on the server (YYYY-MM-DD); the device clock may differ */
+  today?: string
   garmin: { window?: number; synced_at?: number | null; last?: { uploaded: number; unchanged: number; removed: number }; errors?: number }
   pending_removals: number
   kinds: Record<string, string[]>
@@ -137,8 +139,7 @@ export function weeksUntil(dateStr: string | null | undefined): number | null {
   return Math.floor(ms / (7 * 86_400_000))
 }
 
-export function stepText(s: Step, units: 'metric' | 'imperial' = 'metric'): string {
-  void units
+export function stepText(s: Step): string {
   if (s.type === 'repeat') return `${s.reps}× ${s.steps.map((x) => stepText(x)).join(' + ')}`
   const amt = s.meters ? `${s.meters}m` : fmtMin(s.minutes ?? 0)
   const what = s.type === 'warmup' ? 'warm-up' : s.type === 'cooldown' ? 'cool-down' : s.type === 'recover' ? 'easy' : `Z${s.zone}`

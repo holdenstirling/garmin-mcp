@@ -14,10 +14,12 @@ export function ThreadView({ api, threadId, me, otherName }: {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A failed poll shows until the next one succeeds.
+  const [pollError, setPollError] = useState<string | null>(null)
   const end = useRef<HTMLDivElement>(null)
 
   const load = useCallback(() => {
-    api.get(threadId).then((r) => setT(r.thread), (e) => setError((e as Error).message))
+    api.get(threadId).then((r) => { setT(r.thread); setPollError(null) }, (e) => setPollError((e as Error).message))
   }, [api, threadId])
   useEffect(() => {
     load()
@@ -63,7 +65,7 @@ export function ThreadView({ api, threadId, me, otherName }: {
         })}
         <div ref={end} />
       </div>
-      {error && <p className="text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {(error ?? pollError) && <p className="text-[0.7647rem] text-(--danger)" role="alert">{error ?? pollError}</p>}
       <div className="sticky bottom-0 flex items-end gap-2 bg-(--bg) pb-1 pt-1">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}
           placeholder={`Message ${otherName}`} aria-label="Message"
