@@ -59,7 +59,9 @@ gcloud compute scp "$BUNDLE" "$VM_NAME:/tmp/$APP-$REL.tgz" \
   --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap
 
 "${SSH[@]}" --command "sudo env APP='$APP' PORT='$PORT' REL='$REL' MODE='$MODE' DOMAIN='$DOMAIN' \
-  GITHUB_CLIENT_ID='$GITHUB_CLIENT_ID' ALLOWED_GITHUB_USERS='$ALLOWED_GITHUB_USERS' bash -s" <<'REMOTE'
+  GITHUB_CLIENT_ID='$GITHUB_CLIENT_ID' ALLOWED_GITHUB_USERS='$ALLOWED_GITHUB_USERS' \
+  TRAININGPEAKS_ENABLED='${TRAININGPEAKS_ENABLED:-false}' \
+  TRAININGPEAKS_ALLOW_WRITES='${TRAININGPEAKS_ALLOW_WRITES:-false}' bash -s" <<'REMOTE'
 set -euo pipefail
 D=/opt/$APP/releases/$REL
 mkdir -p "$D"

@@ -60,6 +60,8 @@ if [[ ! -f /etc/garmin-mcp/env ]]; then
       -e "s|^GCP_PROJECT=.*|GCP_PROJECT=${PROJECT_ID}|" \
       -e "s|^GITHUB_CLIENT_ID=.*|GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}|" \
       -e "s|^ALLOWED_GITHUB_USERS=.*|ALLOWED_GITHUB_USERS=${ALLOWED_GITHUB_USERS:-}|" \
+      -e "s|^TRAININGPEAKS_ENABLED=.*|TRAININGPEAKS_ENABLED=${TRAININGPEAKS_ENABLED:-false}|" \
+      -e "s|^TRAININGPEAKS_ALLOW_WRITES=.*|TRAININGPEAKS_ALLOW_WRITES=${TRAININGPEAKS_ALLOW_WRITES:-false}|" \
       "$SRC/.env.example" > /etc/garmin-mcp/env
 fi
 chown root:garmin-mcp /etc/garmin-mcp/env
