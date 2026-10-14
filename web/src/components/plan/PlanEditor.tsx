@@ -105,7 +105,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in Rabbit yet." : "There's no plan built in Rabbit for this goal yet.")}</p>
             {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
-            {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan file</Button>}
+            {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan</Button>}
           </div>
         )}
         {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan={false} onClose={() => setImp(null)} onApplied={() => { setImp(null); load(); onChanged() }} />}
@@ -325,7 +325,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
             trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-[0.7059rem]" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>} />
         ))}
-        <Row icon={<Icon><FileUp /></Icon>} title="Load a plan from a file" subtitle="CSV, Excel, TrainingPeaks export, PDF or photo"
+        <Row icon={<Icon><FileUp /></Icon>} title="Add a plan" subtitle="A file, pasted text, Zwift workouts or a template"
           onClick={() => void loadImport(true)} />
         <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
           onClick={onRebuild} />

@@ -1,11 +1,11 @@
-// Loading a whole plan: build it week by week in Rabbit, upload a file (our CSV template,
-// a spreadsheet, a PDF or photo Rabbit reads) or bring it from TrainingPeaks (calendar or
-// workout export). Every path ends in a preview of what changes, then Apply, with undo for
-// 7 days. Used by a coach on an athlete's Plan tab and by the athlete from their plan.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+// Loading a whole plan: "Add a plan" (AddPlan.tsx: drop/paste/pick files, any format, or a
+// template) or build it week by week in Rabbit. Every path ends in the editable review
+// (PlanReview.tsx), then Apply, with undo for 7 days. Used by a coach on an athlete's Plan tab
+// and by the athlete from their plan.
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  ArrowDown, ArrowUp, CalendarRange, Check, ChevronDown, ChevronUp, ClipboardPaste, Copy, Download, FileUp,
-  LayoutGrid, Pencil, Plus, Repeat, Trash2, TriangleAlert, Undo2,
+  ArrowDown, ArrowUp, CalendarRange, Check, ClipboardPaste, Copy, Download,
+  LayoutGrid, Pencil, Plus, Repeat, Trash2, Undo2, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -17,13 +17,15 @@ import type { Sport } from '@/lib/api'
 import type { BuiltPlan, PlanApi } from '@/lib/plan'
 import {
   INTENSITY_LABEL, addDays, mondayOf, type Draft, type GridRow, type ImportApi, type ImportStatus, type Intensity,
-  type Preview, type PreviewWeek, type TemplateRow,
+  type Preview, type TemplateRow,
 } from '@/lib/planimport'
 import { Card, Chip, ChipRow, Field, NumberStepper, Screen, inputCls } from './ui'
 import { SPORT_ICON, SPORT_LABEL, fmtDay } from './PlanParts'
+import { AddPlanFlow } from './AddPlan'
+import { PlanReview } from './PlanReview'
 
 type Who = 'coach' | 'athlete'
-type Open = { kind: 'grid' } | { kind: 'file' } | { kind: 'tp' } | { kind: 'preview'; preview: Preview } | null
+type Open = { kind: 'grid' } | { kind: 'add' } | { kind: 'preview'; preview: Preview } | null
 
 const short = (d: string) => fmtDay(d, { month: 'short', day: 'numeric' })
 
@@ -70,25 +72,29 @@ export function PlanImportHub({ api, plans, who, athleteName, onOpenPlan, onChan
         <p className="px-1 text-[0.7647rem] text-(--text-muted)">View only: {first} hasn't given you edit access to the plan.</p>
       ) : (
         <section className="flex flex-col gap-2">
-          {plan && <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Replace with a new plan</h3>}
-          <BigOption icon={<LayoutGrid />} title="Build in Rabbit" big={!plan}
-            text="Week by week: quick-add sessions, copy weeks, start from a base, build or recovery week."
+          {plan && <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Add to or replace the plan</h3>}
+          <BigOption icon={<Upload />} title="Add a plan" big={!plan}
+            text="Drop a file (spreadsheet, TrainingPeaks, PDF, photo, Zwift), paste text or pick a template."
+            onClick={() => setOpen({ kind: 'add' })} />
+          <BigOption icon={<LayoutGrid />} title="Build week by week" big={false}
+            text="Quick-add sessions, copy weeks, start from a base, build or recovery week."
             onClick={() => setOpen({ kind: 'grid' })} />
-          <BigOption icon={<FileUp />} title="Upload a file" big={!plan}
-            text={`CSV or Excel template, or a PDF, photo or notes Rabbit reads for you.`}
-            onClick={() => setOpen({ kind: 'file' })} />
-          <BigOption icon={<CalendarRange />} title="From TrainingPeaks" big={!plan}
-            text="Export the calendar or workouts from TrainingPeaks, then upload the file here."
-            onClick={() => setOpen({ kind: 'tp' })} />
         </section>
       )}
+      {plan && (
+        <div className="flex flex-wrap items-center gap-x-3 px-1 text-[0.7059rem] text-(--text-muted)">
+          <span>Download the plan:</span>
+          <a className="inline-flex min-h-11 items-center gap-1 font-medium text-(--accent)" href={api.exportUrl('csv')} download><Download className="size-3.5" /> CSV</a>
+          <a className="inline-flex min-h-11 items-center gap-1 font-medium text-(--accent)" href={api.exportUrl('ics')} download><CalendarRange className="size-3.5" /> Calendar (.ics)</a>
+        </div>
+      )}
       {open?.kind === 'grid' && <GridBuilder api={api} onClose={() => setOpen(null)} onPreview={(p) => setOpen({ kind: 'preview', preview: p })} />}
-      {(open?.kind === 'file' || open?.kind === 'tp') && (
-        <UploadScreen api={api} status={status} via={open.kind === 'tp' ? 'trainingpeaks' : undefined}
-          onClose={() => setOpen(null)} onPreview={(p) => setOpen({ kind: 'preview', preview: p })} />
+      {open?.kind === 'add' && (
+        <AddPlanFlow api={api} status={status} who={who} athleteName={first} hasPlan={!!plan}
+          onClose={() => setOpen(null)} onApplied={() => { setOpen(null); load(); onChanged?.() }} />
       )}
       {open?.kind === 'preview' && (
-        <PreviewScreen api={api} preview={open.preview} who={who} athleteName={first} hasPlan={!!plan}
+        <PlanReview api={api} initial={open.preview} who={who} athleteName={first}
           onClose={() => setOpen(null)} onApplied={() => { setOpen(null); load(); onChanged?.() }} />
       )}
     </>
@@ -347,209 +353,9 @@ function QuickAdd({ sports, initial, onSave, onCancel, onDelete }: {
   )
 }
 
-// ---------------------------------------------------------------- upload --
-function UploadScreen({ api, status, via, onClose, onPreview }: {
-  api: ImportApi; status: ImportStatus; via?: 'trainingpeaks'; onClose: () => void; onPreview: (p: Preview) => void
-}) {
-  const [start, setStart] = useState(status.next_monday)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [closing, setClosing] = useState(false)
-  const input = useRef<HTMLInputElement>(null)
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
-  const tp = via === 'trainingpeaks'
-  async function send(f: File) {
-    setBusy(f.name); setError(null)
-    try { onPreview((await api.file(f, { start, via })).preview) } catch (e) { setError((e as Error).message) } finally {
-      setBusy(null); if (input.current) input.current.value = ''
-    }
-  }
-  const reads = /\.(pdf|png|jpe?g|webp|gif|txt|md)$/i
-  return (
-    <Screen title={tp ? 'From TrainingPeaks' : 'Upload a file'} onBack={close} onClose={close} closing={closing}>
-      {tp ? (
-        <Card className="px-4 py-3.5">
-          <p className="text-[0.8235rem] leading-snug text-(--text)">TrainingPeaks doesn't let other apps read a calendar directly, so bring the plan over as a file. Either works:</p>
-          <ol className="mt-2.5 flex list-decimal flex-col gap-2 pl-5 text-[0.7647rem] leading-snug text-(--text-secondary)">
-            <li><span className="font-medium text-(--text)">Workouts (CSV).</span> In TrainingPeaks, open the athlete's account settings, choose Export Data, export workouts as CSV for the dates you want, then upload the .csv here.</li>
-            <li><span className="font-medium text-(--text)">Calendar (iCal).</span> In TrainingPeaks' calendar settings, copy the iCal calendar feed link, open it in your browser to save the .ics file, then upload it here.</li>
-          </ol>
-          <p className="mt-2.5 text-[0.7059rem] leading-snug text-(--text-muted)">Rabbit reads the date, sport, title, planned time and description of each workout. Structured intervals don't come across; put key sets in the description.</p>
-        </Card>
-      ) : (
-        <Card className="px-4 py-3.5">
-          <p className="text-[0.8235rem] leading-snug text-(--text)">Fastest: fill in the template (one row per session) in Excel, Numbers or Google Sheets and upload it as CSV or .xlsx.</p>
-          <a href={api.templateUrl} download="rabbit-plan-template.csv"
-            className="mt-2.5 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text)">
-            <Download className="size-4" /> Download the CSV template
-          </a>
-          <p className="mt-2 text-[0.7059rem] leading-snug text-(--text-muted)">Columns: date, sport, title, minutes, intensity, notes. Sport: run, bike, swim, brick, strength, rest or other.</p>
-          <p className="mt-2.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
-            Got a PDF, a photo of a printed plan or typed notes? Rabbit can read it into the same shape.
-            {status.ai_per_day > 0 ? ` ${status.ai_left} of ${status.ai_per_day} reads left today.` : ' (Not available on this server.)'}
-          </p>
-        </Card>
-      )}
-      <Card>
-        <Field label="If it says “Week 1, Tuesday” instead of dates" hint="Week 1 starts on this Monday.">
-          <input type="date" className={inputCls} value={start} onChange={(e) => e.target.value && setStart(mondayOf(e.target.value))} />
-        </Field>
-      </Card>
-      <input ref={input} type="file" className="hidden"
-        accept={tp ? '.csv,.ics,.xlsx,text/csv,text/calendar' : '.csv,.tsv,.xlsx,.ics,.pdf,.txt,.md,image/*'}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) void send(f) }} />
-      <Button variant="primary" className="h-12 gap-1.5 text-[0.8824rem]" disabled={!!busy} onClick={() => input.current?.click()}>
-        <FileUp className="size-4" /> Choose file
-      </Button>
-      {busy && <RabbitLoader inline className="text-[0.7647rem]" label={reads.test(busy) ? 'Rabbit is reading it' : 'Reading the file'}
-        cycle={reads.test(busy) ? ['Rabbit is reading it…', 'Finding the sessions…', 'Lining up the weeks…'] : ['Reading the file…', 'Lining up the weeks…']} />}
-      {error && <ErrorState compact message={error} />}
-    </Screen>
-  )
-}
-
-// --------------------------------------------------------------- preview --
-function PreviewScreen({ api, preview: p, who, athleteName, hasPlan, onClose, onApplied }: {
-  api: ImportApi; preview: Preview; who: Who; athleteName: string; hasPlan: boolean; onClose: () => void; onApplied: () => void
-}) {
-  const [confirm, setConfirm] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
-  const [open, setOpen] = useState<string | null>(null)
-  const [allWarn, setAllWarn] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
-  const t = p.totals
-  async function apply() {
-    setBusy(true); setError(null)
-    try { await api.apply(p.id); setDone(true) } catch (e) { setError((e as Error).message); setConfirm(false) } finally { setBusy(false) }
-  }
-  const whose = who === 'coach' ? `${athleteName}'s` : 'your'
-  const footer = done ? (
-    <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={onApplied}>Done</Button>
-  ) : confirm ? (
-    <>
-      <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={() => setConfirm(false)}>Back</Button>
-      <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void apply()}>{hasPlan ? 'Replace plan' : 'Load plan'}</Button>
-    </>
-  ) : (
-    <>
-      <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={close}>Cancel</Button>
-      <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={() => setConfirm(true)}>Apply</Button>
-    </>
-  )
-  return (
-    <Screen title="Preview" subtitle={[p.name, p.source].filter(Boolean).join(' · ')} onBack={close} onClose={close} closing={closing} footer={footer}>
-      {done ? (
-        <div className="flex flex-col items-center gap-2 py-10 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Check className="size-6" /></span>
-          <p className="font-display text-[1.2941rem] text-(--brand)">Plan loaded</p>
-          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">
-            {who === 'coach' ? `${athleteName} gets a message with the summary. ` : ''}You can undo it for 7 days from the Plan tab.
-            {p.garmin_synced > 0 ? ' Garmin updates on the next sync.' : ''}
-          </p>
-        </div>
-      ) : <>
-        <div className="px-1">
-          <p className="font-display text-[1.4118rem] leading-tight text-(--brand)">{t.weeks} week{t.weeks === 1 ? '' : 's'} · {t.sessions} sessions</p>
-          <p className="mt-1 text-[0.7647rem] text-(--text-muted)">{short(p.first_day)} – {short(p.last_day)} · {fmtDuration(t.hours * 60)} in total</p>
-        </div>
-        {p.replaces && (
-          <div className="flex flex-wrap gap-2">
-            <Count n={t.added} label="added" tone="add" /><Count n={t.changed} label="changed" tone="change" /><Count n={t.removed} label="removed" tone="remove" />
-          </div>
-        )}
-        {confirm && (
-          <div className="rounded-xl border border-(--warning-text)/30 bg-(--bg-surface) px-3.5 py-3 text-[0.7647rem] leading-snug text-(--text)">
-            {hasPlan ? `This replaces ${whose} plan from ${short(p.first_day)} on. ` : `This becomes ${whose} plan. `}
-            {p.garmin_synced > 0 ? `${p.garmin_synced} workout${p.garmin_synced === 1 ? '' : 's'} already on Garmin will be swapped at the next sync. ` : ''}
-            You can undo it for 7 days.
-          </div>
-        )}
-        {p.warnings.length > 0 && (
-          <Card className="px-4 py-3">
-            <p className="flex items-center gap-1.5 text-[0.7647rem] font-medium text-(--warning-text)"><TriangleAlert className="size-4" /> Check {p.warning_count === 1 ? 'this' : `these ${p.warning_count}`}</p>
-            <ul className="mt-1.5 flex flex-col gap-1 text-[0.7059rem] leading-snug text-(--text-secondary)">
-              {(allWarn ? p.warnings : p.warnings.slice(0, 3)).map((w, i) => <li key={i}>{w}</li>)}
-            </ul>
-            {p.warnings.length > 3 && !allWarn && <button type="button" className="mt-1 min-h-11 text-[0.7059rem] font-medium text-(--accent)" onClick={() => setAllWarn(true)}>Show all</button>}
-          </Card>
-        )}
-        <Card>
-          <div className="divide-y divide-(--border)">
-            {p.weeks.map((w) => <PreviewWeekRow key={w.start} w={w} open={open === w.start} onToggle={() => setOpen(open === w.start ? null : w.start)} showChanges={p.replaces} />)}
-          </div>
-        </Card>
-        {error && <ErrorState compact message={error} />}
-      </>}
-    </Screen>
-  )
-}
-
-function Count({ n, label, tone }: { n: number; label: string; tone: 'add' | 'change' | 'remove' }) {
-  return (
-    <span className={cn('rounded-full border px-2.5 py-1 text-[0.7059rem] font-medium',
-      n === 0 ? 'border-(--border) text-(--text-muted)' : tone === 'remove' ? 'border-(--danger)/30 text-(--danger)' : tone === 'add' ? 'border-(--accent)/30 text-(--accent)' : 'border-(--warning-text)/30 text-(--warning-text)')}>
-      {tone === 'add' ? '+' : tone === 'remove' ? '−' : '~'}{n} {label}
-    </span>
-  )
-}
-
-function PreviewWeekRow({ w, open, onToggle, showChanges }: { w: PreviewWeek; open: boolean; onToggle: () => void; showChanges: boolean }) {
-  const mark = (s: { date: string; sport: Sport; title: string }) => w.changes.find((c) => c.type !== 'removed' && c.date === s.date && c.sport === s.sport && c.title === s.title)?.type
-  const removed = w.changes.filter((c) => c.type === 'removed')
-  return (
-    <div>
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left active:bg-(--bg-inset)">
-        <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] text-(--text)">{w.index ? `Week ${w.index}` : 'After the new plan'} · {short(w.start)}</span>
-          <span className="block text-[0.7059rem] text-(--text-muted)">
-            {w.index ? `${w.count} session${w.count === 1 ? '' : 's'} · ${fmtDuration(w.hours * 60) || '0 min'}${w.recovery ? ' · recovery' : ''}` : 'Sessions here are removed'}
-          </span>
-        </span>
-        {showChanges && (w.added + w.changed + w.removed > 0) && (
-          <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">
-            {w.added ? <span className="text-(--accent)">+{w.added} </span> : null}
-            {w.changed ? <span className="text-(--warning-text)">~{w.changed} </span> : null}
-            {w.removed ? <span className="text-(--danger)">−{w.removed}</span> : null}
-          </span>
-        )}
-        {open ? <ChevronUp className="size-4 shrink-0 text-(--text-muted)" /> : <ChevronDown className="size-4 shrink-0 text-(--text-muted)" />}
-      </button>
-      {open && (
-        <ul className="flex flex-col gap-1 px-4 pb-3">
-          {w.sessions.map((s, i) => {
-            const Icon = SPORT_ICON[s.sport]
-            const m = showChanges ? mark(s) : undefined
-            return (
-              <li key={i} className="flex items-center gap-2 text-[0.7647rem]">
-                <span className="w-12 shrink-0 text-[0.7059rem] text-(--text-muted)">{fmtDay(s.date, { weekday: 'short' })} {fmtDay(s.date, { day: 'numeric' })}</span>
-                <Icon className="size-3.5 shrink-0 text-(--accent)" />
-                <span className="min-w-0 flex-1 truncate text-(--text)">{s.title}</span>
-                <span className="shrink-0 text-(--text-muted)">{fmtDuration(s.minutes)}</span>
-                {m && <span className={cn('shrink-0 text-[0.6471rem] font-semibold uppercase', m === 'added' ? 'text-(--accent)' : 'text-(--warning-text)')}>{m === 'added' ? 'new' : 'changed'}</span>}
-              </li>
-            )
-          })}
-          {showChanges && removed.map((s, i) => (
-            <li key={`r${i}`} className="flex items-center gap-2 text-[0.7647rem] text-(--text-muted) line-through">
-              <span className="w-12 shrink-0 text-[0.7059rem]">{fmtDay(s.date, { weekday: 'short' })} {fmtDay(s.date, { day: 'numeric' })}</span>
-              <span className="min-w-0 flex-1 truncate">{s.title}</span>
-              <span className="shrink-0">{fmtDuration(s.minutes)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-/** The athlete's own entry point (from the plan screen): upload a file, preview, apply. */
+/** The athlete's own entry point (from the plan screen): Add plan -> review -> apply. */
 export function OwnPlanImport({ api, status, hasPlan, onClose, onApplied }: {
   api: ImportApi; status: ImportStatus; hasPlan: boolean; onClose: () => void; onApplied: () => void
 }) {
-  const [preview, setPreview] = useState<Preview | null>(null)
-  if (preview) return <PreviewScreen api={api} preview={preview} who="athlete" athleteName="" hasPlan={hasPlan} onClose={() => setPreview(null)} onApplied={onApplied} />
-  return <UploadScreen api={api} status={status} onClose={onClose} onPreview={setPreview} />
+  return <AddPlanFlow api={api} status={status} who="athlete" athleteName="" hasPlan={hasPlan} onClose={onClose} onApplied={onApplied} />
 }
