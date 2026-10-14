@@ -528,6 +528,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'plan') openPlan()
     else if (a.id === 'progress') goTab('progress')
     else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
+    else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
   }
   // Quick replies under Rabbit's latest message when it asks something (max 3).
   const lastRow = shownRows[shownRows.length - 1]

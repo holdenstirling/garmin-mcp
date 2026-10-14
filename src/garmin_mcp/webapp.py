@@ -2789,6 +2789,27 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         await anyio.to_thread.run_sync(lambda: chal.decline(user_id, request.path_params["cid"]))
         return JSONResponse({"ok": True})
 
+    # -------------------------------------------------------- race people --
+    # Per-race people (racepeople.py, routes in racepeople_web.py): racing teammates, crew,
+    # pacers, spectators (follow edge either way), linked coaches, a crew share link /app/r/.
+    # Athletes only; deleting an event (any writer of the events doc) drops its people.
+    from . import racepeople as _rpm, racepeople_web as _rpw
+    race_routes: list[BaseRoute] = []
+    if soc is not None and chat is not None and plans is not None and store is not None:
+        rp = _rpm.RacePeople(
+            store, create_event=lambda uid, f: chat.agent.events.create(uid, f),
+            related=lambda a, b: soc.follows(a, b) or soc.follows(b, a), is_athlete=soc.is_athlete,
+            athletes=lambda: dict(settings.allowed_google_users), code_owner=soc.code_owner,
+            coach_emails=links.coach_emails, first_name=_soc_name)
+        chat.agent._store.on_user_write(lambda uid, name: rp.sync(uid) if name == "events" else None)
+        race_routes = _rpw.make_routes(
+            rp=rp, soc=soc, links=links, plan_api=_plan_api, user_error=_UserError, host_ok=host_ok,
+            base_url=settings.public_base_url, person=_soc_person, first_name=_soc_name, push=_social_push,
+            moment=chat.agent.moments.post, grade=lambda u, e: (_readiness.get(u, e) if _readiness else {}).get("grade"),
+            finish=_pred_event, today=plans.today, plan_of=plans.get,
+            imperial=lambda u: chat.agent.coach.athlete(u).get("units") == "imperial",
+            photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json)
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -2966,6 +2987,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/share", _plan_api(share_create, mutating=True), methods=["POST"]),
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
         Route("/app/s/{token}", share_page, methods=["GET"]),
+        *race_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),

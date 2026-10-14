@@ -31,7 +31,7 @@ export type Approval = {
 }
 export type ChartItem = { kind: 'chart'; id: string; spec: ChartSpec }
 /** Rabbit moments (moments.py): a short deterministic update with action chips. */
-export type MomentActionId = 'checkin' | 'reaction' | 'readiness' | 'racepack' | 'plan' | 'progress' | 'ask'
+export type MomentActionId = 'checkin' | 'reaction' | 'readiness' | 'racepack' | 'plan' | 'progress' | 'ask' | 'race_invite'
 export type MomentAction = { id: MomentActionId; label: string; activity_id?: number; event_id?: string; prompt?: string; title?: string }
 export type MomentItem = { kind: 'moment'; id: string; ts: number; moment: string; text: string; actions: MomentAction[] }
 export type ChatItem = ChatMessage | ToolCall | ThreadLink | Approval | ChartItem | MomentItem

@@ -18,6 +18,8 @@ import { RaceFitScreen } from './RaceFitScreen'
 import { ReadinessRow } from './Readiness'
 import { FinishChip } from './FinishEstimate'
 import { listReadiness, type RaceGrade } from '@/lib/readiness'
+import { getPeopleSummary, type PeopleSummary } from '@/lib/racepeople'
+import { FollowingRaces, PeopleRow, PeopleSheet, RaceInvitesInbox } from './RacePeople'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
@@ -41,11 +43,15 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const [fit, setFit] = useState<string | null>(null)
   const [pack, setPack] = useState<string | null>(null)
   const [grades, setGrades] = useState<Record<string, RaceGrade>>({})
+  const [people, setPeople] = useState<Record<string, PeopleSummary>>({})
+  const [peopleFor, setPeopleFor] = useState<RaceEvent | null>(null)
+  const [followKey, setFollowKey] = useState(0)
 
   const load = useCallback(() => {
     setError(null)
     // Grades are a bonus on the cards: a failure just leaves the plain "Readiness" row.
     listReadiness().then((r) => setGrades(Object.fromEntries(r.races.map((g) => [g.event_id, g]))), () => {})
+    getPeopleSummary().then((r) => setPeople(r.events), () => {}) // People rows: a bonus too
     return listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
   }, [])
   useEffect(() => { void load() }, [load])
@@ -75,6 +81,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           </p>
         ) : (
           <>
+            <RaceInvitesInbox onChanged={() => { void load(); setFollowKey((k) => k + 1) }} />
             {changed && (
               <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
                 <p className="min-w-0 flex-1 text-[0.7647rem] text-(--accent)">
@@ -93,12 +100,13 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
               <section className="flex flex-col gap-2">
                 {upcoming.map((e, i) => (
                   <HopIn key={e.id} index={i}>
-                    <EventCard e={e} grade={grades[e.id]} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
+                    <EventCard e={e} grade={grades[e.id]} people={people[e.id]} onPeople={() => setPeopleFor(e)} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
                       onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />
                   </HopIn>
                 ))}
               </section>
             )}
+            <FollowingRaces refreshKey={followKey} />
             {past.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowPast((v) => !v)}
@@ -121,12 +129,14 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
       )}
       {fit && <RaceFitScreen eventId={fit} onClose={() => setFit(null)} />}
       {pack && <RacePackScreen eventId={pack} imperial={imperial} onClose={() => setPack(null)} />}
+      {peopleFor && <PeopleSheet eventId={peopleFor.id} eventName={peopleFor.name} onClose={() => setPeopleFor(null)}
+        onChanged={() => { getPeopleSummary().then((r) => setPeople(r.events), () => {}) }} />}
     </>
   )
 }
 
-function EventCard({ e, grade, onClick, onFit, onPack }: {
-  e: RaceEvent; grade?: RaceGrade; onClick: () => void; onFit?: () => void; onPack?: () => void
+function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
+  e: RaceEvent; grade?: RaceGrade; people?: PeopleSummary; onPeople?: () => void; onClick: () => void; onFit?: () => void; onPack?: () => void
 }) {
   const n = daysUntil(e.date)
   if (!onFit) return <EventCardButton e={e} onClick={onClick} />
@@ -148,6 +158,7 @@ function EventCard({ e, grade, onClick, onFit, onPack }: {
           <Backpack className="size-3.5" /> Race-week pack <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
         </button>
       )}
+      {onPeople && <PeopleRow s={people} onOpen={onPeople} />}
     </div>
   )
 }

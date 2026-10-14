@@ -2,7 +2,7 @@
 // People (invite code, add by email/code, requests, following/followers, privacy settings).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Activity, Ban, Bike, Check, Copy, Dumbbell, Flame, Footprints, Heart, Layers, MessageCircle, Mountain,
+  Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain,
   Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -14,6 +14,7 @@ import { Group, Row, Switch } from '@/components/settings/Grouped'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
 import { LevelBadge } from '@/components/progress/Progress'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { InviteToRaceSheet } from '@/components/events/RacePeople'
 import { cn } from '@/lib/utils'
 import {
   acceptRequest, addCheer, blockUser, declineRequest, deleteCheer, follow, friendPhotoUrl, getBadge, getFeed, getFriend,
@@ -405,6 +406,7 @@ function PeopleTab({ people, onOpen, onChanged, setPeople }: {
 export function FriendCard({ id, imperial, onClose }: { id: string; imperial: boolean; onClose: () => void }) {
   const [card, setCard] = useState<FriendCardData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [raceInvite, setRaceInvite] = useState(false)
   const drag = useSheetDrag(onClose)
   useEffect(() => { getFriend(id).then(setCard, (e) => setError((e as Error).message)) }, [id])
   const u = card?.user
@@ -431,6 +433,9 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
                 </div>
                 {u.level != null && <LevelBadge level={u.level} />}
               </div>
+              <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setRaceInvite(true)}>
+                <Flag className="size-4" /> Invite to a race
+              </Button>
               {card.week && (
                 <div className="grid grid-cols-2 gap-2">
                   <Stat value={String(card.week.workouts)} label="workouts this week" />
@@ -449,6 +454,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
           )}
         </div>
       </div>
+      {raceInvite && u && <InviteToRaceSheet friend={u} onClose={() => setRaceInvite(false)} />}
     </div>
   )
 }

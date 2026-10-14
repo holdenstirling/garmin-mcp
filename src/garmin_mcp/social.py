@@ -149,6 +149,10 @@ class Social:
             return str(u["code"])
         return self._update(lambda d: self._user(d, uid)["code"])
 
+    def code_owner(self, code: str) -> str | None:
+        """An invite code -> its athlete's user id (race invites by code)."""
+        return (self._doc.load().get("codes") or {}).get(code)
+
     def regenerate_code(self, uid: str) -> str:
         def apply(d: dict[str, Any]) -> str:
             u = self._user(d, uid)
