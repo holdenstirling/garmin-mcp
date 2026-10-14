@@ -3,6 +3,7 @@
 // "Your estimate" (predict.py) follows the distance you pick. Popular races without a
 // confirmed date say "Usually in <month>" and can't be added until you check the date.
 import { useEffect, useState } from 'react'
+import { celebrate } from '@/components/fx'
 import { CalendarPlus, Check, ExternalLink, Gauge, Globe, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, Field, Screen } from '@/components/plan/ui'
@@ -51,6 +52,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
     try {
       const r = await addRace(race, race.events.length ? pick ?? 0 : null)
       setAdded({ id: r.event.id, already: r.already })
+      if (!r.already) celebrate({ x: window.innerWidth / 2, y: window.innerHeight * 0.7 }, 'race')
       onAdded?.()
     } catch (e) { setError((e as Error).message) }
     finally { setBusy(false) }

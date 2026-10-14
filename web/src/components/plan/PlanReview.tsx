@@ -4,6 +4,7 @@
 // dismissed; shift all dates or pick the start week; choose replace / add / replace only these
 // weeks. Edits save to the server-side draft (debounced), so closing never loses them.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { celebrate } from '@/components/fx'
 import { Check, ChevronDown, ChevronUp, CircleAlert, Copy, Pencil, Plus, Trash2, TriangleAlert, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -98,7 +99,7 @@ export function PlanReview({ api, initial, who, athleteName, onClose, onApplied 
     setBusy(true); setError(null)
     try {
       if (!(await flush())) { setConfirm(false); return }
-      await api.apply(server.id); setDone(true)
+      await api.apply(server.id); setDone(true); celebrate({ x: window.innerWidth / 2, y: window.innerHeight / 3 }, 'plan')
     } catch (e) { setError((e as Error).message); setConfirm(false) } finally { setBusy(false) }
   }
 
