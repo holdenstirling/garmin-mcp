@@ -114,7 +114,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
-  const [voice, setVoice] = useState(false)
+  const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
@@ -704,7 +704,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         onStop={() => void stop()}
         onSend={(t, a) => void (pending ? sendPending(t, a) : isCoach ? sendFromLog(t, a) : send(t, a))}
         draft={draft}
-        onMic={isCoach ? () => setVoice(true) : undefined}
+        onMic={isCoach ? () => setVoice({}) : undefined}
         placeholder={!me.chat.available ? 'Chat isn’t configured yet' : waitingOnYou ? 'Approve or decline above…'
           : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : isCoach ? 'Start a new chat…' : 'Ask Rabbit…'}
       />
@@ -727,7 +727,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             } catch (e) { window.alert((e as Error).message) }
           }} />
       )}
-      <VoiceCheckIn open={voice} onClose={() => setVoice(false)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
+      <VoiceCheckIn open={!!voice} sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
       {toast && <div key={toast.n} className="rabbit-toast" role="status">{toast.msg}</div>}
 
       {sheet === 'threads' && (
@@ -785,11 +785,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {workout && (
         <WorkoutDayScreen key={workout.sessionId ?? 'today'} sessionId={workout.sessionId} imperial={me.athlete.units === 'imperial'}
-          onClose={() => setWorkout(null)} onAsk={(t) => { setWorkout(null); tellRabbit(t) }} />
+          onClose={() => setWorkout(null)} onAsk={(t) => { setWorkout(null); tellRabbit(t) }} onCheckIn={(c) => setVoice(c)} />
       )}
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={me.athlete.units === 'imperial'}
-          onClose={() => setReaction(null)} onOpenSession={(id) => setWorkout({ sessionId: id })} />
+          onClose={() => setReaction(null)} onOpenSession={(id) => setWorkout({ sessionId: id })}
+          onCheckIn={(c) => { setReaction(null); setVoice(c) }} />
       )}
       {recap && <RecapSheet week={recap.week} onClose={() => setRecap(null)} onAsk={(t) => { setRecap(null); tellRabbit(t) }} />}
       {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}
