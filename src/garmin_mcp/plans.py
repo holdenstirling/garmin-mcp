@@ -38,6 +38,7 @@ from .planbuilder import (
     summary_markdown,
     week_for,
 )
+from .nutrition import fuel
 from .providers import GarminError, ReauthRequired
 
 if TYPE_CHECKING:
@@ -721,7 +722,9 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
                                                  "detail", "meters", "edited", "travel")}
                           | {"synced": bool(g.get("workout_ids")),
-                             "steps": s.get("steps") or [], "legs": s.get("legs") or []})
+                             "steps": s.get("steps") or [], "legs": s.get("legs") or [],
+                             "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
+                             "fuel": fuel(s, d, race_date=plan.get("race_date"), distance=plan.get("distance"))})
             days.append({"date": d, "sessions": ss})
         weeks.append({k: w[k] for k in ("index", "start", "phase", "recovery", "hours", "focus")}
                      | {"days": days})

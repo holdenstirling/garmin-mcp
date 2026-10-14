@@ -80,7 +80,7 @@ KIND_TITLES = {
     "long": "Long {sport}", "endurance": "Endurance {sport}", "easy": "Easy {sport}",
     "recovery": "Recovery {sport}", "strides": "Easy run + strides", "tempo": "Tempo {sport}",
     "threshold": "Threshold {sport}", "vo2": "VO2 intervals", "racepace": "Race-pace {sport}",
-    "technique": "Technique swim", "css": "CSS swim intervals", "strength": "Strength & mobility",
+    "technique": "Technique swim", "css": "CSS swim intervals", "strength": "Strength & mobility", "mobility": "Mobility",
     "brick": "Brick: bike + run", "openers": "Openers", "shakeout": "Shakeout {sport}",
     "race": "Race day", "rest": "Rest day",
 }
@@ -92,7 +92,7 @@ KINDS_BY_SPORT = {
              "openers", "shakeout"),
     "swim": ("technique", "endurance", "css", "easy"),
     "brick": ("brick",),
-    "strength": ("strength",),
+    "strength": ("strength", "mobility"),
     "other": ("easy",),
     "rest": ("rest",),
 }
@@ -301,6 +301,10 @@ def rebuild_session(s: dict[str, Any], *, swim_pace: float = 120.0, phase: str =
     for k in ("garmin", "edited", "title_custom"):
         if k in s:
             fresh[k] = s[k]
+    if sport == "strength" and s.get("exercises") and s.get("kind") == fresh.get("kind"):
+        for k in ("exercises", "prehab", "detail"):
+            if k in s:
+                fresh[k] = s[k]
     if s.get("detail_custom") and s.get("detail"):
         fresh["detail"], fresh["detail_custom"] = s["detail"], True
     return fresh
@@ -320,6 +324,7 @@ class Inputs:
     swim_pace: float
     title: str
     favorites: list[str] = field(default_factory=list)
+    injuries: str = ""
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
@@ -343,7 +348,8 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   limiters=[x for x in (goal.get("limiters") or []) if x in ("swim", "bike", "run")],
                   equipment=list(athlete.get("equipment") or []), swim_pace=pace,
                   title=goal.get("title") or "Race",
-                  favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS])
+                  favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS],
+                  injuries=str(athlete.get("injuries") or "")[:500])
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -596,12 +602,35 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                 "hours": h, "focus": week_focus(phase, rec, race_kind), "days": days}
         recompute_week(week)
         weeks.append(week)
+    apply_strength(weeks, inp, race_kind)
     placed_events = apply_events(weeks, events or [], inp, start)
     return {"events": placed_events, "start": week1.isoformat(), "first_day": start.isoformat(),
             "race_date": inp.race_date.isoformat(), "distance": inp.distance,
             "race_kind": race_kind, "level": inp.level, "peak_hours": round(peak_h, 1),
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
             "note": note, "weeks": weeks}
+
+
+def apply_strength(weeks: list[dict[str, Any]], inp: Inputs, race_kind: str) -> None:
+    """Phase- and sport-specific strength routines (plus prehab for listed injuries), and a
+    weekly 20-minute mobility session when the athlete has injuries or likes yoga."""
+    from .strength import routine
+    want_mobility = bool(inp.injuries) or "yoga" in inp.favorites
+    for w in weeks:
+        for ss in w["days"].values():
+            for x in ss:
+                if x["sport"] == "strength":
+                    r = routine(w["phase"], race_kind, inp.injuries, mobility=x.get("kind") == "mobility")
+                    x.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
+        if want_mobility and w["phase"] != "race":
+            free = [d for d in sorted(w["days"]) if all(x["sport"] == "rest" for x in w["days"][d])]
+            if free:
+                d = free[len(free) // 2]
+                m = make_session("strength", "mobility", 20)
+                r = routine(w["phase"], race_kind, inp.injuries, mobility=True)
+                m.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
+                w["days"][d] = [m]
+                recompute_week(w)
 
 
 # Event type -> the sport of its race-day session.

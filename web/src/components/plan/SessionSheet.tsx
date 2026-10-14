@@ -106,6 +106,40 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
               </Field>
             </Card>
           )}
+          {session && (session.exercises?.length ?? 0) > 0 && (
+            <Card>
+              <Field label={session.kind === 'mobility' ? 'Mobility' : 'Exercises'}>
+                <ul className="flex flex-col gap-1.5">
+                  {session.exercises!.map((e) => (
+                    <li key={e.name} className="flex gap-2 text-[0.8235rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+                  ))}
+                </ul>
+              </Field>
+              {(session.prehab?.length ?? 0) > 0 && (
+                <Field label="Prehab for your injury notes" className="border-t border-(--border)"
+                  hint="General prehab, not a diagnosis. If pain is sharp, getting worse or changes how you move, see a physio.">
+                  <ul className="flex flex-col gap-1.5">
+                    {session.prehab!.map((e) => (
+                      <li key={e.name} className="flex gap-2 text-[0.8235rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+                    ))}
+                  </ul>
+                </Field>
+              )}
+            </Card>
+          )}
+          {session?.fuel && (
+            <Card>
+              <Field label="Fueling">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.8235rem] text-(--text)">
+                  <span><b className="font-display text-[1.1rem]">{session.fuel.carbs_g_per_h}</b> g carbs/h</span>
+                  {session.fuel.total_carbs_g != null && <span className="text-(--text-muted)">≈{session.fuel.total_carbs_g} g total</span>}
+                  {session.fuel.fluid_ml_per_h && <span className="text-(--text-muted)">{session.fuel.fluid_ml_per_h} ml fluid/h</span>}
+                  {session.fuel.sodium_mg_per_h && <span className="text-(--text-muted)">{session.fuel.sodium_mg_per_h} mg sodium/h</span>}
+                </div>
+                <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{session.fuel.note}</p>
+              </Field>
+            </Card>
+          )}
           {session?.detail && !locked && steps.length === 0 && (
             <p className="px-1 text-[0.8235rem] text-(--text-secondary)">{session.detail}</p>
           )}

@@ -24,7 +24,7 @@ SPORT_IF = {"run": 0.75, "bike": 0.7, "swim": 0.7, "brick": 0.75, "strength": 0.
             "climb": 0.65, "ski": 0.65, "paddle": 0.65, "other": 0.6}
 KIND_IF = {"easy": 0.68, "endurance": 0.72, "long": 0.72, "recovery": 0.55, "strides": 0.72,
            "tempo": 0.85, "threshold": 0.92, "vo2": 0.95, "racepace": 0.88, "openers": 0.75,
-           "shakeout": 0.6, "technique": 0.62, "css": 0.86, "brick": 0.78, "strength": 0.55}
+           "shakeout": 0.6, "technique": 0.62, "css": 0.86, "brick": 0.78, "strength": 0.55, "mobility": 0.4}
 RACE_HOURS = {"sprint triathlon": 1.4, "olympic triathlon": 2.6, "70.3": 5.5, "140.6": 12.0, "5k": 0.4,
               "10k": 0.8, "half marathon": 1.8, "marathon": 3.8, "ultra": 20.0, "century ride": 6.0}
 
