@@ -1,5 +1,7 @@
 // Stats screen data: streaks, totals, weekly volume, calendar, bests, badges, plan adherence.
-import { getJSON, type Sport } from '@/lib/api'
+import { getJSON } from '@/lib/api'
+
+export type Sport = 'run' | 'bike' | 'swim' | 'brick' | 'strength' | 'hike' | 'climb' | 'ski' | 'paddle' | 'rest' | 'other'
 
 export type Totals = { workouts: number; hours: number; km: number; climb_m: number; days: number; vs_last_week_hours?: number }
 export type Best = { value: number; date: string; name: string; sport: Sport }
@@ -26,10 +28,12 @@ export type Stats = {
 export const getStats = (fresh = false) => getJSON<Stats>(`/api/stats${fresh ? '?fresh=1' : ''}`)
 
 export const SPORT_COLOR: Record<Sport, string> = {
-  run: '#3f9a70', bike: '#d0952f', swim: '#3a86c8', brick: '#8b62c9', strength: '#c45d74', rest: '#7a8a84', other: '#7a8a84',
+  run: '#3f9a70', bike: '#d0952f', swim: '#3a86c8', brick: '#8b62c9', strength: '#c45d74', hike: '#8d7b4f',
+  climb: '#b5683a', ski: '#5fa9c9', paddle: '#4a9e9a', rest: '#7a8a84', other: '#7a8a84',
 }
 export const SPORT_NAME: Record<Sport, string> = {
-  run: 'Run', bike: 'Bike', swim: 'Swim', brick: 'Multisport', strength: 'Strength', rest: 'Rest', other: 'Other',
+  run: 'Run', bike: 'Bike', swim: 'Swim', brick: 'Multisport', strength: 'Strength & yoga', hike: 'Hike & walk',
+  climb: 'Climb', ski: 'Ski', paddle: 'Row & paddle', rest: 'Rest', other: 'Other',
 }
 
 export function dist(km: number, units: Stats['units'], sport?: Sport): string {

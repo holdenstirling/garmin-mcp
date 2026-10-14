@@ -49,6 +49,20 @@ BADGES: list[tuple[str, str, str, str, float]] = [
 ]
 
 
+def category(garmin_type: str | None) -> str:
+    """Stats category: the plan sports plus the outdoor ones a plan doesn't schedule."""
+    k = (garmin_type or "").lower()
+    if any(w in k for w in ("ski", "snowboard", "snowshoe", "skate")):
+        return "ski"
+    if any(w in k for w in ("climb", "boulder", "mountaineer")):
+        return "climb"
+    if any(w in k for w in ("hik", "walk", "trek")):
+        return "hike"
+    if any(w in k for w in ("row", "paddl", "kayak", "sup", "canoe")):
+        return "paddle"
+    return sport_of(garmin_type)
+
+
 def _rows(acts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     parents = {a.get("activity_id") for a in acts if (a.get("multisport") or {}).get("is_parent")}
     rows = []
@@ -65,7 +79,7 @@ def _rows(acts: list[dict[str, Any]]) -> list[dict[str, Any]]:
             hour = datetime.fromisoformat(stamp.replace(" ", "T")[:19]).hour if len(stamp) > 10 else None
         except ValueError:
             pass
-        rows.append({"date": d, "sport": sport_of(a.get("sport")), "raw": a.get("sport") or "other",
+        rows.append({"date": d, "sport": category(a.get("sport")), "raw": a.get("sport") or "other",
                      "name": a.get("name") or "Workout", "min": _seconds(a.get("duration")) / 60,
                      "km": float(a.get("distance_km") or 0), "climb": float(a.get("elevation_gain_m") or 0),
                      "hour": hour, "id": a.get("activity_id")})
@@ -185,9 +199,10 @@ def compute(acts: list[dict[str, Any]], today: date, *, imperial: bool = False,
     sports: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for r in rows_year:
         sports[r["sport"]].append(r)
-    fav_engine = {"run": "run", "trail": "run", "hike": "other", "walk": "other", "bike": "bike",
+    fav_engine = {"run": "run", "trail": "run", "hike": "hike", "walk": "hike", "bike": "bike",
                   "gravel": "bike", "mtb": "bike", "swim": "swim", "open_water": "swim",
-                  "strength": "strength", "yoga": "strength"}
+                  "strength": "strength", "yoga": "strength", "climb": "climb", "ski": "ski",
+                  "row": "paddle"}
     fav = {fav_engine.get(f, "other") for f in (favorites or [])}
     by_sport = sorted(({"sport": s, **_totals(rs), "favorite": s in fav,
                         "longest_min": round(max(r["min"] for r in rs))} for s, rs in sports.items()),

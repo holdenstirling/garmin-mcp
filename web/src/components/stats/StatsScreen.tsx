@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
-import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Stats, type Totals } from '@/lib/stats'
-import type { Sport } from '@/lib/api'
+import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
 
 type Period = 'week' | 'month' | 'year'
 
