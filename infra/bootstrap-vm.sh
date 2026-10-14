@@ -85,4 +85,14 @@ exec sudo -u garmin-mcp bash -c 'set -a; . /etc/garmin-mcp/env; set +a; umask 07
 EOF
 chmod 0755 /usr/local/sbin/garmin-mcp-login
 
+echo "==> Login helper /usr/local/sbin/garmin-mcp-trainingpeaks-login"
+cat > /usr/local/sbin/garmin-mcp-trainingpeaks-login <<'EOF'
+#!/usr/bin/env bash
+# Stores a TrainingPeaks session cookie as the service user with the service's config.
+set -euo pipefail
+exec sudo -u garmin-mcp bash -c 'set -a; . /etc/garmin-mcp/env; set +a; umask 077; \
+  exec /opt/garmin-mcp/current/.venv/bin/garmin-mcp-trainingpeaks-login "$@"' _ "$@"
+EOF
+chmod 0755 /usr/local/sbin/garmin-mcp-trainingpeaks-login
+
 echo "Bootstrap complete. Review /etc/garmin-mcp/env, then deploy + log in (README)."

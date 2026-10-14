@@ -85,6 +85,9 @@ class Settings:
 
     # Behaviour
     allow_writes: bool = False
+    # TrainingPeaks (off unless TRAININGPEAKS_ENABLED; writes need their own flag)
+    trainingpeaks_enabled: bool = False
+    trainingpeaks_allow_writes: bool = False
     garmin_api_tls_impersonation: bool = False
     cache_ttl_seconds: int = 300
     rate_limit_per_minute: int = 30
@@ -145,6 +148,10 @@ class Settings:
         return self.data_dir / "tokens"
 
     @property
+    def trainingpeaks_dir(self) -> Path:
+        return self.data_dir / "trainingpeaks"
+
+    @property
     def oauth_state_dir(self) -> Path:
         return self.data_dir / "oauth"
 
@@ -195,6 +202,8 @@ class Settings:
             ),
             oauth_allow_loopback_redirects=_bool("OAUTH_ALLOW_LOOPBACK_REDIRECTS", True),
             allow_writes=_bool("GARMIN_ALLOW_WRITES", False),
+            trainingpeaks_enabled=_bool("TRAININGPEAKS_ENABLED", False),
+            trainingpeaks_allow_writes=_bool("TRAININGPEAKS_ALLOW_WRITES", False),
             garmin_api_tls_impersonation=_bool("GARMIN_API_TLS_IMPERSONATION", False),
             cache_ttl_seconds=_int("CACHE_TTL_SECONDS", 300),
             rate_limit_per_minute=_int("RATE_LIMIT_PER_MINUTE", 30),

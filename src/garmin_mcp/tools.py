@@ -127,6 +127,34 @@ class GarminService:
             "sport_filter": activity_type, "count": len(acts), "activities": acts,
         }
 
+    # ------------------------------------------- TrainingPeaks upload helpers --
+    def activity_summary(self, user_id: str, activity_id: int) -> dict[str, Any]:
+        """One activity's summary (start time, type, name); cached like any read."""
+        info = self.registry.get("get_activity")
+        if info is None or info.access is not Access.READ:
+            raise GarminError("get_activity unavailable in this garminconnect version")
+        raw = self._cached_call(user_id, info.name, info.fn, {"activity_id": int(activity_id)})
+        return raw if isinstance(raw, dict) else {}
+
+    def activity_original_file(self, user_id: str, activity_id: int) -> bytes:
+        """The activity's original upload (a zip holding the .fit), for TrainingPeaks.
+
+        Internal only: binary downloads stay blocked for execute. The id is forced to
+        int and the download format is fixed, so nothing caller-controlled reaches it.
+        """
+        from garminconnect import Garmin
+
+        fmt = Garmin.ActivityDownloadFormat.ORIGINAL
+
+        def download(client: Any, activity_id: int) -> Any:
+            return Garmin.download_activity(client, activity_id, dl_fmt=fmt)
+
+        log_event(logger, logging.INFO, "garmin_download_original", user_id=user_id)
+        blob = self._upstream(user_id, download, {"activity_id": int(activity_id)}, read=True)
+        if not isinstance(blob, bytes | bytearray) or not blob:
+            raise GarminError("Garmin returned no file for that activity.")
+        return bytes(blob)
+
     def activities_between(self, user_id: str, start: date, end: date,
                            activitytype: str | None = None) -> list[dict[str, Any]]:
         """Compact activities from ``start`` to ``end`` inclusive (cached like any read)."""

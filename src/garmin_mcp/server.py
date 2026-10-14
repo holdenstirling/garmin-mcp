@@ -39,6 +39,7 @@ from .resilience import RateLimiter, TTLCache
 from .secrets import get_secret
 from .tokens import EncryptedFileTokenStore
 from .tools import GarminService
+from .trainingpeaks import TrainingPeaksClient, TrainingPeaksService
 from .webapp import build_app_routes
 from .webauth import WebAuth
 from .webchat import ChatRunner
@@ -53,6 +54,16 @@ pace, power, HRV, sleep, training load, readiness).
   Dates are YYYY-MM-DD. Bulky time series are dropped unless full=true.
 - If a result says to re-run garmin-mcp-login, tell the user; don't retry."""
 
+TP_INSTRUCTIONS = """
+TrainingPeaks is connected too:
+- tp_workouts lists planned and completed workouts on the TrainingPeaks calendar.
+- tp_create_workout puts a planned (optionally structured) workout on the calendar.
+  Confirm the date, sport and session with the user before creating anything.
+- tp_upload_garmin_activity copies a finished Garmin activity (by activity_id from
+  recent_activities) into TrainingPeaks. Check tp_workouts first so you don't
+  duplicate one that Garmin already auto-synced.
+- If a result says to re-run garmin-mcp-trainingpeaks-login, tell the user; don't retry."""
+
 
 def _dev_user(settings: Settings) -> str | None:
     """DEV_NO_AUTH_USER: skip OAuth for local Inspector testing (localhost only)."""
@@ -66,7 +77,8 @@ def _dev_user(settings: Settings) -> str | None:
 
 def build_app(settings: Settings, service: GarminService,
               auth_provider: GitHubOAuthProvider | None, dev_user: str | None = None,
-              extra_routes: list[Any] | None = None) -> Any:
+              extra_routes: list[Any] | None = None,
+              tp: TrainingPeaksService | None = None) -> Any:
     auth = None
     if auth_provider is not None:
         auth = AuthSettings(
@@ -81,7 +93,7 @@ def build_app(settings: Settings, service: GarminService,
         )
     mcp = MCPServer(
         "garmin",
-        instructions=INSTRUCTIONS,
+        instructions=INSTRUCTIONS + (TP_INSTRUCTIONS if tp is not None else ""),
         auth_server_provider=auth_provider,
         auth=auth,
     )
@@ -136,6 +148,57 @@ def build_app(settings: Settings, service: GarminService,
         effect and activity_id (use with execute, e.g. get_activity_splits)."""
         user = current_user()
         return run(service.recent_activities, user, days, sport)
+
+    if tp is not None:
+        tp_write = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                                   idempotentHint=False, openWorldHint=True)
+
+        @mcp.tool(annotations=ro)
+        def tp_workouts(start: str | None = None, end: str | None = None) -> dict[str, Any]:
+            """TrainingPeaks calendar between start and end (YYYY-MM-DD, inclusive; default
+            the last 7 days through the next 7, max 90 days). Each workout has workout_id,
+            date, sport, title, completed, planned and actual duration/distance/TSS, and
+            whether it's a structured workout."""
+            user = current_user()
+            return run(tp.workouts, user, start, end)
+
+        @mcp.tool(annotations=tp_write)
+        def tp_create_workout(date: str, sport: str, title: str,
+                              description: str | None = None, start_time: str | None = None,
+                              duration_minutes: float | None = None,
+                              distance_km: float | None = None, tss: float | None = None,
+                              structure: dict[str, Any] | None = None) -> dict[str, Any]:
+            """Add a planned workout to the TrainingPeaks calendar (it syncs to the
+            watch through TrainingPeaks' Garmin connection). sport: swim, bike, run,
+            brick, strength, mtb, rowing, walk, xcski, crosstrain, dayoff, other.
+            date YYYY-MM-DD, optional start_time HH:MM. Optional structure for a
+            structured workout: {"metric": "ftp"|"hr"|"pace", "steps": [step or
+            {"repeat": n, "steps": [step, ...]}]}, where a step is {"name", "minutes" or
+            "seconds", "low", "high" (% of FTP / threshold HR / threshold pace),
+            "kind": warmup|active|rest|cooldown}. Duration and TSS are computed from the
+            structure when not given."""
+            user = current_user()
+            return run(lambda: tp.create_workout(
+                user, date_=date, sport=sport, title=title, description=description,
+                start_time=start_time, duration_minutes=duration_minutes,
+                distance_km=distance_km, tss=tss, structure=structure))
+
+        @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                                              openWorldHint=True))
+        def tp_delete_workout(workout_id: int) -> dict[str, Any]:
+            """Delete one planned TrainingPeaks workout by workout_id (from tp_workouts).
+            Workouts with completed data are refused."""
+            user = current_user()
+            return run(tp.delete_workout, user, workout_id)
+
+        @mcp.tool(annotations=tp_write)
+        def tp_upload_garmin_activity(activity_id: int, title: str | None = None) -> dict[str, Any]:
+            """Upload one completed Garmin activity (its original FIT file) to
+            TrainingPeaks as a completed workout on the activity's date. activity_id
+            comes from recent_activities. Skip it if TrainingPeaks already shows that
+            session (Garmin may auto-sync)."""
+            user = current_user()
+            return run(tp.upload_garmin_activity, user, activity_id, title)
 
     if auth_provider is not None:
         @mcp.custom_route("/github/callback", methods=["GET"])
@@ -327,6 +390,24 @@ def build_poller(settings: Settings, service: GarminService,
     return PollerThread(poller, schedule, state_dir / "poller.lock")
 
 
+def build_trainingpeaks(settings: Settings, fernet_key: str,
+                        service: GarminService) -> TrainingPeaksService | None:
+    """TrainingPeaks tools; None unless TRAININGPEAKS_ENABLED."""
+    if not settings.trainingpeaks_enabled:
+        return None
+    store = EncryptedFileTokenStore(settings.trainingpeaks_dir, fernet_key)
+    tp = TrainingPeaksService(
+        TrainingPeaksClient(store),
+        allow_writes=settings.trainingpeaks_allow_writes,
+        limiter=RateLimiter(settings.rate_limit_per_minute),
+        garmin_activity=service.activity_summary,
+        garmin_file=service.activity_original_file,
+    )
+    log_event(logger, logging.INFO, "trainingpeaks_enabled",
+              allow_writes=settings.trainingpeaks_allow_writes)
+    return tp
+
+
 def _attach_poller(app: Any, thread: PollerThread) -> None:
     """Run the poller for the app's lifetime, inside the MCP session manager's lifespan."""
     inner = app.router.lifespan_context
@@ -404,7 +485,8 @@ def create_app() -> tuple[Settings, Any]:
         log_event(logger, logging.ERROR, "app_disabled", error=type(e).__name__,
                   detail=str(e)[:200] if isinstance(e, RuntimeError) else None)
         web_routes = []
-    app = build_app(settings, service, auth_provider, dev_user, web_routes)
+    tp = build_trainingpeaks(settings, fernet_key, service)
+    app = build_app(settings, service, auth_provider, dev_user, web_routes, tp)
     if poller is not None:
         _attach_poller(app, poller)
     return settings, app

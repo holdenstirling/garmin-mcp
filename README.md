@@ -1,6 +1,6 @@
 # garmin-mcp
 
-Two ways to coach yourself with your Garmin data and Claude:
+Two ways to coach yourself with your Garmin (and TrainingPeaks) data and Claude:
 
 - **An MCP server** that gives Claude (web, desktop, mobile) read access to your Garmin Connect
   data: activities, sleep, HRV, VO2 max, training readiness and more. It uses streamable HTTP with
@@ -28,6 +28,15 @@ self-hosted on a small GCP VM with your own Claude API key.
 | `search(query)` | Finds `garminconnect` methods (name, signature, summary, read/write). The index is built by introspecting the installed library at startup. |
 | `execute(method, args, full=false)` | Calls one allowlisted method. Reads are allowed. Writes are blocked unless `GARMIN_ALLOW_WRITES=true`. Credential, raw-request, file-path, GraphQL and binary methods are always blocked. Bulky time series are dropped unless `full=true`, and every response is size-capped with a note when it's truncated. |
 
+With `TRAININGPEAKS_ENABLED=true` (see [TrainingPeaks](#trainingpeaks-optional)), four more:
+
+| Tool | What it does |
+|---|---|
+| `tp_workouts(start, end)` | The TrainingPeaks calendar for a date range (default last 7 days through the next 7, max 90): planned and completed workouts with sport, title, duration, distance, TSS and `workout_id`. |
+| `tp_create_workout(date, sport, title, ...)` | Puts a planned workout on the calendar, optionally with a start time, description, duration, distance, TSS and a **structured workout** (steps and repeats as % of FTP, threshold HR or threshold pace). Duration and TSS are computed from the structure when you don't give them. TrainingPeaks then syncs it to your watch through its Garmin connection. |
+| `tp_delete_workout(workout_id)` | Deletes a planned workout. Anything with completed data is refused. |
+| `tp_upload_garmin_activity(activity_id)` | Copies a finished Garmin activity's original FIT file into TrainingPeaks as a completed workout on the right day. |
+
 ## Layout
 
 ```
@@ -38,6 +47,8 @@ src/garmin_mcp/
   providers/unofficial.py  garminconnect implementation (backoff, token write-back, Cloudflare detection)
   providers/official.py    stub for Garmin's Connect Developer Program
   registry.py          introspected method index + allowlist
+  trainingpeaks.py     TrainingPeaks client (cookie -> bearer), structured-workout builder, tools
+  tp_login_cli.py      garmin-mcp-trainingpeaks-login (stores the session cookie, encrypted)
   shaping.py           bulky-field removal + size cap
   resilience.py        TTL cache + per-user rate limiter
   tools.py             search / execute / recent_activities (transport-independent)
@@ -173,6 +184,32 @@ plain-`requests` TLS fingerprint used for API calls from datacenter IPs
 ([python-garminconnect#444](https://github.com/cyberjunky/python-garminconnect/issues/444)).
 Set `GARMIN_API_TLS_IMPERSONATION=true` in `/etc/garmin-mcp/env`, then run
 `sudo systemctl restart garmin-mcp` and re-run the login.
+
+## TrainingPeaks (optional)
+
+TrainingPeaks' official API is only open to approved partners, so, like the Garmin side, this
+uses the private API the TrainingPeaks web app calls (`tpapi.trainingpeaks.com`). It works with
+any account, but it's unofficial and can break without notice. Some reads need Premium.
+
+1. In `/etc/garmin-mcp/env` set `TRAININGPEAKS_ENABLED=true`, and `TRAININGPEAKS_ALLOW_WRITES=true`
+   if Claude should be able to create, delete and upload workouts. Restart:
+   `sudo systemctl restart garmin-mcp`.
+2. Sign in at [app.trainingpeaks.com](https://app.trainingpeaks.com), open your browser's
+   developer tools, go to Application (Chrome) or Storage (Firefox) → Cookies →
+   `https://app.trainingpeaks.com`, and copy the value of `Production_tpAuth`.
+3. On the VM: `sudo garmin-mcp-trainingpeaks-login --user holden` and paste it (input is hidden).
+   It's checked against TrainingPeaks once, then saved Fernet-encrypted to
+   `$DATA_DIR/trainingpeaks/<user>.fernet`. The server swaps it for a one-hour bearer token
+   that's only kept in memory.
+
+The cookie usually lasts a few weeks. When it expires the tools say so; repeat steps 2 and 3.
+`--delete` removes it. If your Garmin account already auto-syncs to TrainingPeaks, finished
+workouts show up there on their own, so you'll mostly want `tp_create_workout` (plan a session,
+then it lands on your watch) and `tp_upload_garmin_activity` only for ones that didn't sync.
+
+Example prompts in Claude: *"Put a 4x8 min threshold ride at 95-100% FTP on my TrainingPeaks for
+Thursday at 6am"*, *"What's on my TrainingPeaks this week, and how does it compare to what I
+actually did on Garmin?"*, *"Upload yesterday's open-water swim to TrainingPeaks."*
 
 ## Deploying updates
 
@@ -328,4 +365,8 @@ Every variable is listed and explained in [`.env.example`](.env.example).
 
 ## License
 
-[MIT](LICENSE). Garmin and Ironman are trademarks of their owners; this project isn't affiliated with either.
+[MIT](LICENSE). Based on [anlinguist/garmin-mcp](https://github.com/anlinguist/garmin-mcp) by
+Andrew Nelson. The TrainingPeaks endpoints and structured-workout format were worked out with
+reference to [JamsusMaximus/TrainingPeaks-MCP](https://github.com/JamsusMaximus/TrainingPeaks-MCP)
+(MIT). Garmin, TrainingPeaks and Ironman are trademarks of their owners; this project isn't
+affiliated with any of them.

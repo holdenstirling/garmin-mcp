@@ -1,7 +1,7 @@
 [project]
 name = "garmin-mcp"
 version = "0.1.0"
-description = "Remote MCP server exposing Garmin Connect data to Claude, plus Rabbit, a phone coach app"
+description = "Remote MCP server exposing Garmin Connect and TrainingPeaks to Claude, plus Rabbit, a phone coach app"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.13"
@@ -21,6 +21,7 @@ dependencies = [
 [project.scripts]
 garmin-mcp = "garmin_mcp.server:main"
 garmin-mcp-login = "garmin_mcp.login_cli:main"
+garmin-mcp-trainingpeaks-login = "garmin_mcp.tp_login_cli:main"
 
 [dependency-groups]
 dev = [
