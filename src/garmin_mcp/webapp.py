@@ -2525,7 +2525,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def predict_get(request: Request, user_id: str) -> Response:
         q = request.query_params
 
-        def num(k: str) -> float | None:
+        def num(k: str, hi: float = 10_000) -> float | None:
             v = q.get(k)
             if v in (None, ""):
                 return None
@@ -2533,25 +2533,75 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 x = float(v)
             except ValueError:
                 raise _UserError(f"{k} must be a number") from None
-            if not 0 <= x <= 10_000:  # also rejects nan/inf
+            if not 0 <= x <= hi:  # also rejects nan/inf
                 raise _UserError(f"{k} is out of range")
             return x
+
+        type_ = (q.get("type") or "").strip().lower()
+        if not re.fullmatch(r"[a-z0-9_. -]{0,20}", type_):
+            raise _UserError("type isn't a race type")
+        when = q.get("date") or ""
+        if when:
+            try:
+                date.fromisoformat(when)
+            except ValueError:
+                raise _UserError("date must be YYYY-MM-DD") from None
+        if not q.get("event_id"):
+            if not num("distance_km", 1000):
+                raise _UserError("Add a distance (distance_km) to get an estimate.")
+            num("climb_m", 15_000)
+            num("elevation_m", 6000)
 
         def run() -> dict[str, Any]:
             basis = _pred_basis(user_id)
             if q.get("event_id"):
-                ev = _events().get(user_id, str(q["event_id"])[:64])
-                est = _predict.for_event(basis, ev)
-            else:
-                est = _predict.estimate(basis, distance_km=num("distance_km"), type_=(q.get("type") or "")[:20],
-                                        climb_m=num("climb_m"), elevation_m=num("elevation_m"),
-                                        terrain=q.get("terrain") if q.get("terrain") in _predict.TRAIL_X else None)
-            if not est:
-                why = ("Connect Garmin or add a threshold pace, FTP or CSS in your profile to see estimates."
-                       if not _predict.has_data(basis) else "No estimate for this kind of race yet.")
-                return {"estimate": None, "reason": why}
-            return {"estimate": {**est, "text": _predict.text(est)}}
+                return _pred_event(user_id, str(q["event_id"])[:64])
+            res = _predict.predict(basis, distance_km=num("distance_km", 1000), type_=type_,
+                                   climb_m=num("climb_m", 15_000), elevation_m=num("elevation_m", 6000),
+                                   terrain=q.get("terrain") if q.get("terrain") in _predict.TRAIL_X else None)
+            if res and when:
+                _pred_projection(user_id, res, when)
+            return _pred_body(basis, res)
         return JSONResponse(await _plan_call(run))
+
+    # Race finish-time estimates for calendar events (predict.py): the event's distance, climb,
+    # altitude, heat and cutoff (racefit parsing) + the plan's forecast fitness for a labelled
+    # "if you follow your plan" projection. Garmin + profile only, never Oura; not AI context.
+    def _pred_body(basis: dict[str, Any], res: dict[str, Any] | None) -> dict[str, Any]:
+        if not res:
+            why = ("Connect Garmin or add a threshold pace, FTP or CSS in your profile to see estimates."
+                   if not _predict.has_data(basis) else "No estimate for this kind of race yet.")
+            return {"estimate": None, "reason": why}
+        return _predict.response(res)
+
+    def _pred_projection(uid: str, res: dict[str, Any], when: str) -> None:
+        if chat is None or chat.agent.plans.get(uid) is None:
+            return
+        try:
+            _predict.add_projection(res, chat.agent.stats.load(uid), when, _explore_today(uid))
+        except Exception:  # Garmin down: no projection, the estimate still stands
+            pass
+
+    def _pred_event(uid: str, eid: str) -> dict[str, Any]:
+        ev = _events().get(uid, eid)
+        basis = _pred_basis(uid)
+        inp = _predict.event_inputs(ev)["kwargs"]
+        if not inp.get("distance_km") and not inp.get("tri"):
+            raise _UserError("Add a distance to this race to see an estimate.")
+        res = _predict.predict_event(basis, ev, today=_explore_today(uid))
+        if res and ev.get("date"):
+            _pred_projection(uid, res, ev["date"])
+        return _pred_body(basis, res)
+
+    async def event_predict(request: Request, user_id: str) -> Response:
+        eid = str(request.path_params["event_id"])[:64]
+        return JSONResponse(await _plan_call(lambda: _pred_event(user_id, eid)))
+
+    async def coach_event_predict(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        eid = str(request.path_params["event_id"])[:64]
+        return JSONResponse(await _plan_call(lambda: _pred_event(aid, eid)))
 
     # --------------------------------------------------------- challenges --
     # Weekly/monthly challenges (challenges.py): personal targets from the Garmin baseline,
@@ -2711,6 +2761,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/location/prefs", _plan_api(location_prefs, mutating=True), methods=["POST"]),
         Route("/app/api/location", _plan_api(location_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/predict", _plan_api(predict_get, mutating=False), methods=["GET"]),
+        Route("/app/api/events/{event_id}/predict", _plan_api(event_predict, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/events/{event_id}/predict",
+              _plan_api(coach_event_predict, mutating=False), methods=["GET"]),
         Route("/app/api/social", _social_api(social_get, mutating=False), methods=["GET"]),
         Route("/app/api/social/follow", _social_api(social_follow, mutating=True), methods=["POST"]),
         Route("/app/api/social/requests/{edge_id}/accept", _social_api(_edge_route(lambda u, e: soc.accept(u, e)), mutating=True), methods=["POST"]),
