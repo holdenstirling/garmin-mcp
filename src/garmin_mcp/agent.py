@@ -33,7 +33,7 @@ import anyio
 
 from .appstore import AppStore
 from .attachments import AttachmentStore
-from .coaching import CoachError, CoachStore
+from .coaching import CoachError, CoachStore, training_phase
 from .logs import log_event
 from .providers import GarminError, ReauthRequired
 from .toolspec import AGENT_TOOLS
@@ -43,10 +43,17 @@ from .weekplan import WeekPlanner
 from .plans import PlanService
 from .progress import Progress
 from .stats import StatsService
-from .events import DEBRIEF_SYSTEM, DEBRIEF_TOOL, TYPE_SPORT, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
+from . import racefit, racepack
+from .events import STRATEGY_SYSTEM, STRATEGY_TOOL, DEBRIEF_SYSTEM, DEBRIEF_TOOL, TYPE_SPORT, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
 DEBRIEFS_PER_DAY = 5
+STRATEGIES_PER_DAY = 5
+# Athlete-entered traits the race strategy sees (never Oura or other health data).
+STRATEGY_ATHLETE = ("units", "level", "age", "sex", "weight_kg", "ftp_w", "threshold_hr", "run_threshold_pace",
+                    "swim_css", "weekly_hours", "years_training", "home_location", "home_elevation_m",
+                    "altitude_acclimatized", "strengths", "limiters", "heat_tolerance", "sweat", "terrain_access",
+                    "race_history", "motivation", "season_goal", "injuries")
 
 MAX_ITERATIONS = 8
 CONTEXT_TURNS = 30
@@ -417,6 +424,49 @@ class Agent:
         if not clean["summary"]:
             raise CoachError("Couldn't write the debrief just now. Try again in a minute.")
         self.events.set_debrief(user_id, event_id, clean)
+        return clean
+
+    async def race_strategy(self, user_id: str, event_id: str, *,
+                            coach_notes: list[str] | None = None) -> dict[str, Any]:
+        """AI race strategy for an upcoming event: one forced tool call over the event, the
+        athlete's own traits, the race-fit factors and the plan phase. ``coach_notes``: the
+        coach's shared notes for this race (data, not instructions)."""
+        structured = getattr(self._backend, "structured", None)
+        if structured is None:
+            raise CoachError("Race strategies aren't available on this server.")
+        ev = self.events.get(user_id, event_id)
+        today = self._now(user_id).date()
+        if ev["date"] < today.isoformat():
+            raise CoachError("That race is done. Write a debrief instead.")
+        athlete = self.coach.athlete(user_id)
+        fit = racefit.analyze(ev, athlete)
+        self.events.take_allowance(user_id, "strategies", today, limit=STRATEGIES_PER_DAY,
+                                   message="That's today's race strategies used up. Try again tomorrow.")
+        weeks, phase = training_phase(date.fromisoformat(ev["date"]), today)
+        facts = {
+            "today": today.isoformat(), "weeks_to_race": weeks, "phase": phase,
+            "event": {k: ev.get(k) for k in ("name", "type", "distance", "date", "location", "priority", "goal_type",
+                                              "target_time", "course", "elevation_m", "course_profile") if ev.get(k) not in (None, "")},
+            "event_info_untrusted_web_lookup": {k: v for k, v in (ev.get("info") or {}).items()
+                                                 if k in ("summary", "distances", "elevation_gain", "terrain", "cutoffs",
+                                                          "typical_weather", "aid", "start_time")},
+            "athlete": {k: athlete[k] for k in STRATEGY_ATHLETE if athlete.get(k) not in (None, "", [])},
+            "race_fit": [{k: f[k] for k in ("title", "impact", "detail", "tip")} for f in fit["factors"]],
+            "rule_of_thumb_pacing": racepack.pacing(ev, athlete),
+            "coach_notes_for_this_race": [n[:400] for n in (coach_notes or [])][:5],
+        }
+        out = await structured(STRATEGY_SYSTEM, json.dumps(facts, default=str)[:14000], STRATEGY_TOOL)
+
+        def lst(k: str, n: int = 5) -> list[str]:
+            v = out.get(k)
+            return [str(x)[:240] for x in v if str(x).strip()][:n] if isinstance(v, list) else []
+        clean = {"summary": str(out.get("summary") or "")[:800], "key_risks": lst("key_risks"),
+                 "pacing": lst("pacing"), "fueling": lst("fueling"), "training_focus": lst("training_focus"),
+                 "taper_notes": str(out.get("taper_notes") or "")[:500], "mental": lst("mental", 4),
+                 "phase": phase, "weeks_to_race": weeks, "created": int(self._clock())}
+        if not clean["summary"]:
+            raise CoachError("Couldn't write the strategy just now. Try again in a minute.")
+        self.events.set_strategy(user_id, event_id, clean)
         return clean
 
     async def lookup_event(self, user_id: str, name: str, etype: str | None = None,

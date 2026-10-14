@@ -1,13 +1,15 @@
 import { useState } from 'react'
 
-/** Google profile photo, falling back to an initial (like Dolly's header avatar). */
-export function Avatar({ name, picture, size = 28 }: { name: string; picture: string; size?: number }) {
-  const [broken, setBroken] = useState(false)
+/** The uploaded profile photo (``photo`` URL), else the Google profile photo, else an
+ * initial (like Dolly's header avatar). */
+export function Avatar({ name, picture, photo, size = 28 }: { name: string; picture: string; photo?: string | null; size?: number }) {
+  const [broken, setBroken] = useState<string[]>([])
   const initial = (name || '?').trim().charAt(0).toUpperCase()
-  if (picture && !broken) {
+  const src = [photo, picture].find((u): u is string => !!u && !broken.includes(u))
+  if (src) {
     return (
-      <img src={picture} alt={name} width={size} height={size} referrerPolicy="no-referrer"
-        onError={() => setBroken(true)} className="rounded-full border border-(--border) object-cover"
+      <img key={src} src={src} alt={name} width={size} height={size} referrerPolicy="no-referrer"
+        onError={() => setBroken((b) => [...b, src])} className="rounded-full border border-(--border) object-cover"
         style={{ width: size, height: size }} />
     )
   }

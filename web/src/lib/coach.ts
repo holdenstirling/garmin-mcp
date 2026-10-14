@@ -12,15 +12,17 @@ export type Message = { id: string; from: 'athlete' | 'coach'; text: string; ts:
 export type ThreadSummary = {
   id: string; coach: string; title: string; session_id: string | null; session_date: string | null
   created: number; updated: number; last: Message | null; count: number
+  /** last message id each side has seen */
+  read?: { athlete: string | null; coach: string | null }
 }
 export type Thread = ThreadSummary & { messages: Message[] }
-export type Note = { id: string; coach: string; text: string; shared: boolean; pinned: boolean; ts: number }
+export type Note = { id: string; coach: string; text: string; shared: boolean; pinned: boolean; ts: number; event_id?: string | null }
 export type AthleteCard = CoachLink & {
-  athlete_id: string; profile: { name: string; picture: string }
+  athlete_id: string; profile: { name: string; picture: string }; photo?: number | null
   goal: { title: string; date: string | null; distance: string } | null; unread: number
 }
 export type AthleteOverview = {
-  athlete_id: string; profile: { name: string; picture: string }; link: CoachLink
+  athlete_id: string; profile: { name: string; picture: string }; photo?: number | null; link: CoachLink
   athlete: Athlete & Record<string, unknown>; goal: Goal | null; events: RaceEvent[]; notes: Note[]; unread: number
 }
 
@@ -50,7 +52,7 @@ export const coachBase = (aid: string) => `/api/coach/athletes/${encodeURICompon
 export const getAthletes = () => getJSON<{ athletes: AthleteCard[] }>('/api/coach/athletes')
 export const getAthlete = (aid: string) => getJSON<AthleteOverview>(coachBase(aid))
 export const getAthleteStats = (aid: string) => getJSON<Stats>(`${coachBase(aid)}/stats`)
-export const addNote = (aid: string, b: { text: string; shared: boolean; pinned?: boolean }) =>
+export const addNote = (aid: string, b: { text: string; shared: boolean; pinned?: boolean; event_id?: string }) =>
   sendJSON<{ note: Note }>('POST', `${coachBase(aid)}/notes`, b)
 export const updateNote = (aid: string, id: string, b: Partial<Pick<Note, 'text' | 'shared' | 'pinned'>>) =>
   sendJSON<{ note: Note }>('PATCH', `${coachBase(aid)}/notes/${id}`, b)

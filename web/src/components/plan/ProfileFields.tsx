@@ -1,11 +1,13 @@
 // The athlete-profile fields shared by the setup wizard and Settings > Training profile:
 // about you, training numbers, and your week.
 import { useEffect, useState } from 'react'
-import { Watch } from 'lucide-react'
+import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
-  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, kgToLb, lbToKg, parsePace, type AthleteFull,
+  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, kgToLb, lbToKg, parsePace,
+  type AthleteFull, type PastRace,
 } from '@/lib/plan'
+import { Button } from '@/components/ui/button'
 import { Card, Choice, Field, MultiChoice, NumberStepper, OptionCard, areaCls, inputCls } from './ui'
 
 type Props = { a: Partial<AthleteFull>; setA: (p: Partial<AthleteFull>) => void; sports: Sport[] }
@@ -122,6 +124,102 @@ export function WeekFields({ a, setA, sports }: Props) {
         </Field>
       </Card>
     </>
+  )
+}
+
+/** Where you train, strengths and limiters, heat, why you race: used by Race fit and Rabbit. */
+export function TraitsFields({ a, setA }: Props) {
+  const imperial = a.units === 'imperial'
+  const elev = a.home_elevation_m ?? null
+  const acclim = a.altitude_acclimatized == null ? null : a.altitude_acclimatized ? 'yes' : 'no'
+  return (
+    <>
+      <Card>
+        <Field label="Home base" hint="Where you live and train most.">
+          <input className={inputCls} value={a.home_location ?? ''} maxLength={80} placeholder="e.g. Denver, CO"
+            onChange={(e) => setA({ home_location: e.target.value })} />
+        </Field>
+        <Field label="Home elevation" className="border-t border-(--border)" hint="Race fit compares it with your races.">
+          {imperial ? (
+            <NumberStepper label="home elevation" value={elev == null ? null : Math.round(elev / M_PER_FT / 10) * 10} min={0} max={18000} step={100}
+              onChange={(v) => setA({ home_elevation_m: v == null ? null : Math.min(5500, Math.round(v * M_PER_FT)) })} suffix="ft" />
+          ) : (
+            <NumberStepper label="home elevation" value={elev} min={0} max={5500} step={50}
+              onChange={(v) => setA({ home_elevation_m: v })} suffix="m" />
+          )}
+        </Field>
+        <Field label="Live or train above 1,500 m (5,000 ft)?" className="border-t border-(--border)">
+          <Choice value={acclim} allowNone options={[['yes', 'Yes'], ['no', 'No']] as const}
+            onChange={(v) => setA({ altitude_acclimatized: v == null ? null : v === 'yes' })} />
+        </Field>
+        <Field label="Terrain you can train on" className="border-t border-(--border)">
+          <MultiChoice value={a.terrain_access ?? []} options={TERRAIN} onChange={(v) => setA({ terrain_access: v })} />
+        </Field>
+      </Card>
+      <Card>
+        <Field label="Years of training">
+          <NumberStepper label="years of training" value={a.years_training} min={0} max={60} onChange={(v) => setA({ years_training: v })} suffix="years" />
+        </Field>
+        <Field label="Strengths" className="border-t border-(--border)">
+          <MultiChoice value={a.strengths ?? []} options={TRAITS} onChange={(v) => setA({ strengths: v })} />
+        </Field>
+        <Field label="Limiters" className="border-t border-(--border)" hint="What slows you down. Race fit and Rabbit plan around these.">
+          <MultiChoice value={a.limiters ?? []} options={TRAITS} onChange={(v) => setA({ limiters: v })} />
+        </Field>
+        <Field label="Heat tolerance" className="border-t border-(--border)">
+          <Choice value={a.heat_tolerance ?? null} allowNone options={[['low', 'Struggle'], ['normal', 'Normal'], ['high', 'Thrive']] as const}
+            onChange={(v) => setA({ heat_tolerance: v })} />
+        </Field>
+        <Field label="Sweat" className="border-t border-(--border)" hint="Salty: white streaks on your kit or stinging eyes.">
+          <Choice value={a.sweat ?? null} allowNone options={[['light', 'Light'], ['average', 'Average'], ['heavy', 'Heavy'], ['salty', 'Salty']] as const}
+            onChange={(v) => setA({ sweat: v })} />
+        </Field>
+      </Card>
+      <Card>
+        <Field label="Why you race" hint="Rabbit reminds you of this when training gets hard.">
+          <textarea className={areaCls} value={a.motivation ?? ''} maxLength={200} onChange={(e) => setA({ motivation: e.target.value })} />
+        </Field>
+      </Card>
+      <RaceHistoryField races={a.race_history ?? []} onChange={(v) => setA({ race_history: v })} />
+    </>
+  )
+}
+
+const MAX_RACES = 10
+
+function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v: PastRace[]) => void }) {
+  const set = (i: number, p: Partial<PastRace>) => onChange(races.map((r, j) => (j === i ? { ...r, ...p } : r)))
+  return (
+    <Card>
+      <Field label="Past races" hint="Up to 10. Races without a name aren't saved.">
+        <div className="flex flex-col gap-3">
+          {races.map((r, i) => (
+            <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-(--bg-inset) p-2.5">
+              <div className="flex gap-2">
+                <input className={inputCls} value={r.name} maxLength={60} placeholder="Race name" aria-label="Race name"
+                  onChange={(e) => set(i, { name: e.target.value })} />
+                <button type="button" aria-label="Remove race" className="shrink-0 rounded p-2 text-(--danger)"
+                  onClick={() => onChange(races.filter((_, j) => j !== i))}><Trash2 className="size-4" /></button>
+              </div>
+              <div className="flex gap-2">
+                <input className={inputCls} value={r.date} maxLength={10} placeholder="2024-06" aria-label="When"
+                  onChange={(e) => set(i, { date: e.target.value.trim() })} />
+                <input className={inputCls} value={r.distance} maxLength={20} placeholder="Distance" aria-label="Distance"
+                  onChange={(e) => set(i, { distance: e.target.value })} />
+                <input className={inputCls} value={r.result} maxLength={40} placeholder="Result" aria-label="Result"
+                  onChange={(e) => set(i, { result: e.target.value })} />
+              </div>
+            </div>
+          ))}
+          {races.length < MAX_RACES && (
+            <Button variant="default" className="h-9 w-fit gap-1 px-3 text-[0.7647rem]"
+              onClick={() => onChange([...races, { name: '', date: '', distance: '', result: '' }])}>
+              <Plus className="size-4" /> Add a race
+            </Button>
+          )}
+        </div>
+      </Field>
+    </Card>
   )
 }
 

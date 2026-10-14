@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bell, CalendarClock, CircleDot, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
 import { CoachingSettings } from '@/components/CoachingSettings'
@@ -186,7 +187,7 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
       </Group>
 
       <Group label="Account">
-        <Row icon={<Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} />}
+        <Row icon={<Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />}
           title={me.profile.name || me.user_id} subtitle="Signed in with Google" />
         <Row title={<span className="inline-flex items-center gap-1.5"><LogOut className="size-4" /> Sign out</span>}
           danger center onClick={() => void signOut().finally(onChange)} />

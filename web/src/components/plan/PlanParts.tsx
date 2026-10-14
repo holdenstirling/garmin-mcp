@@ -66,7 +66,7 @@ export function PhaseStrip({ plan, selected, onSelect }: {
 }
 
 /** A session as one line: icon, title, duration, synced mark. */
-export function SessionLine({ s, onClick }: { s: PlanSession; onClick?: () => void }) {
+export function SessionLine({ s, onClick, unread }: { s: PlanSession; onClick?: () => void; unread?: boolean }) {
   const Icon = s.kind === 'race' ? Flag : SPORT_ICON[s.sport] ?? Activity
   const mins = sessionMinutes(s)
   const rest = s.sport === 'rest'
@@ -85,6 +85,7 @@ export function SessionLine({ s, onClick }: { s: PlanSession; onClick?: () => vo
           </span>
         )}
       </span>
+      {unread && <span className="size-2 shrink-0 rounded-full bg-(--accent)" aria-label="New coach message" />}
       {s.synced && <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-[0.5882rem] uppercase tracking-wider text-(--accent)">Garmin</span>}
     </button>
   )

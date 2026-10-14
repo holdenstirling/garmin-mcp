@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { ExternalLink, Globe, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, Choice, Field, OptionCard, areaCls, inputCls } from '@/components/plan/ui'
+import { Card, Choice, Field, NumberStepper, OptionCard, areaCls, inputCls } from '@/components/plan/ui'
+import { M_PER_FT } from '@/lib/plan'
 import {
-  DISTANCE_LABEL, EVENT_TYPES, INFO_LABEL, TYPE_DISTANCES, lookupEvent,
+  COURSE_PROFILES, DISTANCE_LABEL, EVENT_TYPES, INFO_LABEL, TYPE_DISTANCES, lookupEvent,
   type EventFields, type EventInfo, type EventType,
 } from '@/lib/events'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,8 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
     if (i.location) p.location = i.location.slice(0, 120)
     if (i.website) p.url = i.website.slice(0, 300)
     if (i.terrain && !value.course) p.course = i.terrain.slice(0, 300)
+    if (i.suggested_course_profile && !value.course_profile) p.course_profile = i.suggested_course_profile
+    if (i.suggested_elevation_m != null && value.elevation_m == null) p.elevation_m = i.suggested_elevation_m
     onChange(p)
     setFound(null)
     setMsg('Details filled in. Check them before saving.')
@@ -104,9 +107,10 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
 }
 
 /** Priority, goal type and target time. */
-export function EventGoal({ value, onChange, hidePriority }: {
-  value: EventFields; onChange: (p: EventFields) => void; hidePriority?: boolean
+export function EventGoal({ value, onChange, hidePriority, imperial }: {
+  value: EventFields; onChange: (p: EventFields) => void; hidePriority?: boolean; imperial?: boolean
 }) {
+  const elev = value.elevation_m ?? null
   return (
     <Card>
       {!hidePriority && (
@@ -130,6 +134,19 @@ export function EventGoal({ value, onChange, hidePriority }: {
       )}
       <Field label="Course notes" className="border-t border-(--border)" hint="Hilly, hot, altitude, wetsuit…">
         <textarea className={areaCls} value={value.course ?? ''} maxLength={300} onChange={(e) => onChange({ course: e.target.value })} />
+      </Field>
+      <Field label="Course profile" className="border-t border-(--border)">
+        <Choice value={value.course_profile ?? null} allowNone options={COURSE_PROFILES}
+          onChange={(v) => onChange({ course_profile: v })} />
+      </Field>
+      <Field label="Race elevation" className="border-t border-(--border)" hint="Typical altitude of the course. Race fit uses it for altitude advice.">
+        {imperial ? (
+          <NumberStepper label="race elevation" value={elev == null ? null : Math.round(elev / M_PER_FT / 10) * 10} min={0} max={18000} step={100}
+            onChange={(v) => onChange({ elevation_m: v == null ? null : Math.min(5500, Math.round(v * M_PER_FT)) })} suffix="ft" />
+        ) : (
+          <NumberStepper label="race elevation" value={elev} min={0} max={5500} step={50}
+            onChange={(v) => onChange({ elevation_m: v })} suffix="m" />
+        )}
       </Field>
     </Card>
   )

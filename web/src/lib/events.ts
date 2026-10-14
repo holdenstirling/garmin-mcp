@@ -1,12 +1,18 @@
 // Events: every race or challenge on the calendar. The main one is what the plan builds to.
 import { getJSON, sendJSON } from '@/lib/api'
 
+export type CourseProfile = 'flat' | 'rolling' | 'hilly' | 'mountainous'
+export const COURSE_PROFILES: [CourseProfile, string][] = [
+  ['flat', 'Flat'], ['rolling', 'Rolling'], ['hilly', 'Hilly'], ['mountainous', 'Mountainous'],
+]
+
 export type EventType = 'triathlon' | 'running' | 'trail' | 'cycling' | 'swimming' | 'duathlon' | 'mountaineering' | 'other'
 
 export type EventInfo = {
   summary?: string; date?: string; location?: string; start_time?: string; distances?: string
   elevation_gain?: string; terrain?: string; cutoffs?: string; typical_weather?: string; aid?: string
   registration?: string; website?: string; suggested_type?: EventType; suggested_distance?: string
+  suggested_course_profile?: CourseProfile; suggested_elevation_m?: number
   sources?: string[]; fetched_at?: number
 }
 
@@ -15,11 +21,16 @@ export type RaceEvent = {
   location: string; url: string; priority: 'A' | 'B' | 'C'
   goal_type: 'finish' | 'time' | 'compete' | null; target_time: string | null
   course: string; notes: string; result: string; info: EventInfo | null
-  debrief?: Debrief | null
+  elevation_m?: number | null; course_profile?: CourseProfile | null
+  debrief?: Debrief | null; strategy?: RaceStrategy | null
   created: number; updated: number; main: boolean
 }
 export type Debrief = { summary: string; went_well: string[]; work_on: string[]; learnings: string[]; feel: number | null; created: number }
-export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' | 'main' | 'debrief'>>
+export type RaceStrategy = {
+  summary: string; key_risks: string[]; pacing: string[]; fueling: string[]; training_focus: string[]
+  taper_notes: string; mental: string[]; phase: string; weeks_to_race: number; created: number
+}
+export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' | 'main' | 'debrief' | 'strategy'>>
 type ListResp = { events: RaceEvent[]; types: Record<EventType, string[]> }
 
 export const listEvents = () => getJSON<ListResp>('/api/events')
