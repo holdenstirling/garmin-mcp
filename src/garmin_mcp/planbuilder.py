@@ -723,6 +723,8 @@ def recompute_week(week: dict[str, Any]) -> None:
 def summary_markdown(plan: dict[str, Any], goal: dict[str, Any]) -> str:
     """Rabbit's readable summary of a built plan (the coach's context and the Plan sheet)."""
     weeks = plan["weeks"]
+    if plan.get("origin"):
+        return _imported_summary(plan, goal)
     lines = ["### Overview",
              f"- Built in Rabbit's plan builder for {goal.get('title') or 'the race'}"
              f" on {plan['race_date']} ({goal.get('distance') or plan['distance']}).",
@@ -766,6 +768,26 @@ def summary_markdown(plan: dict[str, Any], goal: dict[str, Any]) -> str:
               "- Easy days stay easy (Z1-2). Quality days are the ones with Z4-5 work.",
               "- Missed a session? Skip it and carry on; never stack two hard days.",
               "- The athlete edits sessions in the app; this summary follows their edits."]
+    return "\n".join(lines)[:12000]
+
+
+def _imported_summary(plan: dict[str, Any], goal: dict[str, Any]) -> str:
+    """Summary of a plan a coach (or the athlete) loaded from outside the builder."""
+    o = plan["origin"]
+    who = (f"their coach {o.get('by_name') or ''}".rstrip() if o.get("kind") == "coach"
+           else "the athlete")
+    weeks = plan["weeks"]
+    lines = ["### Overview",
+             f"- Loaded by {who} ({o.get('source') or 'file'}) for {goal.get('title') or 'their goal'}"
+             + (f": {o['name']}." if o.get("name") else "."),
+             f"- {len(weeks)} weeks from {plan['first_day']}, {min(w['hours'] for w in weeks)}-"
+             f"{max(w['hours'] for w in weeks)} h/week.",
+             "- Follow the plan as written; the coach set the sessions. Suggest changes, don't rewrite it.",
+             "", "### Weeks"]
+    for w in weeks[:60]:
+        n = sum(1 for ss in w["days"].values() for s in ss if s["sport"] != "rest")
+        lines.append(f"- Week {w['index']} ({w['start']}): {n} sessions, {w['hours']} h"
+                     + (" (recovery)" if w.get("recovery") else ""))
     return "\n".join(lines)[:12000]
 
 

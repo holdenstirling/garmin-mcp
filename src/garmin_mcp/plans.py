@@ -88,9 +88,13 @@ class PlanService:
         if self._events is not None:
             sig = self._events.signature(self._events.plan_events(user_id))
             plan["events_changed"] = sig != plan.get("events_sig", sig)
-        # The race itself moved (or changed distance) since the build.
-        plan["race_changed"] = (plan.get("race_date") != g.get("date") or
-                                plan.get("distance") != (g.get("distance") or "other").lower())
+        # The race itself moved (or changed distance) since the build. A plan loaded by a
+        # coach or from a file is never rebuilt, so it isn't flagged.
+        plan["race_changed"] = not plan.get("origin") and (
+            plan.get("race_date") != g.get("date") or
+            plan.get("distance") != (g.get("distance") or "other").lower())
+        if plan.get("origin"):
+            plan["events_changed"] = False
         return plan
 
     def release_garmin(self, user_id: str, goal_id: str) -> list[int]:
@@ -166,7 +170,22 @@ class PlanService:
         if self._events is not None:
             plan["events_sig"] = self._events.signature(events)
         plan["created"] = plan["updated"] = int(self._clock())
+        out = self.install(user_id, goal, plan)
+        log_event(logger, logging.INFO, "plan_built", user_id=user_id, weeks=len(plan["weeks"]),
+                  distance=plan["distance"])
+        return out
+
+    def install(self, user_id: str, goal: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+        """Replace the goal's plan doc with ``plan`` (a build, a coach import or an undo).
+        Garmin workouts of the replaced plan from today on (and its orphans, and any parked by
+        a goal switch) become orphans of the new one, removed on its next sync."""
+        today = self.today(user_id)
+        plan = dict(plan)
         plan["goal_id"] = goal["id"]
+        plan.setdefault("created", int(self._clock()))
+        plan["updated"] = int(self._clock())
+        if self._events is not None and "events_sig" not in plan:
+            plan["events_sig"] = self._events.signature(self._events.plan_events(user_id))
         # Workouts parked by a goal switch before this goal had a plan.
         parked: list[int] = []
         self._s.user_doc(user_id, "garmin-pending").update(lambda d: parked.extend(d.pop("ids", [])))
@@ -180,13 +199,22 @@ class PlanService:
             garmin = d.get("garmin") or {}
             d.clear()
             d.update(plan)
-            d["garmin_orphans"] = orphans
+            d["garmin_orphans"] = list(dict.fromkeys(orphans))
             d["garmin"] = {"window": garmin.get("window", 14), "synced_at": None}
         self._doc(user_id, goal["id"]).update(put)
         self._publish(user_id, goal, plan)
-        log_event(logger, logging.INFO, "plan_built", user_id=user_id, weeks=len(plan["weeks"]),
-                  distance=plan["distance"])
         return self.get(user_id) or plan
+
+    def load_doc(self, user_id: str, goal_id: str) -> dict[str, Any]:
+        """The raw plan doc (snapshot for undo)."""
+        return self._doc(user_id, goal_id).load()
+
+    def forget(self, user_id: str, goal_id: str) -> None:
+        """Drop a goal's plan doc without touching Garmin: its future workouts are handed
+        on (to the active plan, or parked until the next build) so they still get removed."""
+        ids = self.release_garmin(user_id, goal_id)
+        self._doc(user_id, goal_id).delete()
+        self.adopt_orphans(user_id, ids)
 
     def delete(self, user_id: str) -> dict[str, Any]:
         """Drop the built plan (after removing its workouts from Garmin when connected)."""
@@ -812,7 +840,9 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                                      "updated")} | {
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
         "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
-        "race_changed": bool(plan.get("race_changed"))} | {
+        "race_changed": bool(plan.get("race_changed")),
+        "origin": {k: (plan.get("origin") or {}).get(k) for k in ("kind", "by_name", "at", "source", "name")}
+        if plan.get("origin") else None} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,
         "today": today.isoformat(),  # the athlete's local date (the device clock may differ)
         "garmin": plan.get("garmin") or {}, "pending_removals": len(plan.get("garmin_orphans", [])),

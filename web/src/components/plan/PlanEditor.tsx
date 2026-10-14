@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plane, Plus, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, FileUp, MessageCircle, Plane, Plus, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -21,9 +21,12 @@ import { AdjustCard } from './AdjustCard'
 import { getAdjust, type Proposal } from '@/lib/adjust'
 import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/lib/calendar'
 import { athleteChat } from '@/lib/coach'
+import { OwnPlanImport } from './PlanImport'
+import { importApi, type ImportStatus } from '@/lib/planimport'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
+const OWN_IMPORT = importApi('/api')
 
 export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
   me: Me
@@ -62,6 +65,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
   const [unread, setUnread] = useState<string[]>([])
   const canMessage = !!onMessage
+  // Loading a plan from a file (athlete side) and the last import's summary.
+  const [imp, setImp] = useState<{ status: ImportStatus; open: boolean } | null>(null)
+  const loadImport = (open: boolean) => OWN_IMPORT.status().then((st) => setImp({ status: st, open }), (e) => setLoadError((e as Error).message))
+  useEffect(() => { if (!coachMode && plan?.origin) void OWN_IMPORT.status().then((st) => setImp((x) => ({ status: st, open: x?.open ?? false })), () => {}) }, [coachMode, plan?.origin])
   useEffect(() => {
     if (coachMode || !canMessage) return
     athleteChat.list().then((r) => setUnread(r.threads.filter((t) => t.session_id && t.last?.from === 'coach' &&
@@ -98,8 +105,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in Rabbit yet." : "There's no plan built in Rabbit for this goal yet.")}</p>
             {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
+            {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan file</Button>}
           </div>
         )}
+        {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan={false} onClose={() => setImp(null)} onApplied={() => { setImp(null); load(); onChanged() }} />}
       </Screen>
     )
   }
@@ -178,6 +187,13 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.weeks.length} weeks · about {plan.start_hours}h building to {plan.peak_hours}h a week
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
+        {plan.origin && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7647rem] text-(--text-secondary)">
+            {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+            {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
+            {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>}
+          </p>
+        )}
       </div>
       {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
       {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
@@ -309,6 +325,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
             trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-[0.7059rem]" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>} />
         ))}
+        <Row icon={<Icon><FileUp /></Icon>} title="Load a plan from a file" subtitle="CSV, Excel, TrainingPeaks export, PDF or photo"
+          onClick={() => void loadImport(true)} />
         <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
           onClick={onRebuild} />
         {confirmDelete ? (
@@ -323,6 +341,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       </Group>
       </>}
 
+      {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan onClose={() => setImp((x) => x && { ...x, open: false })} onApplied={() => { setImp(null); load(); onChanged() }} />}
       {travel && (
         <TravelSheet initial={travel === 'new' ? undefined : travel} raceDate={plan.race_date} today={today} closing={travelClosing}
           onClose={closeTravel} onDismissed={() => { setTravel(null); setTravelClosing(false) }}
