@@ -623,7 +623,81 @@ def shift_rows(rows: list[dict[str, Any]], days: int) -> list[dict[str, Any]]:
     return out
 
 
-MERGE_MODES = ("replace", "add", "weeks")
+MERGE_MODES = ("replace", "add", "weeks", "fill")
+
+
+def next_monday_of(today: date) -> date:
+    return today + timedelta(days=(7 - today.weekday()) % 7)
+
+
+ALIGN_HOW = ("monday", "date", "race")
+
+
+def align_rows(rows: list[dict[str, Any]], how: str, *, today: date, on: date | None = None,
+               race_date: date | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    """Move a whole plan (rows with ISO dates) like TrainingPeaks' plan apply does:
+
+    * ``monday``: week 1 is this coming Monday (today when it's Monday);
+    * ``date``: week 1 is the Monday week of ``on`` (weeks run Monday to Sunday, so the
+      weekdays never change);
+    * ``race``: the plan ends on ``race_date``: its race session (else its last session)
+      lands on race day. When that session isn't on the race's weekday the plan moves by
+      whole weeks instead (weekdays kept) and the note says so.
+
+    Returns (rows, note for the user or None). Sessions that end up before today are left
+    out later by the build (the note says how many weeks that is)."""
+    if how not in ALIGN_HOW:
+        raise FormatError("Choose next Monday, a date or race day.")
+    live = [r for r in rows if isinstance(r.get("date"), str)]
+    if not live:
+        return rows, None
+    dates = sorted(date.fromisoformat(r["date"]) for r in live)
+    first_mon = dates[0] - timedelta(days=dates[0].weekday())
+    note = None
+    if how == "monday":
+        shift = (next_monday_of(today) - first_mon).days
+    elif how == "date":
+        if on is None:
+            raise FormatError("Pick a start date.")
+        shift = (on - timedelta(days=on.weekday()) - first_mon).days
+    else:
+        if race_date is None:
+            raise FormatError("There's no race date to line the plan up with. Add your race first.")
+        races = [date.fromisoformat(r["date"]) for r in live if r.get("kind") == "race" or r.get("intensity") == "race"]
+        anchor = max(races) if races else dates[-1]
+        if anchor.weekday() == race_date.weekday():
+            shift = (race_date - anchor).days
+        else:
+            shift = ((race_date - timedelta(days=race_date.weekday()))
+                     - (anchor - timedelta(days=anchor.weekday()))).days
+            note = (f"The plan's last session is on a {anchor:%A} and race day is a {race_date:%A}, "
+                    "so the weeks line up with race week: check the last few days.")
+        new_first = dates[0] + timedelta(days=shift)
+        if new_first < today:
+            behind = (today - (new_first - timedelta(days=new_first.weekday()))).days // 7
+            if behind:
+                lead = f"Race day is closer than the plan is long: its first {behind} week{'s' if behind != 1 else ''} are already behind you and left out."
+                note = lead + (" " + note if note else "")
+    out = [r | {"date": (date.fromisoformat(r["date"]) + timedelta(days=shift)).isoformat()}
+           if isinstance(r.get("date"), str) else r for r in rows]
+    return out, note
+
+
+def conflicts(old: dict[str, Any] | None, new_rows: list[dict[str, Any]], today: date) -> list[dict[str, Any]]:
+    """Days from today on where the current plan and the import both have sessions:
+    [{date, old: [titles], new: [titles]}] (rest days don't count)."""
+    if not old:
+        return []
+    t = today.isoformat()
+    have: dict[str, list[str]] = {}
+    for _, d, s in iter_sessions(old):
+        if d >= t and s["sport"] != "rest":
+            have.setdefault(d, []).append(s.get("title") or s["sport"])
+    incoming: dict[str, list[str]] = {}
+    for r in new_rows:
+        if r.get("date", "") >= t and r.get("sport") != "rest":
+            incoming.setdefault(r["date"], []).append(r.get("title") or r.get("sport") or "")
+    return [{"date": d, "old": have[d], "new": incoming[d]} for d in sorted(set(have) & set(incoming))]
 
 
 def _monday(d: str) -> str:
@@ -638,7 +712,9 @@ def merge_plans(old: dict[str, Any] | None, new: dict[str, Any], mode: str, toda
     * ``add``: the current plan's sessions from today on, plus every imported one (a day
       can't end up with more than 4 sessions);
     * ``weeks``: the current plan, except the Monday weeks the import covers, which are
-      replaced by the import.
+      replaced by the import;
+    * ``fill``: the current plan, plus imported sessions only on days it has nothing on
+      (days that clash keep the current sessions).
 
     Kept sessions lose their Garmin link (``PlanService.install`` hands their workouts to the
     next sync as orphans, and the sync uploads them again)."""
@@ -664,6 +740,11 @@ def merge_plans(old: dict[str, Any] | None, new: dict[str, Any], mode: str, toda
             if len(ss) > MAX_PER_DAY:
                 raise FormatError(f"{date.fromisoformat(d):%a %b %-d} would have {len(ss)} sessions; "
                                   f"up to {MAX_PER_DAY} a day. Move some, or replace instead.")
+    elif mode == "fill":
+        days = dict(old_days)
+        for d, ss in new_days.items():
+            if d not in old_days:
+                days[d] = ss
     else:
         days = {d: ss for d, ss in old_days.items() if _monday(d) not in covered}
         days.update(new_days)
@@ -735,23 +816,41 @@ def _session_row(d: str, s: dict[str, Any]) -> dict[str, Any]:
             "steps": s.get("steps") if s["sport"] in ("run", "bike", "swim") else None}
 
 
+TEMPLATE_LEVELS = {"beginner": "new", "intermediate": "intermediate"}
+
+
 def template_rows(tid: str, athlete: dict[str, Any], goal: dict[str, Any] | None, *, today: date,
                   start: date, weeks: int | None = None,
-                  week_templates: Any = None) -> tuple[list[dict[str, Any]], str]:
+                  week_templates: Any = None, level: str | None = None,
+                  end: date | None = None) -> tuple[list[dict[str, Any]], str]:
     """(rows, plan name) for a template, starting on the ``start`` Monday, sized by the
-    athlete's weekly hours, level and available days."""
+    athlete's weekly hours, level and available days. ``level``: beginner | intermediate
+    (else the athlete's own). ``end``: race templates finish on that day (the athlete's race
+    date) instead, starting ``weeks`` before it (or later when race day is closer)."""
     if tid not in TEMPLATES:
         raise FormatError("Unknown template.")
     label, _group, distance, default_weeks, _ = TEMPLATES[tid]
     n = weeks if isinstance(weeks, int) and not isinstance(weeks, bool) and 4 <= weeks <= 30 else default_weeks
+    if level is not None:
+        if level not in TEMPLATE_LEVELS:
+            raise FormatError("Level must be beginner or intermediate.")
+        athlete = {**athlete, "level": TEMPLATE_LEVELS[level]}
+    this_monday = today - timedelta(days=today.weekday())
+    if end is not None and distance is not None:
+        if end <= today:
+            raise FormatError("That race date has already passed.")
+        start = end - timedelta(days=end.weekday()) - timedelta(weeks=n - 1)
     start = start - timedelta(days=start.weekday())
-    if start < today - timedelta(days=today.weekday()):
-        start = today - timedelta(days=today.weekday())
+    if start < this_monday:
+        start = this_monday
     rows: list[dict[str, Any]] = []
     if distance is not None:
-        race_day = start + timedelta(weeks=n, days=-1)
-        plan = build_plan(athlete, {"date": race_day.isoformat(), "distance": distance, "title": label},
-                          today=today, start=max(start, today))
+        race_day = end if end is not None else start + timedelta(weeks=n, days=-1)
+        try:
+            plan = build_plan(athlete, {"date": race_day.isoformat(), "distance": distance, "title": label},
+                              today=today, start=max(start, today))
+        except PlanError as e:
+            raise FormatError(str(e)) from None
         scale = 1.15 if tid == "100mi" else 1.0
         for _, d, s in iter_sessions(plan):
             if s["sport"] == "rest":
@@ -794,6 +893,193 @@ def template_rows(tid: str, athlete: dict[str, Any], goal: dict[str, Any] | None
             rows.append({"date": day.isoformat(), "sport": "strength", "title": title, "minutes": mins,
                          "intensity": it, "notes": ""})
     return rows, label
+
+
+# ------------------------------------------------------ coach's own templates --
+MAX_MY_TEMPLATES = 30
+MAX_TEMPLATE_ROWS = 1000
+_KEEP = ("sport", "kind", "minutes", "title", "notes", "steps", "intensity")
+
+
+def to_relative(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """Dated rows -> (rows with ``week`` (1 = the first row's Monday week) and ``weekday``
+    0..6 instead of a date, number of weeks). Rest rows are dropped."""
+    live = [r for r in rows if isinstance(r.get("date"), str) and r.get("sport") != "rest"]
+    if not live:
+        raise FormatError("There are no sessions to save.")
+    if len(live) > MAX_TEMPLATE_ROWS:
+        raise FormatError(f"Templates can have up to {MAX_TEMPLATE_ROWS} sessions.")
+    first = min(date.fromisoformat(r["date"]) for r in live)
+    mon = first - timedelta(days=first.weekday())
+    out = []
+    for r in sorted(live, key=lambda r: r["date"]):
+        d = date.fromisoformat(r["date"])
+        out.append({"week": (d - mon).days // 7 + 1, "weekday": d.weekday(),
+                    **{k: r.get(k) for k in _KEEP if r.get(k) not in (None, "")}})
+    return out, max(r["week"] for r in out)
+
+
+def from_relative(rows: list[dict[str, Any]], start: date) -> list[dict[str, Any]]:
+    """A saved template's rows dated from the Monday week of ``start``."""
+    mon = start - timedelta(days=start.weekday())
+    out = []
+    for i, r in enumerate(rows, start=1):
+        wk, wd = r.get("week"), r.get("weekday")
+        if not isinstance(wk, int) or not isinstance(wd, int) or not 1 <= wk <= MAX_WEEKS or not 0 <= wd <= 6:
+            continue
+        out.append({"line": i, "date": (mon + timedelta(weeks=wk - 1, days=wd)).isoformat(),
+                    **{k: r.get(k) for k in _KEEP if k in r}})
+    return out
+
+
+# ------------------------------------------------- Word / OpenDocument text --
+_W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+_ODF_TABLE = "{urn:oasis:names:tc:opendocument:xmlns:table:1.0}"
+_ODF_TEXT = "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}"
+MAX_UNPACKED = 20 * 1024 * 1024
+
+
+def _zip_xml(data: bytes, name: str) -> ElementTree.Element | None:
+    import zipfile
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        raise FormatError("That file couldn't be opened.") from None
+    with z:
+        try:
+            info = z.getinfo(name)
+        except KeyError:
+            return None
+        if info.file_size > MAX_UNPACKED:
+            raise FormatError("That document is too large.")
+        raw = z.read(info)
+    if b"<!DOCTYPE" in raw[:2048] or b"<!ENTITY" in raw:
+        raise FormatError("That document couldn't be read.")
+    try:
+        return ElementTree.fromstring(raw)
+    except ElementTree.ParseError:
+        raise FormatError("That document couldn't be read.") from None
+
+
+def zip_kind(data: bytes) -> str | None:
+    """'xlsx' | 'docx' | 'ods' | 'odt' for a zip container, by its parts."""
+    import zipfile
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            names = set(z.namelist()[:2000])
+            mime = z.read("mimetype")[:100].decode("ascii", "replace") if "mimetype" in names else ""
+    except (zipfile.BadZipFile, KeyError, ValueError):
+        return None
+    if "xl/workbook.xml" in names:
+        return "xlsx"
+    if "word/document.xml" in names:
+        return "docx"
+    if "opendocument.spreadsheet" in mime:
+        return "ods"
+    if "opendocument.text" in mime:
+        return "odt"
+    return None
+
+
+def docx_content(data: bytes) -> tuple[str, list[list[list[str]]]]:
+    """(plain text, tables) of a Word .docx: paragraphs in order (tables as tab-separated
+    lines too, so the model sees everything), each table as rows of cell text. Read with
+    zipfile + ElementTree (no python-docx in the lockfile)."""
+    root = _zip_xml(data, "word/document.xml")
+    if root is None:
+        raise FormatError("That Word file has no text.")
+    body = root.find(f"{_W}body")
+    lines: list[str] = []
+    tables: list[list[list[str]]] = []
+
+    def para_text(p: ElementTree.Element) -> str:
+        parts = []
+        for e in p.iter():
+            if e.tag == f"{_W}t":
+                parts.append(e.text or "")
+            elif e.tag == f"{_W}tab":
+                parts.append("\t")
+            elif e.tag in (f"{_W}br", f"{_W}cr"):
+                parts.append("\n")
+        return "".join(parts)
+    for el in list(body) if body is not None else []:
+        if el.tag == f"{_W}p":
+            lines.append(para_text(el))
+        elif el.tag == f"{_W}tbl":
+            t: list[list[str]] = []
+            for tr in el.iter(f"{_W}tr"):
+                row = [" ".join(para_text(p) for p in tc.iter(f"{_W}p")).strip() for tc in tr.findall(f"{_W}tc")]
+                t.append(row)
+                lines.append("\t".join(row))
+            if t:
+                tables.append(t[: 2000])
+    text = "\n".join(lines).strip()
+    return text, tables
+
+
+def _odf_cell_text(cell: ElementTree.Element) -> str:
+    return "\n".join("".join(p.itertext()) for p in cell.iter(f"{_ODF_TEXT}p")).strip()
+
+
+def ods_tables(data: bytes) -> list[tuple[str, list[list[Any]]]]:
+    """(sheet name, values) per sheet of an OpenDocument spreadsheet (.ods). Numbers stay
+    numbers; dates come as ISO strings."""
+    root = _zip_xml(data, "content.xml")
+    if root is None:
+        raise FormatError("That spreadsheet couldn't be read.")
+    out: list[tuple[str, list[list[Any]]]] = []
+    ov = "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}"
+    for t in root.iter(f"{_ODF_TABLE}table"):
+        rows: list[list[Any]] = []
+        for tr in t.iter(f"{_ODF_TABLE}table-row"):
+            rep_r = min(int(tr.get(f"{_ODF_TABLE}number-rows-repeated") or 1), 50)
+            vals: list[Any] = []
+            for c in tr:
+                if c.tag not in (f"{_ODF_TABLE}table-cell", f"{_ODF_TABLE}covered-table-cell"):
+                    continue
+                rep = min(int(c.get(f"{_ODF_TABLE}number-columns-repeated") or 1), 41)
+                typ = c.get(f"{ov}value-type")
+                v: Any
+                if typ in ("float", "percentage", "currency"):
+                    try:
+                        f = float(c.get(f"{ov}value") or "")
+                        v = int(f) if f.is_integer() else f
+                    except ValueError:
+                        v = _odf_cell_text(c)
+                elif typ == "date":
+                    v = (c.get(f"{ov}date-value") or "")[:10]
+                elif typ == "time":
+                    v = _odf_cell_text(c)
+                else:
+                    v = _odf_cell_text(c) or None
+                vals.extend([v] * rep)
+                if len(vals) > 41:
+                    break
+            while vals and vals[-1] in (None, ""):
+                vals.pop()
+            if vals:
+                rows.extend([list(vals[:41]) for _ in range(rep_r)])
+            elif rows:
+                rows.append([])
+            if len(rows) > 2100:
+                break
+        while rows and not rows[-1]:
+            rows.pop()
+        out.append((t.get(f"{_ODF_TABLE}name") or f"Sheet {len(out) + 1}", rows))
+        if len(out) >= 20:
+            break
+    return out
+
+
+def odt_text(data: bytes) -> str:
+    root = _zip_xml(data, "content.xml")
+    if root is None:
+        raise FormatError("That document has no text.")
+    lines = []
+    for e in root.iter():
+        if e.tag in (f"{_ODF_TEXT}p", f"{_ODF_TEXT}h"):
+            lines.append("".join(e.itertext()))
+    return "\n".join(lines).strip()
 
 
 # ---------------------------------------------------------------- export --
@@ -869,4 +1155,6 @@ __all__ = ["FormatError", "text_minutes", "text_distance", "parse_distance", "mi
            "week_grid_rows", "find_week_grid", "mapping_info", "clean_mapping", "is_tabular",
            "parse_zwo", "parse_erg", "compact_steps", "zone_for_pct", "week_day_from_name", "workout_row",
            "shift_rows", "merge_plans", "MERGE_MODES", "TEMPLATES", "template_catalog", "template_rows",
-           "export_csv", "export_ics", "rpe_intensity", "text_rpe", "zone_intensity"]
+           "export_csv", "export_ics", "rpe_intensity", "text_rpe", "zone_intensity", "align_rows",
+           "conflicts", "to_relative", "from_relative", "docx_content", "ods_tables", "odt_text", "zip_kind",
+           "TEMPLATE_LEVELS", "ALIGN_HOW"]

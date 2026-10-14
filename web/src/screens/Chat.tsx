@@ -8,6 +8,7 @@ import { MemorySheet } from '@/components/MemorySheet'
 import { PlanSheet } from '@/components/PlanSheet'
 import { planLine } from '@/components/chat/PlanPins'
 import { PlanEditor } from '@/components/plan/PlanEditor'
+import { AddPlanLauncher } from '@/components/plan/PlanImport'
 import { SetupWizard } from '@/components/plan/SetupWizard'
 import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { Screen, TabScreen } from '@/components/plan/ui'
@@ -129,6 +130,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
+  const [addPlan, setAddPlan] = useState(false)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
   const [busy, setBusy] = useState(false)
@@ -660,7 +662,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               </button>
               <Group>
                 <SettingsRow icon={<Icon tone="muted"><Upload /></Icon>} title="I already have a plan"
-                  subtitle="Send Rabbit a PDF or screenshots from a coach or app" onClick={() => tellRabbit("Here's my training plan.")} />
+                  subtitle="A file, screenshots, pasted text or a template" onClick={() => setAddPlan(true)} />
               </Group>
             </>
           )}
@@ -927,11 +929,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onUploadPlan={() => tellRabbit("Here's my updated training plan.")}
           onEdit={() => open('memory')} onBuild={startSetup} />
       )}
+      {addPlan && <AddPlanLauncher onClose={() => setAddPlan(false)} onApplied={() => { setAddPlan(false); onChange(); void refreshThreads(); loadWeek() }} />}
       {planScreen === 'setup' && (
         <SetupWizard me={{ ...me, goal }} onClose={() => setPlanScreen(null)}
           onDone={() => { onChange(); void refreshThreads(); loadWeek(); celebrate(null, 'plan') }}
           onOpenPlan={openPlan}
-          onUploadPlan={() => tellRabbit("Here's my training plan.")}
+          onUploadPlan={() => { setPlanScreen(null); setAddPlan(true) }}
           onMeChanged={onChange} />
       )}
       {planScreen === 'coach' && (

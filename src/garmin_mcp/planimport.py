@@ -48,14 +48,22 @@ from .planbuilder import (
     swim_meters,
 )
 from .planformats import (
+    ALIGN_HOW,
+    MAX_MY_TEMPLATES,
     MERGE_MODES,
     FormatError,
+    align_rows,
     clean_mapping,
+    conflicts,
     distance_unit_of_header,
+    docx_content,
+    from_relative,
     is_tabular,
     mapping_info,
     merge_plans,
     minutes_for_distance,
+    ods_tables,
+    odt_text,
     parse_distance,
     parse_erg,
     parse_zwo,
@@ -63,7 +71,9 @@ from .planformats import (
     text_distance,
     text_minutes,
     text_rpe,
+    to_relative,
     week_grid_rows,
+    zip_kind,
     zone_intensity,
 )
 
@@ -430,8 +440,22 @@ def _xml(z: zipfile.ZipFile, name: str, budget: list[int]) -> ElementTree.Elemen
     return ElementTree.fromstring(raw)
 
 
-def xlsx_table(data: bytes) -> list[list[Any]]:
-    """Values of the first worksheet (numbers stay numbers, so date serials work)."""
+def xlsx_sheet_names(data: bytes) -> list[str]:
+    """Worksheet names in workbook order."""
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile:
+        raise PlanImportError("That file isn't a readable spreadsheet.") from None
+    with z:
+        wb = _xml(z, "xl/workbook.xml", [MAX_XLSX_UNPACKED])
+    if wb is None:
+        raise PlanImportError("That file isn't an Excel workbook (.xlsx).")
+    return [str(s.get("name") or f"Sheet {i + 1}")[:40] for i, s in enumerate(wb.findall(f"{_NS}sheets/{_NS}sheet"))][:20]
+
+
+def xlsx_table(data: bytes, sheet: int = 0) -> list[list[Any]]:
+    """Values of one worksheet (the first by default; numbers stay numbers, so date
+    serials work)."""
     try:
         z = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile:
@@ -441,8 +465,11 @@ def xlsx_table(data: bytes) -> list[list[Any]]:
         wb = _xml(z, "xl/workbook.xml", budget)
         if wb is None:
             raise PlanImportError("That file isn't an Excel workbook (.xlsx).")
-        sheet_path = "xl/worksheets/sheet1.xml"
-        first = wb.find(f"{_NS}sheets/{_NS}sheet")
+        sheets = wb.findall(f"{_NS}sheets/{_NS}sheet")
+        if sheets and not 0 <= sheet < len(sheets):
+            raise PlanImportError("That workbook doesn't have that sheet.")
+        sheet_path = f"xl/worksheets/sheet{sheet + 1}.xml"
+        first = sheets[sheet] if sheets else None
         rels = _xml(z, "xl/_rels/workbook.xml.rels", budget)
         if first is not None and rels is not None:
             rid = first.get(f"{_RNS}id")
@@ -457,11 +484,11 @@ def xlsx_table(data: bytes) -> list[list[Any]]:
         if ss is not None:
             for si in ss.findall(f"{_NS}si"):
                 shared.append("".join(t.text or "" for t in si.iter(f"{_NS}t")))
-        sheet = _xml(z, sheet_path, budget)
-        if sheet is None:
+        sheet_el = _xml(z, sheet_path, budget)
+        if sheet_el is None:
             raise PlanImportError("That workbook has no sheets.")
     table: list[list[Any]] = []
-    for row in sheet.iter(f"{_NS}row"):
+    for row in sheet_el.iter(f"{_NS}row"):
         if len(table) > MAX_ROWS + 10:
             break
         vals: dict[int, Any] = {}
@@ -641,6 +668,8 @@ EXTRACT_TOOL: dict[str, Any] = {
 Structured = Callable[..., Awaitable[dict[str, Any]]]
 
 
+HEIC_MESSAGE = ("That's an iPhone HEIC photo, which Rabbit can't read here. Take a screenshot of it "
+                "(or share it as JPEG) and drop that instead.")
 FIT_MESSAGE = ("Garmin .fit workout files can't be read here. Export the workout as a Zwift "
                ".zwo (or the plan as CSV) and drop that instead.")
 _LINK = re.compile(r"\s*(https?://\S+)\s*", re.I)
@@ -664,8 +693,8 @@ def link_message(text: str) -> str | None:
 
 
 def detect(data: bytes, name: str) -> str:
-    """'xlsx' | 'ics' | 'csv' | 'zwo' | 'erg' | 'pdf' | 'image' | 'text', by content (and
-    the extension for workout files), with the size limits of chat attachments (images
+    """'xlsx' | 'ods' | 'docx' | 'odt' | 'ics' | 'csv' | 'zwo' | 'erg' | 'pdf' | 'image' |
+    'text', by content (and the extension for workout files), with the size limits of chat attachments (images
     5 MB, PDFs 10 MB, text for the model 200 KB) and 2 MB for files parsed here."""
     if not data:
         raise PlanImportError("That file is empty.")
@@ -680,10 +709,18 @@ def detect(data: bytes, name: str) -> str:
         if len(data) > MAX_IMAGE:
             raise PlanImportError("That photo is too large (max 5 MB).")
         return "image"
+    if data[4:12] in (b"ftypheic", b"ftypheix", b"ftyphevc", b"ftypmif1", b"ftypmsf1", b"ftypheif") \
+            or name.lower().endswith((".heic", ".heif")):
+        raise PlanImportError(HEIC_MESSAGE)
     if data.startswith(b"PK"):
-        return "xlsx"
+        k = zip_kind(data)
+        if k is None:
+            raise PlanImportError("That zip file isn't a spreadsheet or a Word document. Try CSV, XLSX, "
+                                  "DOCX, PDF or a photo.")
+        return k
     if data.startswith(b"\xd0\xcf\x11\xe0"):
-        raise PlanImportError("Old .xls files can't be read. Save it as .xlsx or CSV and try again.")
+        raise PlanImportError("Old .xls and .doc files can't be read. Save it as .xlsx, .docx or CSV "
+                              "and try again.")
     try:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -1242,6 +1279,102 @@ def csv_template(today: date) -> str:
     return buf.getvalue()
 
 
+# ----------------------------------------------------------- file -> rows --
+def _csv_table(data: bytes) -> list[list[Any]]:
+    text = data.decode("utf-8-sig", errors="replace").lstrip("\ufeff")
+    try:
+        dialect: Any = csv.Sniffer().sniff(text[:4096], delimiters=",;\t")
+    except csv.Error:
+        dialect = "excel-tab" if "\t" in text[:4096] else csv.excel
+    return list(csv.reader(io.StringIO(text), dialect))
+
+
+def _table_to_rows(table: list[list[Any]], mapping: Any) -> Any:
+    """A sheet's values -> rows (+ warnings), ``{"mapping": ...}`` or None (not a sheet)."""
+    table = table[: MAX_ROWS + 20]
+    if mapping is not None:
+        m = clean_mapping(mapping, max((len(r) for r in table[:50]), default=0) or 41)
+        if m is None:
+            raise PlanImportError("Pick a column for the date (or week and day) and one for the session.")
+        got = table_rows(table, m)
+        if got is None:
+            raise PlanImportError("Couldn't read the sheet with those columns.")
+        return got
+    got = table_rows(table)
+    if got is not None:
+        return got
+    grid = week_grid_rows(table, parse_date)
+    if grid is not None:
+        return grid[0], ["Read as a week grid (rows are weeks, columns are days)."] + grid[1]
+    if is_tabular(table):
+        return {"mapping": mapping_info(table, _header_map, sniff={
+            "date": parse_date, "sport": sport_of,
+            "minutes": lambda v: parse_minutes(v) is not None and not parse_date(v)})}
+    return None
+
+
+def rows_from_file(kind: str, data: bytes, *, tz: Any = None, mapping: Any = None, ftp: Any = None,
+                   name: str = "", sheet: int | None = None, meta: dict[str, Any] | None = None) -> Any:
+    """See ``ImportService.rows_from_file``."""
+    meta = meta if meta is not None else {}
+    if kind in ("csv", "ics", "zwo", "erg") and len(data) > MAX_TABLE_BYTES:
+        raise PlanImportError("That file is too large (max 2 MB).")
+    if kind in ("zwo", "erg"):
+        try:
+            w = parse_zwo(data) if kind == "zwo" else parse_erg(data, ftp=ftp)
+        except FormatError as e:
+            raise PlanImportError(str(e)) from None
+        warns = [w["warning"]] if w.get("warning") else []
+        if w.get("steps") is None:
+            warns.append(f"{name or 'That workout'} has too many steps to keep its structure; "
+                         "the time and notes are kept.")
+        return {"workout": w, "warnings": warns}
+    if kind == "ics":
+        return parse_ics(data.decode("utf-8-sig", errors="replace"), tz)
+    try:
+        if kind in ("docx", "odt"):
+            if kind == "docx":
+                text, tables = docx_content(data)
+            else:
+                text, tables = odt_text(data), []
+            # A table in the document that reads as a plan wins; else the text goes to the model.
+            for t in tables:
+                got = _table_to_rows([[c for c in r] for r in t], None)
+                if isinstance(got, tuple) and got[0]:
+                    return got
+            if not text.strip():
+                raise PlanImportError("That document has no text Rabbit can read.")
+            return {"text": text.encode()[:MAX_TEXT]}
+        if kind in ("xlsx", "ods"):
+            if kind == "xlsx":
+                names = xlsx_sheet_names(data)
+                load = lambda i: xlsx_table(data, i)
+            else:
+                book = ods_tables(data)
+                names = [n[:40] for n, _ in book]
+                load = lambda i: book[i][1]
+            meta["sheets"] = names
+            if sheet is not None:
+                if not 0 <= sheet < max(1, len(names)):
+                    raise PlanImportError("That workbook doesn't have that sheet.")
+                order = [sheet]
+            else:
+                order = list(range(max(1, len(names))))
+            for i in order:
+                got = _table_to_rows(load(i), mapping)
+                if got is not None and not (isinstance(got, tuple) and not got[0]):
+                    meta["sheet"] = i
+                    return got
+            meta["sheet"] = order[0]
+            raise PlanImportError("Couldn't find the columns in that sheet. Use the template's headers: " + CSV_HEADER
+                                  + (" (or pick another sheet)" if len(names) > 1 else ""))
+    except FormatError as e:
+        raise PlanImportError(str(e)) from None
+    if kind == "csv":
+        return _table_to_rows(_csv_table(data), mapping)
+    return None
+
+
 # ---------------------------------------------------------------- service --
 class ImportService:
     """Preview, apply and undo plan imports for one athlete. ``actor``: who's loading it
@@ -1259,59 +1392,16 @@ class ImportService:
 
     # -- sources -> raw rows --
     def rows_from_file(self, kind: str, data: bytes, *, tz: Any = None, mapping: Any = None,
-                       ftp: Any = None, name: str = "") -> Any:
+                       ftp: Any = None, name: str = "", sheet: int | None = None,
+                       meta: dict[str, Any] | None = None) -> Any:
         """Deterministic parse. Returns (rows, warnings); ``{"mapping": info}`` when it's a
         sheet whose columns we can't place (the app asks the user, then sends ``mapping``);
         ``{"workout": rows, "warnings": [...]}`` for a structured workout file (rows without
-        a date, placed by the caller); or None: needs the model (PDF, photo, prose)."""
-        if kind in ("csv", "ics", "zwo", "erg") and len(data) > MAX_TABLE_BYTES:
-            raise PlanImportError("That file is too large (max 2 MB).")
-        if kind in ("zwo", "erg"):
-            try:
-                w = parse_zwo(data) if kind == "zwo" else parse_erg(data, ftp=ftp)
-            except FormatError as e:
-                raise PlanImportError(str(e)) from None
-            warns = [w["warning"]] if w.get("warning") else []
-            if w.get("steps") is None:
-                warns.append(f"{name or 'That workout'} has too many steps to keep its structure; "
-                             "the time and notes are kept.")
-            return {"workout": w, "warnings": warns}
-        if kind == "ics":
-            return parse_ics(data.decode("utf-8-sig", errors="replace"), tz)
-        if kind == "xlsx":
-            table = xlsx_table(data)
-        elif kind == "csv":
-            text = data.decode("utf-8-sig", errors="replace").lstrip("\ufeff")
-            try:
-                dialect: Any = csv.Sniffer().sniff(text[:4096], delimiters=",;\t")
-            except csv.Error:
-                dialect = "excel-tab" if "\t" in text[:4096] else csv.excel
-            table = list(csv.reader(io.StringIO(text), dialect))
-        else:
-            return None
-        table = table[: MAX_ROWS + 20]
-        if mapping is not None:
-            m = clean_mapping(mapping, max((len(r) for r in table[:50]), default=0) or 41)
-            if m is None:
-                raise PlanImportError("Pick a column for the date (or week and day) and one for the session.")
-            got = table_rows(table, m)
-            if got is None:
-                raise PlanImportError("Couldn't read the sheet with those columns.")
-            return got
-        got = table_rows(table)
-        if got is not None:
-            return got
-        grid = week_grid_rows(table, parse_date)
-        if grid is not None:
-            return grid[0], ["Read as a week grid (rows are weeks, columns are days)."] + grid[1]
-        if is_tabular(table):
-            return {"mapping": mapping_info(table, _header_map, sniff={
-                "date": parse_date, "sport": sport_of,
-                "minutes": lambda v: parse_minutes(v) is not None and not parse_date(v)})}
-        if kind == "xlsx":
-            raise PlanImportError("Couldn't find the columns in that sheet. Use the template's "
-                                  "headers: " + CSV_HEADER)
-        return None
+        a date, placed by the caller); ``{"text": bytes}`` for a Word/OpenDocument file
+        without a readable table (its text goes to the model); or None: needs the model
+        (PDF, photo, prose). Workbooks: ``sheet`` picks one (else the first sheet that
+        reads); ``meta`` gets ``sheets`` (names) and ``sheet`` (the one used)."""
+        return rows_from_file(kind, data, tz=tz, mapping=mapping, ftp=ftp, name=name, sheet=sheet, meta=meta)
 
     def take_ai(self, actor: str, today: date) -> None:
         def apply(d: dict[str, Any]) -> None:
@@ -1356,7 +1446,13 @@ class ImportService:
         if goal and goal.get("date") and max(r["date"] for r in rows) > goal["date"]:
             warns.append("Some sessions are after the race date.")
         t = today.isoformat()
+        race = goal.get("date") if goal and isinstance(goal.get("date"), str) and goal["date"] > t else None
+        clash = conflicts(old, rows, today) if old is not None else []
         return out | {"id": pend["id"], "source": pend["source"], "name": pend.get("name"),
+                      "race_date": race, "race_title": (goal or {}).get("title") if race else None,
+                      "conflicts": clash[:30], "conflict_count": len(clash),
+                      "sheets": pend.get("sheets") or [], "sheet": pend.get("sheet"),
+                      "schedule": pend.get("schedule"), "relative": bool(pend.get("relative")),
                       "warnings": warns[:MAX_WARNINGS], "warning_count": len(warns),
                       "skipped": len(pend.get("issues") or []),
                       "rows": [r | {"past": r["date"] < t} for r in sorted(rows, key=lambda r: (r["date"], r.get("line") or 0))],
@@ -1379,7 +1475,8 @@ class ImportService:
     def preview(self, aid: str, raw: list[dict[str, Any]], *, actor: str, source: str,
                 name: str | None = None, start: date | None = None,
                 warnings: list[str] | None = None, mode: str = "replace",
-                suggested_mode: str | None = None) -> dict[str, Any]:
+                suggested_mode: str | None = None, sheets: list[str] | None = None,
+                sheet: int | None = None) -> dict[str, Any]:
         """Clean the rows, keep them as this actor's draft (24 h; ``latest`` brings it back)
         and return the preview: per-week diff, the editable rows, rows that couldn't be read
         (``issues``) and warnings."""
@@ -1407,7 +1504,11 @@ class ImportService:
         pend = {"id": iid, "actor": actor, "source": source, "name": _text(name, TEXT["name"]) or None,
                 "rows": rows, "created": int(self._clock()), "mode": mode, "issues": issues[:50],
                 "suggested_mode": suggested_mode if suggested_mode in MERGE_MODES else None,
-                "warnings": (list(warnings or []) + warns)[:MAX_WARNINGS]}
+                "warnings": (list(warnings or []) + warns)[:MAX_WARNINGS],
+                "relative": any(isinstance(r, dict) and r.get("date") in (None, "") and r.get("week") not in (None, "")
+                                for r in raw)}
+        if sheets and len(sheets) > 1:
+            pend["sheets"], pend["sheet"] = [str(x)[:40] for x in sheets[:20]], sheet
         out = self._render(aid, pend, pend["warnings"])
         self._store(aid, pend)
         return out
@@ -1421,12 +1522,35 @@ class ImportService:
         return p
 
     def update(self, aid: str, iid: str, raw: list[dict[str, Any]], *, actor: str, mode: str | None = None,
-               issues: list[Any] | None = None, name: str | None = None) -> dict[str, Any]:
+               issues: list[Any] | None = None, name: str | None = None,
+               schedule: dict[str, Any] | None = None) -> dict[str, Any]:
         """Save the user's edits to a draft (rows edited, deleted, duplicated, shifted; the
-        merge mode; issues still open) and return its fresh preview, same id."""
+        merge mode; issues still open) and return its fresh preview, same id. ``schedule``
+        ({"how": "monday" | "date" | "race", "date"?}) moves the whole plan first (see
+        ``planformats.align_rows``); the preview's ``rows`` then carry the new dates."""
         pend = dict(self._pending(aid, iid, actor))
         if not isinstance(raw, list) or len(raw) > MAX_ROWS:
             raise PlanImportError(f"Up to {MAX_ROWS} sessions at a time.")
+        note = None
+        if schedule is not None:
+            how = schedule.get("how") if isinstance(schedule, dict) else None
+            if how not in ALIGN_HOW:
+                raise PlanImportError("Choose next Monday, a date or race day.")
+            today = self._plans.today(aid)
+            on = None
+            if how == "date":
+                on = parse_date(schedule.get("date")) if isinstance(schedule.get("date"), str) else None
+                if on is None:
+                    raise PlanImportError("Pick a start date.")
+            goal = self._coach.active_goal(aid)
+            race = parse_date(goal.get("date")) if goal and goal.get("date") else None
+            ok = [r for r in raw if isinstance(r, dict) and isinstance(r.get("date"), str) and parse_date(r["date"])]
+            raw = [r | {"date": parse_date(r["date"]).isoformat()} for r in ok]  # type: ignore[union-attr]
+            try:
+                raw, note = align_rows(raw, how, today=today, on=on, race_date=race if race and race > today else None)
+            except FormatError as e:
+                raise PlanImportError(str(e)) from None
+            pend["schedule"] = {"how": how, **({"date": on.isoformat()} if on else {})}
         if mode is not None:
             if mode not in MERGE_MODES:
                 raise PlanImportError("Choose replace, add or replace weeks.")
@@ -1441,8 +1565,9 @@ class ImportService:
         if name is not None:
             pend["name"] = _text(name, TEXT["name"]) or pend.get("name")
         pend["rows"], pend["created"] = rows, int(self._clock())
-        base = [w for w in pend.get("warnings", []) if not w.startswith("Row ") and "left out" not in w]
-        out = self._render(aid, pend, base + warns)
+        base = [w for w in pend.get("warnings", []) if not w.startswith("Row ") and "left out" not in w
+                and "already passed" not in w]
+        out = self._render(aid, pend, ([note] if note else []) + base + warns)
         self._store(aid, pend)
         return out
 
@@ -1462,6 +1587,54 @@ class ImportService:
     def discard(self, aid: str, iid: str, *, actor: str) -> None:
         self._doc(aid).update(lambda d: d.get("pending", {}).pop(iid, None)
                               if (d.get("pending", {}).get(iid) or {}).get("actor") == actor else None)
+
+    # -- a coach's own templates (stored on the coach, reused for any of their athletes) --
+    def _mine(self, coach_id: str):
+        return self._s.user_doc(coach_id, "plan-templates")
+
+    def my_templates(self, coach_id: str) -> list[dict[str, Any]]:
+        ts = self._mine(coach_id).load().get("templates", {})
+        return [{"id": k, "label": v["name"], "weeks": v["weeks"], "sessions": len(v["rows"]),
+                 "created": v["created"], "group": "mine", "mode": "replace",
+                 "blurb": f"{v['weeks']} week{'s' if v['weeks'] != 1 else ''} · {len(v['rows'])} sessions"}
+                for k, v in sorted(ts.items(), key=lambda kv: -kv[1]["created"])]
+
+    def save_template(self, coach_id: str, name: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        """Save dated rows (a draft's, or a plan's) as the coach's template: weeks are kept
+        relative to the first Monday, so it can start on any date for any athlete."""
+        label = _text(name, 60)
+        if not label:
+            raise PlanImportError("Give the template a name.")
+        try:
+            rel, weeks = to_relative(rows)
+        except FormatError as e:
+            raise PlanImportError(str(e)) from None
+        tid = "my" + secrets.token_hex(5)
+        now = int(self._clock())
+
+        def put(d: dict[str, Any]) -> None:
+            ts = d.setdefault("templates", {})
+            same = next((k for k, v in ts.items() if v["name"].lower() == label.lower()), None)
+            if same is None and len(ts) >= MAX_MY_TEMPLATES:
+                raise PlanImportError(f"You can keep up to {MAX_MY_TEMPLATES} templates. Delete one first.")
+            if same is not None:
+                ts.pop(same)
+            ts[tid] = {"name": label, "weeks": weeks, "rows": rel, "created": now}
+        self._mine(coach_id).update(put)
+        return next(t for t in self.my_templates(coach_id) if t["id"] == tid)
+
+    def delete_template(self, coach_id: str, tid: str) -> None:
+        self._mine(coach_id).update(lambda d: d.get("templates", {}).pop(tid, None))
+
+    def my_template_rows(self, coach_id: str, tid: str, start: date) -> tuple[list[dict[str, Any]], str]:
+        t = self._mine(coach_id).load().get("templates", {}).get(tid) if isinstance(tid, str) else None
+        if t is None:
+            raise PlanImportError("That template isn't there anymore.")
+        return from_relative(t["rows"], start), t["name"]
+
+    def draft_rows(self, aid: str, iid: str, actor: str) -> tuple[list[dict[str, Any]], str | None]:
+        p = self._pending(aid, iid, actor)
+        return p["rows"], p.get("name")
 
     # -- apply / undo --
     def apply(self, aid: str, iid: str, *, actor: str, actor_name: str, actor_role: str
@@ -1567,4 +1740,5 @@ class ImportService:
 
 __all__ = ["ImportService", "PlanImportError", "clean_rows", "build_import_plan", "diff", "preview",
            "parse_csv", "parse_ics", "xlsx_table", "table_rows", "detect", "extract", "week_templates",
-           "csv_template", "plan_rows", "EXTRACT_TOOL", "AI_PER_DAY", "MAX_WEEKS", "INTENSITIES", "SPORTS"]
+           "csv_template", "plan_rows", "EXTRACT_TOOL", "AI_PER_DAY", "MAX_WEEKS", "INTENSITIES", "SPORTS",
+           "rows_from_file", "xlsx_sheet_names"]
