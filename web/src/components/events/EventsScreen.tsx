@@ -1,7 +1,7 @@
 // Events: every race on your calendar. Add, edit, look up, delete, and pick the main one
 // (the race your plan builds toward). Other races become B/C race days in the plan.
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
+import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -12,6 +12,7 @@ import {
 } from '@/lib/events'
 import { EventBasics, EventGoal, InfoBlock } from './EventForm'
 import { RacePackScreen } from './RacePackScreen'
+import { RaceFitScreen } from './RaceFitScreen'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
@@ -32,6 +33,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const [editing, setEditing] = useState<RaceEvent | 'new' | null>(null)
   const [showPast, setShowPast] = useState(false)
   const [changed, setChanged] = useState(false)
+  const [fit, setFit] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
@@ -80,7 +82,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">
-                {upcoming.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} />)}
+                {upcoming.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} onFit={() => setFit(e.id)} />)}
               </section>
             )}
             {past.length > 0 && (
@@ -103,17 +105,32 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         <EventEditor event={editing === 'new' ? null : editing} isFirst={events !== null && events.length === 0} imperial={imperial}
           onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
       )}
+      {fit && <RaceFitScreen eventId={fit} onClose={() => setFit(null)} />}
     </>
   )
 }
 
-function EventCard({ e, onClick }: { e: RaceEvent; onClick: () => void }) {
+function EventCard({ e, onClick, onFit }: { e: RaceEvent; onClick: () => void; onFit?: () => void }) {
+  const n = daysUntil(e.date)
+  if (!onFit) return <EventCardButton e={e} onClick={onClick} />
+  return (
+    <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
+      <EventCardButton e={e} onClick={onClick} bare />
+      <button type="button" onClick={onFit}
+        className="flex w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+        <Gauge className="size-3.5" /> Race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+      </button>
+    </div>
+  )
+}
+
+function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => void; bare?: boolean }) {
   const Icon = TYPE_ICON[e.type] ?? Activity
   const n = daysUntil(e.date)
   return (
     <button type="button" onClick={onClick}
-      className={cn('flex w-full items-center gap-3 rounded-xl border bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)',
-        e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
+      className={cn('flex w-full items-center gap-3 bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)',
+        !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && n < 0 && 'opacity-70')}>
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
         e.main ? 'bg-(--accent) text-white' : 'bg-(--accent-subtle) text-(--accent)')}>
         <Icon className="size-5" />
@@ -150,6 +167,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [pack, setPack] = useState(false)
+  const [fitOpen, setFitOpen] = useState(false)
   const set = (p: EventFields) => setV((x) => ({ ...x, ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   const past = !!event && daysUntil(event.date) < 0
@@ -163,7 +181,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
 
   function payload(): EventFields {
     const f: EventFields = {}
-    for (const k of ['name', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info'] as const) {
+    for (const k of ['name', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info', 'elevation_m', 'course_profile'] as const) {
       if (v[k] !== undefined && (!event || v[k] !== event[k])) (f as Record<string, unknown>)[k] = v[k]
     }
     if (f.goal_type !== undefined && f.goal_type !== 'time' && !event?.target_time) delete f.target_time
@@ -183,7 +201,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
       </>}>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />
       {v.info && <Card className="p-4"><InfoBlock info={v.info} /></Card>}
-      <EventGoal value={v} onChange={set} hidePriority={event?.main} />
+      <EventGoal value={v} onChange={set} hidePriority={event?.main} imperial={imperial} />
       <Card>
         <Field label="Notes" hint="Logistics, travel, who's coming, gear to sort.">
           <textarea className={areaCls} value={v.notes ?? ''} maxLength={1000} onChange={(e) => set({ notes: e.target.value })} />
@@ -203,10 +221,16 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
         </label>
       )}
       {event && !past && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => setPack(true)}>
-          <Backpack className="size-4" /> Race-week pack
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setPack(true)}>
+            <Backpack className="size-4" /> Race-week pack
+          </Button>
+          <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFitOpen(true)}>
+            <Gauge className="size-4" /> Race fit
+          </Button>
+        </div>
       )}
+      {fitOpen && event && <RaceFitScreen eventId={event.id} onClose={() => setFitOpen(false)} />}
       {pack && event && <RacePackScreen eventId={event.id} imperial={imperial} onClose={() => setPack(false)} />}
       {event && !event.main && !past && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'main'}

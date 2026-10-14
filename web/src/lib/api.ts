@@ -32,6 +32,8 @@ export type Me = {
   calendar: { available: boolean; connected: boolean }
   oura: { available: boolean; connected: boolean }
   profile: { name: string; picture: string }
+  /** version of the uploaded profile photo (null: none; use the Google picture) */
+  photo?: number | null
   /** the reply still running server-side, and the thread it belongs to */
   chat: { available: boolean; active_turn: string | null; active_thread: string | null }
   settings: CoachSettings

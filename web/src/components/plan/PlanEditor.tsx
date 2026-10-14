@@ -20,6 +20,7 @@ import { TravelSheet } from './TravelSheet'
 import { AdjustCard } from './AdjustCard'
 import { getAdjust, type Proposal } from '@/lib/adjust'
 import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/lib/calendar'
+import { athleteChat } from '@/lib/coach'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
@@ -56,6 +57,14 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [travelClosing, setTravelClosing] = useState(false)
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
+  const [unread, setUnread] = useState<string[]>([])
+  const canMessage = !!onMessage
+  useEffect(() => {
+    if (coachMode || !canMessage) return
+    athleteChat.list().then((r) => setUnread(r.threads.filter((t) => t.session_id && t.last?.from === 'coach' &&
+      t.read?.athlete !== t.last.id).map((t) => t.session_id!)), () => {})
+  }, [coachMode, canMessage])
   useEffect(() => {
     if (coachMode) return
     getAdjust().then(setProposal, () => {})
@@ -234,7 +243,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                   </span>
                   <div className="min-w-0 flex-1">
                     {d.sessions.map((s) => (
-                      <SessionLine key={s.id} s={s} onClick={s.sport === 'rest' && past ? undefined : () => setEditing({ session: s, date: d.date })} />
+                      <SessionLine key={s.id} s={s} unread={unread.includes(s.id)} onClick={s.sport === 'rest' && past ? undefined : () => setEditing({ session: s, date: d.date })} />
                     ))}
                     {!d.sessions.length && <p className="py-2 text-[0.7647rem] text-(--text-muted)">Rest</p>}
                   </div>
@@ -334,7 +343,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             setEditing(null)
             onMessage({ id: s.id, title: s.title, date: editing.date })
           } : undefined}
-          messageLabel={messageLabel}
+          messageLabel={editing.session && unread.includes(editing.session.id) ? 'New reply from your coach' : messageLabel}
           onAsk={editing.session && !coachMode ? () => {
             const s = editing.session!
             setEditing(null); close()

@@ -37,7 +37,8 @@ from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
 from .adjust import propose as propose_adjustment
-from . import racepack
+from . import racefit, racepack
+from .profilephoto import MAX_PHOTO, PhotoError, PhotoStore
 from .share import Shares
 from .share import render as render_share
 from . import legal
@@ -59,7 +60,7 @@ COACH_PATHS = ("/app/api/me", "/app/api/coach/", "/app/api/push/")
 COACH_GOAL_FIELDS = ("id", "title", "date", "distance", "type", "goal_type", "target_time", "priority",
                      "location", "status", "created")
 COACH_GOAL_PRIVATE = ("notes", "plan")
-COACH_EVENT_PRIVATE = ("notes", "debrief", "plan")  # same rule for events on the calendar
+COACH_EVENT_PRIVATE = ("notes", "debrief", "plan", "strategy")  # same rule for events on the calendar
 PUSH_THREAD_INTERVAL = 60   # at most one coach-chat push per thread per minute
 PUSH_TEST_PER_HOUR = 5
 
@@ -202,6 +203,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "coach_unread": coach_chat.unread(user_id, "athlete")
             if coach_chat is not None and not user_id.startswith("coach_") else 0,
             "profile": auth.profile(user_id),
+            "photo": _photo_version(user_id),
             "settings": _settings_view(user_id),
             "dev": {"fake_garmin": fake_garmin, "tools": sorted(dev) if dev else []},
             "athlete": chat.agent.coach.athlete(user_id) if chat else {},
@@ -1099,7 +1101,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         for link in links.athletes_of(user_id):
             aid = link["athlete_id"]
             goal = _coach().active_goal(aid) if chat else None
-            out.append({"athlete_id": aid, "profile": auth.profile(aid), **_coach_view(link),
+            out.append({"athlete_id": aid, "profile": auth.profile(aid), "photo": _photo_version(aid), **_coach_view(link),
                         "goal": {k: goal.get(k) for k in ("title", "date", "distance")} if goal else None,
                         "unread": coach_chat.unread(aid, "coach", coach=link["email"])})
         return JSONResponse({"athletes": out})
@@ -1109,7 +1111,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         link = await _plan_call(lambda: links.require(user_id, aid))
         coach = _coach()
         return JSONResponse({
-            "athlete_id": aid, "profile": auth.profile(aid), "link": _coach_view(link),
+            "athlete_id": aid, "profile": auth.profile(aid), "photo": _photo_version(aid), "link": _coach_view(link),
             "athlete": coach.athlete(aid), "goal": coach_goal_view(coach.active_goal(aid), link),
             "events": [coach_event_view(e, link) for e in chat.agent.events.list(aid)] if chat else [],
             "notes": coach_notes.list(aid, coach=link["email"]),
@@ -1208,8 +1210,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         def run() -> dict[str, Any]:
             link = links.require(user_id, aid)
+            eid = body.get("event_id")
+            if eid not in (None, "") and (not isinstance(eid, str) or chat is None):
+                raise CoachError("event not found")
+            if eid:
+                chat.agent.events.get(aid, eid)  # a race note must be on this athlete's calendar
             return coach_notes.add(aid, link["email"], body.get("text"), shared=body.get("shared", True) is True,
-                                   pinned=body.get("pinned") is True)
+                                   pinned=body.get("pinned") is True, event_id=eid or None)
         return JSONResponse({"note": await _plan_call(run)}, status_code=201)
 
     async def coach_note_update(request: Request, user_id: str) -> Response:
@@ -1429,6 +1436,107 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
 
+    # ------------------------------------------- profile photo / race fit --
+    photos = PhotoStore(store) if store is not None else None
+
+    def _photo_version(uid: str) -> int | None:
+        return photos.version(uid) if photos is not None else None
+
+    async def _photo_resp(uid: str) -> Response:
+        got = await anyio.to_thread.run_sync(photos.load, uid) if photos is not None else None
+        if got is None:
+            return _err(404, "no photo")
+        mime, data = got
+        return Response(data, media_type=mime, headers={
+            "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'",
+            "Content-Disposition": "inline"})
+
+    def _photo_cache(ep: Callable[[Request], Awaitable[Response]]) -> Callable[[Request], Awaitable[Response]]:
+        """Photo URLs carry a version (?v=), so the browser may keep them (private only)."""
+        async def inner(request: Request) -> Response:
+            resp = await ep(request)
+            if resp.status_code == 200:
+                resp.headers["Cache-Control"] = "private, max-age=86400"
+            return resp
+        return inner
+
+    async def photo_get(request: Request, user_id: str) -> Response:
+        return await _photo_resp(user_id)
+
+    async def photo_delete(request: Request, user_id: str) -> Response:
+        if photos is None:
+            return _err(503, "Photos aren't configured on this server.")
+        await anyio.to_thread.run_sync(photos.delete, user_id)
+        return JSONResponse({"ok": True, "photo": None})
+
+    async def photo_upload(request: Request) -> Response:
+        """Raw-body image upload. Same guards as _api, minus the JSON content type."""
+        if not host_ok(request):
+            return _err(400, "bad host")
+        user_id = auth.user_for(request)
+        if user_id is None:
+            return _err(401, "not signed in")
+        if request.headers.get("origin", "") != settings.public_base_url:
+            return _err(403, "bad origin")
+        if _is_coach_account(user_id):
+            return _err(403, "Coach accounts can only use the coach view.")
+        if photos is None:
+            return _err(503, "Photos aren't configured on this server.")
+        try:
+            declared = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            return _err(400, "bad request")
+        if declared > MAX_PHOTO:
+            return _err(413, "That photo is too large (max 300 KB).")
+        buf = bytearray()
+        async for chunk in request.stream():
+            buf += chunk
+            if len(buf) > MAX_PHOTO:
+                return _err(413, "That photo is too large (max 300 KB).")
+        try:
+            ver = await anyio.to_thread.run_sync(photos.save, user_id, bytes(buf))
+        except PhotoError as e:
+            return _err(400, str(e))
+        except Exception as e:
+            log_event(logger, logging.ERROR, "app_unexpected_error", path=request.url.path,
+                      error=type(e).__name__)
+            return _err(500, f"Internal error ({type(e).__name__})")
+        resp = JSONResponse({"ok": True, "photo": ver}, status_code=201)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    async def coach_athlete_photo(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        return await _photo_resp(aid)
+
+    def _race_notes(uid: str, eid: str) -> list[dict[str, Any]]:
+        return coach_notes.for_event(uid, eid, links.coach_emails(uid)) if coach_notes is not None else []
+
+    def _race_view(uid: str, eid: str) -> dict[str, Any]:
+        ev = _events().get(uid, eid)
+        return {"event": {k: ev.get(k) for k in ("id", "name", "type", "distance", "date", "location", "priority",
+                                                   "main", "elevation_m", "course_profile")},
+                "racefit": racefit.analyze(ev, _coach().athlete(uid)),
+                "strategy": ev.get("strategy"), "coach_notes": _race_notes(uid, eid)}
+
+    async def event_strategy_get(request: Request, user_id: str) -> Response:
+        eid = request.path_params["event_id"]
+        return JSONResponse(await _plan_call(lambda: _race_view(user_id, eid)))
+
+    async def event_strategy_post(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        eid = request.path_params["event_id"]
+        notes = [n["text"] for n in await _plan_call(lambda: _race_notes(user_id, eid))]
+        try:
+            await chat.agent.race_strategy(user_id, eid, coach_notes=notes)
+        except CoachError as e:
+            raise _UserError(str(e)) from None
+        except Exception as e:
+            log_event(logger, logging.WARNING, "strategy_failed", user_id=user_id, error=type(e).__name__)
+            raise _UserError("The strategy didn't work just now. Try again in a minute.", 502) from None
+        return JSONResponse(await _plan_call(lambda: _race_view(user_id, eid)))
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -1503,6 +1611,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/plan/garmin/sync", _plan_api(plan_sync, mutating=True), methods=["POST"]),
         Route("/app/api/plan/garmin/remove", _plan_api(plan_unsync, mutating=True),
               methods=["POST"]),
+        Route("/app/api/profile/photo", _photo_cache(_api(photo_get, mutating=False)), methods=["GET"]),
+        Route("/app/api/profile/photo", photo_upload, methods=["POST"]),
+        Route("/app/api/profile/photo", _api(photo_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/coach/athletes/{athlete_id}/photo",
+              _photo_cache(_plan_api(coach_athlete_photo, mutating=False)), methods=["GET"]),
+        Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
+        Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
         Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),
         Route("/app/api/events", _plan_api(event_create, mutating=True), methods=["POST"]),
         Route("/app/api/events/lookup", _plan_api(event_lookup, mutating=True), methods=["POST"]),

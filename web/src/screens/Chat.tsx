@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { CalendarDays, ChevronLeft, Flame, Megaphone, Users, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
+import { photoUrl } from '@/lib/photo'
 import { MemorySheet } from '@/components/MemorySheet'
 import { PlanSheet } from '@/components/PlanSheet'
 import { PlanPins } from '@/components/chat/PlanPins'
@@ -400,7 +401,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <MessagesSquare className="size-5" />
         </Button>
         <button className="rounded-full" aria-label="Settings" onClick={() => open('settings')}>
-          <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} />
+          <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
         </button>
       </header>
     )
@@ -718,7 +719,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {progress && homeInView && isCoach && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
       {planScreen === 'profile' && (
         <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
-          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} />
+          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} onOpenEvents={() => setPlanScreen('events')} />
       )}
       {sheet === 'settings' && (
         <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>

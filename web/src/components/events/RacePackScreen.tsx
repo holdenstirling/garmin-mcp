@@ -7,6 +7,7 @@ import { fmtMin } from '@/lib/plan'
 import { KIND_LABEL, fmtDist } from '@/lib/gear'
 import { getRacePack, type RacePack } from '@/lib/racepack'
 import { InfoBlock } from './EventForm'
+import { RaceFitScreen } from './RaceFitScreen'
 
 const cToF = (c: number) => Math.round(c * 9 / 5 + 32)
 
@@ -21,6 +22,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
   const [p, setP] = useState<RacePack | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
+  const [fit, setFit] = useState(false)
   // Gear checks are stored per event, under the event the pack resolved to (also when it
   // was opened as "the main event"), so they follow that race if the main one changes.
   const key = p ? `rabbit.gear.${p.event.id}` : null
@@ -41,7 +43,15 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
 
   return (
     <Screen title="Race-week pack" subtitle={p ? `${p.event.name} · ${p.days_out > 0 ? `${p.days_out} days to go` : p.days_out === 0 ? 'Race day!' : 'Done'}` : undefined}
-      closing={closing} onClose={close}>
+      closing={closing} onClose={close}
+      headerExtra={p ? (
+        <div className="mx-auto mt-2 flex max-w-xl justify-center">
+          <button type="button" onClick={() => setFit(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">
+            <Gauge className="size-3.5" /> Race fit and strategy
+          </button>
+        </div>
+      ) : undefined}>
       {!p && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {p && (
@@ -133,6 +143,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
             </Field>
           </Card>
           {Object.keys(p.info).length > 0 && <Card className="p-4"><InfoBlock info={p.info} /></Card>}
+          {fit && <RaceFitScreen eventId={p.event.id} onClose={() => setFit(false)} />}
         </>
       )}
     </Screen>

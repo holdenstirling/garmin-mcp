@@ -20,7 +20,8 @@ Storage
   "invited_at", "accepted_at", "coach_user_id"}``.
 * Per athlete ``coach_chat``: message threads between athlete and coach, general or tied
   to one planned session; and ``coach_notes``: notes a coach keeps on the athlete
-  (``shared`` ones are visible to the athlete and to Rabbit).
+  (``shared`` ones are visible to the athlete and to Rabbit; ``event_id`` makes one a race
+  note, shown in that race's Race fit view).
 """
 
 from __future__ import annotations
@@ -310,9 +311,13 @@ class CoachNotes:
         return sorted(out, key=lambda n: (not n.get("pinned"), -n["ts"]))
 
     def add(self, athlete_id: str, coach: str, text: Any, *, shared: bool = True,
-            pinned: bool = False) -> dict[str, Any]:
+            pinned: bool = False, event_id: str | None = None) -> dict[str, Any]:
+        """``event_id``: a race note, tied to one of the athlete's events (the caller checks
+        that the event is the athlete's)."""
         note = {"id": "n" + secrets.token_hex(6), "coach": coach, "text": _clean(text, 2000, "note"),
                 "shared": bool(shared), "pinned": bool(pinned), "ts": int(self._clock())}
+        if event_id:
+            note["event_id"] = event_id
 
         def apply(d: dict[str, Any]) -> None:
             notes = d.setdefault("notes", [])
@@ -321,6 +326,11 @@ class CoachNotes:
             notes.append(note)
         self._doc(athlete_id).update(apply)
         return note
+
+    def for_event(self, athlete_id: str, event_id: str, coaches: set[str]) -> list[dict[str, Any]]:
+        """Shared race notes for one event from the athlete's current coaches."""
+        return [n for n in self.list(athlete_id, shared_only=True)
+                if n.get("event_id") == event_id and n["coach"] in coaches]
 
     def update(self, athlete_id: str, coach: str, note_id: str, patch: dict[str, Any]) -> dict[str, Any]:
         def apply(d: dict[str, Any]) -> dict[str, Any]:

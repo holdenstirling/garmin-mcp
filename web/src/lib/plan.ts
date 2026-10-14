@@ -41,9 +41,19 @@ export type AthleteNumbers = {
   height_cm: number | null; weight_kg: number | null; resting_hr: number | null; max_hr: number | null
   threshold_hr: number | null; ftp_w: number | null; run_threshold_pace: number | null; swim_css: number | null
 }
-export type AthleteFull = Athlete & Partial<AthleteNumbers> & {
+export type AthleteFull = Athlete & Partial<AthleteNumbers> & Partial<AthleteTraits> & {
   sex?: 'female' | 'male' | 'other' | null; level?: 'new' | 'intermediate' | 'advanced' | null
   available_days?: string[]; long_day?: string | null; equipment?: string[]; favorite_sports?: string[]
+}
+export type Trait = typeof TRAITS[number][0]
+export type Terrain = typeof TERRAIN[number][0]
+export type PastRace = { name: string; date: string; distance: string; result: string }
+/** Athlete-entered traits for race fit, race strategy and Rabbit's context. */
+export type AthleteTraits = {
+  home_location: string; home_elevation_m: number | null; years_training: number | null
+  strengths: Trait[]; limiters: Trait[]; heat_tolerance: 'low' | 'normal' | 'high' | null
+  sweat: 'light' | 'average' | 'heavy' | 'salty' | null; altitude_acclimatized: boolean | null
+  terrain_access: Terrain[]; race_history: PastRace[]; motivation: string; season_goal: string
 }
 export type GoalFull = Goal & {
   target_time?: string | null; goal_type?: 'finish' | 'time' | 'compete' | null
@@ -109,6 +119,16 @@ export const FAVORITE_SPORTS = [
   ['swim', 'Pool swimming'], ['open_water', 'Open water'], ['strength', 'Strength'], ['yoga', 'Yoga & mobility'],
   ['hike', 'Hiking'], ['climb', 'Climbing'], ['ski', 'Skiing'], ['row', 'Rowing'], ['walk', 'Walking'],
 ] as const
+export const TRAITS = [
+  ['climbing', 'Climbing'], ['descending', 'Descending'], ['flats', 'Flats'], ['speed', 'Speed'], ['endurance', 'Endurance'],
+  ['heat', 'Heat'], ['cold', 'Cold'], ['technical_terrain', 'Technical terrain'], ['open_water', 'Open water'],
+  ['night', 'Night'], ['pacing', 'Pacing'],
+] as const
+export const TERRAIN = [
+  ['flat_roads', 'Flat roads'], ['rolling', 'Rolling'], ['hills', 'Hills'], ['mountains', 'Mountains'], ['trails', 'Trails'],
+  ['track', 'Track'], ['pool', 'Pool'], ['open_water', 'Open water'], ['trainer', 'Trainer / treadmill'],
+] as const
+export const M_PER_FT = 0.3048
 export const EQUIPMENT = [
   ['pool', 'Pool'], ['open_water', 'Open water'], ['power_meter', 'Power meter'], ['indoor_trainer', 'Indoor trainer'],
   ['hr_strap', 'HR strap'], ['treadmill', 'Treadmill'], ['gym', 'Gym'],
