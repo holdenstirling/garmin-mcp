@@ -21,6 +21,9 @@ source the athlete reads (``context_line``), so Rabbit doesn't quote a conflicti
 from __future__ import annotations
 
 import logging
+import threading
+import time
+import weakref
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -131,11 +134,72 @@ def garmin_day(readiness: Any, sleep: Any, day: str) -> dict[str, Any]:
     return row
 
 
-def garmin_recovery(service: Any, user_id: str, today: date, days: int = GARMIN_DAYS) -> dict[str, Any] | None:
-    """Last ``days`` of Garmin readiness + sleep (cached reads), shaped like ``OuraClient.recovery``.
+RECOVERY_TTL = 600     # a day's readiness + sleep, per user, reused for 10 minutes
+RECOVERY_NONE_TTL = 60  # "nothing / Garmin down" is retried sooner
+_rec_guard = threading.Lock()
+_rec_cache: "weakref.WeakKeyDictionary[Any, dict[str, tuple[float, str, int, dict[str, Any] | None]]]" = \
+    weakref.WeakKeyDictionary()
+_rec_locks: dict[str, threading.Lock] = {}
 
-    ``None`` when Garmin isn't connected or has nothing. Baselines: Garmin's own 7-day HRV
-    average when present; others need more days than we read, so they're ``None``."""
+
+def _rec_slot(service: Any) -> dict[str, tuple[float, str, int, dict[str, Any] | None]] | None:
+    try:
+        with _rec_guard:
+            return _rec_cache.setdefault(service, {})
+    except TypeError:  # not weak-referenceable (a bare stub): no cache
+        return None
+
+
+def forget_recovery(service: Any, user_id: str) -> None:
+    """Drop a user's cached Garmin recovery (new data synced)."""
+    slot = _rec_slot(service)
+    if slot is not None:
+        slot.pop(user_id, None)
+
+
+def _slice(rec: dict[str, Any] | None, days: int) -> dict[str, Any] | None:
+    if rec is None or rec["window"] <= days:
+        return rec
+    rows = rec["days"][-days:] if days > 0 else []
+    if not rows:
+        return None
+    return {**rec, "window": days, "days": rows}
+
+
+def garmin_recovery(service: Any, user_id: str, today: date, days: int = GARMIN_DAYS) -> dict[str, Any] | None:
+    """Last ``days`` of Garmin readiness + sleep, shaped like ``OuraClient.recovery``.
+
+    Cached per user + day for 10 minutes and single-flight per user, so the Progress tab's
+    parallel requests (recovery, today, insights, adjust) share one read: Garmin rate-limits
+    at ~30 calls/min and each day here is two calls. A longer cached window serves a
+    shorter request. ``None`` when Garmin isn't connected or has nothing. Baselines:
+    Garmin's own 7-day HRV average when present; others need more days than we read."""
+    slot = _rec_slot(service)
+    key = today.isoformat()
+
+    def cached() -> tuple[bool, dict[str, Any] | None]:
+        hit = slot.get(user_id) if slot is not None else None
+        if hit and hit[1] == key and hit[2] >= days and \
+                time.monotonic() - hit[0] < (RECOVERY_TTL if hit[3] is not None else RECOVERY_NONE_TTL):
+            return True, _slice(hit[3], days)
+        return False, None
+
+    ok, rec = cached()
+    if ok:
+        return rec
+    with _rec_guard:
+        lock = _rec_locks.setdefault(user_id, threading.Lock())
+    with lock:
+        ok, rec = cached()
+        if ok:
+            return rec
+        rec = _garmin_recovery_read(service, user_id, today, days)
+        if slot is not None:
+            slot[user_id] = (time.monotonic(), key, days, rec)
+        return rec
+
+
+def _garmin_recovery_read(service: Any, user_id: str, today: date, days: int) -> dict[str, Any] | None:
     rows: list[dict[str, Any]] = []
     for i in range(days - 1, -1, -1):
         d = (today - timedelta(days=i)).isoformat()
@@ -180,6 +244,7 @@ __all__ = [
     "context_line",
     "effective",
     "garmin_day",
+    "forget_recovery",
     "garmin_recovery",
     "prefs_for",
     "recovery_for",

@@ -7,9 +7,12 @@ calls, a body size cap, and a generic error for anything unexpected.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+import secrets
+import threading
 import time
 from datetime import date
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -919,7 +922,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         bonus = {f"gear:{g['id']}": GEAR_XP for g in (gear_store.list(user_id) if gear_store else [])}
         bonus |= checkin_xp_bonus(agent.checkins.list(user_id))
         bonus.update(_social_bonus(user_id))
-        bonus.update(_challenge_bonus(user_id, acts, today))
+        bonus.update(await anyio.to_thread.run_sync(lambda: _challenge_bonus(user_id, acts, today)))
         out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
             user_id, acts=acts, today=today, stats=stats,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
@@ -1277,12 +1280,16 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def coach_directory_invite(request: Request, user_id: str) -> Response:
         """"Invite as my coach" for a directory coach who has a Rabbit login."""
         assert coach_dir is not None
+        body = await read_json(request)
+        body = body if isinstance(body, dict) else {}
+        # View-only unless the athlete turned the permissions on in the confirmation sheet.
+        perms = {k: body.get(k) is True for k in ("can_edit_plan", "can_see_rabbit_chats")}
 
         def run() -> None:
             c = coach_dir.get(str(request.path_params["coach_id"]))
             if not c.get("rabbit_user_email"):
                 raise CoachError("This coach isn't on Rabbit yet. Contact them directly.")
-            links.invite(user_id, c["rabbit_user_email"], can_edit_plan=True, can_see_rabbit_chats=False)
+            links.invite(user_id, c["rabbit_user_email"], **perms)
         await _plan_call(run)
         return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]}, status_code=201)
 
@@ -1300,13 +1307,20 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                         "unread": coach_chat.unread(aid, "coach", coach=link["email"])})
         return JSONResponse({"athletes": out})
 
+    def _coach_athlete_view(a: dict[str, Any]) -> dict[str, Any]:
+        """The athlete profile a linked coach sees: no saved location, no home zip."""
+        out = {k: v for k, v in a.items() if k not in ("coach_status", "location")}
+        if isinstance(out.get("interests"), dict):
+            out["interests"] = {k: v for k, v in out["interests"].items() if k != "home_zip"}
+        return out
+
     async def coach_athlete(request: Request, user_id: str) -> Response:
         aid = _aid(request)
         link = await _plan_call(lambda: links.require(user_id, aid))
         coach = _coach()
         return JSONResponse({
             "athlete_id": aid, "profile": auth.profile(aid), "photo": _photo_version(aid), "link": _coach_view(link),
-            "athlete": {k: v for k, v in coach.athlete(aid).items() if k != "coach_status"},
+            "athlete": _coach_athlete_view(coach.athlete(aid)),
             "goal": coach_goal_view(coach.active_goal(aid), link),
             "events": [coach_event_view(e, link) for e in chat.agent.events.list(aid)] if chat else [],
             "notes": coach_notes.list(aid, coach=link["email"]),
@@ -1809,8 +1823,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         try:
             if rec_src == "oura":
                 recovery, _ = await recovery_for(agent, auth.oura, uid, today)
-            else:  # 10 days of cached Garmin reads (readiness + sleep): enough for patterns
-                recovery = await anyio.to_thread.run_sync(garmin_recovery, agent._service, uid, today, 10)
+            else:  # the same cached 3-day Garmin read as recovery/today (Garmin rate limit)
+                recovery = await anyio.to_thread.run_sync(garmin_recovery, agent._service, uid, today)
         except Exception:
             recovery = None
         try:
@@ -2258,6 +2272,22 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     _scout = _rx.ScoutCache()
     _pred_cache = _predict.BasisCache()
 
+    # Readiness grades and finish-time bases go stale when a race, the plan, check-ins, the
+    # profile or the activities change. Any write to those docs (web, Rabbit, a coach, an
+    # import) drops the user's stats cache, and every stats invalidation (incl. a newly
+    # synced workout) drops both derived caches.
+    def _drop_derived(uid: str) -> None:
+        if _readiness is not None:
+            _readiness.invalidate(uid)
+        _pred_cache.drop(uid)
+
+    def _doc_written(uid: str, name: str) -> None:
+        if chat is not None and (name in ("events", "goals", "checkins", "profile") or name.startswith("plan-")):
+            chat.agent.stats.invalidate(uid)
+    if chat is not None:
+        chat.agent.stats.on_invalidate(_drop_derived)
+        chat.agent._store.on_user_write(_doc_written)
+
     def _x2_by_sport(uid: str) -> list[dict[str, Any]]:
         try:
             return list(chat.agent.stats.get(uid).get("by_sport") or []) if chat is not None else []
@@ -2326,9 +2356,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return {"places": await _osm_places.near(*coords), "state": "ok"}
         except _osm.OverpassError as e:
             log_event(logger, logging.WARNING, "explore_places_failed", user_id=uid, error=str(e)[:40])
-            return {"places": [], "state": "failed"}
+            return {"places": [], "state": "busy" if str(e) == "busy" else "failed"}
 
-    async def _x2_groups(uid: str, city: str, state: str, today: date, *, search: bool) -> tuple[list[dict[str, Any]], str]:
+    async def _x2_groups(uid: str, city: str, state: str, today: date, *, search: bool,
+                         charge: Callable[[], Awaitable[bool]] | None = None) -> tuple[list[dict[str, Any]], str]:
         """Group activities for a city: the weekly shared cache, or (``search``) one web search
         on the daily allowance. Returns (items, ok|cached_only|limit|unavailable|failed)."""
         items = await anyio.to_thread.run_sync(lambda: _local_finder.cached(city, state, today))
@@ -2339,11 +2370,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         research = getattr(chat.agent._backend, "research", None) if chat is not None else None
         if research is None:
             return [], "unavailable"
-        try:
-            await _plan_call(lambda: _events().take_allowance(uid, "explore_ai", today, limit=_explore.AI_PER_DAY,
-                                                              message="limit"))
-        except _UserError:
-            return [], "limit"
+        if charge is not None:
+            if not await charge():
+                return [], "limit"
+        else:
+            try:
+                await _plan_call(lambda: _events().take_allowance(uid, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                                                                  message="limit"))
+            except _UserError:
+                return [], "limit"
         try:
             items = await _local_finder.find(research, city, state, today)
         except Exception as e:
@@ -2389,7 +2424,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             zip_ = str(body.get("zip") or "").strip()
             if not re.fullmatch(r"\d{5}", zip_):
                 raise _UserError("Enter a 5-digit US zip code.")
-            place = await _geocoder.zip_place(zip_)
+            try:
+                place = await _geocoder.zip_place(zip_, strict=True)
+            except _geo.LocationError as e:
+                raise _UserError(str(e), 503) from None
             if place.get("lat") is None:
                 raise _UserError("Couldn't find that zip code. Check it and try again.", 502 if not place else 400)
             lat2, lon2, source = place["lat"], place["lon"], "manual"
@@ -2422,73 +2460,132 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         log_event(logger, logging.INFO, "location_forgotten", user_id=user_id)
         return await _x2_location_resp(user_id)
 
-    async def explore_rabbit(request: Request, user_id: str) -> Response:
+    # One "Let Rabbit explore" tap = one web search against the daily allowance, however
+    # many parts (race scout, group search) end up searching. The client sends the same
+    # ``tap`` id with its parallel part requests; the first part that searches pays.
+    _rx_taps: dict[tuple[str, str], bool] = {}
+    _rx_tap_lock = threading.Lock()
+
+    def _rx_charge_sync(uid: str, tap: str, today: date) -> bool:
+        with _rx_tap_lock:
+            key = (uid, tap)
+            if key in _rx_taps:
+                return _rx_taps[key]
+            try:
+                _events().take_allowance(uid, "explore_ai", today, limit=_explore.AI_PER_DAY, message="limit")
+                ok = True
+            except CoachError:
+                ok = False
+            _rx_taps[key] = ok
+            while len(_rx_taps) > 2000:
+                _rx_taps.pop(next(iter(_rx_taps)))
+            return ok
+
+    async def _rx_charge(uid: str, tap: str, today: date) -> bool:
+        return await anyio.to_thread.run_sync(_rx_charge_sync, uid, tap, today)
+
+    async def _rx_races(user_id: str, athlete: dict[str, Any], events: list[dict[str, Any]], today: date,
+                        loc: dict[str, Any], eff: dict[str, Any], city: str, state: str,
+                        charge: Callable[[], Awaitable[bool]]) -> dict[str, Any]:
+        """For you listings and the AI web scout, run concurrently, then merged and ranked."""
         assert chat is not None
-        athlete = await _plan_call(lambda: _coach().athlete(user_id))
-        events = await _plan_call(lambda: _events().list(user_id))
-        today = _explore_today(user_id)
-        loc, eff, inferred = await anyio.to_thread.run_sync(lambda: _x2_context(user_id, athlete, events, today))
         status = await anyio.to_thread.run_sync(lambda: _fy_readiness(user_id, events, today))
         goal = await anyio.to_thread.run_sync(lambda: _x2_goal(user_id))
-        # 1. For you (RunSignup around you, or nationwide).
-        partial = False
-        try:
-            fy_res = await _foryou.default_foryou().sections(
-                user_id, interests=eff, athlete=athlete, events=events, today=today, readiness_status=status, loc=loc)
-        except Exception:
-            fy_res = {"sections": [], "partial": True, "zip": "", "state": "", "radius": None, "nationwide": True}
-        partial = bool(fy_res.get("partial"))
-        fy_races = [r for sec in fy_res["sections"] for r in sec["races"]]
-        # 2. The AI web scout for notable races (city/state only).
-        city, state = await _x2_area(loc)
+
+        async def listings() -> dict[str, Any]:
+            try:
+                return await _foryou.default_foryou().sections(
+                    user_id, interests=eff, athlete=athlete, events=events, today=today,
+                    readiness_status=status, loc=loc)
+            except Exception:
+                return {"sections": [], "partial": True, "zip": "", "state": "", "radius": None, "nationwide": True}
+
         area = ", ".join(x for x in (city, state) if x)
         main = _foryou.main_race(events, today)
         prompt = _rx.scout_prompt(eff, area=area, main=main, goal=goal, readiness=status, today=today)
-        web_state, web = "ok", _scout.get(prompt)
-        research = getattr(chat.agent._backend, "research", None)
-        if web is None:
-            web = []
+
+        async def scout() -> tuple[list[dict[str, Any]], str]:
+            hit = _scout.get(prompt)
+            if hit is not None:
+                return hit, "ok"
+            research = getattr(chat.agent._backend, "research", None)
             if research is None:
-                web_state = "unavailable"
-            else:
-                try:
-                    await _plan_call(lambda: _events().take_allowance(
-                        user_id, "explore_ai", today, limit=_explore.AI_PER_DAY, message="limit"))
-                except _UserError:
-                    web_state = "limit"
-                if web_state == "ok":
-                    try:
-                        raw = await research(_explore.WEB_SYSTEM, prompt, max_searches=5, report_tool=_explore.WEB_TOOL)
-                        web = _explore.clean_web(_explore.report_obj(raw), today)
-                        _scout.put(prompt, web)
-                    except Exception as e:
-                        log_event(logger, logging.WARNING, "explore_rabbit_web_failed", user_id=user_id,
-                                  error=type(e).__name__)
-                        web_state = "failed"
+                return [], "unavailable"
+            if not await charge():
+                return [], "limit"
+            try:
+                raw = await research(_explore.WEB_SYSTEM, prompt, max_searches=5, report_tool=_explore.WEB_TOOL)
+                web = _explore.clean_web(_explore.report_obj(raw), today)
+                _scout.put(prompt, web)
+                return web, "ok"
+            except Exception as e:
+                log_event(logger, logging.WARNING, "explore_rabbit_web_failed", user_id=user_id,
+                          error=type(e).__name__)
+                return [], "failed"
+
+        fy_res, (web, web_state) = await asyncio.gather(listings(), scout())
+        fy_races = [r for sec in fy_res["sections"] for r in sec["races"]]
         merged = _rx.dedupe([fy_races, web])
         ranked, tunes = _rx.rank(merged, interests=eff, events=events, today=today)
         shown = ranked[:_rx.LIMIT]
-        # 3. Near you: places (OpenStreetMap) + group activities (web, weekly per city).
+        zip_, st = fy_res.get("zip") or "", fy_res.get("state") or ""
+        return {"intro": _rx.intro(len(ranked), zip_=zip_, state=st, radius=fy_res.get("radius") or 0,
+                                   tunes=tunes, main=main),
+                "races": await _plan_call(lambda: _explore_hinted(user_id, shown)), "total": len(ranked),
+                "web": web_state, "partial": bool(fy_res.get("partial")), "nationwide": bool(fy_res.get("nationwide")),
+                "fy": len(fy_races), "web_n": len(web)}
+
+    async def _rx_near(user_id: str, athlete: dict[str, Any], today: date, loc: dict[str, Any], city: str,
+                       state: str, charge: Callable[[], Awaitable[bool]]) -> dict[str, Any]:
         near = await _x2_places(user_id, loc)
         groups, groups_state = [], "needs_location"
         if near["state"] == "off":
             groups_state = "off"
         elif city:
-            groups, groups_state = await _x2_groups(user_id, city, state, today, search=web_state != "limit")
-        places = near["places"][:_rx.PLACES_SHOWN]
+            groups, groups_state = await _x2_groups(user_id, city, state, today, search=True, charge=charge)
         groups = _local.order(groups, _local.relevant(athlete, await anyio.to_thread.run_sync(
             lambda: _x2_by_sport(user_id))))[:_rx.GROUPS_SHOWN]
-        zip_, st = fy_res.get("zip") or "", fy_res.get("state") or ""
-        log_event(logger, logging.INFO, "explore_rabbit", user_id=user_id, fy=len(fy_races), web=len(web),
-                  shown=len(shown), places=len(places), groups=len(groups), web_state=web_state)
-        return JSONResponse({
-            "intro": _rx.intro(len(ranked), zip_=zip_, state=st, radius=fy_res.get("radius") or 0, tunes=tunes, main=main),
-            "summary": _rx.summary(len(shown), len(places), len(groups)),
-            "count": len(shown) + len(places) + len(groups),
-            "races": await _plan_call(lambda: _explore_hinted(user_id, shown)),
-            "places": places, "groups": groups, "places_state": near["state"], "groups_state": groups_state,
-            "total": len(ranked), "web": web_state, "partial": partial, "inferred": inferred,
-            "nationwide": bool(fy_res.get("nationwide")), "location": _x2_loc_view(loc)})
+        return {"places": near["places"][:_rx.PLACES_SHOWN], "groups": groups,
+                "places_state": near["state"], "groups_state": groups_state}
+
+    async def explore_rabbit(request: Request, user_id: str) -> Response:
+        """{part?: "races"|"near", tap?: str}. Without ``part`` everything runs concurrently in
+        one response; the app asks for both parts in parallel (same ``tap``) and shows each
+        section as it lands."""
+        assert chat is not None
+        body = await read_json(request)
+        body = body if isinstance(body, dict) else {}
+        part = body.get("part") if body.get("part") in ("races", "near") else None
+        tap = body.get("tap") if isinstance(body.get("tap"), str) and re.fullmatch(r"[A-Za-z0-9_-]{6,40}", body["tap"]) \
+            else secrets.token_hex(8)
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        events = await _plan_call(lambda: _events().list(user_id))
+        today = _explore_today(user_id)
+        loc, eff, inferred = await anyio.to_thread.run_sync(lambda: _x2_context(user_id, athlete, events, today))
+        city, state = await _x2_area(loc)
+
+        async def charge() -> bool:
+            return await _rx_charge(user_id, tap, today)
+
+        async def nothing() -> None:
+            return None
+        races, near = await asyncio.gather(
+            _rx_races(user_id, athlete, events, today, loc, eff, city, state, charge) if part != "near" else nothing(),
+            _rx_near(user_id, athlete, today, loc, city, state, charge) if part != "races" else nothing())
+        n_races = len((races or {}).get("races") or [])
+        n_places = len((near or {}).get("places") or [])
+        n_groups = len((near or {}).get("groups") or [])
+        log_event(logger, logging.INFO, "explore_rabbit", user_id=user_id, part=part or "all",
+                  fy=(races or {}).get("fy", 0), web=(races or {}).get("web_n", 0), shown=n_races,
+                  places=n_places, groups=n_groups, web_state=(races or {}).get("web"))
+        out: dict[str, Any] = {"part": part or "all", "inferred": inferred, "location": _x2_loc_view(loc),
+                               "summary": _rx.summary(n_races, n_places, n_groups),
+                               "count": n_races + n_places + n_groups}
+        if races is not None:
+            out.update({k: v for k, v in races.items() if k not in ("fy", "web_n")})
+        if near is not None:
+            out.update(near)
+        return JSONResponse(out)
 
     async def _x2_local(user_id: str, *, search: bool) -> dict[str, Any]:
         athlete = await _plan_call(lambda: _coach().athlete(user_id))
@@ -2547,8 +2644,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             except ValueError:
                 raise _UserError("date must be YYYY-MM-DD") from None
         if not q.get("event_id"):
-            if not num("distance_km", 1000):
+            d_km = num("distance_km", 1000)
+            if not d_km:
                 raise _UserError("Add a distance (distance_km) to get an estimate.")
+            if d_km < 0.4:
+                raise _UserError("Distance must be at least 0.4 km.")
             num("climb_m", 15_000)
             num("elevation_m", 6000)
 

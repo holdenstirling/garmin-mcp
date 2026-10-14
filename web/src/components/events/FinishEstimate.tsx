@@ -78,9 +78,9 @@ function Detail({ p }: { p: Prediction }) {
       </div>
       <RangeBar p={p} />
       {tri && (
-        <dl className="grid grid-cols-5 gap-1 text-center">
+        <dl className="grid grid-cols-3 gap-1 text-center min-[360px]:grid-cols-5">
           {p.splits!.map((s) => (
-            <div key={s.leg} className="rounded-lg bg-(--bg-elevated) px-1 py-1.5">
+            <div key={s.leg} className="min-w-0 rounded-lg bg-(--bg-elevated) px-1 py-1.5">
               <dt className="text-[0.6471rem] text-(--text-muted)">{LEG_LABEL[s.leg]}</dt>
               <dd className="font-mono text-[0.7059rem] font-medium text-(--text)">{fmtClock(s.mid_s)}</dd>
             </div>

@@ -8,6 +8,7 @@ does the one cached Garmin read and caches the result for a few minutes.
 
 from __future__ import annotations
 
+import threading
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -325,15 +326,32 @@ class StatsService:
         self._clock = clock
         self._cache: dict[str, tuple[float, date, dict[str, Any]]] = {}
         self._acts: dict[str, tuple[float, date, list[dict[str, Any]]]] = {}
+        self._guard = threading.Lock()
+        self._on_invalidate: list[Callable[[str], None]] = []
+        self._locks: dict[str, threading.Lock] = {}
+
+    def _lock(self, user_id: str) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(user_id, threading.Lock())
 
     def activities(self, user_id: str, *, fresh: bool = False) -> tuple[date, list[dict[str, Any]]]:
-        """A year of compact activities (one Garmin read, cached a few minutes)."""
+        """A year of compact activities (one Garmin read, cached a few minutes).
+
+        Single-flight per user: the Progress tab fires ~8 requests at once on a cold load;
+        the first one reads Garmin and the rest wait on the per-user lock and reuse it
+        (Garmin rate-limits at ~30 calls/min)."""
         today = self._now(user_id).date()
+        asked = self._clock()
         hit = self._acts.get(user_id)
-        if hit and not fresh and self._clock() - hit[0] < CACHE_S and hit[1] == today:
+        if hit and not fresh and asked - hit[0] < CACHE_S and hit[1] == today:
             return today, hit[2]
-        acts = self._svc.activities_between(user_id, today - timedelta(days=HISTORY_DAYS), today)
-        self._acts[user_id] = (self._clock(), today, acts)
+        with self._lock(user_id):
+            hit = self._acts.get(user_id)
+            # Someone else read it while we waited (a fresh read counts only if it started after we asked).
+            if hit and hit[1] == today and (hit[0] >= asked if fresh else self._clock() - hit[0] < CACHE_S):
+                return today, hit[2]
+            acts = self._svc.activities_between(user_id, today - timedelta(days=HISTORY_DAYS), today)
+            self._acts[user_id] = (self._clock(), today, acts)
         return today, acts
 
     def get(self, user_id: str, *, fresh: bool = False) -> dict[str, Any]:
@@ -352,11 +370,23 @@ class StatsService:
         ``activities`` (a new workout synced) also drop the cached year of activities and
         the user's Garmin read cache, so stats, load, XP and gear mileage re-read."""
         self._cache.pop(user_id, None)
+        for fn in self._on_invalidate:
+            try:
+                fn(user_id)
+            except Exception:  # a listener must never break a sync or plan edit
+                pass
         if activities:
             self._acts.pop(user_id, None)
+            from .sources import forget_recovery
+            forget_recovery(self._svc, user_id)
             cache = getattr(self._svc, "cache", None)
             if cache is not None:
                 cache.clear_user(user_id)
+
+    def on_invalidate(self, fn: Callable[[str], None]) -> None:
+        """Call ``fn(user_id)`` whenever this user's stats are invalidated (plan edit,
+        new workout synced): readiness and prediction caches hang off this."""
+        self._on_invalidate.append(fn)
 
     def load(self, user_id: str) -> dict[str, Any]:
         from .load import compute as load_compute

@@ -1,6 +1,6 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, FileText, ListChecks, MessageCircle, MessagesSquare, Sparkles, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Sparkles, Upload, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
@@ -681,20 +681,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         </TabScreen>
       )
     }
-    const questCard = quest && progress ? (
-      <button type="button" onClick={() => showScreen('quests')}
-        className="flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left active:opacity-80">
-        <ListChecks className="size-4 shrink-0 text-(--accent)" />
-        <span className="min-w-0 flex-1 text-[0.7647rem] leading-tight text-(--accent)">
-          <span className="font-semibold">Get set up {progress.setup.done}/{progress.setup.total}</span> · Next: {quest.title}
-        </span>
-        <span className="shrink-0 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-semibold text-white">+{quest.xp} XP</span>
-        <ChevronRight className="size-4 shrink-0 text-(--accent)" />
-      </button>
-    ) : null
     return (
-      <TabScreen key="overview" title="Progress" top={seg} lead={questCard}>
+      <TabScreen key="overview" title="Progress" top={seg}>
         <StatsScreen onClose={noop} oura={me.oura.connected} onOpenPlan={builtPlan ? openPlan : undefined}
+          onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
     )

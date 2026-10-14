@@ -20,6 +20,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+import anyio
 import httpx2
 
 from . import geo
@@ -28,7 +29,8 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 RADIUS_M = 8000
 TIMEOUT_S = 25
 CACHE_S = 7 * 86400
-CACHE_MAX = 2000
+CACHE_MAX = 2000  # in memory
+DOC_MAX = 300     # in the encrypted global doc (rewritten whole on each put)
 MAX_PLACES = 40
 PER_KIND = 6
 UNNAMED_PER_KIND = 2
@@ -200,17 +202,23 @@ class Places:
             d[key] = {"ts": now, "places": places}
             for k in [k for k, v in d.items() if not isinstance(v, dict) or now - float(v.get("ts", 0)) >= CACHE_S]:
                 d.pop(k, None)
-            while len(d) > CACHE_MAX:
+            while len(d) > DOC_MAX:
                 d.pop(min(d, key=lambda k: float(d[k].get("ts", 0))))
         self._store.global_doc("overpass").update(put)
 
     async def near(self, lat: float, lon: float) -> list[dict[str, Any]]:
         """Places within ``RADIUS_M`` of the rounded point (cached); OverpassError on trouble."""
         lat2, lon2 = geo.round2(lat, lon)
-        hit = self.cached(lat2, lon2)
+        with self._lock:
+            warm = self.key(lat2, lon2) in self._mem
+        hit = self.cached(lat2, lon2) if warm or self._store is None else \
+            await anyio.to_thread.run_sync(self.cached, lat2, lon2)  # file IO off the event loop
         if hit is not None:
             return hit
-        await self._throttle.wait()
+        try:
+            await self._throttle.wait()
+        except geo.Busy:
+            raise OverpassError("busy") from None
         self.requests += 1
         transport = self._transport or TRANSPORT
         kw: dict[str, Any] = {"timeout": TIMEOUT_S + 5}
@@ -225,7 +233,7 @@ class Places:
         except Exception as e:
             raise OverpassError(type(e).__name__) from None
         places = parse(body, lat2, lon2)
-        self._put(self.key(lat2, lon2), places)
+        await anyio.to_thread.run_sync(self._put, self.key(lat2, lon2), places)
         return places
 
 

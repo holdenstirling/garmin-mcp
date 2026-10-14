@@ -754,12 +754,16 @@ def event_inputs(event: dict[str, Any]) -> dict[str, Any]:
     elif key in _RUN_NAMED and etype in ("running", "road", "trail", "run", ""):
         km = _RUN_NAMED[key]
     else:
-        info_km = None
-        for m in re.finditer(r"(\d+(?:\.\d+)?)\s*(km|k|mi|miles?)\b", str((event.get("info") or {}).get("distances") or ""), re.I):
-            v = float(m.group(1)) * (KM_MI if m.group(2).lower().startswith("mi") else 1)
-            info_km = max(info_km or 0.0, v)
-        km = info_km or _num(event.get("distance_km")) or racefit._distance_km(event)
-        if not info_km and key == "ultra":
+        def parsed(text: Any) -> float | None:
+            vals = [float(m.group(1)) * (KM_MI if m.group(2).lower().startswith("mi") else 1)
+                    for m in re.finditer(r"(\d+(?:\.\d+)?)\s*(km|k|mi|miles?)\b", str(text or ""), re.I)]
+            return max(vals) if vals else None
+        # The athlete's own event distance wins; the looked-up info often lists several
+        # distances (a 50K race page that also has a 100-miler) so its longest is a last resort.
+        own = _num(event.get("distance_km")) or parsed(event.get("distance"))
+        info_km = parsed((event.get("info") or {}).get("distances"))
+        km = own or info_km or racefit._distance_km(event)
+        if not own and not info_km and key == "ultra":
             notes.append("No distance on this race yet: assumed 80 km (look it up to sharpen this)")
     out["distance_km"] = km
     gain = racefit._gain_m(event)
@@ -895,6 +899,9 @@ def for_race(basis: dict[str, Any], race: dict[str, Any], prefer: set[str] | Non
 
 
 # ----------------------------------------------------------------- cache --
+CACHE_MAX = 2000
+
+
 class BasisCache:
     """Per-user basis for an hour (one Garmin predictor read + the cached activity year)."""
 
@@ -911,8 +918,9 @@ class BasisCache:
             return hit[1]
         b = build()
         with self._lock:
+            self._d.pop(uid, None)
             self._d[uid] = (now, b)
-            if len(self._d) > 2000:
+            while len(self._d) > CACHE_MAX:  # oldest written first
                 self._d.pop(next(iter(self._d)))
         return b
 

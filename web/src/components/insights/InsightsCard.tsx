@@ -1,4 +1,4 @@
-// "What your data says" (Progress): up to 3 deterministic insights, "Show all" for the rest.
+// "What your data says" (Progress): up to ``max`` (3; Progress shows 2) deterministic insights, "Show all" for the rest.
 // Each row: impact icon + title + one line; tap to expand the numbers, a tiny chart, why it
 // matters, one action and "Not now" (snoozes 7 days). Nothing changes the plan without a tap.
 import { useCallback, useEffect, useState } from 'react'
@@ -10,6 +10,7 @@ import { Card } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { decideAdjust } from '@/lib/adjust'
 import type { Term } from '@/lib/glossary'
+import { useTrackRefresh } from '@/components/stats/refresh'
 import { dismissInsight, getInsights, type Evidence, type Impact, type Insight } from '@/lib/insights'
 
 const SHOWN = 3
@@ -24,9 +25,11 @@ const IMPACT: Record<Impact, { icon: typeof Sparkles; color: string; bg: string;
   positive: { icon: TrendingUp, color: 'text-(--accent)', bg: 'bg-(--accent-subtle)', label: 'Going well' },
 }
 
-export function InsightsCard({ refresh = 0, onOpenPlan, onOpenSession, onOpenGear, onAsk }: {
+export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSession, onOpenGear, onAsk }: {
   /** bump to re-read with fresh data (Progress "Refresh") */
   refresh?: number
+  /** how many show before "Show all" */
+  max?: number
   onOpenPlan?: () => void; onOpenSession?: (sessionId: string) => void
   onOpenGear?: () => void; onAsk?: (text: string) => void
 }) {
@@ -35,12 +38,13 @@ export function InsightsCard({ refresh = 0, onOpenPlan, onOpenSession, onOpenGea
   const [all, setAll] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const track = useTrackRefresh()
   useEffect(() => {
     let live = true
     setError(false)
-    getInsights(attempt > 0 || refresh > 0).then((r) => { if (live) setItems(r.insights) }, () => { if (live) setError(true) })
+    track(getInsights(attempt > 0 || refresh > 0).then((r) => { if (live) setItems(r.insights) }, () => { if (live) setError(true) }))
     return () => { live = false }
-  }, [attempt, refresh])
+  }, [attempt, refresh, track])
   const drop = useCallback((id: string) => {
     setItems((xs) => xs?.filter((x) => x.id !== id) ?? null)
     dismissInsight(id).catch(() => {})
@@ -48,7 +52,7 @@ export function InsightsCard({ refresh = 0, onOpenPlan, onOpenSession, onOpenGea
 
   if (error && !items) return <ErrorState compact message="Couldn't load your insights." onRetry={() => setAttempt((n) => n + 1)} />
   if (!items || items.length === 0) return null
-  const shown = all ? items : items.slice(0, SHOWN)
+  const shown = all ? items : items.slice(0, max)
   return (
     <section className="flex flex-col gap-2" aria-label="What your data says">
       <h3 className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
@@ -65,7 +69,7 @@ export function InsightsCard({ refresh = 0, onOpenPlan, onOpenSession, onOpenGea
           ))}
         </ul>
       </Card>
-      {items.length > SHOWN && (
+      {items.length > max && (
         <button type="button" onClick={() => setAll((a) => !a)} aria-expanded={all}
           className="hit-44 self-center text-[0.7059rem] font-medium text-(--accent)">
           {all ? 'Show fewer' : `Show all ${items.length}`}

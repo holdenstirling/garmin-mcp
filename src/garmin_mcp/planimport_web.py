@@ -148,10 +148,28 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
             raise user_error("mode must be replace, add or weeks")
         return str(v)
 
-    async def read_body(request: Request) -> dict[str, Any]:
-        raw = await request.body()
-        if len(raw) > MAX_ROWS_BODY * 2:
+    async def read_capped(request: Request, cap: int) -> bytes:
+        """The request body, streamed and refused (413) past ``cap`` bytes, so a huge
+        body is never buffered whole first."""
+        try:
+            declared = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            raise user_error("bad request") from None
+        if declared > cap:
             raise user_error("That plan is too large to send at once.", 413)
+        buf = bytearray()
+        async for chunk in request.stream():
+            buf += chunk
+            if len(buf) > cap:
+                raise user_error("That plan is too large to send at once.", 413)
+        return bytes(buf)
+
+    def monday_of(d: date) -> date:
+        """Plans start on a Monday: any start date snaps back to its week's Monday."""
+        return d - timedelta(days=d.weekday())
+
+    async def read_body(request: Request) -> dict[str, Any]:
+        raw = await read_capped(request, MAX_ROWS_BODY * 2)
         body = json.loads(raw or b"null")
         if not isinstance(body, dict):
             raise ValueError("body")
@@ -213,7 +231,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
             start = next_monday(today)
             if isinstance(body.get("start"), str):
                 try:
-                    start = date.fromisoformat(body["start"])
+                    start = monday_of(date.fromisoformat(body["start"]))
                 except ValueError:
                     raise user_error("start must be YYYY-MM-DD") from None
             if tid.startswith("my"):
@@ -263,9 +281,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
             "Content-Disposition": f'attachment; filename="rabbit-{slug}.{fmt}"', "Cache-Control": "no-store"})
 
     async def rows(request: Request, user_id: str) -> Response:
-        raw = await request.body()
-        if len(raw) > MAX_ROWS_BODY:
-            raise user_error("That plan is too large to send at once.", 413)
+        raw = await read_capped(request, MAX_ROWS_BODY)
         body = json.loads(raw or b"null")
         if not isinstance(body, dict) or not isinstance(body.get("rows"), list):
             raise ValueError("body")
@@ -334,7 +350,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
         s = q.get("start")
         if s:
             try:
-                start = date.fromisoformat(s)
+                start = monday_of(date.fromisoformat(s))
             except ValueError:
                 raise user_error("start must be YYYY-MM-DD") from None
         else:

@@ -50,6 +50,7 @@ from .planbuilder import RACES
 from .stats import _rows, adherence
 
 CACHE_S = 600
+CACHE_MAX = 2000  # grades kept (LRU-ish: oldest written dropped first)
 LOOKBACK_DAYS = 42
 SAFE_RAMP, MAX_RAMP = 5.0, 7.0   # CTL per week
 ASSUMED_RAMP = 2.0               # CTL per week assumed without a plan forecast
@@ -461,7 +462,10 @@ class ReadinessService:
         out = compute(ev, inp["athlete"], today=inp["today"], acts=inp["acts"], plan=inp["plan"],
                       load=inp["load"], checkins=inp["checkins"], clock=self._clock)
         with self._lock:
+            self._cache.pop((user_id, ev["id"]), None)
             self._cache[(user_id, ev["id"])] = (self._clock(), today, out)
+            while len(self._cache) > CACHE_MAX:  # oldest written first
+                self._cache.pop(next(iter(self._cache)))
         return out, inp
 
     def get(self, user_id: str, event_id: str) -> dict[str, Any]:

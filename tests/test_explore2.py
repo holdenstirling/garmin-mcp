@@ -511,7 +511,9 @@ def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
         assert body["summary"] == f"Rabbit found {body['count']} things for you"
         assert calls[0]["zipcode"] == "80401"
         # Privacy: the model sees "Golden, CO" and race interests only.
-        scout = prompts[0][1]
+        scout = next(p for sys_, p in prompts if sys_ == explore.WEB_SYSTEM)
+        # One tap = one web search on the daily allowance (scout + groups both searched).
+        assert len(prompts) == 2 and env.store.user_doc("ann", "events").load()["explore_ai"]["n"] == 1
         assert '"Golden, CO"' in scout and "Big Trail 100" in scout and "trail running" in scout
         everything = json.dumps(prompts)
         assert "80401" not in everything and "39." not in everything and "-105" not in everything
@@ -521,6 +523,12 @@ def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
         # Second tap: scout, groups and places are cached (no new searches).
         r = await c["ann"].post("/app/api/explore/rabbit", headers=H, json={})
         assert r.status_code == 200 and len(prompts) == 2 and len(ocalls) == 1
+        # The app's parallel parts: same tap id -> races and near each come back on their own.
+        races, near = await asyncio.gather(
+            c["ann"].post("/app/api/explore/rabbit", headers=H, json={"part": "races", "tap": "tap123456"}),
+            c["ann"].post("/app/api/explore/rabbit", headers=H, json={"part": "near", "tap": "tap123456"}))
+        assert races.json()["part"] == "races" and races.json()["races"] and "places" not in races.json()
+        assert near.json()["part"] == "near" and near.json()["places"] and "races" not in near.json()
     asyncio.run(go())
 
 

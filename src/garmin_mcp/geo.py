@@ -31,12 +31,15 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+import anyio
 import httpx2
 
 REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 SEARCH_URL = "https://nominatim.openstreetmap.org/search"
 CACHE_S = 30 * 86400
-CACHE_MAX = 5000
+CACHE_MAX = 5000  # in memory
+DOC_MAX = 300     # in the encrypted global doc (it's rewritten whole on every put)
+MAX_WAIT_S = 5.0  # longest queue for a Nominatim/Overpass slot before "try again"
 MIN_INTERVAL_S = 1.0
 LOC_KEYS = ("lat", "lon", "city", "state", "zip", "source", "updated")
 SOURCES = ("device", "manual")
@@ -79,6 +82,13 @@ def user_agent(contact: str) -> str:
 
 
 # --------------------------------------------------------------- throttle --
+class Busy(Exception):
+    """The shared request queue is too long right now."""
+
+
+BUSY_MESSAGE = "Lots of people are looking right now. Try again in a few seconds."
+
+
 class Throttle:
     """At most one request per ``interval`` seconds, process-wide. Each caller reserves the
     next slot under a thread lock, then sleeps until it (works across event loops)."""
@@ -91,10 +101,14 @@ class Throttle:
         self._next = 0.0
         self._lock = threading.Lock()
 
-    async def wait(self) -> None:
+    async def wait(self, max_wait: float | None = MAX_WAIT_S) -> None:
+        """Wait for our slot. Raises ``Busy`` (without taking a slot) when the queue is
+        longer than ``max_wait`` seconds, so a burst gets a friendly "try again"."""
         with self._lock:
             now = self._clock()
             slot = max(now, self._next)
+            if max_wait is not None and slot - now > max_wait:
+                raise Busy()
             self._next = slot + self.interval
         if slot > now:
             await self._sleep(slot - now)
@@ -306,10 +320,21 @@ class Geocoder:
                 stale = [k for k, v in d.items() if not isinstance(v, dict) or now - float(v.get("ts", 0)) >= CACHE_S]
                 for k in stale:
                     d.pop(k, None)
-                if len(d) > CACHE_MAX:
-                    for k in sorted(d, key=lambda k: float(d[k].get("ts", 0)))[: len(d) - CACHE_MAX]:
+                if len(d) > DOC_MAX:
+                    for k in sorted(d, key=lambda k: float(d[k].get("ts", 0)))[: len(d) - DOC_MAX]:
                         d.pop(k, None)
             self._store.global_doc("geocache").update(put)
+
+    # File IO stays off the event loop.
+    async def _acached(self, key: str) -> dict[str, str] | None:
+        with self._lock:
+            hit = self._mem.get(key)
+        if hit is not None or self._store is None:
+            return self._cached(key)
+        return await anyio.to_thread.run_sync(self._cached, key)
+
+    async def _aput(self, key: str, value: dict[str, str]) -> None:
+        await anyio.to_thread.run_sync(self._put, key, value)
 
     async def _get(self, url: str, params: dict[str, str]) -> Any:
         await self._throttle.wait()
@@ -327,38 +352,45 @@ class Geocoder:
     async def reverse(self, lat2: float, lon2: float) -> dict[str, str]:
         lat2, lon2 = round2(lat2, lon2)
         key = f"r:{lat2:.2f},{lon2:.2f}"
-        hit = self._cached(key)
+        hit = await self._acached(key)
         if hit is not None:
             return hit
         try:
             body = await self._get(REVERSE_URL, {"format": "jsonv2", "lat": f"{lat2:.2f}", "lon": f"{lon2:.2f}",
                                                  "zoom": "10", "addressdetails": "1"})
+        except Busy:
+            raise LocationError(BUSY_MESSAGE) from None
         except Exception:
             raise LocationError("Couldn't look up that location right now. Try again, or enter a zip.") from None
         place = parse_place(body)
         if not (place["city"] or place["state"] or place["zip"]):
             raise LocationError("Couldn't find a town there. Enter a zip instead.")
-        self._put(key, place)
+        await self._aput(key, place)
         return place
 
-    async def zip_place(self, zip_: str) -> dict[str, Any]:
-        """"80204" -> {"zip", "city", "state", "country", "lat", "lon"} ({} when unknown or upstream trouble)."""
+    async def zip_place(self, zip_: str, *, strict: bool = False) -> dict[str, Any]:
+        """"80204" -> {"zip", "city", "state", "country", "lat", "lon"} ({} when unknown or upstream
+        trouble; ``strict`` raises ``LocationError`` when the shared queue is busy)."""
         if not isinstance(zip_, str) or not re.fullmatch(r"\d{5}", zip_):
             return {}
         key = f"z:{zip_}"
-        hit = self._cached(key)
+        hit = await self._acached(key)
         if hit is not None:
             return hit
         try:
             body = await self._get(SEARCH_URL, {"format": "jsonv2", "postalcode": zip_, "countrycodes": "us",
                                                 "addressdetails": "1", "limit": "1"})
+        except Busy:
+            if strict:
+                raise LocationError(BUSY_MESSAGE) from None
+            return {}
         except Exception:
             return {}
         first = body[0] if isinstance(body, list) and body else {}
         place = {**parse_place(first), **_coords(first)}
         place["zip"] = zip_
         if place["city"] or place["state"]:
-            self._put(key, place)
+            await self._aput(key, place)
         return place
 
     async def city_place(self, city: str, state: str) -> dict[str, Any]:
@@ -367,7 +399,7 @@ class Geocoder:
         if not city or not state:
             return {}
         key = f"c:{city.lower()}|{state.upper()}"
-        hit = self._cached(key)
+        hit = await self._acached(key)
         if hit is not None:
             return hit
         try:
@@ -378,7 +410,7 @@ class Geocoder:
         first = body[0] if isinstance(body, list) and body else {}
         place = {**parse_place(first), **_coords(first)}
         if place.get("lat") is not None:
-            self._put(key, place)
+            await self._aput(key, place)
         return place
 
     async def coords(self, loc: dict[str, Any]) -> tuple[float, float] | None:
@@ -411,6 +443,8 @@ def _coords(item: Any) -> dict[str, Any]:
 __all__ = [
     "STATE_CODES",
     "US_STATES",
+    "BUSY_MESSAGE",
+    "Busy",
     "Geocoder",
     "LocationError",
     "Throttle",

@@ -28,14 +28,17 @@ Personalization
 Each period offers up to 3 suggestions (easy, stretch, fun), rotated by period so they
 change week to week. An athlete joins at most ``MAX_JOINED`` per period kind. Progress is
 always computed live from ``StatsService.activities`` (cached); completion is recorded the
-first time it's seen and earns XP once through the progress ledger's bonus keys
-(``challenge:<id>``: +75 weekly, +150 monthly). The "challenge streak" counts consecutive
-periods with a completed challenge.
+first time it's seen (a closed period stays re-checkable for ``GRACE_DAYS`` = 48 h, for a
+watch that syncs late) and earns XP once through the progress ledger's bonus keys
+(``challenge:<template>:<period_start>``, so leave + re-join can't farm it; older completions
+keep ``challenge:<id>``; +75 weekly, +150 monthly). A completed challenge can't be left. The
+"challenge streak" counts consecutive periods with a completed challenge.
 
 Friends: a joined challenge can be shared with athletes the owner follows (active edge).
 The global ``challenge_groups`` doc keys a group by the owner's challenge id; invitees see
 it in their challenges card and can join the same template/target. Only participants see
-the leaderboard (progress % and first names, nothing else).
+the leaderboard (progress % and first names, nothing else). Each participant's % is stored on
+the group on their own refresh (``progress``), so a leaderboard never reads friends' Garmin.
 
 Storage: per user ``challenges`` doc ``{"joined": [...], "history": [...]}`` (history: last
 ``KEEP_HISTORY``), global ``challenge_groups`` doc ``{"groups": {id: {...}}}``.
@@ -70,6 +73,7 @@ EARLY_HOUR = 7
 MAX_INVITES = 10         # per call
 MAX_PARTICIPANTS = 10
 BONUS_DAYS = 120         # completions this recent are passed to the XP ledger
+GRACE_DAYS = 2           # a closed period stays re-checkable 48 h (late Garmin sync)
 FACTORS = {"easy": 1.1, "fun": 1.15, "stretch": 1.25}
 EVEREST_M = 8848
 _ID = re.compile(r"^[0-9a-f]{12}$")
@@ -481,18 +485,34 @@ class Challenges:
 
     # ------------------------------------------------------------- refresh --
     def _sync(self, uid: str, ctx: dict[str, Any]) -> dict[str, Any]:
-        """Record completions, move past periods to history. Returns the doc snapshot."""
+        """Record completions, move past periods to history. Returns the doc snapshot.
+
+        A period that closed in the last ``GRACE_DAYS`` is still re-checked (a watch that
+        syncs late still completes it and earns the XP). Group progress % is published to
+        the shared group so friends' leaderboards never read this athlete's Garmin."""
         today = ctx["today"]
-        progress = {c["id"]: self._progress(c, ctx) for c in self._doc(uid).load().get("joined") or []}
+        grace = (today - timedelta(days=GRACE_DAYS)).isoformat()
+        cur = self._doc(uid).load()
+        progress = {c["id"]: self._progress(c, ctx) for c in cur.get("joined") or []}
+        progress.update({c["id"]: self._progress(c, ctx) for c in cur.get("history") or []
+                         if not c.get("completed_at") and c["period_end"] >= grace})
+
+        def complete(c: dict[str, Any], p: dict[str, Any] | None) -> None:
+            if p is not None and p["done"] and not c.get("completed_at"):
+                c["completed_at"] = self._stamp(uid)
+                c["xp_key"] = f"{c['template']}:{c['period_start']}"
 
         def apply(d: dict[str, Any]) -> dict[str, Any]:
             joined = d.setdefault("joined", [])
             hist = d.setdefault("history", [])
+            for c in hist:
+                if c["id"] in progress and not c.get("completed_at") and c["period_end"] >= grace:
+                    complete(c, progress[c["id"]])
+                    c["final"] = progress[c["id"]]["value"]
             keep = []
             for c in joined:
                 p = progress.get(c["id"])
-                if p is not None and p["done"] and not c.get("completed_at"):
-                    c["completed_at"] = self._stamp(uid)
+                complete(c, p)
                 if c["period_end"] < today.isoformat():
                     if p is not None:
                         c["final"] = p["value"]
@@ -503,7 +523,31 @@ class Challenges:
             hist.sort(key=lambda c: (c["period_end"], c.get("joined_at") or ""))
             del hist[:-KEEP_HISTORY]
             return {"joined": [dict(c) for c in keep], "history": [dict(c) for c in hist]}
-        return self._doc(uid).update(apply)
+        snap = self._doc(uid).update(apply)
+        self._publish(uid, snap, progress)
+        return snap
+
+    def _publish(self, uid: str, snap: dict[str, Any], progress: dict[str, dict[str, Any]]) -> None:
+        """Store this athlete's % on each of their groups (only when it changed)."""
+        mine = {c["group"]: progress[c["id"]]["pct"] for c in snap["joined"] + snap["history"]
+                if c.get("group") and c["id"] in progress}
+        if not mine:
+            return
+        groups = self._safe(lambda: self._groups().load().get("groups") or {}, {})
+        if all(((groups.get(g) or {}).get("progress") or {}).get(uid) == pct
+               for g, pct in mine.items() if g in groups):
+            return
+
+        def apply(d: dict[str, Any]) -> None:
+            for gid, pct in mine.items():
+                g = (d.get("groups") or {}).get(gid)
+                if g and uid in g.get("participants", []):
+                    g.setdefault("progress", {})[uid] = pct
+        try:
+            with self._glock:
+                self._groups().update(apply)
+        except Exception:  # the leaderboard is a nicety; never break a refresh
+            pass
 
     def refresh(self, uid: str, *, acts: list[dict[str, Any]] | None = None,
                 today: date | None = None) -> dict[str, int]:
@@ -513,7 +557,9 @@ class Challenges:
         snap = self._sync(uid, self._ctx(uid, acts, today))
         t = today or local_today(self._now(uid))
         since = (t - timedelta(days=BONUS_DAYS)).isoformat()
-        return {f"challenge:{c['id']}": XP.get(c["period"], 0)
+        # Keyed by template + period (not the challenge id), so leaving and re-joining the
+        # same challenge can't earn it twice. Pre-change completions keep their old id key.
+        return {f"challenge:{c.get('xp_key') or c['id']}": XP.get(c["period"], 0)
                 for c in snap["joined"] + snap["history"]
                 if c.get("completed_at") and c["period_end"] >= since}
 
@@ -552,18 +598,16 @@ class Challenges:
         if not g or uid not in g.get("participants", []):
             return None
         rows = []
+        stored = g.get("progress") or {}
         for p in g["participants"][:MAX_PARTICIPANTS]:
+            # Friends' % comes from what they stored on their own refresh: reading another
+            # athlete's Garmin here would spend their rate limit (and take seconds).
             if p == uid:
-                pctx = ctx
+                pct = self._progress({**g, "sport": g.get("sport")}, ctx)["pct"]
             else:
-                try:
-                    today, acts = self._acts(p)
-                    pctx = self._ctx(p, acts, ctx["today"])
-                except Exception:
-                    rows.append({"user_id": p, "name": self._names(p), "pct": None, "me": False})
-                    continue
-            prog = self._progress({**g, "sport": g.get("sport")}, pctx)
-            rows.append({"user_id": p, "name": self._names(p), "pct": prog["pct"], "me": p == uid})
+                v = stored.get(p)
+                pct = v if isinstance(v, int) else None
+            rows.append({"user_id": p, "name": self._names(p), "pct": pct, "me": p == uid})
         rows.sort(key=lambda r: (-(r["pct"] if r["pct"] is not None else -1), not r["me"]))
         return rows
 
@@ -646,6 +690,8 @@ class Challenges:
             c = next((x for x in joined if x["id"] == cid), None)
             if c is None:
                 return None
+            if c.get("completed_at"):
+                raise ChallengeError("You've completed this one. It stays on your record.", 409)
             joined.remove(c)
             return c
         c = self._doc(uid).update(apply)
@@ -657,6 +703,7 @@ class Challenges:
                 g = (d.get("groups") or {}).get(gid)
                 if g and uid in g.get("participants", []):
                     g["participants"].remove(uid)
+                    (g.get("progress") or {}).pop(uid, None)
                     if not g["participants"]:
                         del d["groups"][gid]
             with self._glock:

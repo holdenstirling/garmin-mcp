@@ -21,9 +21,13 @@ from datetime import date
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import anyio
+
 MAX_ITEMS = 15
 KEEP_WEEKS = 3
-CACHE_MAX = 800
+CACHE_MAX = 800  # in memory
+DOC_MAX = 300    # in the encrypted global doc
+EMPTY_S = 3600   # an empty result is only trusted for an hour (not the whole week)
 CATEGORIES = ("run", "ride", "swim", "social_sports", "yoga", "climb", "other")
 CHIPS = {"run": "Run", "ride": "Ride", "swim": "Swim", "social_sports": "Social sports", "yoga": "Yoga",
          "climb": "Climb"}
@@ -180,26 +184,31 @@ class LocalFinder:
     def __init__(self, store: Any = None, *, clock: Callable[[], float] = time.time) -> None:
         self._store = store
         self._clock = clock
-        self._mem: dict[str, list[dict[str, Any]]] = {}
+        self._mem: dict[str, tuple[float, list[dict[str, Any]]]] = {}
         self._lock = threading.Lock()
         self.searches = 0
 
     def cached(self, city: str, state: str, today: date) -> list[dict[str, Any]] | None:
         key = cache_key(city, state, today)
+        now = self._clock()
         with self._lock:
-            if key in self._mem:
-                return list(self._mem[key])
+            mem = self._mem.get(key)
+        if mem is not None:
+            return list(mem[1]) if mem[1] or now - mem[0] < EMPTY_S else None
         if self._store is not None:
             hit = self._store.global_doc("localacts").load().get(key)
             if isinstance(hit, dict) and isinstance(hit.get("items"), list):
+                ts = float(hit.get("ts") or 0)
+                if not hit["items"] and now - ts >= EMPTY_S:
+                    return None
                 with self._lock:
-                    self._mem[key] = hit["items"]
+                    self._mem[key] = (ts, hit["items"])
                 return list(hit["items"])
         return None
 
     def _put(self, key: str, items: list[dict[str, Any]], today: date) -> None:
         with self._lock:
-            self._mem[key] = items
+            self._mem[key] = (self._clock(), items)
             if len(self._mem) > CACHE_MAX:
                 self._mem.pop(next(iter(self._mem)))
         if self._store is None:
@@ -211,7 +220,7 @@ class LocalFinder:
             d[key] = {"ts": self._clock(), "items": items}
             for k in [k for k in d if k.rsplit("|", 1)[-1] not in keep]:
                 d.pop(k, None)
-            while len(d) > CACHE_MAX:
+            while len(d) > DOC_MAX:
                 d.pop(min(d, key=lambda k: float((d[k] or {}).get("ts", 0))))
         self._store.global_doc("localacts").update(put)
 
@@ -219,7 +228,7 @@ class LocalFinder:
         self.searches += 1
         raw = await research(SYSTEM, prompt(city, state), max_searches=5, report_tool=TOOL)
         items = clean(raw)
-        self._put(cache_key(city, state, today), items, today)
+        await anyio.to_thread.run_sync(self._put, cache_key(city, state, today), items, today)
         return items
 
 

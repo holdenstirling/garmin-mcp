@@ -31,7 +31,7 @@ export type Place = {
   id: string; name: string; named: boolean; kind: PlaceKind; kind_label: string; lat: number; lon: number
   distance_km: number; osm_url: string; tags: { lit?: string; surface?: string; access?: string }
 }
-export type PlacesState = 'ok' | 'off' | 'needs_location' | 'failed'
+export type PlacesState = 'ok' | 'off' | 'needs_location' | 'failed' | 'busy'
 export type GroupsState = 'ok' | 'off' | 'needs_location' | 'cached_only' | 'limit' | 'unavailable' | 'failed'
 
 export type RabbitExploreResult = {
@@ -60,6 +60,13 @@ export const saveZipLocation = (zip: string) => sendJSON<LocationState>('POST', 
 export const setUseForLocal = (on: boolean) => sendJSON<LocationState>('POST', '/api/location/prefs', { use_for_local: on })
 export const forgetLocation = () => sendJSON<LocationState>('DELETE', '/api/location')
 export const letRabbitExplore = () => sendJSON<RabbitExploreResult>('POST', '/api/explore/rabbit')
+/** One part of "Let Rabbit explore". The app asks for both in parallel with the same ``tap``
+ *  id (one tap = one web search on the daily allowance) and shows each as it lands. */
+export type RabbitRaces = Pick<RabbitExploreResult, 'intro' | 'races' | 'total' | 'web' | 'partial' | 'nationwide' | 'inferred' | 'location'>
+export type RabbitNear = Pick<RabbitExploreResult, 'places' | 'groups' | 'places_state' | 'groups_state' | 'location'>
+export const rabbitExploreRaces = (tap: string) => sendJSON<RabbitRaces>('POST', '/api/explore/rabbit', { part: 'races', tap })
+export const rabbitExploreNear = (tap: string) => sendJSON<RabbitNear>('POST', '/api/explore/rabbit', { part: 'near', tap })
+export const newTap = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 /** Near you with a web search for groups when this week's city list isn't cached yet. */
 export const getLocal = () => sendJSON<LocalResult>('POST', '/api/explore/local')
 /** Near you without spending a web search (places + groups already found this week). */

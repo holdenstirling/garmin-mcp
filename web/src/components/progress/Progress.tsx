@@ -97,10 +97,13 @@ export function HomeProgress({ p, onOpenStats, onOpenSetup }: { p: Progress; onO
 export const weekGoalText = (p: Progress) => `This week: ${p.week.done} of ${p.week.target} ${p.week.label}`
 
 /** Big card at the top of Progress. ``planTime``: "2h 10m of 4h 30m" planned time this week. */
-export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
+export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }: {
   p: Progress; headline: string; planTime?: string; onOpenPlan?: () => void
+  /** setup checklist: one line here until the core setup is done (then hidden) */
+  onOpenSetup?: () => void
 }) {
   const s = p.streak
+  const q = nextQuest(p)
   const week = (
     <>
       <WeekRing done={p.week.done} target={p.week.target} />
@@ -150,6 +153,17 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
       </div>
       <p className="text-[0.8235rem] leading-snug text-(--text)">{headline}</p>
       {!s.grace_left && <p className="-mt-2 text-[0.6471rem] text-(--text-muted)">This week's free rest day is used.</p>}
+      {q && onOpenSetup && (
+        <button type="button" onClick={onOpenSetup}
+          className="-mt-1 flex min-h-11 items-center gap-2 border-t border-(--border) pt-3 text-left active:opacity-80">
+          <ListChecks className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-secondary)">
+            <span className="font-semibold text-(--accent)">Setup {p.setup.done}/{p.setup.total}</span> · Next: {q.title}
+          </span>
+          <span className="shrink-0 text-[0.6471rem] font-semibold text-(--accent)">+{q.xp} XP</span>
+          <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+        </button>
+      )}
     </div>
   )
 }

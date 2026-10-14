@@ -6,6 +6,7 @@ import { InfoTip } from '@/components/ui/InfoTip'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Card, Field } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { useTrackRefresh } from '@/components/stats/refresh'
 import { STATUS_LABEL, listReadiness, mainRace, type RaceGrade, type Readiness, type ReadinessComponent, type ReadinessStatus } from '@/lib/readiness'
 
 const GRADE_CLS: Record<string, string> = {
@@ -144,10 +145,20 @@ export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () 
  * Progress tab: the main race's grade in one tappable line. Loads its own data; renders
  * nothing when there's no upcoming race (or it can't load). ``onOpen`` gets the event id.
  */
-export function MainRaceGrade({ onOpen, className }: { onOpen: (eventId: string) => void; className?: string }) {
+export function MainRaceGrade({ onOpen, className, loadKey = 0 }: {
+  onOpen: (eventId: string) => void; className?: string
+  /** bump to re-read (Progress refresh) */
+  loadKey?: number
+}) {
   const [g, setG] = useState<RaceGrade | null>(null)
-  const load = useCallback(() => { listReadiness().then((r) => setG(mainRace(r.races)), () => setG(null)) }, [])
-  useEffect(load, [load])
+  const [error, setError] = useState(false)
+  const track = useTrackRefresh()
+  const load = useCallback(() => {
+    setError(false)
+    track(listReadiness().then((r) => setG(mainRace(r.races) ?? null), () => setError(true)))
+  }, [track])
+  useEffect(() => { load() }, [load, loadKey])
+  if (error && !g) return <ErrorState compact message="Couldn't load your race grade." onRetry={load} className={className} />
   if (!g) return null
   return (
     <button type="button" onClick={() => onOpen(g.event_id)}

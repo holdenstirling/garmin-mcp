@@ -37,7 +37,6 @@ export function useForYou(active: boolean) {
   const [bucketBusy, setBucketBusy] = useState(false)
   const [bucketError, setBucketError] = useState<string | null>(null)
   const seq = useRef(0)
-  const bucketTried = useRef(false)
 
   const load = useCallback((fresh = false) => {
     const n = ++seq.current
@@ -51,25 +50,23 @@ export function useForYou(active: boolean) {
 
   useEffect(() => { if (active && !feed && !loading && !error) load() }, [active, feed, loading, error, load])
 
-  // Bucket list: the server allows one web search a week; ask once per visit when it's due.
-  useEffect(() => {
-    if (!feed?.bucket.due || bucketTried.current) return
-    bucketTried.current = true
+  // Bucket list: a web search (one of the daily allowance), only when the athlete taps
+  // "Find bucket-list races" (never automatically on open). The server reuses a week's result.
+  const findBucket = useCallback(() => {
     setBucketBusy(true); setBucketError(null)
     fetchBucket().then(({ section }) => setFeed((f) => f && ({
       ...f, bucket: { ...f.bucket, due: false },
       sections: [...f.sections.filter((s) => s.id !== 'bucket'), ...(section.races.length ? [section] : [])],
     })), (e) => setBucketError((e as Error).message)).finally(() => setBucketBusy(false))
-  }, [feed?.bucket.due])
+  }, [])
 
   const saved = (i: Interests) => {
     setFeed((f) => f && { ...f, interests: i, has_interests: hasInterests(i) })
-    bucketTried.current = false
     load()
   }
   /** A zip typed into the inline location ask becomes the saved ("manual") location. */
   const saveZip = async (zip: string) => { await saveZipLocation(zip) }
-  return { feed, loading, error, load, saved, saveZip, bucketBusy, bucketError }
+  return { feed, loading, error, load, saved, saveZip, bucketBusy, bucketError, findBucket }
 }
 
 /** "Your interests" chip summary + edit, for the Explore header. */
@@ -89,15 +86,17 @@ export function InterestsStrip({ interests, onEdit }: { interests: Interests | n
   )
 }
 
-export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperial }: {
+export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperial, explore }: {
   state: ReturnType<typeof useForYou>
+  /** "Let Rabbit explore", shown under the first row of picks */
+  explore?: React.ReactNode
   onOpen: (r: ForYouRace) => void
   onEdit: () => void
   onSearch: () => void
   onAsk: (text: string) => void
   imperial: boolean
 }) {
-  const { feed, loading, error, load, saveZip, bucketBusy, bucketError } = state
+  const { feed, loading, error, load, saveZip, bucketBusy, bucketError, findBucket } = state
   const [hideChip, setHideChip] = useState(chipDismissed)
   const [locKey, setLocKey] = useState(0)
   const changed = () => { setLocKey((k) => k + 1); load(true) }
@@ -111,6 +110,10 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
   const dismissChip = () => { setHideChip(true); try { localStorage.setItem(CHIP_KEY, '1') } catch { /* private mode */ } }
   return (
     <div className={cn('flex flex-col gap-6 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
+      {/* First run: no saved location -> "Use my location / zip" is the first card. */}
+      {loc && !loc.searchable ? (
+        <LocationPrompt title="Add your location for nearby picks" onSaveZip={saveZip} onChanged={changed} />
+      ) : null}
       {feed.inferred && !hideChip && (
         <div className="-mb-3 flex items-center gap-1 self-start rounded-full bg-(--accent-subtle) py-0.5 pl-3 text-[0.7059rem] text-(--accent)">
           <Sparkles className="size-3.5 shrink-0" />
@@ -122,9 +125,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
           </button>
         </div>
       )}
-      {loc && !loc.searchable ? (
-        <LocationPrompt title="Add your location for nearby picks" onSaveZip={saveZip} onChanged={changed} />
-      ) : loc ? <LocationLine loc={loc} onChanged={changed} /> : null}
+      {loc?.searchable && <LocationLine loc={loc} onChanged={changed} />}
       {feed.failed && (
         <div className="flex items-center gap-2 rounded-xl bg-(--warning-subtle) px-3 py-2 text-[0.7059rem] text-(--warning-text)" role="status">
           <span className="flex-1">Race search isn't answering right now, so picks are missing. Showing what we have.</span>
@@ -133,7 +134,19 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
           </button>
         </div>
       )}
-      {feed.sections.map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
+      {feed.sections.slice(0, 1).map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
+      {explore}
+      {feed.sections.slice(1).map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
+      {feed.bucket.due && !bucketBusy && (
+        <button type="button" onClick={findBucket}
+          className="flex min-h-11 items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
+          <Sparkles className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.7647rem] font-medium text-(--accent)">Find bucket-list races</span>
+            <span className="block text-[0.6471rem] text-(--text-muted)">Rabbit searches the web · uses 1 of 5 daily searches</span>
+          </span>
+        </button>
+      )}
       <NearYouSection imperial={imperial} onAsk={onAsk} reloadKey={locKey} />
       {bucketBusy && (
         <section className="flex flex-col gap-2">

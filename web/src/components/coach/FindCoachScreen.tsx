@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, Screen, inputCls } from '@/components/plan/ui'
+import { Switch } from '@/components/settings/Grouped'
 import {
   DIRECTORY_SPORTS, getDirectory, initials, inviteDirectoryCoach, mailtoHref,
   type DirectoryCoach, type DirectoryResp,
 } from '@/lib/coachdir'
 
-const FILTERS_FROM = 4 // filters only help once the list is longer than a screen
+const FILTERS_FROM = 5 // search and filters only help once there are 5+ coaches
 
 export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited }: {
   athleteName: string
@@ -117,10 +118,14 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
 }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  // Invite confirmation: view-only unless the athlete turns these on.
+  const [confirm, setConfirm] = useState(false)
+  const [canEdit, setCanEdit] = useState(false)
+  const [canSee, setCanSee] = useState(false)
   const first = c.name.split(' ')[0] ?? c.name
   async function invite() {
     setBusy(true); setMsg(null)
-    try { await inviteDirectoryCoach(c.id); setMsg({ text: `Invited ${first}. They'll see your plan once they sign in.`, ok: true }); setTimeout(onInvited, 1200) }
+    try { await inviteDirectoryCoach(c.id, { can_edit_plan: canEdit, can_see_rabbit_chats: canSee }); setConfirm(false); setMsg({ text: `Invited ${first}. They'll see your plan once they sign in.`, ok: true }); setTimeout(onInvited, 1200) }
     catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setBusy(false) }
   }
   const askText = `Would ${c.name} (${c.business}, ${c.location}; ${c.specialties.join(', ')}) be a good coach for me${race?.name ? ` for ${race.name}` : ''}? `
@@ -193,10 +198,31 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
 
           {(c.can_invite || onAsk) && (
             <div className="flex flex-col gap-2 border-t border-(--border) pt-3">
-              {c.can_invite && (
-                <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void invite()}>
+              {c.can_invite && !confirm && (
+                <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setConfirm(true)}>
                   <UserPlus className="size-4" /> Invite as my coach
                 </Button>
+              )}
+              {c.can_invite && confirm && (
+                <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3">
+                  <p className="text-[0.7647rem] font-medium text-(--text)">What can {first} do?</p>
+                  <p className="text-[0.7059rem] text-(--text-muted)">{first} can always see your plan, races and workouts. Turn on more only if you want to.</p>
+                  <div className="flex min-h-11 items-center justify-between gap-3">
+                    <span className="text-[0.7647rem] text-(--text)">Edit my plan</span>
+                    <Switch label="Coach can edit my plan" checked={canEdit} disabled={busy} onChange={setCanEdit} />
+                  </div>
+                  <div className="flex min-h-11 items-center justify-between gap-3">
+                    <span className="text-[0.7647rem] text-(--text)">See my Rabbit chats</span>
+                    <Switch label="Coach can see my Rabbit chats" checked={canSee} disabled={busy} onChange={setCanSee} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="h-11 flex-1 text-[0.7647rem]" disabled={busy} onClick={() => setConfirm(false)}>Cancel</Button>
+                    <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void invite()}>
+                      <UserPlus className="size-4" /> Send invite
+                    </Button>
+                  </div>
+                  <p className="text-[0.6471rem] text-(--text-muted)">You can change these any time in Me → Coaches.</p>
+                </div>
               )}
               {onAsk && (
                 <Button variant="ghost" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => onAsk(askText)}>

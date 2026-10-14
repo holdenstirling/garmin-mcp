@@ -3,7 +3,7 @@
 // "Pick a challenge" opens a sheet with 3 personal suggestions per period (easy, stretch, fun).
 import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Flame, Mountain, Plus, Sparkles, Target, Trophy, UserPlus, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Sparkles, Target, Trophy, UserPlus, X } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -18,6 +18,7 @@ import { getPeople, type PersonEdge } from '@/lib/social'
 import { HopPrints } from '@/components/fx/HopPrints'
 import { RabbitHop, RabbitNap } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
+import { useTrackRefresh } from '@/components/stats/refresh'
 
 const SEEN_KEY = 'rabbit.challenges.celebrated'
 const KIND_LABEL: Record<Suggestion['kind'], string> = { easy: 'Easy', stretch: 'Stretch', fun: 'Fun' }
@@ -29,23 +30,32 @@ function markCelebrated(ids: string[]) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...celebratedIds(), ...ids])].slice(-60))) } catch { /* private mode */ }
 }
 
-export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
+export function ChallengesCard({ imperial = false, loadKey = 0, collapsible = false }: {
+  imperial?: boolean
+  /** bump to re-read (Progress refresh) */
+  loadKey?: number
+  /** Progress: one summary row ("2 active · 60%") or "Pick a challenge" that expands */
+  collapsible?: boolean
+}) {
   const [v, setV] = useState<ChallengesView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [picking, setPicking] = useState<ChallengePeriod | null>(null)
   const [inviting, setInviting] = useState<Joined | null>(null)
   const [party, setParty] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [open, setOpen] = useState(!collapsible)
+  const track = useTrackRefresh()
 
   const load = useCallback(() => {
-    getChallenges().then((r) => {
+    track(getChallenges().then((r) => {
       setV(r); setError(null)
       const seen = celebratedIds()
       const fresh = r.joined.filter((c) => c.done && !seen.includes(c.id))
       if (fresh.length) { setParty(fresh[0]!.id); markCelebrated(fresh.map((c) => c.id)) }
-    }, (e) => setError((e as Error).message))
-  }, [])
-  useEffect(() => load(), [load])
+    }, (e) => setError((e as Error).message)))
+  }, [track])
+  useEffect(() => load(), [load, loadKey])
+  useEffect(() => { if (party) setOpen(true) }, [party])
   useEffect(() => {
     if (!party) return
     // Carrot burst from the finished challenge's row (components/fx).
@@ -78,10 +88,59 @@ export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
   const monthly = v.joined.filter((c) => c.period === 'month')
   const canAdd = (p: ChallengePeriod) => v.periods[p].joined < v.periods[p].limit
   const streak = v.streak.week
+  const sheets = <>
+    {picking && (
+      <PickSheet v={v} initial={picking} imperial={imperial} onClose={() => setPicking(null)}
+        onJoined={(r) => { setV(r); setPicking(null); setOpen(true) }} />
+    )}
+    {inviting && <InviteSheet c={inviting} onClose={() => setInviting(null)} onSent={() => { setInviting(null); load() }} />}
+  </>
+
+  if (collapsible && !open) {
+    const n = v.joined.length
+    if (n === 0 && v.invites.length === 0) {
+      return (
+        <section>
+          <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
+            <Target className="size-4 shrink-0 text-(--accent)" aria-hidden />
+            <span className="min-w-0 flex-1 text-[0.7647rem] font-medium text-(--accent)">Pick a challenge</span>
+            <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">+{v.xp.week} XP</span>
+            <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          </button>
+          {sheets}
+        </section>
+      )
+    }
+    const avg = n ? Math.round(v.joined.reduce((a, c) => a + (c.done ? 100 : c.pct), 0) / n) : 0
+    const bits = [n ? `${n} active · ${avg}%` : null,
+      v.invites.length ? `${v.invites.length} invite${v.invites.length === 1 ? '' : 's'}` : null,
+      streak > 0 ? `${streak}-week streak` : null].filter(Boolean)
+    return (
+      <section>
+        <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
+          <Trophy className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.7647rem] font-medium text-(--text)">Challenges</span>
+            <span className="block truncate text-[0.7059rem] text-(--text-muted)">{bits.join(' · ')}</span>
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+        </button>
+        {sheets}
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-2">
-      <Label streak={streak} />
+      {collapsible ? (
+        <button type="button" onClick={() => setOpen(false)} aria-expanded
+          className="hit-44 flex items-center justify-between text-left">
+          <Label streak={streak} />
+          <ChevronDown className="size-4 shrink-0 rotate-180 text-(--text-muted)" aria-hidden />
+        </button>
+      ) : <Label streak={streak} />}
       {error && <p className="px-1 text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
       {v.invites.map((inv) => (
         <Card key={inv.id} className="flex items-center gap-3 px-4 py-3">
@@ -119,11 +178,7 @@ export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
       {v.recent.length > 0 && v.joined.length === 0 && (
         <p className="px-1 text-[0.6471rem] text-(--text-muted)">Last done: {v.recent[0]!.name} · {new Date(v.recent[0]!.completed_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
       )}
-      {picking && (
-        <PickSheet v={v} initial={picking} imperial={imperial} onClose={() => setPicking(null)}
-          onJoined={(r) => { setV(r); setPicking(null) }} />
-      )}
-      {inviting && <InviteSheet c={inviting} onClose={() => setInviting(null)} onSent={() => { setInviting(null); load() }} />}
+      {sheets}
     </section>
   )
 }

@@ -214,7 +214,7 @@ def test_completion_xp_idempotent_streak_and_history(svc, tmp_path) -> None:
     mine = view["joined"][0]
     assert mine["done"] and mine["pct"] == 100 and mine["completed_at"] and view["streak"]["week"] == 1
     bonus = c.refresh("ann")
-    assert bonus == {f"challenge:{j['id']}": 75}
+    assert bonus == {f"challenge:{j['template']}:{j['period_start']}": 75}
     # The ledger awards the key once, however often it's passed.
     prog = Progress(svc.store, clock=lambda: 0)
     stats = {"badges": [], "plan": None}
@@ -232,7 +232,11 @@ def test_completion_xp_idempotent_streak_and_history(svc, tmp_path) -> None:
     view = c.get("ann")
     assert view["joined"] == [] and view["recent"][0]["id"] == j["id"]
     assert view["streak"]["week"] == 1
-    assert f"challenge:{j['id']}" in c.refresh("ann")
+    assert f"challenge:{j['template']}:{j['period_start']}" in c.refresh("ann")
+    with pytest.raises(ch.ChallengeError) as e:  # completed: can't leave (and re-join to farm XP)
+        c.leave("ann", j["id"])
+    assert e.value.status == 404  # already in history
+
 
 
 def test_invites_need_follow_edge_and_leaderboard(svc) -> None:
@@ -269,6 +273,53 @@ def test_invites_need_follow_edge_and_leaderboard(svc) -> None:
         c.accept("bob", res["group"])
     c.decline("bob", res["group"])
     assert c.get("bob")["invites"] == []
+
+
+def test_late_sync_completes_a_closed_week_within_48h(svc) -> None:
+    c, st = svc.c, svc.s
+    easy = next(x for x in c.get("ann")["periods"]["week"]["suggestions"] if x["metric"] == "workouts")
+    j = c.join("ann", easy["template"], "week")
+    st.now = st.now + timedelta(days=6)  # Tuesday next week: the week closed
+    assert c.get("ann")["joined"] == [] and c.refresh("ann") == {}
+    # Garmin finally syncs last week's workouts.
+    st.acts["ann"] = history() + [act(date(2026, 10, 12), 9000 + i) for i in range(int(easy["target"]))]
+    assert c.refresh("ann") == {f"challenge:{j['template']}:{j['period_start']}": 75}
+    assert c.get("ann")["recent"][0]["id"] == j["id"]
+
+
+def test_late_sync_after_grace_earns_nothing(svc) -> None:
+    c, st = svc.c, svc.s
+    easy = next(x for x in c.get("ann")["periods"]["week"]["suggestions"] if x["metric"] == "workouts")
+    c.join("ann", easy["template"], "week")
+    st.now = st.now + timedelta(days=9)  # Friday next week: > 48 h after Sunday
+    c.get("ann")
+    st.acts["ann"] = history() + [act(date(2026, 10, 12), 9000 + i) for i in range(int(easy["target"]))]
+    assert c.refresh("ann") == {}
+
+
+def test_completed_challenge_cant_be_left_or_farmed(svc) -> None:
+    c, st = svc.c, svc.s
+    easy = next(x for x in c.get("ann")["periods"]["week"]["suggestions"] if x["metric"] == "workouts")
+    j = c.join("ann", easy["template"], "week")
+    st.acts["ann"] = history() + [act(date(2026, 10, 12), 9000 + i) for i in range(int(easy["target"]))]
+    assert c.get("ann")["joined"][0]["done"]
+    with pytest.raises(ch.ChallengeError) as e:
+        c.leave("ann", j["id"])
+    assert e.value.status == 409
+
+
+def test_leaderboard_uses_stored_progress_not_friends_garmin(svc) -> None:
+    c, st = svc.c, svc.s
+    j = c.join("ann", c.get("ann")["periods"]["week"]["suggestions"][0]["template"], "week")
+    g = c.invite("ann", j["id"], ["bob"])["group"]
+    c.accept("bob", g)
+    c.get("bob")  # bob's own refresh publishes his %
+    reads: list[str] = []
+    real = c._acts
+    c._acts = lambda uid: (reads.append(uid), real(uid))[1]
+    board = c.get("ann")["joined"][0]["leaderboard"]
+    assert reads == ["ann"]  # never bob's Garmin
+    assert next(r for r in board if r["user_id"] == "bob")["pct"] is not None
 
 
 # --------------------------------------------------------------------- http --
@@ -334,11 +385,11 @@ def test_http_flow_and_coach_403(env, tmp_path) -> None:
         assert view["joined"][0]["done"] and view["streak"]["week"] == 1
         p1 = (await ann.get("/app/api/progress")).json()
         p2 = (await ann.get("/app/api/progress")).json()
-        assert f"challenge:{cid}" in store.user_doc("ann", "progress").load()["bonus"]
+        c0 = store.user_doc("ann", "challenges").load()["joined"][0]
+        assert f"challenge:{c0['template']}:{c0['period_start']}" in store.user_doc("ann", "progress").load()["bonus"]
         assert p2["xp"] == p1["xp"] and p2["gained"] == 0
-        # Leave.
-        assert (await ann.request("DELETE", f"/app/api/challenges/{cid}", headers=H, json={})).status_code == 200
-        assert (await ann.request("DELETE", f"/app/api/challenges/{cid}", headers=H, json={})).status_code == 404
+        # A completed challenge can't be left (no re-join XP farming).
+        assert (await ann.request("DELETE", f"/app/api/challenges/{cid}", headers=H, json={})).status_code == 409
         for x in c.values():
             await x.aclose()
     asyncio.run(go())

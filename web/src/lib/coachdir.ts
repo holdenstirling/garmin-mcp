@@ -30,8 +30,10 @@ export function getDirectory(f: { sport?: string; q?: string } = {}) {
   const qs = p.toString()
   return getJSON<DirectoryResp>(`/api/coaches/directory${qs ? `?${qs}` : ''}`)
 }
-export const inviteDirectoryCoach = (id: string) =>
-  sendJSON<{ coaches: CoachLink[] }>('POST', `/api/coaches/directory/${encodeURIComponent(id)}/invite`, {})
+/** View-only unless the athlete turned the permissions on in the confirmation. */
+export const inviteDirectoryCoach = (id: string, perms: { can_edit_plan?: boolean; can_see_rabbit_chats?: boolean } = {}) =>
+  sendJSON<{ coaches: CoachLink[] }>('POST', `/api/coaches/directory/${encodeURIComponent(id)}/invite`, {
+    can_edit_plan: perms.can_edit_plan === true, can_see_rabbit_chats: perms.can_see_rabbit_chats === true })
 
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)

@@ -73,7 +73,7 @@ US_STATES = frozenset(
     "AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY "
     "NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY PR".split())
 _ZIP = re.compile(r"^\d{5}$")
-_HTTPS = re.compile(r"^https?://[^\s<>\"']+$")
+_HTTPS = re.compile(r"^https://[^\s<>\"']+$")
 
 
 class ExploreError(Exception):

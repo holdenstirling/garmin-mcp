@@ -1,5 +1,5 @@
-// Your progress, focused: level, streak and this week, recovery, fitness and form, and the
-// training trend. Everything else (badges, totals, calendar, bests) sits under "More stats".
+// Your progress, calm and in order: level/streak/week, main race grade, two insights, recovery
+// and challenges as one row each, fitness and form. Everything else sits under "More stats".
 // Sport-agnostic: everything Garmin records counts.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
@@ -21,13 +21,16 @@ import { ChallengesCard } from '@/components/challenges/ChallengesCard'
 import { InsightsCard } from '@/components/insights/InsightsCard'
 import { PullToRefresh } from '@/components/fx/PullToRefresh'
 import { hopIn } from '@/components/anim'
+import { useRefreshGroup, useTrackRefresh } from './refresh'
 
 type Period = 'week' | 'month' | 'year'
 
-export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGear, onOpenSession }: {
+export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGear, onOpenSession, onOpenSetup }: {
   onClose: () => void; onOpenPlan?: () => void; oura?: boolean; onOpenRecap?: () => void
   /** insight actions ("What your data says") */
   onAsk?: (text: string) => void; onOpenGear?: () => void; onOpenSession?: (sessionId: string) => void
+  /** the setup checklist (one line in the hero until core setup is done) */
+  onOpenSetup?: () => void
 }) {
   const [s, setS] = useState<Stats | null>(null)
   const [p, setP] = useState<Progress | null>(null)
@@ -36,17 +39,20 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
   const [busy, setBusy] = useState(false)
   const [loadKey, setLoadKey] = useState(0)
   const [fitId, setFitId] = useState<string | null>(null)
+  const group = useRefreshGroup(loadKey)
 
-  const load = useCallback((fresh = false) => {
+  const load = useCallback((fresh = false): Promise<unknown> => {
     setBusy(true)
-    getStats(fresh).then((r) => {
+    return getStats(fresh).then((r) => {
       setS(r); setError(null)
-      getProgress().then(setP, () => {})
+      return getProgress().then(setP, () => {})
     }, (e) => setError((e as Error).message)).finally(() => setBusy(false))
-    if (fresh) setLoadKey((k) => k + 1)
   }, [])
-  useEffect(() => load(), [load])
+  useEffect(() => { void load() }, [load])
+  // Refresh = stats + every card below; resolves when all of them have landed (pull rabbit).
+  const refresh = useCallback(() => group.refresh(() => setLoadKey((k) => k + 1), load(true)), [group, load])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const imperial = s?.units === 'imperial'
 
   return (
     <Screen title="Progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}
@@ -59,33 +65,42 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
               <CalendarCheck className="size-3" /> Weekly recap
             </button>
           )}
-          <button type="button" onClick={() => load(true)} disabled={busy} aria-label="Refresh"
+          <button type="button" onClick={() => void refresh()} disabled={busy} aria-label="Refresh"
             className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
             <RefreshCw className={cn('size-3', busy && 'animate-spin')} /> Refresh
           </button>
         </div>) : undefined}>
-      <PullToRefresh onRefresh={() => { if (!busy) load(true) }} />
-      {!s && !error && (
-        <div className="flex flex-col gap-3">
-          <RabbitLoader className="py-8" label="Loading your progress" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
-          <div className="skeleton h-28" aria-hidden="true" />
-          <div className="skeleton h-40" aria-hidden="true" />
-        </div>
-      )}
-      {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => load(true)} compact={!!s} />}
-      {s && <MainRaceGrade onOpen={setFitId} />}
-      {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
-        recovery={<><ChallengesCard imperial={s.units === 'imperial'} /><Recovery /></>} more={<CheckinsCard />}
-        insights={<InsightsCard refresh={loadKey} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />} />}
+      <group.Provider value={group.track}>
+        <PullToRefresh onRefresh={() => (busy ? undefined : refresh())} />
+        {!s && !error && (
+          <div className="flex flex-col gap-3">
+            <RabbitLoader className="py-8" label="Loading your progress" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
+            <div className="skeleton h-28" aria-hidden="true" />
+            <div className="skeleton h-40" aria-hidden="true" />
+          </div>
+        )}
+        {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => void refresh()} compact={!!s} />}
+        {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
+          race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
+          insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}
+          recovery={<Recovery loadKey={loadKey} />}
+          challenges={<ChallengesCard imperial={imperial} loadKey={loadKey} collapsible />}
+          more={<CheckinsCard />} />}
+      </group.Provider>
       {fitId && <RaceFitScreen eventId={fitId} onClose={() => setFitId(null)} />}
     </Screen>
   )
 }
 
-/** The stats sections, most important first (also used in the coach's view of an athlete). */
-export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery, insights, more: moreExtra }: {
-  s: Stats; progress?: Progress | null; onOpenPlan?: () => void; loadBase?: string; loadKey?: number; recovery?: React.ReactNode
-  /** "What your data says", right after fitness & form */
+/** The stats sections in Progress order (also the coach's view of an athlete):
+ *  1 hero (level/XP, streak, week; setup as one line) 2 main race grade 3 insights (2 + Show all)
+ *  4 recovery (one row) 5 challenges (one row) 6 fitness & form 7 "More stats" (weekly bars,
+ *  badges, totals, calendar, sports, bests, check-ins). */
+export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, loadKey, race, recovery, challenges, insights, more: moreExtra }: {
+  s: Stats; progress?: Progress | null; onOpenPlan?: () => void; onOpenSetup?: () => void
+  loadBase?: string; loadKey?: number
+  race?: React.ReactNode; recovery?: React.ReactNode; challenges?: React.ReactNode
+  /** "What your data says" */
   insights?: React.ReactNode
   /** extra sections under "More stats" (the athlete's own check-ins) */
   more?: React.ReactNode
@@ -94,17 +109,19 @@ export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery
   const [more, setMore] = useState(false)
   return (
     <>
-      {progress ? <ProgressHero p={progress} headline={s.headline} planTime={planTime(s)} onOpenPlan={onOpenPlan} />
+      {progress ? <ProgressHero p={progress} headline={s.headline} planTime={planTime(s)} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} />
         : <StreakHero s={s} />}
-      {recovery}
-      {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
+      {race}
       {insights}
-      <WeeklyBars s={s} />
+      {recovery}
+      {challenges}
+      {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
       <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
-        className="flex items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+        className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
         {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} />
       </button>
       {more && <>
+        <WeeklyBars s={s} />
         <BadgesCard s={s} />
         <TotalsCard s={s} period={period} setPeriod={setPeriod} />
         <CalendarHeat s={s} />
@@ -375,26 +392,28 @@ function BadgesCard({ s }: { s: Stats }) {
 
 // Recovery follows Settings -> Data sources: Oura-only keeps the baseline tiles below;
 // Garmin, mixed sources or "Show both" render RecoveryCompare.
-import { RecoveryCompare } from './RecoveryCompare'
+import { RecoveryCompare, RecoveryRow } from './RecoveryCompare'
 import { useDataSources } from '@/lib/sources'
 
-function Recovery() {
+function Recovery({ loadKey = 0 }: { loadKey?: number }) {
   const src = useDataSources()
-  if (src && (src.recovery !== 'oura' || src.sleep !== 'oura' || src.show_both)) return <RecoveryCompare />
-  return <OuraRecovery />
+  if (src && (src.recovery !== 'oura' || src.sleep !== 'oura' || src.show_both)) return <RecoveryCompare loadKey={loadKey} compact />
+  return <OuraRecovery loadKey={loadKey} />
 }
 
 /** Oura readiness, HRV, resting HR and sleep vs your own baseline (app-only data). */
-function OuraRecovery() {
+function OuraRecovery({ loadKey = 0 }: { loadKey?: number }) {
   const [r, setR] = useState<OuraRecovery | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [open, setOpen] = useState(false)
+  const track = useTrackRefresh()
   useEffect(() => {
     let live = true
     setError(false)
-    getOura(28).then((x) => { if (live) setR(x) }, () => { if (live) setError(true) })
+    track(getOura(28).then((x) => { if (live) setR(x) }, () => { if (live) setError(true) }))
     return () => { live = false }
-  }, [attempt])
+  }, [attempt, loadKey, track])
   if (error && !r) return <ErrorState compact message="Couldn't load your Oura recovery." onRetry={() => setAttempt((n) => n + 1)} />
   if (!r?.connected || !r.days?.length) return null
   const last = r.latest ?? r.days[r.days.length - 1]!
@@ -411,9 +430,13 @@ function OuraRecovery() {
     ['Resting HR', last.resting_hr != null ? `${last.resting_hr} bpm` : '–', delta(last.resting_hr, b?.resting_hr, ' bpm', false)],
     ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–', delta(last.sleep_hours, b?.sleep_hours, ' h', true)],
   ]
+  const when = new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const summary = [last.readiness != null ? `Readiness ${last.readiness}` : null,
+    last.sleep_hours != null ? `Sleep ${last.sleep_hours} h` : null, last.hrv != null ? `HRV ${last.hrv} ms` : null].filter(Boolean).join(' · ')
   return (
     <section className="flex flex-col gap-2">
-      <SectionLabel>Recovery · Oura · {new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</SectionLabel>
+      <RecoveryRow source={`Oura · ${when}`} summary={summary || 'Tap for details'} open={open} onToggle={() => setOpen((o) => !o)} />
+      {open && <>
       <div className="grid grid-cols-2 gap-1.5">
         {tiles.map(([label, v, d]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
@@ -426,6 +449,7 @@ function OuraRecovery() {
         ))}
       </div>
       <p className="px-1 text-[0.6471rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to Rabbit.</p>
+      </>}
     </section>
   )
 }

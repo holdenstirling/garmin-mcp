@@ -2,11 +2,11 @@
 // hints against your main race. "Find more with Rabbit" searches the web for big races that
 // aren't on RunSignup. Tap a race for details, "Add to my races", or to ask Rabbit about it.
 // "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx), or ones
-// inferred from training, then Near you. "Let Rabbit explore" (one tap) sits on top of both
-// views. Search with no filters uses your location, 50 mi, all types; with no location it's
-// nationwide and says so. The "Local" chip swaps races for places and groups near you.
+// inferred from training, then Near you; "Let Rabbit explore" (one tap) is a small card under
+// the first row. Search with no filters uses your location, 50 mi, all types; with no location
+// it's nationwide and says so. Places and groups live in For you's "Near you" only.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, MapPin, Search, Sparkles } from 'lucide-react'
+import { Activity, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -21,7 +21,6 @@ import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { RaceDetail } from './RaceDetail'
 import { ForYouFeedView, InterestsStrip, useForYou } from './ForYou'
 import { InterestsSheet } from './InterestsSheet'
-import { LocalActivities } from './LocalActivities'
 import { EstimateLine } from './Estimate'
 import { LocationPrompt } from './LocationPrompt'
 import { LetRabbitExplore } from './RabbitExplore'
@@ -32,12 +31,8 @@ export const ExploreIcon = Search
 
 type Mode = 'foryou' | 'search'
 const MODE_KEY = 'rabbit.explore.mode'
-const LOCAL_KEY = 'rabbit.explore.local'
 function readMode(): Mode {
   try { return localStorage.getItem(MODE_KEY) === 'search' ? 'search' : 'foryou' } catch { return 'foryou' }
-}
-function readLocal(): boolean {
-  try { return localStorage.getItem(LOCAL_KEY) === '1' } catch { return false }
 }
 
 const EMPTY: ExploreFilters = { near: '', radius: 50, months: 6, types: [], distance: null, q: '' }
@@ -80,8 +75,6 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   const seq = useRef(0)
   const [mode, setModeState] = useState<Mode>(readMode)
   const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* private mode */ } }
-  const [local, setLocalState] = useState<boolean>(readLocal)
-  const setLocal = (v: boolean) => { setLocalState(v); try { localStorage.setItem(LOCAL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   const fy = useForYou(mode === 'foryou')
   const [editing, setEditing] = useState(false)
 
@@ -110,10 +103,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   useEffect(() => {
     if (!filters) return
     saveFilters(filters)
-    if (mode !== 'search' || local || !nearOk(filters.near)) return
+    if (mode !== 'search' || !nearOk(filters.near)) return
     const t = setTimeout(() => run(filters, 1), 350)
     return () => clearTimeout(t)
-  }, [filters, run, mode, local])
+  }, [filters, run, mode])
 
   const set = (p: Partial<ExploreFilters>) => setFilters((f) => ({ ...(f ?? EMPTY), ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -159,10 +152,6 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
         </select>
       </div>
       <div className="no-scrollbar -mx-3 -my-1 flex gap-1.5 overflow-x-auto px-3 py-1">
-        <Chip selected={local} onClick={() => setLocal(!local)}>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin className="size-3.5" />Local</span>
-        </Chip>
-        <span className="mx-0.5 w-px shrink-0 self-stretch bg-(--border)" aria-hidden />
         {home && f.near !== home && <Chip onClick={() => set({ near: home })}><span className="whitespace-nowrap">Use my home</span></Chip>}
         {MONTHS.map((m) => (
           <Chip key={m} selected={f.months === m} onClick={() => set({ months: m })}><span className="whitespace-nowrap">{m === 12 ? '1 year' : `${m} mo`}</span></Chip>
@@ -205,12 +194,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     <>
       <Screen title="Explore" subtitle="Find your next start line" closing={closing} onClose={close}
         headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
-        <LetRabbitExplore onOpen={(r) => setDetail(r)} onAsk={onAsk} imperial={imperial} />
         {mode === 'foryou' ? (
           <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')}
-            onAsk={onAsk} imperial={imperial} />
-        ) : local ? (
-          <LocalActivities onAsk={onAsk} imperial={imperial} onLocationChanged={() => { loadDefaults(); fy.load(true) }} />
+            onAsk={onAsk} imperial={imperial}
+            explore={<LetRabbitExplore onOpen={(r) => setDetail(r)} onAsk={onAsk} imperial={imperial} />} />
         ) : <>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />

@@ -224,6 +224,9 @@ export function LocalActivities({ onAsk, imperial = false, onLocationChanged }: 
           <p className="px-1 text-[0.6471rem] text-(--text-muted)">From OpenStreetMap. Check access and hours before you go.</p>
         </div>
       )}
+      {res.places_state === 'busy' && (
+        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Lots of people are looking right now. Try again in a few seconds for places.</p>
+      )}
       {res.places_state === 'failed' && (
         <p className="px-1 text-[0.7059rem] text-(--text-muted)">The map service isn't answering, so places are missing for now.</p>
       )}

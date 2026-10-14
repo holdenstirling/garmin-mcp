@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
 import type { Term } from '@/lib/glossary'
 import { getLoad, type Load } from '@/lib/load'
+import { useTrackRefresh } from './refresh'
 
 const W = 360, H = 186, BAND = 18, TOP = 108, PAD = 4
 
@@ -12,12 +13,13 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
   const [l, setL] = useState<Load | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const track = useTrackRefresh()
   useEffect(() => {
     let live = true
     setError(null)
-    getLoad(base).then((x) => { if (live) setL(x) }, (e) => { if (live) setError((e as Error).message) })
+    track(getLoad(base).then((x) => { if (live) setL(x) }, (e) => { if (live) setError((e as Error).message) }))
     return () => { live = false }
-  }, [base, attempt])
+  }, [base, attempt, track])
   return (
     <section className="flex flex-col gap-2">
       <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h3>
