@@ -222,7 +222,7 @@ class CoachChat:
                 continue
             last = t["messages"][-1] if t["messages"] else None
             out.append({k: t.get(k) for k in ("id", "coach", "title", "session_id", "session_date",
-                                              "created", "updated", "read")}
+                                              "event_id", "created", "updated", "read")}
                        | {"last": last, "count": len(t["messages"])})
         return sorted(out, key=lambda x: x["updated"], reverse=True)
 
@@ -233,15 +233,20 @@ class CoachChat:
         return t
 
     def open_thread(self, athlete_id: str, coach: str, *, session: dict[str, Any] | None = None,
-                    title: str | None = None) -> dict[str, Any]:
-        """The general thread with this coach, or the thread for one planned session
-        (``session``: {"id", "date", "title"}); created on first use."""
+                    event: dict[str, Any] | None = None, title: str | None = None) -> dict[str, Any]:
+        """The general thread with this coach, the thread for one planned session
+        (``session``: {"id", "date", "title"}) or for one race (``event``: {"id", "title"},
+        e.g. "<race> strategy"; the caller checks the event is the athlete's); created on
+        first use."""
         now = int(self._clock())
+        if session and event:
+            raise CoachError("A conversation is about a session or a race, not both.")
+        sid, eid = (session or {}).get("id"), (event or {}).get("id")
 
         def apply(d: dict[str, Any]) -> dict[str, Any]:
             ts = d.setdefault("threads", {})
             for t in ts.values():
-                if t["coach"] == coach and t.get("session_id") == (session or {}).get("id"):
+                if t["coach"] == coach and t.get("session_id") == sid and t.get("event_id") == eid:
                     return t
             if len(ts) >= MAX_THREADS:
                 # Only an empty thread may make room; conversations are never dropped.
@@ -252,8 +257,9 @@ class CoachChat:
             tid = "c" + secrets.token_hex(6)
             t = {"id": tid, "coach": coach, "created": now, "updated": now, "messages": [],
                  "read": {"athlete": None, "coach": None},  # last message id each side has seen
-                 "title": (title or (f"{session['title']} · {session['date']}" if session else "General"))[:80],
-                 "session_id": (session or {}).get("id"), "session_date": (session or {}).get("date")}
+                 "title": (title or (f"{session['title']} · {session['date']}" if session
+                                     else event["title"] if event else "General"))[:80],
+                 "session_id": sid, "session_date": (session or {}).get("date"), "event_id": eid}
             ts[tid] = t
             return t
         return self._doc(athlete_id).update(apply)

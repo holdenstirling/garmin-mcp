@@ -1,14 +1,17 @@
 // Race readiness + race fit for one race: the readiness grade (status, headline, how you're
 // tracking, what to do next), then course & conditions (race-fit factors, collapsed by
-// default), your coach's race notes, and Rabbit's AI race strategy.
+// default), your coach's race notes, and Rabbit's AI race strategy with "Ask your coach"
+// (a race-tied coach thread) or, without a coach, a "Find a coach" link.
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, RefreshCw, Sparkles, StickyNote } from 'lucide-react'
+import { ChevronDown, MessageSquare, RefreshCw, Search, Sparkles, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
-import { timeAgo } from '@/lib/coach'
+import { athleteChat, getCoaches, timeAgo, type CoachLink } from '@/lib/coach'
+import { FindCoachScreen } from '@/components/coach/FindCoachScreen'
+import { ThreadView } from '@/components/coach/ThreadView'
 import { countdown, type RaceStrategy } from '@/lib/events'
 import { IMPACT_LABEL, getRaceView, makeStrategy, type FitFactor, type Impact, type RaceView } from '@/lib/racefit'
 import { getReadiness, type Readiness } from '@/lib/readiness'
@@ -38,6 +41,38 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
   }, [eventId])
   useEffect(() => { load(); loadReadiness() }, [load, loadReadiness])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  // Ask your coach: race-tied thread with the athlete's coach; no coach -> Find a coach.
+  const [coaches, setCoaches] = useState<CoachLink[] | null>(null)
+  const [coachThread, setCoachThread] = useState<{ id: string; coach: string; draft: string } | null>(null)
+  const [findCoach, setFindCoach] = useState(false)
+  const [askErr, setAskErr] = useState<string | null>(null)
+  const [asking, setAsking] = useState(false)
+  useEffect(() => { getCoaches().then((x) => setCoaches(x.coaches), () => setCoaches([])) }, [])
+  const coach = (coaches ?? []).find((c) => c.status === 'active') ?? coaches?.[0] ?? null
+  async function askCoach() {
+    if (!coach || !v) return
+    setAsking(true); setAskErr(null)
+    try {
+      const t = (await athleteChat.open({ coach: coach.email, event_id: eventId })).thread
+      const gaps = r ? [...r.components].sort((a, b) => a.score - b.score).slice(0, 2).map((c) => c.label.toLowerCase()) : []
+      const draft = `Can we talk strategy for ${v.event.name}?` +
+        (r ? ` My readiness is ${r.grade}${gaps.length ? `; biggest gaps: ${gaps.join(' and ')}` : ''}.` : '')
+      setCoachThread({ id: t.id, coach: coach.email, draft: t.messages.length ? '' : draft })
+    } catch (e) { setAskErr((e as Error).message) } finally { setAsking(false) }
+  }
+  const coachExtra = coaches === null ? null : coach ? (
+    <div className="flex flex-col gap-1 border-t border-(--border) pt-2.5">
+      <Button variant="default" className="h-11 w-fit gap-1.5 text-[0.7647rem]" loading={asking} onClick={() => void askCoach()}>
+        <MessageSquare className="size-4" /> Ask your coach
+      </Button>
+      {askErr && <p className="text-[0.7059rem] text-(--danger)" role="alert">{askErr}</p>}
+    </div>
+  ) : (
+    <button type="button" onClick={() => setFindCoach(true)}
+      className="hit-44 flex w-fit items-center gap-1.5 text-[0.7647rem] text-(--accent)">
+      <Search className="size-3.5" /> Want a human coach? Find one
+    </button>
+  )
 
   return (
     <Screen title="Race readiness" subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
@@ -75,9 +110,15 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
               </Field>
             </Card>
           )}
-          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} />
+          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} extra={coachExtra} />
         </>
       )}
+      {coachThread && (
+        <Screen title="Race chat" subtitle={coachThread.coach} onClose={() => setCoachThread(null)} onBack={() => setCoachThread(null)}>
+          <ThreadView api={athleteChat} threadId={coachThread.id} me="athlete" otherName={coachThread.coach.split('@')[0]!} draft={coachThread.draft} />
+        </Screen>
+      )}
+      {findCoach && <FindCoachScreen athleteName="" onClose={() => setFindCoach(false)} onBack={() => setFindCoach(false)} />}
     </Screen>
   )
 }
@@ -105,8 +146,10 @@ function FactorRow({ f }: { f: FitFactor }) {
   )
 }
 
-function StrategyCard({ eventId, strategy, onUpdated }: {
+function StrategyCard({ eventId, strategy, onUpdated, extra }: {
   eventId: string; strategy: RaceStrategy | null; onUpdated: (v: RaceView) => void
+  /** "Ask your coach" or "Find a coach", next to the AI strategy */
+  extra?: React.ReactNode
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -143,6 +186,7 @@ function StrategyCard({ eventId, strategy, onUpdated }: {
           </div>
         )}
         {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
+        {extra}
       </Field>
     </Card>
   )

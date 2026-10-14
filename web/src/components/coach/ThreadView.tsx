@@ -1,6 +1,6 @@
 // One athlete <-> coach conversation: messages and a composer. Polls while open.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Dumbbell, Send } from 'lucide-react'
+import { Dumbbell, Flag, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
@@ -8,11 +8,13 @@ import { timeAgo, type ChatApi, type Thread } from '@/lib/coach'
 
 const POLL_MS = 15_000
 
-export function ThreadView({ api, threadId, me, otherName }: {
+export function ThreadView({ api, threadId, me, otherName, draft }: {
   api: ChatApi; threadId: string; me: 'athlete' | 'coach'; otherName: string
+  /** prefilled message (e.g. "Ask your coach" from race readiness); the athlete edits and sends */
+  draft?: string
 }) {
   const [t, setT] = useState<Thread | null>(null)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(draft ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // A failed poll shows until the next one succeeds.
@@ -43,9 +45,9 @@ export function ThreadView({ api, threadId, me, otherName }: {
 
   return (
     <div className="flex flex-col gap-3">
-      {t?.session_id && (
+      {(t?.session_id || t?.event_id) && (
         <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-[0.7647rem] text-(--text-secondary)">
-          <Dumbbell className="size-4 text-(--accent)" /> About: {t.title}
+          {t.event_id ? <Flag className="size-4 text-(--accent)" /> : <Dumbbell className="size-4 text-(--accent)" />} About: {t.title}
         </div>
       )}
       <div className="flex min-h-[200px] flex-col gap-2">

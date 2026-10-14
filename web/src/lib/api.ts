@@ -102,7 +102,10 @@ export async function postRaw<T>(path: string, body: unknown = {}): Promise<{ st
 export type Athlete = {
   experience?: string; units?: 'metric' | 'imperial'; weekly_hours?: number | null; age?: number | null
   training_days?: string; injuries?: string; preferences?: string
+  /** "Looking for a coach?" answer (null = not asked yet) */
+  coach_status?: CoachStatus | null
 }
+export type CoachStatus = 'have_coach' | 'looking' | 'self_coached'
 export type Goal = {
   id: string; title: string; event: string; date: string | null; distance: string
   target: string; priorities: string; notes: string; created: number; archived_at: number | null
