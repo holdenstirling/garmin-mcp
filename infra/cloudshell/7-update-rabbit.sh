@@ -51,6 +51,16 @@ if command -v uv >/dev/null; then
   fi
 fi
 
+# Contact email for /app/privacy and /app/terms: the Cloud Shell account (set once).
+ACCT=$(gcloud config get-value account 2>/dev/null || true)
+if [[ "$ACCT" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+  # shellcheck disable=SC1091
+  source infra/config.env
+  gcloud compute ssh "$VM_NAME" --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap --quiet --command \
+    "sudo bash -c 'grep -q ^RABBIT_CONTACT_EMAIL= /etc/rabbit/env || echo RABBIT_CONTACT_EMAIL=$ACCT >> /etc/rabbit/env'" \
+    >/dev/null 2>&1 || echo "(couldn't set the contact email; pages will show a generic contact)"
+fi
+
 ./deploy.sh --rabbit
 echo
 echo "==> Done. Open https://34-45-18-209.sslip.io/app/"
