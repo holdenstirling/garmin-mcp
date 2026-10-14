@@ -761,6 +761,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             await _plan_call(lambda: _events().update(user_id, eid, {"info": info}))
         return JSONResponse({"info": info})
 
+    async def load_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        return JSONResponse(await _plan_call(lambda: chat.agent.stats.load(user_id)))
+
+    async def coach_athlete_load(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        return JSONResponse(await _plan_call(lambda: chat.agent.stats.load(aid)))
+
     async def stats_get(request: Request, user_id: str) -> Response:
         assert chat is not None
         fresh = request.query_params.get("fresh") == "1"
@@ -1178,6 +1187,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
+        Route("/app/api/load", _plan_api(load_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/load", _plan_api(coach_athlete_load, mutating=False),
+              methods=["GET"]),
         Route("/app/api/calendar", _plan_api(calendar_get, mutating=False), methods=["GET"]),
         Route("/app/api/calendar", _plan_api(calendar_delete, mutating=True), methods=["DELETE"]),
         Route("/app/auth/calendar/start", calendar_start, methods=["GET"]),

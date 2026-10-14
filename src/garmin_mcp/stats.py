@@ -287,18 +287,34 @@ class StatsService:
         self._plan = plan
         self._clock = clock
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._acts: dict[str, tuple[float, date, list[dict[str, Any]]]] = {}
+
+    def activities(self, user_id: str, *, fresh: bool = False) -> tuple[date, list[dict[str, Any]]]:
+        """A year of compact activities (one Garmin read, cached a few minutes)."""
+        today = self._now(user_id).date()
+        hit = self._acts.get(user_id)
+        if hit and not fresh and self._clock() - hit[0] < CACHE_S and hit[1] == today:
+            return today, hit[2]
+        acts = self._svc.activities_between(user_id, today - timedelta(days=HISTORY_DAYS), today)
+        self._acts[user_id] = (self._clock(), today, acts)
+        return today, acts
 
     def get(self, user_id: str, *, fresh: bool = False) -> dict[str, Any]:
         hit = self._cache.get(user_id)
         if hit and not fresh and self._clock() - hit[0] < CACHE_S:
             return hit[1]
-        today = self._now(user_id).date()
-        acts = self._svc.activities_between(user_id, today - timedelta(days=HISTORY_DAYS), today)
+        today, acts = self.activities(user_id, fresh=fresh)
         a = self._athlete(user_id)
         out = compute(acts, today, imperial=a.get("units") == "imperial", plan=self._plan(user_id),
                       favorites=a.get("favorite_sports"))
         self._cache[user_id] = (self._clock(), out)
         return out
+
+    def load(self, user_id: str) -> dict[str, Any]:
+        from .load import compute as load_compute
+        today, acts = self.activities(user_id)
+        a = self._athlete(user_id)
+        return load_compute(acts, today, threshold_hr=a.get("threshold_hr"), plan=self._plan(user_id))
 
 
 __all__ = ["StatsService", "compute", "adherence", "headline", "BADGES"]

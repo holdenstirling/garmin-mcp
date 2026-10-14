@@ -209,7 +209,7 @@ function AthleteStats({ aid }: { aid: string }) {
   useEffect(() => { getAthleteStats(aid).then(setS, (e) => setError((e as Error).message)) }, [aid])
   if (error) return <p className="px-1 text-[0.7647rem] text-(--danger)">{error}</p>
   if (!s) return <div className="flex justify-center py-16"><BarChart3 className="size-8 animate-pulse text-(--text-muted)" /></div>
-  return <StatsBody s={s} />
+  return <StatsBody s={s} loadBase={coachBase(aid)} />
 }
 
 function Messages({ chat, onOpen, onNew, name }: {

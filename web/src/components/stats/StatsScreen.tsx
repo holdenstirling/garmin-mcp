@@ -7,6 +7,7 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
+import { LoadCard } from './LoadChart'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
 
 type Period = 'week' | 'month' | 'year'
@@ -41,19 +42,20 @@ export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void
       )}
       {error && !s && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {s && oura && <Recovery />}
-      {s && <StatsBody s={s} onOpenPlan={onOpenPlan} />}
+      {s && <StatsBody s={s} onOpenPlan={onOpenPlan} loadBase="/api" />}
     </Screen>
   )
 }
 
 /** All the stats sections (also used in the coach's view of an athlete). */
-export function StatsBody({ s, onOpenPlan }: { s: Stats; onOpenPlan?: () => void }) {
+export function StatsBody({ s, onOpenPlan, loadBase }: { s: Stats; onOpenPlan?: () => void; loadBase?: string }) {
   const [period, setPeriod] = useState<Period>('week')
   return (
     <>
       <StreakHero s={s} />
       {s.plan?.week && s.plan.week.planned > 0 && <PlanProgress s={s} onOpenPlan={onOpenPlan} />}
       <TotalsCard s={s} period={period} setPeriod={setPeriod} />
+      {loadBase && <LoadCard base={loadBase} />}
       <WeeklyBars s={s} />
       <CalendarHeat s={s} />
       {s.by_sport.length > 0 && <SportsCard s={s} />}
