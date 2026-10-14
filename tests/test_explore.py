@@ -205,7 +205,7 @@ def test_add_maps_to_event_fields() -> None:
     assert rf["distance"] == "century ride" and rf["type"] == "cycling" and rf["url"] == ""
     _raises(lambda: event_fields({"name": ""}, 0), "missing")
     assert defaults({"home_location": "Denver, CO 80204", "favorite_sports": ["run", "trail", "bike", "swim"]}) \
-        | {"categories": None, "distances": None} == {"near": "80204", "types": ["road", "trail", "cycling"],
+        | {"categories": None, "distances": None} == {"near": "80204", "types": [],
                                                       "radius": 50, "months": 6, "categories": None, "distances": None}
     assert defaults({"home_location": "Leadville"})["near"] == ""
 
@@ -260,7 +260,7 @@ def test_explore_api(env, tmp_path, monkeypatch) -> None:
     async def go_() -> None:
         async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=BASE) as c:
             r = await c.get("/app/api/explore/defaults")
-            assert r.status_code == 200 and r.json()["near"] == "80204" and r.json()["types"] == ["trail"]
+            assert r.status_code == 200 and r.json()["near"] == "80204" and r.json()["types"] == []
             r = await c.get("/app/api/explore", params={"near": "80204", "radius": "25", "months": "6"})
             assert r.status_code == 200, r.text
             body = r.json()

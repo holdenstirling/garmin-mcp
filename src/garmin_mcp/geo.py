@@ -2,19 +2,24 @@
 
 Resolution order (``resolve``):
 
-1. device location: the athlete tapped "Use my location"; the browser's coordinates are
-   rounded to 2 decimals (~1 km) *before* anything else happens, reverse-geocoded
-   server-side (OpenStreetMap Nominatim) and only ``{zip, city, state, lat2, lon2, ts}`` is
-   stored, in the profile doc as ``location_auto`` (a sibling of ``athlete``, so it never
-   reaches Rabbit's context or a coach's view). Precise coordinates are never stored.
+1. the saved location: "Use my location" (``source: "device"``; the browser's coordinates are
+   rounded to 2 decimals (~1 km) *before* anything else happens and reverse-geocoded
+   server-side via OpenStreetMap Nominatim) or a zip typed into Explore (``"manual"``). Stored
+   as the profile field ``location`` = ``{lat, lon, city, state, zip, source, updated}`` (a
+   sibling of the athlete record in the profile doc, so it never reaches Rabbit's context, a
+   coach's view or friends). Precise coordinates are never stored or logged.
 2. ``interests.home_zip``
 3. a 5-digit zip in ``athlete.home_location``
 4. a city/state in ``athlete.home_location`` -> a state code ("Denver, CO", "Leadville, Colorado")
-5. nothing: the app asks inline (zip field + "Use my location").
+5. nothing. The athlete's timezone is deliberately *not* used to guess a state (Mountain time
+   spans many states); callers fall back to a nationwide search labelled as such.
+
+"Use my location for local picks" (profile ``location_use``, default on) gates the Near you
+places/activities; "Forget my location" clears ``location``.
 
 Nominatim usage policy: an identifying User-Agent, at most 1 request per second across the
-whole process (``Throttle``), and results cached by rounded coordinates for 30 days (memory +
-an encrypted global doc, so restarts don't re-ask).
+whole process (``Throttle``), and results cached by rounded coordinates / zip for 30 days
+(memory + an encrypted global doc, so restarts don't re-ask).
 """
 
 from __future__ import annotations
@@ -33,7 +38,8 @@ SEARCH_URL = "https://nominatim.openstreetmap.org/search"
 CACHE_S = 30 * 86400
 CACHE_MAX = 5000
 MIN_INTERVAL_S = 1.0
-AUTO_KEYS = ("zip", "city", "state", "lat2", "lon2", "ts")
+LOC_KEYS = ("lat", "lon", "city", "state", "zip", "source", "updated")
+SOURCES = ("device", "manual")
 # Tests swap this for an httpx2.MockTransport.
 TRANSPORT: httpx2.AsyncBaseTransport | None = None
 
@@ -69,7 +75,7 @@ def round2(lat: Any, lon: Any) -> tuple[float, float]:
 
 
 def user_agent(contact: str) -> str:
-    return f"RabbitTraining/1.0 (contact: {contact or 'unknown'})"
+    return f"RabbitTraining/1.0 (+{contact or 'unknown'})"
 
 
 # --------------------------------------------------------------- throttle --
@@ -156,24 +162,34 @@ def parse_home(home_location: Any) -> dict[str, str]:
 
 # ---------------------------------------------------------------- resolve --
 def resolve(interests: dict[str, Any] | None, athlete: dict[str, Any] | None,
-            auto: dict[str, Any] | None) -> dict[str, Any]:
-    """{"source", "zip", "state", "city"}; source is None when nothing is known."""
+            saved: dict[str, Any] | None) -> dict[str, Any]:
+    """{"source", "zip", "state", "city", "lat", "lon"}; source is None when nothing usable is
+    known (then the caller searches nationwide). ``lat``/``lon`` (2 decimals) only come with a
+    saved location; the caller geocodes a zip/city when it needs coordinates."""
     interests, athlete = interests or {}, athlete or {}
-    a = auto or {}
+    a = saved or {}
     if a.get("zip") or (a.get("state") in US_STATES):
-        return {"source": "device", "zip": a.get("zip") or "", "state": a.get("state") or "",
-                "city": a.get("city") or ""}
+        return {"source": a.get("source") if a.get("source") in SOURCES else "device",
+                "zip": a.get("zip") or "", "state": a.get("state") or "", "city": a.get("city") or "",
+                "lat": a.get("lat"), "lon": a.get("lon")}
     home = parse_home(athlete.get("home_location"))
+    none = {"lat": None, "lon": None}
     if interests.get("home_zip"):
         same_zip = home["zip"] == interests["home_zip"]
         return {"source": "home_zip", "zip": interests["home_zip"], "state": home["state"] if same_zip else "",
-                "city": home["city"] if same_zip else ""}
+                "city": home["city"] if same_zip else "", **none}
     if home["zip"]:
-        return {"source": "profile_zip", **home}
+        return {"source": "profile_zip", **home, **none}
     if home["state"]:
-        return {"source": "profile_city", **home}
-    # Not usable for races (e.g. outside the US) but still a city for local activities.
-    return {"source": None, "zip": "", "state": str(a.get("state") or ""), "city": str(a.get("city") or "")}
+        return {"source": "profile_city", **home, **none}
+    # Step 5: no timezone guess. A saved place outside the US isn't usable for RunSignup but
+    # still gives a city (and coordinates) for local activities.
+    return {"source": None, "zip": "", "state": str(a.get("state") or ""), "city": str(a.get("city") or ""),
+            "lat": a.get("lat"), "lon": a.get("lon")}
+
+
+def searchable(loc: dict[str, Any]) -> bool:
+    return bool(loc.get("zip") or loc.get("state") in US_STATES)
 
 
 def label(loc: dict[str, Any]) -> str:
@@ -184,28 +200,65 @@ def label(loc: dict[str, Any]) -> str:
 
 
 # ------------------------------------------------------------- the store --
-def load_auto(store: Any, uid: str) -> dict[str, Any] | None:
+def _valid_saved(v: Any) -> dict[str, Any] | None:
+    if not isinstance(v, dict):
+        return None
+    out = {k: v.get(k) for k in LOC_KEYS}
+    if out["source"] not in SOURCES:
+        out["source"] = "device"
+    return out
+
+
+def load_saved(store: Any, uid: str) -> dict[str, Any] | None:
+    """The saved location (``location``), or a pre-v2 ``location_auto`` read as a device one."""
     if store is None:
         return None
-    v = store.user_doc(uid, "profile").load().get("location_auto")
-    return v if isinstance(v, dict) else None
+    prof = store.user_doc(uid, "profile").load()
+    if isinstance(prof.get("location"), dict):
+        return _valid_saved(prof["location"])
+    old = prof.get("location_auto")
+    if isinstance(old, dict):
+        return _valid_saved({"lat": old.get("lat2"), "lon": old.get("lon2"), "city": old.get("city"),
+                             "state": old.get("state"), "zip": old.get("zip"), "source": "device",
+                             "updated": old.get("ts")})
+    return None
 
 
-def save_auto(store: Any, uid: str, place: dict[str, Any], lat2: float, lon2: float, now: float) -> dict[str, Any]:
-    entry = {"zip": str(place.get("zip") or "")[:5], "city": str(place.get("city") or "")[:60],
-             "state": str(place.get("state") or "")[:40], "lat2": round(float(lat2), 2),
-             "lon2": round(float(lon2), 2), "ts": int(now)}
-    assert set(entry) == set(AUTO_KEYS)
+def save_location(store: Any, uid: str, place: dict[str, Any], lat: Any, lon: Any, source: str,
+                  now: float) -> dict[str, Any]:
+    """Store only the coarse place: coordinates rounded to 2 decimals, city/state/zip."""
+    lat2, lon2 = round2(lat, lon)
+    entry = {"lat": lat2, "lon": lon2, "city": str(place.get("city") or "")[:60],
+             "state": str(place.get("state") or "")[:40], "zip": str(place.get("zip") or "")[:5],
+             "source": source if source in SOURCES else "device", "updated": int(now)}
+    assert tuple(entry) == LOC_KEYS
 
     def put(p: dict[str, Any]) -> None:
-        p["location_auto"] = entry
+        p["location"] = entry
+        p.pop("location_auto", None)
     store.user_doc(uid, "profile").update(put)
     return entry
 
 
 def forget(store: Any, uid: str) -> None:
     if store is not None:
-        store.user_doc(uid, "profile").update(lambda p: p.pop("location_auto", None))
+        def put(p: dict[str, Any]) -> None:
+            p.pop("location", None)
+            p.pop("location_auto", None)
+        store.user_doc(uid, "profile").update(put)
+
+
+def use_for_local(store: Any, uid: str) -> bool:
+    """"Use my location for local picks" (on unless the athlete turned it off)."""
+    if store is None:
+        return True
+    return store.user_doc(uid, "profile").load().get("location_use") is not False
+
+
+def set_use_for_local(store: Any, uid: str, on: bool) -> None:
+    def put(p: dict[str, Any]) -> None:
+        p["location_use"] = bool(on)
+    store.user_doc(uid, "profile").update(put)
 
 
 # --------------------------------------------------------------- geocoder --
@@ -288,8 +341,8 @@ class Geocoder:
         self._put(key, place)
         return place
 
-    async def zip_place(self, zip_: str) -> dict[str, str]:
-        """"80204" -> {"zip", "city", "state", "country"} ({} when unknown or upstream trouble)."""
+    async def zip_place(self, zip_: str) -> dict[str, Any]:
+        """"80204" -> {"zip", "city", "state", "country", "lat", "lon"} ({} when unknown or upstream trouble)."""
         if not isinstance(zip_, str) or not re.fullmatch(r"\d{5}", zip_):
             return {}
         key = f"z:{zip_}"
@@ -302,11 +355,57 @@ class Geocoder:
         except Exception:
             return {}
         first = body[0] if isinstance(body, list) and body else {}
-        place = parse_place(first)
+        place = {**parse_place(first), **_coords(first)}
         place["zip"] = zip_
         if place["city"] or place["state"]:
             self._put(key, place)
         return place
+
+    async def city_place(self, city: str, state: str) -> dict[str, Any]:
+        """"Denver", "CO" -> {"city", "state", "zip", "country", "lat", "lon"} ({} when unknown)."""
+        city, state = " ".join(str(city or "").split())[:60], str(state or "").strip()[:40]
+        if not city or not state:
+            return {}
+        key = f"c:{city.lower()}|{state.upper()}"
+        hit = self._cached(key)
+        if hit is not None:
+            return hit
+        try:
+            body = await self._get(SEARCH_URL, {"format": "jsonv2", "city": city, "state": state,
+                                                "countrycodes": "us", "addressdetails": "1", "limit": "1"})
+        except Exception:
+            return {}
+        first = body[0] if isinstance(body, list) and body else {}
+        place = {**parse_place(first), **_coords(first)}
+        if place.get("lat") is not None:
+            self._put(key, place)
+        return place
+
+    async def coords(self, loc: dict[str, Any]) -> tuple[float, float] | None:
+        """Rounded coordinates for a resolved location (saved ones carry them; a zip or a
+        city/state is geocoded and cached). None when unknown."""
+        if isinstance(loc.get("lat"), int | float) and isinstance(loc.get("lon"), int | float):
+            try:
+                return round2(loc["lat"], loc["lon"])
+            except LocationError:
+                return None
+        place: dict[str, Any] = {}
+        if loc.get("zip"):
+            place = await self.zip_place(str(loc["zip"]))
+        if place.get("lat") is None and loc.get("city") and loc.get("state"):
+            place = await self.city_place(str(loc["city"]), str(loc["state"]))
+        if isinstance(place.get("lat"), int | float) and isinstance(place.get("lon"), int | float):
+            return float(place["lat"]), float(place["lon"])
+        return None
+
+
+def _coords(item: Any) -> dict[str, Any]:
+    """Nominatim "lat"/"lon" strings -> rounded floats (or {})."""
+    try:
+        lat2, lon2 = round2(float(item["lat"]), float(item["lon"]))
+    except (KeyError, TypeError, ValueError, LocationError):
+        return {}
+    return {"lat": lat2, "lon": lon2}
 
 
 __all__ = [
@@ -317,12 +416,15 @@ __all__ = [
     "Throttle",
     "forget",
     "label",
-    "load_auto",
+    "load_saved",
     "parse_home",
     "parse_place",
     "resolve",
     "round2",
-    "save_auto",
+    "save_location",
+    "searchable",
+    "set_use_for_local",
     "state_code",
+    "use_for_local",
     "user_agent",
 ]

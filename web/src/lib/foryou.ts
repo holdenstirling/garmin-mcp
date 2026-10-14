@@ -65,14 +65,14 @@ export type ForYouRace = ExploreRace & {
   estimate?: Estimate; check_dates?: boolean; usual_month?: number; popular?: boolean
 }
 export type ForYouSection = {
-  id: 'picks' | 'tuneups' | 'near' | 'friends' | 'bucket' | 'popular'; title: string; note?: string; source?: 'web' | 'curated'
+  id: 'picks' | 'tuneups' | 'near' | 'nationwide' | 'friends' | 'bucket' | 'popular'; title: string; note?: string; source?: 'web' | 'curated'
   races: ForYouRace[]
 }
 export type ForYouFeed = {
   interests: Interests; has_interests: boolean; sections: ForYouSection[]
   partial: boolean; failed: boolean; zip: string; radius: number
   /** Explore v2: interests were guessed from training (none set), the ones used, and where we searched. */
-  inferred?: boolean; effective?: Interests; location?: ResolvedLocation
+  inferred?: boolean; effective?: Interests; location?: ResolvedLocation; nationwide?: boolean
   bucket: { eligible: boolean; due: boolean }
 }
 

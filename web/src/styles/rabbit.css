@@ -261,3 +261,23 @@ html.kb-open .tab-bar { display: none; }
 
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Explore v2 ("Let Rabbit explore" reveal, Near you). Prefixed .ex-; independent of anim/*. */
+.ex-cta { position: relative; overflow: hidden; }
+.ex-cta::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+  transform: translateX(-100%); animation: ex-shine 3.2s ease-in-out 1s infinite; }
+.ex-cta:active { transform: scale(0.985); }
+.ex-hop { animation: ex-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite; transform-origin: 50% 90%; }
+.ex-pop { animation: ex-pop 0.42s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.ex-count { animation: ex-count 0.5s cubic-bezier(0.2, 0.8, 0.3, 1.3) both; }
+@keyframes ex-shine { 0%, 60% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes ex-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 35% { transform: translateY(-6px) scale(0.96, 1.04); }
+  60% { transform: translateY(0) scale(1.05, 0.95); } }
+@keyframes ex-pop { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes ex-count { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ex-cta::after, .ex-hop { animation: none; }
+  .ex-pop, .ex-count { animation: ex-fade 0.2s ease-out both; animation-delay: 0s; }
+}
+@keyframes ex-fade { from { opacity: 0; } to { opacity: 1; } }

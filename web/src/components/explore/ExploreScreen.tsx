@@ -2,10 +2,11 @@
 // hints against your main race. "Find more with Rabbit" searches the web for big races that
 // aren't on RunSignup. Tap a race for details, "Add to my races", or to ask Rabbit about it.
 // "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx), or ones
-// inferred from training, with "Let Rabbit explore" on top. "Near you" switches between races
-// and Local: recurring clubs, rides and leagues in your city (LocalActivities.tsx).
+// inferred from training, then Near you. "Let Rabbit explore" (one tap) sits on top of both
+// views. Search with no filters uses your location, 50 mi, all types; with no location it's
+// nationwide and says so. The "Local" chip swaps races for places and groups near you.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Search, Sparkles } from 'lucide-react'
+import { Activity, MapPin, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -22,20 +23,21 @@ import { ForYouFeedView, InterestsStrip, useForYou } from './ForYou'
 import { InterestsSheet } from './InterestsSheet'
 import { LocalActivities } from './LocalActivities'
 import { EstimateLine } from './Estimate'
+import { LocationPrompt } from './LocationPrompt'
+import { LetRabbitExplore } from './RabbitExplore'
 import type { RaceX } from '@/lib/explore2'
 
 /** The nav icon for Explore (exported so the home nav needs no extra icon import). */
 export const ExploreIcon = Search
 
 type Mode = 'foryou' | 'search'
-type Segment = 'races' | 'local'
 const MODE_KEY = 'rabbit.explore.mode'
-const SEG_KEY = 'rabbit.explore.segment'
+const LOCAL_KEY = 'rabbit.explore.local'
 function readMode(): Mode {
   try { return localStorage.getItem(MODE_KEY) === 'search' ? 'search' : 'foryou' } catch { return 'foryou' }
 }
-function readSegment(): Segment {
-  try { return localStorage.getItem(SEG_KEY) === 'local' ? 'local' : 'races' } catch { return 'races' }
+function readLocal(): boolean {
+  try { return localStorage.getItem(LOCAL_KEY) === '1' } catch { return false }
 }
 
 const EMPTY: ExploreFilters = { near: '', radius: 50, months: 6, types: [], distance: null, q: '' }
@@ -70,6 +72,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [wide, setWide] = useState<string | null>(null)
   const [web, setWeb] = useState<ExploreRace[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [webError, setWebError] = useState<string | null>(null)
@@ -77,18 +80,19 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   const seq = useRef(0)
   const [mode, setModeState] = useState<Mode>(readMode)
   const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* private mode */ } }
-  const [segment, setSegmentState] = useState<Segment>(readSegment)
-  const setSegment = (v: Segment) => { setSegmentState(v); try { localStorage.setItem(SEG_KEY, v) } catch { /* private mode */ } }
-  const fy = useForYou(mode === 'foryou' && segment === 'races')
+  const [local, setLocalState] = useState<boolean>(readLocal)
+  const setLocal = (v: boolean) => { setLocalState(v); try { localStorage.setItem(LOCAL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
+  const fy = useForYou(mode === 'foryou')
   const [editing, setEditing] = useState(false)
 
-  // Defaults (home zip, favorite sports) fill in the filters the first time.
-  useEffect(() => {
+  // Defaults (your resolved location, 50 mi, all types) fill in the filters the first time.
+  const loadDefaults = useCallback(() => {
     exploreDefaults().then((d) => {
       setHome(d.near)
       setFilters((f) => f ? (f.near ? f : { ...f, near: d.near }) : { ...EMPTY, near: d.near, types: d.types, radius: d.radius, months: d.months })
     }, () => setFilters((f) => f ?? EMPTY))
   }, [])
+  useEffect(() => { loadDefaults() }, [loadDefaults])
 
   const run = useCallback((f: ExploreFilters, p: number) => {
     const n = ++seq.current
@@ -97,7 +101,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     searchRaces(f, p).then((r) => {
       if (n !== seq.current) return
       setRaces((prev) => (p === 1 || !prev ? r.races : [...prev, ...r.races.filter((x) => !prev.some((y) => y.id === x.id))]))
-      setPage(r.page); setHasMore(r.has_more); setCapped(r.capped)
+      setPage(r.page); setHasMore(r.has_more); setCapped(r.capped); setWide(r.nationwide ? r.note ?? '' : null)
     }, (e) => { if (n === seq.current) setError((e as Error).message) })
       .finally(() => { if (n === seq.current) { setLoading(false); setLoadingMore(false) } })
   }, [])
@@ -106,10 +110,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   useEffect(() => {
     if (!filters) return
     saveFilters(filters)
-    if (mode !== 'search' || segment !== 'races' || !nearOk(filters.near)) return
+    if (mode !== 'search' || local || !nearOk(filters.near)) return
     const t = setTimeout(() => run(filters, 1), 350)
     return () => clearTimeout(t)
-  }, [filters, run, mode, segment])
+  }, [filters, run, mode, local])
 
   const set = (p: Partial<ExploreFilters>) => setFilters((f) => ({ ...(f ?? EMPTY), ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -131,16 +135,6 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     if (g && g.month === m) g.races.push(r)
     else groups.push({ month: m, races: [r] })
   }
-
-  const segments = (
-    <div role="tablist" aria-label="Near you" className="mx-auto mt-1.5 flex w-full max-w-xl rounded-xl bg-(--bg-elevated) p-1">
-      {([['races', 'Races'], ['local', 'Local']] as const).map(([v, l]) => (
-        <button key={v} type="button" role="tab" aria-selected={segment === v} onClick={() => setSegment(v)}
-          className={cn('min-h-9 flex-1 rounded-lg text-[0.7647rem] font-medium transition-colors',
-            segment === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
-      ))}
-    </div>
-  )
 
   const modes = (
     <div role="tablist" aria-label="Explore view" className="mx-auto mt-1.5 flex w-full max-w-xl gap-4 px-1">
@@ -165,6 +159,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
         </select>
       </div>
       <div className="no-scrollbar -mx-3 -my-1 flex gap-1.5 overflow-x-auto px-3 py-1">
+        <Chip selected={local} onClick={() => setLocal(!local)}>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin className="size-3.5" />Local</span>
+        </Chip>
+        <span className="mx-0.5 w-px shrink-0 self-stretch bg-(--border)" aria-hidden />
         {home && f.near !== home && <Chip onClick={() => set({ near: home })}><span className="whitespace-nowrap">Use my home</span></Chip>}
         {MONTHS.map((m) => (
           <Chip key={m} selected={f.months === m} onClick={() => set({ months: m })}><span className="whitespace-nowrap">{m === 12 ? '1 year' : `${m} mo`}</span></Chip>
@@ -206,11 +204,13 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   return (
     <>
       <Screen title="Explore" subtitle="Find your next start line" closing={closing} onClose={close}
-        headerExtra={<>{segments}{segment === 'races' && <>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}</>}>
-        {segment === 'local' ? (
-          <LocalActivities onAsk={onAsk} onSaveZip={fy.saveZip} onLocationChanged={() => fy.load(true)} />
-        ) : mode === 'foryou' ? (
-          <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')} />
+        headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
+        <LetRabbitExplore onOpen={(r) => setDetail(r)} onAsk={onAsk} imperial={imperial} />
+        {mode === 'foryou' ? (
+          <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')}
+            onAsk={onAsk} imperial={imperial} />
+        ) : local ? (
+          <LocalActivities onAsk={onAsk} imperial={imperial} onLocationChanged={() => { loadDefaults(); fy.load(true) }} />
         ) : <>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
@@ -218,6 +218,12 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
             aria-label="Search by race name" onChange={(e) => set({ q: e.target.value })} />
         </div>
         {!nearOk(f.near) && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
+        {wide !== null && !f.near.trim() && (
+          <LocationPrompt title={wide || 'Upcoming races across the US'} onChanged={() => {
+            exploreDefaults().then((d) => { setHome(d.near); if (d.near) set({ near: d.near }) }, () => {})
+            fy.load(true)
+          }} />
+        )}
         {(loading || filters === null) && races === null ? (
           <div className="flex justify-center py-16">
             <RabbitLoader label="Finding races" cycle={['Scouting start lines…', 'Checking the calendar…', 'Reading course maps…']} />
@@ -292,7 +298,7 @@ function RaceCard({ r, onClick }: { r: ExploreRace; onClick: () => void }) {
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="line-clamp-2 text-[0.9412rem] font-medium leading-snug text-(--text)">{r.name}</span>
         <span className="truncate text-[0.7059rem] text-(--text-muted)">
-          {raceDate(r.date)}{placeOf(r) ? ` · ${placeOf(r)}` : ''}
+          {r.ongoing ? `Ongoing${r.end_date ? ` · through ${raceDate(r.end_date)}` : ''}` : raceDate(r.date)}{placeOf(r) ? ` · ${placeOf(r)}` : ''}
         </span>
         {(dists.length > 0 || r.registration_open || fee || hint) && (
           <span className="flex flex-wrap items-center gap-1">

@@ -2,8 +2,9 @@
 // Coming up near you, Your friends are racing, Bucket list). Every card says why it's here.
 // Tap a card for the usual RaceDetail (add to races, ask Rabbit, register).
 // Never empty (explore v2): with no interests the server ranks with ones inferred from your
-// training (a dismissible "Based on your training" chip says so); with no location it shows
-// popular big races and asks for a zip or "Use my location" inline. "Let Rabbit explore" sits on top.
+// training, goal or a balanced mix (a dismissible "Based on your training" chip says so); with no
+// location it shows races coming up across the US (labelled) and asks for a zip or "Use my
+// location" inline. "Near you" (places + groups) follows the races.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Carrot, Pencil, RefreshCw, Sparkles, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,14 +13,14 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import { placeOf, raceDate } from '@/lib/explore'
 import {
-  fetchBucket, getForYou, hasInterests, interestsSummary, saveInterests,
+  fetchBucket, getForYou, hasInterests, interestsSummary,
   type ForYouFeed, type ForYouRace, type ForYouSection, type Interests,
 } from '@/lib/foryou'
-import { MONTH_LONG, type RaceX } from '@/lib/explore2'
+import { MONTH_LONG, saveZipLocation, type RaceX } from '@/lib/explore2'
 import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { EstimateLine } from './Estimate'
 import { LocationLine, LocationPrompt } from './LocationPrompt'
-import { RabbitExploreHero } from './RabbitExplore'
+import { NearYouSection } from './LocalActivities'
 
 const CHIP_KEY = 'rabbit.explore.inferred.dismissed'
 const SCOUT = ['Scouting races for you…', 'Sniffing out start lines…', 'Checking your calendar…', 'Lining up tune-ups…']
@@ -66,13 +67,8 @@ export function useForYou(active: boolean) {
     bucketTried.current = false
     load()
   }
-  /** Save a zip typed into the inline location ask (it lives on interests.home_zip). */
-  const saveZip = async (zip: string) => {
-    const current = feed?.interests ?? (await getForYou()).interests  // never drop the other interests
-    const i = { ...(current ?? {}), home_zip: zip }
-    await saveInterests(i)
-    setFeed((f) => f && { ...f, interests: i })
-  }
+  /** A zip typed into the inline location ask becomes the saved ("manual") location. */
+  const saveZip = async (zip: string) => { await saveZipLocation(zip) }
   return { feed, loading, error, load, saved, saveZip, bucketBusy, bucketError }
 }
 
@@ -93,14 +89,18 @@ export function InterestsStrip({ interests, onEdit }: { interests: Interests | n
   )
 }
 
-export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
+export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperial }: {
   state: ReturnType<typeof useForYou>
   onOpen: (r: ForYouRace) => void
   onEdit: () => void
   onSearch: () => void
+  onAsk: (text: string) => void
+  imperial: boolean
 }) {
   const { feed, loading, error, load, saveZip, bucketBusy, bucketError } = state
   const [hideChip, setHideChip] = useState(chipDismissed)
+  const [locKey, setLocKey] = useState(0)
+  const changed = () => { setLocKey((k) => k + 1); load(true) }
   if (!feed && (loading || !error)) {
     return <div className="flex justify-center py-16"><RabbitLoader label="Scouting races for you" cycle={SCOUT} /></div>
   }
@@ -111,7 +111,6 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
   const dismissChip = () => { setHideChip(true); try { localStorage.setItem(CHIP_KEY, '1') } catch { /* private mode */ } }
   return (
     <div className={cn('flex flex-col gap-6 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
-      <RabbitExploreHero onOpen={(r) => onOpen(r as ForYouRace)} />
       {feed.inferred && !hideChip && (
         <div className="-mb-3 flex items-center gap-1 self-start rounded-full bg-(--accent-subtle) py-0.5 pl-3 text-[0.7059rem] text-(--accent)">
           <Sparkles className="size-3.5 shrink-0" />
@@ -124,8 +123,8 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
         </div>
       )}
       {loc && !loc.searchable ? (
-        <LocationPrompt title="Find races near you" onSaveZip={saveZip} onChanged={() => load(true)} />
-      ) : loc ? <LocationLine loc={loc} onChanged={() => load(true)} /> : null}
+        <LocationPrompt title="Add your location for nearby picks" onSaveZip={saveZip} onChanged={changed} />
+      ) : loc ? <LocationLine loc={loc} onChanged={changed} /> : null}
       {feed.failed && (
         <div className="flex items-center gap-2 rounded-xl bg-(--warning-subtle) px-3 py-2 text-[0.7059rem] text-(--warning-text)" role="status">
           <span className="flex-1">Race search isn't answering right now, so picks are missing. Showing what we have.</span>
@@ -135,6 +134,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
         </div>
       )}
       {feed.sections.map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
+      <NearYouSection imperial={imperial} onAsk={onAsk} reloadKey={locKey} />
       {bucketBusy && (
         <section className="flex flex-col gap-2">
           <SectionTitle s={{ id: 'bucket', title: 'Bucket list', races: [], source: 'web' }} />
@@ -175,7 +175,7 @@ function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => v
   return (
     <section className="flex flex-col gap-2">
       <SectionTitle s={s} />
-      {s.note && <p className="px-1 text-[0.7059rem] leading-snug text-(--warning-text)">{s.note}</p>}
+      {s.note && <p className={cn('px-1 text-[0.7059rem] leading-snug', s.id === 'nationwide' ? 'text-(--text-muted)' : 'text-(--warning-text)')}>{s.note}</p>}
       <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">
         {s.races.map((r) => <PickCard key={r.id} r={r} onClick={() => onOpen(r)} />)}
       </div>
@@ -185,19 +185,24 @@ function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => v
   )
 }
 
-/** "Sat, May 22", or "Usually in April" for a popular race whose date isn't confirmed. */
+/** "Sat, May 22", "Ongoing · through Dec 31" for a series, or "Usually in April" for a popular
+ *  race whose date isn't confirmed. */
 export function whenText(r: RaceX): string {
-  return r.check_dates || !r.date ? (r.usual_month ? `Usually in ${MONTH_LONG[r.usual_month - 1]}` : 'Date to be announced') : raceDate(r.date)
+  if (r.check_dates || !r.date) return r.usual_month ? `Usually in ${MONTH_LONG[r.usual_month - 1]}` : 'Date to be announced'
+  if (r.ongoing) return r.end_date ? `Ongoing · through ${raceDate(r.end_date)}` : 'Ongoing'
+  return raceDate(r.date)
 }
 
-export function PickCard({ r, onClick }: { r: ForYouRace | RaceX; onClick: () => void }) {
+export function PickCard({ r, onClick, className, style }: {
+  r: ForYouRace | RaceX; onClick: () => void; className?: string; style?: React.CSSProperties
+}) {
   const [logoOk, setLogoOk] = useState(true)
   const Icon = CATEGORY_ICON[r.types[0] ?? 'other'] ?? Activity
   const dists = [...new Set(r.events.map((e) => e.distance_label).filter(Boolean))].slice(0, 3)
   const place = placeOf(r)
   return (
-    <button type="button" onClick={onClick}
-      className="flex w-[78%] max-w-[300px] shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5 text-left active:bg-(--bg-inset)">
+    <button type="button" onClick={onClick} style={style}
+      className={cn('flex w-[78%] max-w-[300px] shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5 text-left active:bg-(--bg-inset)', className)}>
       <span className="flex items-start gap-2.5">
         {r.logo && logoOk ? (
           <img src={r.logo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoOk(false)}

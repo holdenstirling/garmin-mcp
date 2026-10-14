@@ -1886,16 +1886,22 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             res = await _explore.default_search().search(f)
         except _explore.ExploreError as e:
             raise _UserError(e.message, e.status) from None
-        races = await _plan_call(lambda: _explore_hinted(user_id, res["races"]))
-        return JSONResponse({**res, "races": races, "query": f})
+        found = res["races"]
+        wide = _explore.nationwide(f)
+        if wide and not f.get("q"):  # no location: only races you can still enter, labelled honestly
+            found = _explore.open_only(found)
+        races = await _plan_call(lambda: _explore_hinted(user_id, found))
+        return JSONResponse({**res, "races": races, "query": f, "nationwide": wide,
+                             "note": _explore.NATIONWIDE_NOTE if wide else ""})
 
     async def explore_defaults(request: Request, user_id: str) -> Response:
         athlete = await _plan_call(lambda: _coach().athlete(user_id))
         out = _explore.defaults(athlete)
-        # Search starts where For you looks (device location, home zip, profile city/state).
-        loc = await anyio.to_thread.run_sync(lambda: _geo.resolve(
-            athlete.get("interests") or {}, athlete, _geo.load_auto(store, user_id)))
+        # Search with no filters starts where For you looks (saved location, home zip, profile
+        # city/state), 50 mi, all types; nothing known -> nationwide (labelled).
+        loc = (await _x2_resolved(user_id))["loc"]
         out["near"] = loc.get("zip") or (loc.get("state") if loc.get("state") in _geo.US_STATES else "") or ""
+        out["location"] = _x2_loc_view(loc)
         return JSONResponse(out)
 
     async def explore_ai(request: Request, user_id: str) -> Response:
@@ -1906,6 +1912,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         f = _explore_filters(body, user_id)
         finder = _explore.default_web()
         races = finder.cached(f)
+        if races is None and f.get("zip"):
+            # The model gets a city/state, never the zip.
+            place = await _geocoder.zip_place(f["zip"])
+            area = ", ".join(x for x in (place.get("city") or "", place.get("state") or "") if x)
+            f = dict(f, area=area) if area else dict(f, state=place.get("state") or None)
         if races is None:
             research = getattr(chat.agent._backend, "research", None)
             if research is None:
@@ -2178,7 +2189,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if wants and stored and stored.get("races"):
             sections.append({"id": "bucket", "title": "Bucket list", "source": "web",
                              "races": await _plan_call(lambda: _explore_hinted(user_id, stored["races"]))})
-        if not any(s["id"] in ("picks", "tuneups", "near", "bucket") and s["races"] for s in sections):
+        if not any(s["id"] in ("picks", "tuneups", "near", "nationwide", "bucket") and s["races"] for s in sections):
             sections.append(await _x2_popular(user_id, eff, today, verify=not (res["zip"] or res["state"])))
         eligible = wants and store is not None
         can_web = chat is not None and getattr(chat.agent._backend, "research", None) is not None
@@ -2186,6 +2197,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "interests": interests, "has_interests": _foryou.has_own_interests(interests), "sections": sections,
             "inferred": inferred, "effective": eff, "location": _x2_loc_view(loc),
             "partial": res["partial"], "failed": res["failed"], "zip": res["zip"], "radius": res["radius"],
+            "nationwide": bool(res.get("nationwide")),
             "bucket": {"eligible": eligible, "due": eligible and can_web and not fresh_bucket}})
 
     async def foryou_bucket(request: Request, user_id: str) -> Response:
@@ -2223,21 +2235,27 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                                          "races": await _plan_call(lambda: _explore_hinted(user_id, found))}})
 
     # ------------------------- explore v2: location, Let Rabbit explore, local, predict --
-    # Location (geo.py): device location is rounded to 2 decimals before anything else,
-    # reverse-geocoded server-side (Nominatim, 1 req/s, cached 30 days) and only
-    # {zip, city, state, lat2, lon2, ts} is stored as profile "location_auto" (never in Rabbit's
-    # context or a coach view). For you never comes back empty: inferred interests when none are
-    # set, popular big races when there's no location. "Let Rabbit explore" (rabbitexplore.py)
-    # = RunSignup + the Explore web research. Local activities (localacts.py): web research once
-    # per city per week, shared by everyone in that city; the prompt holds only "City, ST".
-    # Finish-time estimates (predict.py): Garmin race predictor / recent efforts / profile
-    # thresholds, never Oura. Athletes only (coach accounts get 403 from _api).
+    # Location (geo.py): saved location first ("Use my location" -> coordinates rounded to 2
+    # decimals before anything else, Nominatim reverse with an identifying UA, 1 req/s, cached
+    # 30 days; or a typed zip), stored as the profile field "location" = {lat, lon, city, state,
+    # zip, source, updated} (never in Rabbit's context, a coach view or friends), then home zip,
+    # then the profile's home_location; no timezone guessing. Nothing known -> a nationwide
+    # "Coming up" search, labelled as such. For you never comes back empty: inferred interests
+    # (main race, goal, favorites, Garmin sports, else a balanced mix). "Let Rabbit explore"
+    # (rabbitexplore.py) = For you + an AI web scout (only interests, "City, ST", main race /
+    # goal and a readiness word; never Oura) + places nearby (local.py, OpenStreetMap Overpass,
+    # 8 km, cached 7 days per rounded spot) + group activities (localacts.py, web, weekly per
+    # city). Coordinates are never logged or sent to the model. Athletes only (coach: 403).
     from . import geo as _geo
+    from . import local as _osm
     from . import localacts as _local
     from . import predict as _predict
     from . import rabbitexplore as _rx
-    _geocoder = _geo.Geocoder(contact=settings.contact_email or settings.public_base_url, store=store)
+    _geo_contact = settings.contact_email or settings.public_base_url
+    _geocoder = _geo.Geocoder(contact=_geo_contact, store=store)
+    _osm_places = _osm.Places(contact=_geo_contact, store=store)
     _local_finder = _local.LocalFinder(store)
+    _scout = _rx.ScoutCache()
     _pred_cache = _predict.BasisCache()
 
     def _x2_by_sport(uid: str) -> list[dict[str, Any]]:
@@ -2264,19 +2282,75 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                                        today=_explore_today(uid))
         return _pred_cache.get(uid, build)
 
+    def _x2_goal(uid: str) -> dict[str, Any] | None:
+        try:
+            return _coach().active_goal(uid)
+        except Exception:
+            return None
+
     def _x2_context(uid: str, athlete: dict[str, Any], events: list[dict[str, Any]],
                     today: date) -> tuple[dict[str, Any], dict[str, Any], bool]:
         """(resolved location, interests to rank with, inferred?)."""
         interests = athlete.get("interests") or {}
-        loc = _geo.resolve(interests, athlete, _geo.load_auto(store, uid))
+        loc = _geo.resolve(interests, athlete, _geo.load_saved(store, uid))
         eff, inferred = _foryou.effective_interests(
-            interests, lambda: _foryou.infer_interests(athlete, _x2_by_sport(uid), events, today))
+            interests, lambda: _foryou.infer_interests(athlete, _x2_by_sport(uid), events, today, _x2_goal(uid)))
         return loc, eff, inferred
 
     def _x2_loc_view(loc: dict[str, Any]) -> dict[str, Any]:
+        """What the app sees: never coordinates."""
+        ok = _geo.searchable(loc)
         return {"source": loc.get("source"), "label": _geo.label(loc), "zip": loc.get("zip") or "",
-                "state": loc.get("state") or "", "city": loc.get("city") or "",
-                "searchable": bool(loc.get("zip") or loc.get("state") in _geo.US_STATES)}
+                "state": loc.get("state") or "", "city": loc.get("city") or "", "searchable": ok,
+                "nationwide": not ok, "note": "" if ok else _explore.NATIONWIDE_NOTE}
+
+    def _x2_saved_view(saved: dict[str, Any] | None) -> dict[str, Any] | None:
+        return {k: saved.get(k) for k in ("city", "state", "zip", "source", "updated")} if saved else None
+
+    async def _x2_area(loc: dict[str, Any]) -> tuple[str, str]:
+        """(city, state) for the model and the group search: never a zip or coordinates."""
+        city, state = loc.get("city") or "", loc.get("state") or ""
+        if not city and loc.get("zip"):
+            place = await _geocoder.zip_place(str(loc["zip"]))
+            city, state = place.get("city") or "", place.get("state") or state
+        return str(city), str(state)
+
+    async def _x2_places(uid: str, loc: dict[str, Any]) -> dict[str, Any]:
+        """{"places", "state": ok|off|needs_location|failed} from OpenStreetMap."""
+        if not await anyio.to_thread.run_sync(lambda: _geo.use_for_local(store, uid)):
+            return {"places": [], "state": "off"}
+        coords = await _geocoder.coords(loc)
+        if coords is None:
+            return {"places": [], "state": "needs_location"}
+        try:
+            return {"places": await _osm_places.near(*coords), "state": "ok"}
+        except _osm.OverpassError as e:
+            log_event(logger, logging.WARNING, "explore_places_failed", user_id=uid, error=str(e)[:40])
+            return {"places": [], "state": "failed"}
+
+    async def _x2_groups(uid: str, city: str, state: str, today: date, *, search: bool) -> tuple[list[dict[str, Any]], str]:
+        """Group activities for a city: the weekly shared cache, or (``search``) one web search
+        on the daily allowance. Returns (items, ok|cached_only|limit|unavailable|failed)."""
+        items = await anyio.to_thread.run_sync(lambda: _local_finder.cached(city, state, today))
+        if items is not None:
+            return items, "ok"
+        if not search:
+            return [], "cached_only"
+        research = getattr(chat.agent._backend, "research", None) if chat is not None else None
+        if research is None:
+            return [], "unavailable"
+        try:
+            await _plan_call(lambda: _events().take_allowance(uid, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                                                              message="limit"))
+        except _UserError:
+            return [], "limit"
+        try:
+            items = await _local_finder.find(research, city, state, today)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "explore_local_failed", user_id=uid, error=type(e).__name__)
+            return [], "failed"
+        log_event(logger, logging.INFO, "explore_local", user_id=uid, found=len(items))
+        return items, "ok"
 
     async def _x2_popular(uid: str, interests: dict[str, Any], today: date, *, verify: bool) -> dict[str, Any]:
         verified: dict[str, Any] = {}
@@ -2289,40 +2363,64 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return {"id": "popular", "title": "Popular big races", "source": "curated",
                 "races": await _plan_call(lambda: _explore_hinted(uid, races))}
 
+    async def _x2_resolved(uid: str) -> dict[str, Any]:
+        athlete = await _plan_call(lambda: _coach().athlete(uid))
+        saved = await anyio.to_thread.run_sync(lambda: _geo.load_saved(store, uid))
+        return {"saved": saved, "loc": _geo.resolve(athlete.get("interests") or {}, athlete, saved)}
+
+    async def _x2_location_resp(uid: str) -> Response:
+        r = await _x2_resolved(uid)
+        use = await anyio.to_thread.run_sync(lambda: _geo.use_for_local(store, uid))
+        view = _x2_saved_view(r["saved"])
+        return JSONResponse({"saved": view, "device": view, "resolved": _x2_loc_view(r["loc"]),
+                             "use_for_local": use})
+
     async def location_get(request: Request, user_id: str) -> Response:
-        athlete = await _plan_call(lambda: _coach().athlete(user_id))
-        auto = await anyio.to_thread.run_sync(lambda: _geo.load_auto(store, user_id))
-        loc = _geo.resolve(athlete.get("interests") or {}, athlete, auto)
-        view = {k: auto.get(k) for k in ("zip", "city", "state", "ts")} if auto else None
-        return JSONResponse({"device": view, "resolved": _x2_loc_view(loc)})
+        return await _x2_location_resp(user_id)
 
     async def location_post(request: Request, user_id: str) -> Response:
+        """{lat, lon} from "Use my location" (rounded here, before anything else) or {zip}."""
         body = await read_json(request)
         if not isinstance(body, dict):
             raise ValueError("body")
-        try:
-            lat2, lon2 = _geo.round2(body.get("lat"), body.get("lon"))  # precise values stop here
-        except _geo.LocationError as e:
-            raise _UserError(str(e)) from None
         if store is None:
             raise _UserError("Location isn't available on this server.", 503)
-        try:
-            place = await _geocoder.reverse(lat2, lon2)
-        except _geo.LocationError as e:
-            raise _UserError(str(e), 502) from None
+        if body.get("zip") is not None:
+            zip_ = str(body.get("zip") or "").strip()
+            if not re.fullmatch(r"\d{5}", zip_):
+                raise _UserError("Enter a 5-digit US zip code.")
+            place = await _geocoder.zip_place(zip_)
+            if place.get("lat") is None:
+                raise _UserError("Couldn't find that zip code. Check it and try again.", 502 if not place else 400)
+            lat2, lon2, source = place["lat"], place["lon"], "manual"
+        else:
+            try:
+                lat2, lon2 = _geo.round2(body.get("lat"), body.get("lon"))  # precise values stop here
+            except _geo.LocationError as e:
+                raise _UserError(str(e)) from None
+            try:
+                place = await _geocoder.reverse(lat2, lon2)
+            except _geo.LocationError as e:
+                raise _UserError(str(e), 502) from None
+            source = "device"
         entry = await anyio.to_thread.run_sync(
-            lambda: _geo.save_auto(store, user_id, place, lat2, lon2, time.time()))
-        log_event(logger, logging.INFO, "location_set", user_id=user_id, has_zip=bool(entry["zip"]))
-        athlete = await _plan_call(lambda: _coach().athlete(user_id))
-        loc = _geo.resolve(athlete.get("interests") or {}, athlete, entry)
-        return JSONResponse({"device": {k: entry[k] for k in ("zip", "city", "state", "ts")},
-                             "resolved": _x2_loc_view(loc)})
+            lambda: _geo.save_location(store, user_id, place, lat2, lon2, source, time.time()))
+        log_event(logger, logging.INFO, "location_set", user_id=user_id, source=source, has_zip=bool(entry["zip"]))
+        return await _x2_location_resp(user_id)
+
+    async def location_prefs(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("use_for_local"), bool):
+            raise ValueError("body")
+        if store is None:
+            raise _UserError("Location isn't available on this server.", 503)
+        await anyio.to_thread.run_sync(lambda: _geo.set_use_for_local(store, user_id, body["use_for_local"]))
+        return await _x2_location_resp(user_id)
 
     async def location_delete(request: Request, user_id: str) -> Response:
         await anyio.to_thread.run_sync(lambda: _geo.forget(store, user_id))
-        athlete = await _plan_call(lambda: _coach().athlete(user_id))
-        return JSONResponse({"device": None, "resolved": _x2_loc_view(
-            _geo.resolve(athlete.get("interests") or {}, athlete, None))})
+        log_event(logger, logging.INFO, "location_forgotten", user_id=user_id)
+        return await _x2_location_resp(user_id)
 
     async def explore_rabbit(request: Request, user_id: str) -> Response:
         assert chat is not None
@@ -2330,83 +2428,99 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         events = await _plan_call(lambda: _events().list(user_id))
         today = _explore_today(user_id)
         loc, eff, inferred = await anyio.to_thread.run_sync(lambda: _x2_context(user_id, athlete, events, today))
-        zip_, state = _foryou.ForYou.place(eff, athlete, loc)
-        radius = _foryou.RADIUS.get(eff.get("travel") or "", _foryou.DEFAULT_RADIUS)
-        near = {"near": zip_, "radius": radius} if zip_ else ({"near": state} if state else {})
-        cats = sorted({c for t in eff.get("race_types") or [] for c in _foryou.INTEREST_CATS.get(t, set())}
-                      & set(_explore.CATEGORIES), key=list(_explore.CATEGORIES).index)[:_explore.MAX_RSU_TYPES]
-        rsu: list[dict[str, Any]] = []
+        status = await anyio.to_thread.run_sync(lambda: _fy_readiness(user_id, events, today))
+        goal = await anyio.to_thread.run_sync(lambda: _x2_goal(user_id))
+        # 1. For you (RunSignup around you, or nationwide).
         partial = False
-        if near:
-            f = _explore.parse_filters({**near, "months": _rx.MONTHS}, today)
-            f["rsu"] = _foryou.ForYou.rsu_types(eff, athlete)
-            try:
-                rsu = (await _explore.default_search().search(f))["races"]
-            except _explore.ExploreError:
-                partial = True
-        web_state, web = "ok", []
-        wf = _explore.parse_filters({**near, "months": _rx.MONTHS, "types": cats}, today)
-        finder = _explore.default_web()
-        hit = finder.cached(wf)
-        research = getattr(chat.agent._backend, "research", None)
-        if hit is not None:
-            web = hit
-        elif research is None:
-            web_state = "unavailable"
-        else:
-            try:
-                await _plan_call(lambda: _events().take_allowance(
-                    user_id, "explore_ai", today, limit=_explore.AI_PER_DAY, message="limit"))
-            except _UserError:
-                web_state = "limit"
-            if web_state == "ok":
-                try:
-                    web = await finder.find(research, wf, today)
-                except Exception as e:
-                    log_event(logger, logging.WARNING, "explore_rabbit_web_failed", user_id=user_id,
-                              error=type(e).__name__)
-                    web_state = "failed"
-        merged = _rx.dedupe([rsu, web])
-        ranked, tunes = _rx.rank(merged, interests=eff, events=events, today=today)
+        try:
+            fy_res = await _foryou.default_foryou().sections(
+                user_id, interests=eff, athlete=athlete, events=events, today=today, readiness_status=status, loc=loc)
+        except Exception:
+            fy_res = {"sections": [], "partial": True, "zip": "", "state": "", "radius": None, "nationwide": True}
+        partial = bool(fy_res.get("partial"))
+        fy_races = [r for sec in fy_res["sections"] for r in sec["races"]]
+        # 2. The AI web scout for notable races (city/state only).
+        city, state = await _x2_area(loc)
+        area = ", ".join(x for x in (city, state) if x)
         main = _foryou.main_race(events, today)
+        prompt = _rx.scout_prompt(eff, area=area, main=main, goal=goal, readiness=status, today=today)
+        web_state, web = "ok", _scout.get(prompt)
+        research = getattr(chat.agent._backend, "research", None)
+        if web is None:
+            web = []
+            if research is None:
+                web_state = "unavailable"
+            else:
+                try:
+                    await _plan_call(lambda: _events().take_allowance(
+                        user_id, "explore_ai", today, limit=_explore.AI_PER_DAY, message="limit"))
+                except _UserError:
+                    web_state = "limit"
+                if web_state == "ok":
+                    try:
+                        raw = await research(_explore.WEB_SYSTEM, prompt, max_searches=5, report_tool=_explore.WEB_TOOL)
+                        web = _explore.clean_web(_explore.report_obj(raw), today)
+                        _scout.put(prompt, web)
+                    except Exception as e:
+                        log_event(logger, logging.WARNING, "explore_rabbit_web_failed", user_id=user_id,
+                                  error=type(e).__name__)
+                        web_state = "failed"
+        merged = _rx.dedupe([fy_races, web])
+        ranked, tunes = _rx.rank(merged, interests=eff, events=events, today=today)
         shown = ranked[:_rx.LIMIT]
-        log_event(logger, logging.INFO, "explore_rabbit", user_id=user_id, rsu=len(rsu), web=len(web),
-                  shown=len(shown), web_state=web_state)
+        # 3. Near you: places (OpenStreetMap) + group activities (web, weekly per city).
+        near = await _x2_places(user_id, loc)
+        groups, groups_state = [], "needs_location"
+        if near["state"] == "off":
+            groups_state = "off"
+        elif city:
+            groups, groups_state = await _x2_groups(user_id, city, state, today, search=web_state != "limit")
+        places = near["places"][:_rx.PLACES_SHOWN]
+        groups = _local.order(groups, _local.relevant(athlete, await anyio.to_thread.run_sync(
+            lambda: _x2_by_sport(user_id))))[:_rx.GROUPS_SHOWN]
+        zip_, st = fy_res.get("zip") or "", fy_res.get("state") or ""
+        log_event(logger, logging.INFO, "explore_rabbit", user_id=user_id, fy=len(fy_races), web=len(web),
+                  shown=len(shown), places=len(places), groups=len(groups), web_state=web_state)
         return JSONResponse({
-            "intro": _rx.intro(len(ranked), zip_=zip_, state=state, radius=radius, tunes=tunes, main=main),
+            "intro": _rx.intro(len(ranked), zip_=zip_, state=st, radius=fy_res.get("radius") or 0, tunes=tunes, main=main),
+            "summary": _rx.summary(len(shown), len(places), len(groups)),
+            "count": len(shown) + len(places) + len(groups),
             "races": await _plan_call(lambda: _explore_hinted(user_id, shown)),
+            "places": places, "groups": groups, "places_state": near["state"], "groups_state": groups_state,
             "total": len(ranked), "web": web_state, "partial": partial, "inferred": inferred,
-            "location": _x2_loc_view(loc)})
+            "nationwide": bool(fy_res.get("nationwide")), "location": _x2_loc_view(loc)})
 
-    async def explore_local(request: Request, user_id: str) -> Response:
-        assert chat is not None
+    async def _x2_local(user_id: str, *, search: bool) -> dict[str, Any]:
         athlete = await _plan_call(lambda: _coach().athlete(user_id))
         today = _explore_today(user_id)
-        loc = _geo.resolve(athlete.get("interests") or {}, athlete,
-                           await anyio.to_thread.run_sync(lambda: _geo.load_auto(store, user_id)))
-        city, state = loc.get("city") or "", loc.get("state") or ""
-        if not city and loc.get("zip"):
-            place = await _geocoder.zip_place(loc["zip"])
-            city, state = place.get("city") or "", place.get("state") or state
+        r = await _x2_resolved(user_id)
+        loc = r["loc"]
         cats = _local.relevant(athlete, await anyio.to_thread.run_sync(lambda: _x2_by_sport(user_id)))
-        base = {"city": city, "state": state, "suggested": cats, "chips": _local.CHIPS}
+        city, state = await _x2_area(loc)
+        near = await _x2_places(user_id, loc)
+        base = {"city": city, "state": state, "suggested": cats, "chips": _local.CHIPS, "kinds": _osm.KINDS,
+                "places": near["places"], "places_state": near["state"], "disabled": near["state"] == "off",
+                "location": _x2_loc_view(loc)}
+        if near["state"] == "off":
+            return {**base, "items": [], "groups_state": "off", "needs_location": False}
         if not city:
-            return JSONResponse({**base, "items": [], "needs_location": True})
-        items = await anyio.to_thread.run_sync(lambda: _local_finder.cached(city, state, today))
-        if items is None:
-            research = getattr(chat.agent._backend, "research", None)
-            if research is None:
-                raise _UserError("Web search isn't available on this server.", 503)
-            await _plan_call(lambda: _events().take_allowance(
-                user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
-                message="That's today's Rabbit searches used up. Try again tomorrow."))
-            try:
-                items = await _local_finder.find(research, city, state, today)
-            except Exception as e:
-                log_event(logger, logging.WARNING, "explore_local_failed", user_id=user_id, error=type(e).__name__)
-                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
-            log_event(logger, logging.INFO, "explore_local", user_id=user_id, found=len(items))
-        return JSONResponse({**base, "items": _local.order(items, cats), "needs_location": False})
+            return {**base, "items": [], "groups_state": "needs_location", "needs_location": not near["places"]}
+        items, gstate = await _x2_groups(user_id, city, state, today, search=search)
+        if search and gstate in ("unavailable", "failed") and not near["places"]:
+            raise _UserError("Rabbit's web search didn't work just now. Try again in a minute."
+                             if gstate == "failed" else "Web search isn't available on this server.",
+                             502 if gstate == "failed" else 503)
+        if search and gstate == "limit" and not near["places"]:
+            raise _UserError("That's today's Rabbit searches used up. Try again tomorrow.", 429)
+        return {**base, "items": _local.order(items, cats), "groups_state": gstate, "needs_location": False}
+
+    async def explore_local(request: Request, user_id: str) -> Response:
+        """Near you, with a web search for group activities when this city's week isn't cached."""
+        return JSONResponse(await _x2_local(user_id, search=True))
+
+    async def explore_nearby(request: Request, user_id: str) -> Response:
+        """Near you without spending a web search (places + already-cached groups)."""
+        return JSONResponse(await _x2_local(user_id, search=False))
 
     async def predict_get(request: Request, user_id: str) -> Response:
         q = request.query_params
@@ -2591,8 +2705,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/explore/foryou/bucket", _plan_api(foryou_bucket, mutating=True), methods=["POST"]),
         Route("/app/api/explore/rabbit", _plan_api(explore_rabbit, mutating=True), methods=["POST"]),
         Route("/app/api/explore/local", _plan_api(explore_local, mutating=True), methods=["POST"]),
+        Route("/app/api/explore/nearby", _plan_api(explore_nearby, mutating=False), methods=["GET"]),
         Route("/app/api/location", _plan_api(location_get, mutating=False), methods=["GET"]),
         Route("/app/api/location", _plan_api(location_post, mutating=True), methods=["POST"]),
+        Route("/app/api/location/prefs", _plan_api(location_prefs, mutating=True), methods=["POST"]),
         Route("/app/api/location", _plan_api(location_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/predict", _plan_api(predict_get, mutating=False), methods=["GET"]),
         Route("/app/api/social", _social_api(social_get, mutating=False), methods=["GET"]),

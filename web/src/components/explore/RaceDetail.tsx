@@ -1,8 +1,9 @@
 // One race from Explore: what it is, its distances, and what to do next: add it to your
 // races (then see your race fit), register on the race's own site, or ask Rabbit about it.
-// "Your estimate" (predict.py) follows the distance you pick. Popular races without a
+// "Your estimated finish" (GET /api/predict, asked lazily; hidden on 404/errors) follows the
+// distance you pick. Popular races without a
 // confirmed date say "Usually in <month>" and can't be added until you check the date.
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { celebrate } from '@/components/fx'
 import { CalendarPlus, Check, ExternalLink, Gauge, Globe, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,8 @@ import { cn } from '@/lib/utils'
 import { countdown } from '@/lib/events'
 import { addRace, distanceText, feeFrom, placeOf, raceDate, type ExploreRace } from '@/lib/explore'
 import { CATEGORY_ICON, HINT_CLS } from './icons'
-import { predictFor, type Estimate, type RaceX } from '@/lib/explore2'
-import { EstimateBlock } from './Estimate'
+import type { RaceX } from '@/lib/explore2'
+import { FinishChip } from './Estimate'
 import { whenText } from './ForYou'
 
 export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
@@ -38,14 +39,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
   const needsPick = race.events.length > 1 && pick === null
   const rx = race as RaceX
   const undated = !!rx.check_dates || !race.date
-  const [est, setEst] = useState<Estimate | null>(rx.estimate ?? null)
   const ev = race.events[pick ?? 0]
-  useEffect(() => {
-    if (!ev?.distance_km) return
-    let live = true
-    predictFor({ distanceKm: ev.distance_km, type: ev.type }).then((r) => { if (live) setEst(r.estimate) }, () => {})
-    return () => { live = false }
-  }, [ev?.distance_km, ev?.type])
 
   async function add() {
     setBusy(true); setError(null)
@@ -63,7 +57,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
 
   return (
     <>
-      <Screen title={race.name} subtitle={undated ? whenText(rx) : `${raceDate(race.date)} · ${countdown(race.date)}`} closing={closing} onClose={close} onBack={close}
+      <Screen title={race.name} subtitle={undated || race.ongoing ? whenText(rx) : `${raceDate(race.date)} · ${countdown(race.date)}`} closing={closing} onClose={close} onBack={close}
         footer={added ? (
           <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFit(true)}>
             <Gauge className="size-4" /> See race fit
@@ -84,7 +78,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{undated ? whenText(rx) : raceDate(race.date)}</p>
+            <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{undated || race.ongoing ? whenText(rx) : raceDate(race.date)}</p>
             {place && <p className="text-[0.7647rem] text-(--text-muted)">{place}</p>}
             <div className="mt-1 flex flex-wrap gap-1">
               {race.registration_open && (
@@ -111,7 +105,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
         )}
 
         {rx.why && <p className="px-1 text-[0.8235rem] font-medium leading-snug text-(--text)">{rx.why}</p>}
-        {est && <EstimateBlock e={est} />}
+        <FinishChip type={ev?.type} distanceKm={ev?.distance_km} date={undated ? undefined : ev?.date || race.date} />
 
         {race.summary && <p className="px-1 text-[0.8235rem] leading-relaxed text-(--text-secondary)">{race.summary}</p>}
 

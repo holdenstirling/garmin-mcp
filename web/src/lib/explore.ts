@@ -16,6 +16,8 @@ export type ExploreRaceEvent = {
 }
 export type ExploreRace = {
   id: string; source: 'runsignup' | 'web'; name: string; date: string; end_date: string | null
+  /** A series running through end_date (its next session isn't listed): shown from today. */
+  ongoing?: boolean
   city: string; state: string; zip: string; location?: string
   url: string | null; website: string | null; logo: string | null
   registration_open: boolean | null; summary: string
@@ -25,8 +27,15 @@ export type ExploreRace = {
 export type ExploreFilters = {
   near: string; radius: number; months: number; types: ExploreCategory[]; distance: ExploreDistance | null; q: string
 }
-export type ExploreDefaults = { near: string; types: ExploreCategory[]; radius: number; months: number }
-export type ExploreResult = { races: ExploreRace[]; page: number; has_more: boolean; capped: boolean; partial: boolean }
+export type ExploreDefaults = {
+  near: string; types: ExploreCategory[]; radius: number; months: number
+  location?: { label: string; source: string | null; nationwide?: boolean; note?: string }
+}
+export type ExploreResult = {
+  races: ExploreRace[]; page: number; has_more: boolean; capped: boolean; partial: boolean
+  /** No location: races across the US (registration open), with an honest label. */
+  nationwide?: boolean; note?: string
+}
 
 export const CATEGORY_LABEL: Record<ExploreCategory, string> = {
   road: 'Road', trail: 'Trail', ultra: 'Ultra', triathlon: 'Triathlon', duathlon: 'Duathlon', cycling: 'Cycling',

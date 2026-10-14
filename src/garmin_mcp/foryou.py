@@ -41,6 +41,7 @@ TUNE_MIN_DAYS, TUNE_MAX_DAYS = 21, 70
 A_TAPER_DAYS = 14
 NEAR_DAYS = 90
 PICKS_LEAD_DAYS = 14
+NATIONWIDE_MONTHS = 3
 BUCKET_EVERY_S = 7 * 86400
 MIN_SCORE = 3
 
@@ -400,10 +401,35 @@ TYPE_DISTANCES = {"road": ["5k", "10k", "half"], "trail": ["half", "ultra_50k"],
                   "road_cycling": ["century"], "gravel": ["century"], "ultra": ["ultra_50k"]}
 
 
+# Nothing to go on at all: a balanced mix, so For you is never empty.
+BALANCED_TYPES = ["road", "trail", "triathlon", "road_cycling"]
+# Active goal text ("Ironman 70.3", "first 50K trail race", "gravel century") -> race types.
+_GOAL_WORDS = ((r"iron ?man|70\.3|140\.6|triathlon|\btri\b", "triathlon"), (r"duathlon", "duathlon"),
+               (r"ultra|\b50 ?k\b|\b100 ?(k|mi|mile)", "ultra"), (r"trail|skyrace|mountain run", "trail"),
+               (r"gravel", "gravel"), (r"\bmtb\b|mountain bik", "mtb"),
+               (r"century|gran fondo|cycling|\bbike\b|\bride\b", "road_cycling"),
+               (r"swim", "swim"), (r"marathon|half|\b10 ?k\b|\b5 ?k\b|road race|\brun\b", "road"))
+
+
+def goal_types(goal: dict[str, Any] | None) -> list[str]:
+    """Race types from the active goal's event/distance/title text (first match wins per type)."""
+    if not isinstance(goal, dict):
+        return []
+    text = " ".join(str(goal.get(k) or "") for k in ("event", "distance", "title")).lower()
+    out: list[str] = []
+    for pat, t in _GOAL_WORDS:
+        if t not in out and re.search(pat, text):
+            out.append(t)
+            if t in ("triathlon", "ultra"):  # "ultra marathon" is an ultra, not a road race
+                break
+    return out[:2]
+
+
 def infer_interests(athlete: dict[str, Any], by_sport: list[dict[str, Any]] | None,
-                    events: list[dict[str, Any]], today: date) -> dict[str, Any]:
-    """Defaults from favorite sports, the top 2 Garmin sports (stats ``by_sport``) and the main
-    race. Always returns race types, distances and travel "regional"."""
+                    events: list[dict[str, Any]], today: date, goal: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Defaults from the main race, the active goal, favorite sports and the top Garmin sports
+    (stats ``by_sport``), else ``BALANCED_TYPES``. Always returns race types, distances and
+    travel "regional"."""
     types: list[str] = []
     dists: list[str] = []
 
@@ -418,6 +444,8 @@ def infer_interests(athlete: dict[str, Any], by_sport: list[dict[str, Any]] | No
             add(types, "ultra")
         for x in EVENT_DISTANCES.get(d, []):
             add(dists, x)
+    for t in goal_types(goal):
+        add(types, t)
     for f in athlete.get("favorite_sports") or []:
         add(types, FAV_TYPES.get(f))
     top = [str(x.get("sport")) for x in sorted(
@@ -428,7 +456,7 @@ def infer_interests(athlete: dict[str, Any], by_sport: list[dict[str, Any]] | No
     for sp in top[:2]:
         add(types, SPORT_TYPES.get(sp))
     if not types:
-        types = ["road", "trail"]
+        types = list(BALANCED_TYPES)
     for t in types:
         for x in TYPE_DISTANCES.get(t, []):
             if len(dists) < 4:
@@ -565,7 +593,7 @@ class ForYou:
     def rsu_types(interests: dict[str, Any], athlete: dict[str, Any]) -> list[str]:
         out = [INTEREST_RSU[t] for t in interests.get("race_types") or [] if t in INTEREST_RSU]
         if not out:  # no interests yet: favorite sports
-            cats = ex.defaults(athlete)["types"]
+            cats = ex.favorite_categories(athlete)
             out, _ = ex.rsu_types(cats)
         seen: list[str] = []
         for t in out:
@@ -587,9 +615,9 @@ class ForYou:
     async def sections(self, uid: str, *, interests: dict[str, Any], athlete: dict[str, Any],
                        events: list[dict[str, Any]], today: date, readiness_status: str | None = None,
                        fresh: bool = False, loc: dict[str, Any] | None = None) -> dict[str, Any]:
-        """{"sections", "partial", "failed", "zip", "state", "radius"}. ``loc`` is the resolved
-        location (``geo.resolve``); with no zip or state there's no RunSignup search (the caller
-        shows popular big races and asks for a location instead)."""
+        """{"sections", "partial", "failed", "zip", "state", "radius", "nationwide"}. ``loc`` is
+        the resolved location (``geo.resolve``); with no zip or state it's one nationwide
+        "Coming up" section (``ex.NATIONWIDE_NOTE``) and the app asks for a location."""
         zip_, state = self.place(interests, athlete, loc)
         radius = RADIUS.get(interests.get("travel") or "", DEFAULT_RADIUS)
         types = self.rsu_types(interests, athlete)
@@ -600,7 +628,10 @@ class ForYou:
         if not fresh and (hit := self.cache.get(key)) is not None:
             return hit
         if not zip_ and not state:
-            return {"sections": [], "partial": False, "failed": False, "zip": "", "state": "", "radius": radius}
+            out = await self._nationwide(types, interests=interests, events=events, today=today)
+            if not out["partial"]:
+                self.cache.put(key, out)
+            return out
         fs = []
         for s, e in self.windows(events, today):
             near = {"near": zip_, "radius": radius} if zip_ else {"near": state}
@@ -614,10 +645,41 @@ class ForYou:
         races = [r for g in ok for r in g["races"]]
         out = {"sections": compute(races, interests=interests, events=events, today=today, near_ok=True,
                                    readiness_status=readiness_status),
-               "partial": partial, "failed": not ok, "zip": zip_, "state": state, "radius": radius}
+               "partial": partial, "failed": not ok, "zip": zip_, "state": state, "radius": radius,
+               "nationwide": False}
         if not partial:
             self.cache.put(key, out)
         return out
+
+
+    async def _nationwide(self, types: list[str], *, interests: dict[str, Any], events: list[dict[str, Any]],
+                          today: date) -> dict[str, Any]:
+        """No location at all: one RunSignup search with no location (next 3 months, sorted by
+        date, registration open only), labelled honestly as "across the US"."""
+        f = ex.parse_filters({"months": NATIONWIDE_MONTHS}, today)
+        f["rsu"] = types
+        base = {"zip": "", "state": "", "radius": None, "nationwide": True}
+        try:
+            got = await self._search().search(f)
+        except Exception:
+            return {"sections": [], "partial": True, "failed": True, **base}
+        a_dates = a_race_dates(events, today)
+        calendar = {(str(e.get("name", "")).strip().lower(), e.get("date")) for e in events}
+        races, names = [], set()
+        for r in ex.open_only(got["races"]):
+            rd = _d(r.get("date"))
+            n = str(r.get("name", "")).strip().lower()
+            if rd is None or rd < today or n in names:
+                continue
+            if blocked(r, interests=interests, a_dates=a_dates, calendar=calendar):
+                continue
+            names.add(n)
+            days = (rd - today).days
+            races.append(dict(r, why="This week" if days < 7 else f"In {days // 7} week{'s' if days >= 14 else ''}"))
+            if len(races) >= SECTION_MAX:
+                break
+        sections = [{"id": "nationwide", "title": "Coming up", "note": ex.NATIONWIDE_NOTE, "races": races}] if races else []
+        return {"sections": sections, "partial": bool(got.get("partial")), "failed": False, **base}
 
 
 _default: ForYou | None = None
@@ -632,5 +694,5 @@ def default_foryou() -> ForYou:
 
 __all__ = ["BUCKETS", "ForYou", "POPULAR", "a_race_dates", "blocked", "bucket_prompt", "clean_bucket", "compute",
            "default_foryou", "effective_interests", "event_bucket", "friend_races", "has_own_interests",
-           "infer_interests", "main_race", "popular_races", "same_name", "score", "tune_up", "verify_popular",
+           "goal_types", "infer_interests", "main_race", "popular_races", "same_name", "score", "tune_up", "verify_popular",
            "wants_bucket"]

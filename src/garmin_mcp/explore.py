@@ -318,19 +318,46 @@ def _fmt_money(v: float) -> str:
     return f"${v:,.0f}" if v == int(v) else f"${v:,.2f}"
 
 
-def normalize(raw: Any) -> dict[str, Any] | None:
-    """One RunSignup race -> our plain shape (None when unusable)."""
+def next_occurrence(r: dict[str, Any], today: date | None) -> tuple[str, str | None, bool] | None:
+    """(date, end date, ongoing) for a RunSignup race, or None when its next occurrence is past.
+
+    RunSignup's ``next_date`` is the next start, but for a series ("Tuesday Night Track") it can
+    be the series' first day (in the past) with ``next_end_date`` months ahead. Then: the first
+    event that starts on/after ``today`` if any, else the series is ongoing through its end date
+    (shown from ``today`` with ``ongoing``). Without ``today`` the dates pass through as-is."""
+    when, end = _iso(r.get("next_date")), _iso(r.get("next_end_date"))
+    if not when:
+        return None
+    if today is None or when >= today.isoformat():
+        return when, end, False
+    t = today.isoformat()
+    ahead = sorted(d for e in r.get("events") or [] if isinstance(e, dict)
+                   and (d := _iso(e.get("start_time"))) and d >= t)
+    if ahead:
+        return ahead[0], end if end and end >= ahead[0] else None, False
+    if end and end >= t:
+        return t, end, True
+    return None
+
+
+def normalize(raw: Any, today: date | None = None) -> dict[str, Any] | None:
+    """One RunSignup race -> our plain shape (None when unusable or, given ``today``, when its
+    next occurrence is already past)."""
     r = raw.get("race") if isinstance(raw, dict) else None
     if not isinstance(r, dict) or not r.get("race_id") or not r.get("name"):
         return None
-    when = _iso(r.get("next_date"))
-    if not when:
+    occ = next_occurrence(r, today)
+    if occ is None:
         return None
+    when, end_date, ongoing = occ
     addr = r.get("address") if isinstance(r.get("address"), dict) else {}
     events = []
     for e in r.get("events") or []:
         if not isinstance(e, dict):
             continue
+        ev_date = _iso(e.get("start_time"))
+        if not ev_date or ev_date < when:  # a past start of a series/multi-day race: show the race date
+            ev_date = when
         km = parse_distance_km(e.get("distance"))
         if km is None:
             km = parse_distance_km(e.get("name"))
@@ -340,7 +367,7 @@ def normalize(raw: Any) -> dict[str, Any] | None:
                        "distance_km": km, "distance_label": _distance_label(e.get("distance"), km),
                        "type": _RSU_CATEGORY.get(str(e.get("event_type") or ""), "other"),
                        "start_time": _time(e.get("start_time")),
-                       "date": _iso(e.get("start_time")) or when,
+                       "date": ev_date,
                        "fee_from": _fmt_money(min(fees)) if fees else None})
     events = events[:12]
     kms = [e["distance_km"] for e in events if e["distance_km"]]
@@ -349,7 +376,7 @@ def normalize(raw: Any) -> dict[str, Any] | None:
     return {
         "id": f"rsu:{int(r['race_id']) if str(r['race_id']).isdigit() else _short(r['race_id'], 20)}",
         "source": "runsignup", "name": _short(r.get("name"), 120), "date": when,
-        "end_date": _iso(r.get("next_end_date")), "city": _short(addr.get("city"), 60),
+        "end_date": end_date, "ongoing": ongoing, "city": _short(addr.get("city"), 60),
         "state": _short(addr.get("state"), 20), "zip": _short(addr.get("zipcode"), 10),
         "url": url, "website": site if site and site != url else None,
         "logo": u if (u := _url(r.get("logo_url"))) and u.startswith("https://") else None,
@@ -431,7 +458,8 @@ class RaceSearch:
         races = body.get("races") or []
         if not isinstance(races, list):
             raise ValueError("runsignup shape")
-        return [n for n in (normalize(x) for x in races) if n]
+        today = date.fromisoformat(params["start_date"]) if params.get("start_date") else None
+        return [n for n in (normalize(x, today) for x in races) if n]
 
     async def search(self, f: dict[str, Any]) -> dict[str, Any]:
         """``f`` from ``parse_filters``. Returns {"races", "page", "has_more", "capped"}."""
@@ -587,14 +615,33 @@ def home_zip(home_location: Any) -> str:
     return m.group(1) if m else ""
 
 
-def defaults(athlete: dict[str, Any]) -> dict[str, Any]:
+def favorite_categories(athlete: dict[str, Any]) -> list[str]:
     cats: list[str] = []
     for s in athlete.get("favorite_sports") or []:
         c = FAVORITE_CATEGORY.get(s)
         if c and c not in cats:
             cats.append(c)
-    return {"near": home_zip(athlete.get("home_location")), "types": cats[:3], "radius": 50, "months": 6,
+    return cats[:3]
+
+
+# Shown whenever a search runs without any location (never pretend it's "near you").
+NATIONWIDE_NOTE = "Upcoming races across the US — add your location for nearby picks"
+
+
+def defaults(athlete: dict[str, Any]) -> dict[str, Any]:
+    """Search with no filters: the caller fills ``near`` with the resolved location; all types,
+    50 mi. No location -> a nationwide, date-sorted search labelled ``NATIONWIDE_NOTE``."""
+    return {"near": home_zip(athlete.get("home_location")), "types": [], "radius": 50, "months": 6,
             "categories": list(CATEGORIES), "distances": list(DISTANCES)}
+
+
+def nationwide(f: dict[str, Any]) -> bool:
+    return not f.get("zip") and not f.get("state")
+
+
+def open_only(races: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Registration-open races (the nationwide fallback shows only what you can still enter)."""
+    return [r for r in races if r.get("registration_open")]
 
 
 # --------------------------------------------------------- web (Rabbit) --
@@ -633,8 +680,10 @@ def web_prompt(f: dict[str, Any]) -> str:
         bits.append("Kind: " + ", ".join(_LABEL[t] for t in f["types"]) + ".")
     if f.get("distance"):
         bits.append(f"Distance: {_DLABEL[f['distance']]}.")
-    if f.get("zip"):
-        bits.append(f"Near US zip code {f['zip']} (within about {f['radius']} miles), or famous races worth travelling to.")
+    # Only a city/state ever reaches the model (``area``, resolved by the caller), never a zip.
+    if f.get("area"):
+        within = f" (within about {f['radius']} miles)" if f.get("radius") else ""
+        bits.append(f"Near {json.dumps(str(f['area'])[:80])}{within}, or famous races worth travelling to.")
     elif f.get("state"):
         bits.append(f"In or near the US state {f['state']}.")
     if f.get("q"):
@@ -692,6 +741,17 @@ def clean_web(raw: Any, today: date) -> list[dict[str, Any]]:
 Research = Callable[..., Awaitable[Any]]
 
 
+def report_obj(out: Any) -> Any:
+    """A research result: the report tool's input, or (no tool call) a JSON object in the text."""
+    if isinstance(out, str):
+        m = re.search(r"\{.*\}", out, re.S)
+        try:
+            return json.loads(m.group(0)) if m else {}
+        except json.JSONDecodeError:
+            return {}
+    return out
+
+
 class WebFinder:
     """"Find more with Rabbit": cached per normalized query for 24 h (shared, since the prompt
     holds only the filters); the caller counts the per-user allowance on a cache miss."""
@@ -708,13 +768,7 @@ class WebFinder:
 
     async def find(self, research: Research, f: dict[str, Any], today: date) -> list[dict[str, Any]]:
         out = await research(WEB_SYSTEM, web_prompt(f), max_searches=5, report_tool=WEB_TOOL)
-        if isinstance(out, str):  # no tool call: try a JSON object in the text
-            m = re.search(r"\{.*\}", out, re.S)
-            try:
-                out = json.loads(m.group(0)) if m else {}
-            except json.JSONDecodeError:
-                out = {}
-        races = clean_web(out, today)
+        races = clean_web(report_obj(out), today)
         self.cache.put(self.key(f), races)
         return races
 
@@ -731,5 +785,6 @@ def default_web() -> WebFinder:
 
 
 __all__ = ["AI_PER_DAY", "CATEGORIES", "DISTANCES", "ExploreError", "RaceSearch", "WebFinder", "clean_web",
-           "default_search", "default_web", "defaults", "event_fields", "fit_hints", "home_zip", "merge",
+           "default_search", "default_web", "defaults", "event_fields", "favorite_categories", "nationwide",
+           "next_occurrence", "open_only", "report_obj", "fit_hints", "home_zip", "merge",
            "normalize", "parse_distance_km", "parse_filters", "plain_text", "rsu_params", "rsu_types"]

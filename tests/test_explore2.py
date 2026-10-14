@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx2
 from starlette.applications import Starlette
 
-from garmin_mcp import explore, foryou, geo, localacts, predict, rabbitexplore
+from garmin_mcp import explore, foryou, geo, local, localacts, predict, rabbitexplore
 from garmin_mcp.appstore import AppStore
 from garmin_mcp.coaches import coach_user_id
 from garmin_mcp.config import Settings
@@ -60,32 +60,89 @@ def nominatim(calls: list, body=NOMINATIM_DENVER, status: int = 200) -> httpx2.M
         if status != 200:
             return httpx2.Response(status, text="nope")
         if "/search" in str(request.url):
-            return httpx2.Response(200, json=[{"address": {"city": "Denver", "state": "Colorado",
+            return httpx2.Response(200, json=[{"lat": "39.7392", "lon": "-104.9849",
+                                               "address": {"city": "Denver", "state": "Colorado",
                                                            "ISO3166-2-lvl4": "US-CO", "country_code": "us"}}])
+        return httpx2.Response(200, json=body)
+    return httpx2.MockTransport(handler)
+
+
+OVERPASS_BODY = {"elements": [
+    {"type": "way", "id": 11, "center": {"lat": 39.751, "lon": -104.981},
+     "tags": {"leisure": "pitch", "sport": "beachvolleyball", "name": "Washington Park Sand Courts", "lit": "yes",
+              "surface": "sand"}},
+    {"type": "way", "id": 12, "center": {"lat": 39.70, "lon": -104.96},
+     "tags": {"leisure": "track", "sport": "athletics", "surface": "tartan"}},
+    {"type": "node", "id": 13, "lat": 39.74, "lon": -104.99, "tags": {"highway": "trailhead", "name": "Cherry Creek Trailhead"}},
+    {"type": "node", "id": 14, "lat": 39.741, "lon": -104.981, "tags": {"leisure": "fitness_station"}},
+    {"type": "way", "id": 15, "center": {"lat": 39.73, "lon": -104.97},
+     "tags": {"leisure": "pitch", "sport": "tennis;pickleball", "name": "Congress Park Courts"}},
+    {"type": "way", "id": 16, "center": {"lat": 39.76, "lon": -105.0},
+     "tags": {"leisure": "swimming_pool", "access": "private", "name": "Condo Pool"}},
+    {"type": "node", "id": 17, "lat": 39.76, "lon": -104.99, "tags": {"sport": "climbing", "name": "Movement RiNo"}},
+    {"type": "node", "id": 18, "lat": 39.0, "lon": -104.0, "tags": {"amenity": "bench"}},
+    {"type": "node", "id": 19, "tags": {"sport": "climbing"}},  # no coordinates
+]}
+
+
+def overpass(calls: list, body=OVERPASS_BODY, status: int = 200) -> httpx2.MockTransport:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls.append({"url": str(request.url), "ua": request.headers.get("user-agent"),
+                      "query": parse_qs(request.content.decode()).get("data", [""])[0]})
+        if status != 200:
+            return httpx2.Response(status, text="busy")
         return httpx2.Response(200, json=body)
     return httpx2.MockTransport(handler)
 
 
 # -------------------------------------------------------------- location --
 def test_location_resolution_order() -> None:
-    auto = {"zip": "80461", "city": "Leadville", "state": "CO", "lat2": 39.25, "lon2": -106.29, "ts": 1}
+    saved = {"lat": 39.25, "lon": -106.29, "zip": "80461", "city": "Leadville", "state": "CO", "source": "device",
+             "updated": 1}
     athlete = {"home_location": "Baker, Denver CO 80204"}
-    assert geo.resolve({"home_zip": "80302"}, athlete, auto)["source"] == "device"
-    assert geo.resolve({"home_zip": "80302"}, athlete, auto)["zip"] == "80461"
+    # (a) the saved location (device or manual) wins, and only it carries coordinates.
+    r = geo.resolve({"home_zip": "80302"}, athlete, saved)
+    assert r["source"] == "device" and r["zip"] == "80461" and (r["lat"], r["lon"]) == (39.25, -106.29)
+    assert geo.resolve({}, athlete, {**saved, "source": "manual"})["source"] == "manual"
+    # (b) home zip from interests, then the profile's home_location (zip, then city/state).
     r = geo.resolve({"home_zip": "80302"}, athlete, None)
-    assert r["source"] == "home_zip" and r["zip"] == "80302" and r["city"] == ""
+    assert r["source"] == "home_zip" and r["zip"] == "80302" and r["city"] == "" and r["lat"] is None
     r = geo.resolve({}, athlete, None)
-    assert r == {"source": "profile_zip", "zip": "80204", "state": "CO", "city": "Denver"}
+    assert r == {"source": "profile_zip", "zip": "80204", "state": "CO", "city": "Denver", "lat": None, "lon": None}
     r = geo.resolve({}, {"home_location": "Leadville, Colorado"}, None)
     assert r["source"] == "profile_city" and r["state"] == "CO" and r["city"] == "Leadville" and r["zip"] == ""
     assert geo.resolve({}, {"home_location": "Kansas City, MO"}, None)["state"] == "MO"
-    # Lower-case words aren't state codes; unknown text resolves to nothing.
+    # (c) a timezone alone never guesses a state: nothing usable -> nationwide.
+    r = geo.resolve({}, {"timezone": "America/Denver", "home_location": ""}, None)
+    assert r["source"] is None and r["state"] == "" and not geo.searchable(r)
     assert geo.resolve({}, {"home_location": "out in the hills or me"}, None)["source"] is None
     assert geo.resolve(None, None, None)["source"] is None
-    # A device place outside the US keeps the city (for local activities) but isn't searchable.
-    r = geo.resolve({}, {}, {"zip": "", "city": "Chamonix", "state": "Auvergne-Rhône-Alpes"})
-    assert r["source"] is None and r["city"] == "Chamonix"
+    # A saved place outside the US keeps the city (for local activities) but isn't searchable.
+    r = geo.resolve({}, {}, {"zip": "", "city": "Chamonix", "state": "Auvergne-Rhône-Alpes", "lat": 45.92, "lon": 6.87})
+    assert r["source"] is None and r["city"] == "Chamonix" and r["lat"] == 45.92 and not geo.searchable(r)
     assert geo.label({"city": "Denver", "state": "CO"}) == "Denver, CO" and geo.label({"zip": "80204"}) == "80204"
+
+
+def test_saved_location_store_and_legacy(tmp_path, fernet_key) -> None:
+    store = AppStore(tmp_path / "app", fernet_key)
+    # Pre-v2 "location_auto" is read as a device location.
+    store.user_doc("ann", "profile").update(lambda p: p.update(location_auto={
+        "zip": "80204", "city": "Denver", "state": "CO", "lat2": 39.74, "lon2": -104.98, "ts": 5}))
+    old = geo.load_saved(store, "ann")
+    assert old == {"lat": 39.74, "lon": -104.98, "city": "Denver", "state": "CO", "zip": "80204",
+                   "source": "device", "updated": 5}
+    e = geo.save_location(store, "ann", {"city": "Golden", "state": "CO", "zip": "80401", "country": "us"},
+                          39.755123, -105.221987, "manual", 1000.9)
+    assert e == {"lat": 39.76, "lon": -105.22, "city": "Golden", "state": "CO", "zip": "80401",
+                 "source": "manual", "updated": 1000}
+    prof = store.user_doc("ann", "profile").load()
+    assert "location_auto" not in prof and tuple(prof["location"]) == geo.LOC_KEYS
+    assert "39.755" not in json.dumps(prof)
+    assert geo.use_for_local(store, "ann") is True
+    geo.set_use_for_local(store, "ann", False)
+    assert geo.use_for_local(store, "ann") is False
+    geo.forget(store, "ann")
+    assert geo.load_saved(store, "ann") is None
 
 
 def test_rounding_and_parse() -> None:
@@ -119,7 +176,7 @@ def test_nominatim_client_ua_throttle_and_cache(tmp_path, fernet_key) -> None:
         await g.zip_place("80204")
     asyncio.run(go())
     assert len(calls) == 3
-    assert all(c["ua"] == "RabbitTraining/1.0 (contact: me@example.com)" for c in calls)
+    assert all(c["ua"] == "RabbitTraining/1.0 (+me@example.com)" for c in calls)
     assert calls[0]["q"] == {"format": "jsonv2", "lat": "39.74", "lon": "-104.98", "zoom": "10", "addressdetails": "1"}
     assert calls[2]["q"]["postalcode"] == "80204" and calls[2]["q"]["countrycodes"] == "us"
     assert clock.slept == [1.0, 1.0]  # 1 request per second
@@ -153,7 +210,15 @@ def test_inferred_defaults() -> None:
                                       {"sport": "swim", "hours": 20}], [], TODAY)
     assert tri["race_types"][0] == "triathlon" and "sprint" in tri["distances"]
     blank = foryou.infer_interests({}, None, [], TODAY)
-    assert blank["race_types"] == ["road", "trail"] and blank["distances"]
+    assert blank["race_types"] == ["road", "trail", "triathlon", "road_cycling"] and blank["distances"]
+    # No race, no Garmin: favorite sports, then the active goal's type, choose the types.
+    fav = foryou.infer_interests({"favorite_sports": ["gravel"]}, None, [], TODAY)
+    assert fav["race_types"] == ["gravel"]
+    g = foryou.infer_interests({}, None, [], TODAY, {"title": "My goal", "event": "Boulder 70.3"})
+    assert g["race_types"] == ["triathlon"] and {"sprint", "olympic"} & set(g["distances"])
+    assert foryou.goal_types({"event": "first ultra marathon"}) == ["ultra"]
+    assert foryou.goal_types({"event": "Moab trail half marathon"}) == ["trail", "road"]
+    assert foryou.goal_types(None) == []
     # Own race types/distances win; a zip alone is not "interests".
     eff, inferred = foryou.effective_interests({"home_zip": "80204", "months_avoid": [8]}, lambda: blank)
     assert inferred and eff["home_zip"] == "80204" and eff["months_avoid"] == [8] and eff["race_types"]
@@ -362,6 +427,12 @@ def test_local_cache_is_shared_per_city_and_week(tmp_path, fernet_key) -> None:
 # ------------------------------------------------------------------- API --
 def _apps(env, tmp_path, monkeypatch, users=("ann", "bob", "friend")):
     monkeypatch.setattr(geo, "_THROTTLE", geo.Throttle(0.0))
+    monkeypatch.setattr(local, "_THROTTLE", geo.Throttle(0.0))
+    # Never the real network: Nominatim / Overpass answer 503 unless a test mocks them.
+    if geo.TRANSPORT is None:
+        monkeypatch.setattr(geo, "TRANSPORT", nominatim([], status=503))
+    if local.TRANSPORT is None:
+        monkeypatch.setattr(local, "TRANSPORT", overpass([], status=503))
     agent, _ = env.agent([])
     settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,
                         allowed_google_users=dict(ALLOW), contact_email="ops@example.com")
@@ -380,33 +451,52 @@ def test_location_api_stores_only_rounded_place(env, tmp_path, monkeypatch) -> N
     calls: list = []
     monkeypatch.setattr(geo, "TRANSPORT", nominatim(calls))
     agent, apps = _apps(env, tmp_path, monkeypatch)
+    logged: list = []
+    import garmin_mcp.webapp as webapp_mod
+    real_log = webapp_mod.log_event
+    monkeypatch.setattr(webapp_mod, "log_event", lambda *a, **kw: (logged.append(kw), real_log(*a, **kw)))
 
     async def go() -> None:
         c = _clients(apps)
         ann = c["ann"]
         r = await ann.get("/app/api/location")
-        assert r.status_code == 200 and r.json()["device"] is None and r.json()["resolved"]["source"] is None
+        assert r.status_code == 200 and r.json()["saved"] is None and r.json()["resolved"]["source"] is None
+        assert r.json()["resolved"]["nationwide"] is True and r.json()["use_for_local"] is True
         assert (await ann.post("/app/api/location", json={"lat": 39.739154, "lon": -104.984703})).status_code == 403
         r = await ann.post("/app/api/location", headers=H, json={"lat": 39.739154, "lon": -104.984703})
         assert r.status_code == 200, r.text
-        assert r.json()["device"]["city"] == "Denver" and r.json()["resolved"]["label"] == "Denver, CO"
+        assert r.json()["saved"]["city"] == "Denver" and r.json()["resolved"]["label"] == "Denver, CO"
         assert r.json()["resolved"]["source"] == "device" and r.json()["resolved"]["searchable"]
+        assert "lat" not in r.json()["saved"] and "39.74" not in r.text  # the app never gets coordinates back
         assert calls[0]["q"]["lat"] == "39.74" and calls[0]["q"]["lon"] == "-104.98"
-        assert calls[0]["ua"] == "RabbitTraining/1.0 (contact: ops@example.com)"
+        assert calls[0]["ua"] == "RabbitTraining/1.0 (+ops@example.com)"
         prof = env.store.user_doc("ann", "profile").load()
-        assert set(prof["location_auto"]) == set(geo.AUTO_KEYS)
-        assert prof["location_auto"]["lat2"] == 39.74 and prof["location_auto"]["lon2"] == -104.98
+        assert tuple(prof["location"]) == geo.LOC_KEYS and prof["location"]["source"] == "device"
+        assert prof["location"]["lat"] == 39.74 and prof["location"]["lon"] == -104.98
         dumped = json.dumps(prof)
         assert "39.739" not in dumped and "104.984" not in dumped and "athlete" not in prof
-        # Never in Rabbit's context.
+        # Never logged, never in Rabbit's context.
+        assert "39.7" not in json.dumps(logged) and "104.9" not in json.dumps(logged)
         from datetime import datetime
         ctx = agent.coach.context_block("ann", datetime(2026, 10, 14, tzinfo=UTC), None)
         assert "Denver" not in ctx and "80204" not in ctx
         assert (await ann.post("/app/api/location", headers=H, json={"lat": 300, "lon": 0})).status_code == 400
+        # A typed zip is a "manual" location (geocoded, rounded).
+        r = await ann.post("/app/api/location", headers=H, json={"zip": "80204"})
+        assert r.status_code == 200, r.text
+        assert r.json()["saved"]["source"] == "manual" and r.json()["resolved"]["source"] == "manual"
+        assert env.store.user_doc("ann", "profile").load()["location"]["lat"] == 39.74
+        assert (await ann.post("/app/api/location", headers=H, json={"zip": "8020"})).status_code == 400
+        # The local-picks toggle.
+        r = await ann.post("/app/api/location/prefs", headers=H, json={"use_for_local": False})
+        assert r.status_code == 200 and r.json()["use_for_local"] is False
+        r = await ann.post("/app/api/explore/local", headers=H, json={})
+        assert r.status_code == 200 and r.json()["disabled"] is True and r.json()["places"] == []
+        assert (await ann.post("/app/api/location/prefs", headers=H, json={"use_for_local": "no"})).status_code == 400
         # Forget.
         r = await ann.request("DELETE", "/app/api/location", headers=H, json={})
-        assert r.status_code == 200 and r.json()["device"] is None
-        assert "location_auto" not in env.store.user_doc("ann", "profile").load()
+        assert r.status_code == 200 and r.json()["saved"] is None
+        assert "location" not in env.store.user_doc("ann", "profile").load()
     asyncio.run(go())
 
 
@@ -417,34 +507,64 @@ def test_foryou_never_empty(env, tmp_path, monkeypatch) -> None:
     rs = RaceSearch(transport=_mock(calls, {
         "running_race": [rsu_race(1, "Denver Half", (today + timedelta(days=70)).strftime("%m/%d/%Y"),
                                   etype="running_race", dist="13.1 Miles")],
-        "trail_race": [rsu_race(2, "Golden Trail Half", (today + timedelta(days=90)).strftime("%m/%d/%Y"),
-                                dist="13.1 Miles")]}))
+        "trail_race": [rsu_race(2, "Golden Trail Half", (today + timedelta(days=60)).strftime("%m/%d/%Y"),
+                                dist="13.1 Miles")],
+        None: [rsu_race(3, "Anywhere 10K", (today + timedelta(days=20)).strftime("%m/%d/%Y"), dist="10K")]}))
     monkeypatch.setattr(foryou, "_default", foryou.ForYou(search=lambda: rs))
     monkeypatch.setattr(explore, "_default", rs)
 
     async def go() -> None:
         c = _clients(apps)
-        # No interests, no location: popular big races + an inferred-defaults flag.
+        # No interests, no location, only a timezone: a nationwide "Coming up" search over a
+        # balanced mix of types, labelled honestly.
         body = (await c["ann"].get("/app/api/explore/foryou")).json()
-        assert body["has_interests"] is False and body["inferred"] is True
+        assert body["has_interests"] is False and body["inferred"] is True and body["nationwide"] is True
         assert body["location"]["source"] is None and not body["location"]["searchable"]
-        pop = next(s for s in body["sections"] if s["id"] == "popular")
-        assert pop["races"] and all(r.get("check_dates") for r in pop["races"])
-        assert {cl.get("name") for cl in calls} >= {"Boston Marathon"}  # verified on RunSignup by name
-        # A city/state in the profile is enough: inferred interests rank real picks (no empty state).
+        assert body["location"]["note"] == explore.NATIONWIDE_NOTE
+        assert body["effective"]["race_types"] == foryou.BALANCED_TYPES
+        sec = body["sections"][0]
+        assert sec["id"] == "nationwide" and sec["note"] == explore.NATIONWIDE_NOTE
+        assert [r["name"] for r in sec["races"]] == ["Golden Trail Half", "Denver Half"]  # by date
+        assert all("zipcode" not in cl and "state" not in cl for cl in calls)
+        assert {cl.get("event_type") for cl in calls} >= {"running_race", "trail_race", "triathlon", "bike_race"}
+        assert "popular" not in [s["id"] for s in body["sections"]]
+        # Search with no filters: defaults to all types; with no location it's nationwide too.
+        d = (await c["ann"].get("/app/api/explore/defaults")).json()
+        assert d["near"] == "" and d["types"] == [] and d["radius"] == 50 and d["location"]["nationwide"]
+        r = (await c["ann"].get("/app/api/explore", params={"months": "6"})).json()
+        assert r["nationwide"] is True and r["note"] == explore.NATIONWIDE_NOTE and r["races"]
+        # A city/state in the profile is enough: inferred interests rank real picks.
         agent.coach.update_athlete("bob", {"home_location": "Denver, CO", "favorite_sports": ["run"]})
         calls.clear()
         body = (await c["bob"].get("/app/api/explore/foryou")).json()
-        assert body["inferred"] is True and body["location"]["source"] == "profile_city"
+        assert body["inferred"] is True and body["location"]["source"] == "profile_city" and not body["nationwide"]
         assert all(cl.get("state") == "CO" for cl in calls) and {cl.get("event_type") for cl in calls} == {"running_race"}
         picks = next(s for s in body["sections"] if s["id"] == "picks")
         assert picks["races"][0]["name"] == "Denver Half" and picks["races"][0]["why"]
-        assert "popular" not in [s["id"] for s in body["sections"]]
         assert body["effective"]["travel"] == "regional" and "road" in body["effective"]["race_types"]
+        d = (await c["bob"].get("/app/api/explore/defaults")).json()
+        assert d["near"] == "CO" and d["types"] == [] and not d["location"]["nationwide"]
+    asyncio.run(go())
+
+
+def test_foryou_popular_only_when_nationwide_is_empty(env, tmp_path, monkeypatch) -> None:
+    agent, apps = _apps(env, tmp_path, monkeypatch)
+    calls: list = []
+    rs = RaceSearch(transport=_mock(calls, {}))
+    monkeypatch.setattr(foryou, "_default", foryou.ForYou(search=lambda: rs))
+    monkeypatch.setattr(explore, "_default", rs)
+
+    async def go() -> None:
+        body = (await _clients(apps)["ann"].get("/app/api/explore/foryou")).json()
+        assert [s["id"] for s in body["sections"]] == ["popular"]
     asyncio.run(go())
 
 
 def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
+    ncalls: list = []
+    ocalls: list = []
+    monkeypatch.setattr(geo, "TRANSPORT", nominatim(ncalls))
+    monkeypatch.setattr(local, "TRANSPORT", overpass(ocalls))
     agent, apps = _apps(env, tmp_path, monkeypatch)
     today = agent._now("ann").date()
     a_race = today + timedelta(weeks=20)
@@ -453,14 +573,19 @@ def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
         rsu_race(1, "Tune Trail Half", (a_race - timedelta(weeks=5)).strftime("%m/%d/%Y"), dist="13.1 Miles"),
         rsu_race(2, "Winter Trail 50K", (today + timedelta(days=40)).strftime("%m/%d/%Y"), dist="50K")]}))
     monkeypatch.setattr(explore, "_default", rs)
-    monkeypatch.setattr(explore, "_web", WebFinder())
+    monkeypatch.setattr(foryou, "_default", foryou.ForYou(search=lambda: rs))
     agent.events.create("ann", {"name": "Big Trail 100", "date": a_race.isoformat(), "type": "trail",
                                 "distance": "ultra", "priority": "A"})
-    agent.coach.update_athlete("ann", {"home_location": "Golden, CO 80401"})
+    agent.coach.update_athlete("ann", {"home_location": "Golden, CO 80401", "interests": {"race_types": ["trail"]}})
     prompts: list = []
 
     async def research(system, prompt, **kw):
-        prompts.append(prompt)
+        prompts.append((system, prompt))
+        if kw["report_tool"]["name"] == "report_activities":
+            return {"activities": [
+                {"name": "Golden Group Run", "category": "run", "organizer": "Runners Roost", "when": "Wed 6 pm",
+                 "where": "Clear Creek", "url": "https://roost.example.org/group-run"},
+                {"name": "Made Up League", "category": "social_sports", "when": "Mondays"}]}  # no URL: dropped
         return {"races": [
             {"name": "Tune Trail Half", "date": (a_race - timedelta(weeks=5)).isoformat(), "type": "trail",
              "location": "Golden, CO", "distances": "13.1 Miles", "url": "https://dup.example.org"},
@@ -475,21 +600,33 @@ def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
         assert r.status_code == 200, r.text
         body = r.json()
         names = [x["name"] for x in body["races"]]
-        assert names.count("Tune Trail Half") == 1 and "Famous Mountain 50" in names
+        assert names.count("Tune Trail Half") == 1 and "Famous Mountain 50" in names and "Winter Trail 50K" in names
         assert body["races"][0]["name"] == "Tune Trail Half" and body["races"][0]["source"] == "runsignup"
-        assert body["intro"] == "Found 3 races within 250 mi in the next 6 months; 1 is a great tune-up for Big Trail 100."
-        assert body["web"] == "ok" and body["inferred"] is True and all(x["why"] for x in body["races"])
-        assert calls[0]["zipcode"] == "80401" and calls[0]["radius"] == "250"
-        assert "80401" in prompts[0] and "Golden" not in prompts[0] and "oura" not in prompts[0].lower()
-        # Second tap: the web part is cached (no new research, no allowance).
+        assert body["web"] == "ok" and all(x["why"] for x in body["races"])
+        assert [g["name"] for g in body["groups"]] == ["Golden Group Run"] and body["groups"][0]["source"] == "web"
+        assert body["places"] and body["places_state"] == "ok"
+        assert body["count"] == len(body["races"]) + len(body["places"]) + len(body["groups"])
+        assert body["summary"] == f"Rabbit found {body['count']} things for you"
+        assert calls[0]["zipcode"] == "80401"
+        # Privacy: the model sees "Golden, CO" and race interests only.
+        scout = prompts[0][1]
+        assert '"Golden, CO"' in scout and "Big Trail 100" in scout and "trail running" in scout
+        everything = json.dumps(prompts)
+        assert "80401" not in everything and "39." not in everything and "-105" not in everything
+        assert "oura" not in everything.lower()
+        # Overpass got only the rounded point of the zip.
+        assert "(around:8000,39.74,-104.98)" in ocalls[0]["query"] and ocalls[0]["ua"].startswith("RabbitTraining/1.0")
+        # Second tap: scout, groups and places are cached (no new searches).
         r = await c["ann"].post("/app/api/explore/rabbit", headers=H, json={})
-        assert r.status_code == 200 and len(prompts) == 1
+        assert r.status_code == 200 and len(prompts) == 2 and len(ocalls) == 1
     asyncio.run(go())
 
 
 def test_local_api_shares_city_cache_and_sends_only_city(env, tmp_path, monkeypatch) -> None:
     calls: list = []
+    ocalls: list = []
     monkeypatch.setattr(geo, "TRANSPORT", nominatim(calls))
+    monkeypatch.setattr(local, "TRANSPORT", overpass(ocalls))
     agent, apps = _apps(env, tmp_path, monkeypatch)
     prompts: list = []
 
@@ -504,21 +641,28 @@ def test_local_api_shares_city_cache_and_sends_only_city(env, tmp_path, monkeypa
 
     async def go() -> None:
         c = _clients(apps)
-        r = await c["ann"].post("/app/api/explore/local", headers=H, json={})
+        r = await c["ann"].get("/app/api/explore/nearby")
         assert r.status_code == 200 and r.json()["needs_location"] is True and r.json()["items"] == []
-        r = await c["ann"].post("/app/api/location", headers=H, json={"lat": 39.7392, "lon": -104.9903})
+        r = await c["ann"].post("/app/api/location", headers=H, json={"lat": 39.7392, "lon": -104.9849})
         assert r.status_code == 200
+        # GET nearby never spends a web search; places come from OpenStreetMap.
+        r = await c["ann"].get("/app/api/explore/nearby")
+        assert r.status_code == 200 and r.json()["items"] == [] and r.json()["groups_state"] == "cached_only"
+        assert r.json()["places"][0]["kind"] in local.KINDS and not prompts
         r = await c["ann"].post("/app/api/explore/local", headers=H, json={})
         assert r.status_code == 200, r.text
         body = r.json()
         assert body["city"] == "Denver" and body["state"] == "CO" and body["items"][0]["name"] == "City Park Run Club"
-        assert body["items"][0]["url"] == "https://cprc.example.org/" and body["chips"]["social_sports"] == "Social sports"
+        it = body["items"][0]
+        assert it["url"] == "https://cprc.example.org/" and it["kind"] == "run" and it["schedule"] == "Thursdays 6 pm"
+        assert it["area"] == "City Park" and it["source"] == "web" and body["chips"]["social_sports"] == "Social sports"
         assert prompts == [localacts.prompt("Denver", "CO")]
         assert "39.7" not in prompts[0] and "104.9" not in prompts[0] and "80204" not in prompts[0]
-        # Bob (same city, from his profile) shares the cached search.
+        # Bob (same city, from his profile) shares the cached search; his zip is geocoded for places.
         r = await c["bob"].post("/app/api/explore/local", headers=H, json={})
         assert r.status_code == 200 and r.json()["items"] and len(prompts) == 1
-        assert r.json()["suggested"][0] == "run"
+        assert r.json()["suggested"][0] == "run" and r.json()["places"]
+        assert len(ocalls) == 1  # same rounded spot (39.74,-104.98 and the zip's 39.74,-104.98): cached
     asyncio.run(go())
 
 
@@ -559,4 +703,150 @@ def test_new_routes_are_athlete_only(env, tmp_path, monkeypatch) -> None:
         assert (await coach.post("/app/api/explore/rabbit", headers=H, json={})).status_code == 403
         assert (await coach.post("/app/api/explore/local", headers=H, json={})).status_code == 403
         assert (await coach.get("/app/api/predict", params={"distance_km": "10"})).status_code == 403
+        assert (await coach.get("/app/api/explore/nearby")).status_code == 403
+        assert (await coach.post("/app/api/location/prefs", headers=H, json={"use_for_local": False})).status_code == 403
+        assert (await coach.post("/app/api/location", headers=H, json={"zip": "80204"})).status_code == 403
+    asyncio.run(go())
+
+
+# ----------------------------------------------------- RunSignup next_date --
+def test_next_date_series_and_past_filtering() -> None:
+    today = date(2026, 10, 14)
+    # A series: next_date is the series start (past), next_end_date ahead -> ongoing from today.
+    series = rsu_race(70, "Tuesday Night Track", "11/10/2025")
+    series["race"]["next_end_date"] = "12/31/2026"
+    r = normalize(series, today)
+    assert r is not None and r["date"] == "2026-10-14" and r["ongoing"] is True and r["end_date"] == "2026-12-31"
+    assert all(e["date"] >= "2026-10-14" for e in r["events"])
+    # Without today the raw dates pass through (callers that don't filter).
+    assert normalize(series)["date"] == "2025-11-10"
+    # A past race whose next occurrence is past is dropped.
+    assert normalize(rsu_race(71, "Old Race", "05/01/2026"), today) is None
+    # A series with a future event start uses that event.
+    multi = rsu_race(72, "Fall Series", "09/01/2026")
+    multi["race"]["next_end_date"] = "11/30/2026"
+    multi["race"]["events"].append({**multi["race"]["events"][0], "start_time": "10/20/2026 18:00", "name": "Race 3"})
+    r = normalize(multi, today)
+    assert r["date"] == "2026-10-20" and r["ongoing"] is False
+    # Future races are untouched.
+    r = normalize(rsu_race(73, "Future", "11/01/2026"), today)
+    assert r["date"] == "2026-11-01" and r["ongoing"] is False
+    # RaceSearch filters with the window start.
+    calls: list = []
+    rs = RaceSearch(transport=_mock(calls, {None: [series, rsu_race(71, "Old Race", "05/01/2026"),
+                                                   rsu_race(73, "Future", "11/01/2026")]}))
+    res = asyncio.run(rs.search(explore.parse_filters({}, today)))
+    assert [x["name"] for x in res["races"]] == ["Tuesday Night Track", "Future"]
+    assert res["races"][0]["date"] == "2026-10-14"
+
+
+def test_nationwide_labelling_and_open_only() -> None:
+    f = explore.parse_filters({}, TODAY)
+    assert explore.nationwide(f) and not explore.nationwide(explore.parse_filters({"near": "CO"}, TODAY))
+    p = explore.rsu_params(f, None)
+    assert "zipcode" not in p and "state" not in p and p["sort"] == "date ASC"
+    closed = {**race(1, "A", date(2026, 11, 1)), "registration_open": False}
+    opened = race(2, "B", date(2026, 11, 2))
+    assert explore.open_only([closed, opened]) == [opened]
+    assert "across the US" in explore.NATIONWIDE_NOTE and "add your location" in explore.NATIONWIDE_NOTE
+
+
+# -------------------------------------------------------------- Overpass --
+def test_overpass_query_and_parse() -> None:
+    q = local.query(39.74, -104.98)
+    assert q.startswith("[out:json][timeout:25];") and "(around:8000,39.74,-104.98)" in q
+    for frag in ('"sport"~"^(beachvolleyball|volleyball)$"', '"leisure"="track"', '"sport"="climbing"',
+                 '"highway"="trailhead"', '"leisure"="fitness_station"', 'pickleball|tennis', 'pump_track',
+                 '"leisure"="swimming_pool"'):
+        assert frag in q, frag
+    places = local.parse(OVERPASS_BODY, 39.74, -104.98)
+    kinds = {p["kind"] for p in places}
+    assert kinds == {"volleyball", "track", "trailhead", "fitness", "pickleball", "climbing"}
+    assert all(p["name"] != "Condo Pool" for p in places)  # private access dropped
+    assert [p["distance_km"] for p in places] == sorted(p["distance_km"] for p in places)
+    v = next(p for p in places if p["kind"] == "volleyball")
+    assert v["name"] == "Washington Park Sand Courts" and v["osm_url"] == "https://www.openstreetmap.org/way/11"
+    assert v["tags"] == {"lit": "yes", "surface": "sand"} and v["lat"] == 39.751
+    t = next(p for p in places if p["kind"] == "track")
+    assert t["name"] == "Running track" and not t["named"]  # unnamed: the type label
+    assert next(p for p in places if p["kind"] == "pickleball")["name"] == "Congress Park Courts"
+    assert local.parse("junk", 0, 0) == [] and local.parse({"elements": "x"}, 0, 0) == []
+    assert round(local.distance_km(39.74, -104.98, 39.75, -104.98), 2) == 1.11
+
+
+def test_overpass_client_cache_throttle_and_failure(tmp_path, fernet_key) -> None:
+    calls: list = []
+    clock = Clock()
+    store = AppStore(tmp_path / "app", fernet_key)
+    th = geo.Throttle(1.0, clock=clock, sleep=clock.sleep)
+    pl = local.Places(contact="ops@example.com", store=store, transport=overpass(calls), throttle=th, clock=clock)
+
+    async def go() -> None:
+        a = await pl.near(39.7392, -104.9849)
+        b = await pl.near(39.741, -104.981)  # same rounded spot
+        assert a == b and len(calls) == 1
+        await pl.near(40.02, -105.27)
+    asyncio.run(go())
+    assert len(calls) == 2 and clock.slept == [1.0]
+    assert calls[0]["ua"] == "RabbitTraining/1.0 (+ops@example.com)" and calls[0]["url"] == local.OVERPASS_URL
+    # Persisted 7 days: a restart reuses it; a week later it asks again.
+    pl2 = local.Places(contact="x", store=store, transport=overpass(calls), throttle=th, clock=clock)
+    asyncio.run(pl2.near(39.74, -104.98))
+    assert len(calls) == 2
+    clock.t += 7 * 86400 + 1
+    asyncio.run(pl2.near(39.74, -104.98))
+    assert len(calls) == 3
+    bad = local.Places(contact="x", transport=overpass([], status=429), throttle=th)
+    try:
+        asyncio.run(bad.near(1.0, 1.0))
+        raise AssertionError("expected OverpassError")
+    except local.OverpassError:
+        pass
+
+
+# ----------------------------------------------------------- web scouting --
+def test_web_scout_requires_urls_and_prompt_privacy() -> None:
+    raw = {"races": [
+        {"name": "Linked Race", "date": "2027-03-01", "url": "https://linked.example.org", "type": "trail"},
+        {"name": "No Link Race", "date": "2027-03-02", "type": "trail"},
+        {"name": "Bad Link", "date": "2027-03-03", "url": "javascript:alert(1)"}]}
+    assert [r["name"] for r in explore.clean_web(raw, TODAY)] == ["Linked Race"]
+    groups = localacts.clean({"activities": [
+        {"name": "Volo Kickball", "category": "social_sports", "url": "https://www.volosports.com/x"},
+        {"name": "Invented Club", "category": "run", "url": ""},
+        {"name": "Http Club", "category": "run", "url": "http://insecure.example.org"}]})
+    assert [g["name"] for g in groups] == ["Volo Kickball"] and groups[0]["source"] == "web"
+    assert "Never invent" in localacts.SYSTEM
+    assert explore.report_obj('text {"races": []} more') == {"races": []} and explore.report_obj("none") == {}
+    main = {"name": "Leadville 100", "date": "2027-08-21", "distance": "ultra"}
+    p = rabbitexplore.scout_prompt({"race_types": ["trail"], "distances": ["ultra_50k"], "travel": "regional",
+                                    "home_zip": "80204", "months_avoid": [1]},
+                                   area="Denver, CO", main=main, goal=None, readiness="behind", today=TODAY)
+    assert '"Denver, CO"' in p and "Leadville 100" in p and "a bit behind" in p and "January" in p
+    assert "80204" not in p and "oura" not in p.lower() and "zip" not in p.lower()
+    p2 = rabbitexplore.scout_prompt({}, area="", main=None, goal={"event": "Boulder 70.3"}, readiness=None, today=TODAY)
+    assert "Anywhere in the US" in p2 and "Boulder 70.3" in p2
+    # Find more with Rabbit: a zip filter reaches the model as a city/state.
+    f = explore.parse_filters({"near": "80204", "radius": "50"}, TODAY)
+    assert "80204" not in explore.web_prompt(f)
+    assert '"Denver, CO" (within about 50 miles)' in explore.web_prompt(dict(f, area="Denver, CO"))
+    assert rabbitexplore.summary(3, 6, 3) == "Rabbit found 12 things for you"
+    assert rabbitexplore.summary(1, 0, 0) == "Rabbit found 1 thing for you"
+
+
+def test_explore_ai_sends_city_not_zip(env, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(geo, "TRANSPORT", nominatim([]))
+    agent, apps = _apps(env, tmp_path, monkeypatch)
+    monkeypatch.setattr(explore, "_web", WebFinder())
+    prompts: list = []
+
+    async def research(system, prompt, **kw):
+        prompts.append(prompt)
+        return {"races": []}
+    agent._backend.research = research  # type: ignore[attr-defined]
+
+    async def go() -> None:
+        r = await _clients(apps)["ann"].post("/app/api/explore/ai", headers=H, json={"near": "80204", "radius": 50})
+        assert r.status_code == 200, r.text
+        assert '"Denver, CO"' in prompts[0] and "80204" not in prompts[0]
     asyncio.run(go())
