@@ -14,6 +14,7 @@ import { EventsScreen } from '@/components/events/EventsScreen'
 import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
 import { GearScreen } from '@/components/gear/GearScreen'
+import { ExploreIcon, ExploreScreen } from '@/components/explore/ExploreScreen'
 import { Celebration, HomeProgress, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
@@ -85,7 +86,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'explore'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -509,6 +510,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             onClick={() => showScreen(builtPlan ? 'planner' : 'setup')}>{builtPlan ? 'My plan' : 'Build my plan'}</HomeButton>
           <HomeButton icon={Flame} onClick={() => showScreen('stats')}>Stats</HomeButton>
           <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
+          <HomeButton icon={ExploreIcon} onClick={() => showScreen('explore')}>Explore</HomeButton>
           {me.coaches > 0 && (
             <HomeButton icon={Megaphone} onClick={() => { setCoachMsgThread(null); showScreen('coach') }}>
               Coach{me.coach_unread ? ` (${me.coach_unread})` : ''}
@@ -715,7 +717,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'stats' && (
         <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
       )}
-      {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} />}
+      {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}
+      {planScreen === 'explore' && <ExploreScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} onChanged={onChange} />}
       {planScreen === 'quests' && progress && (
         <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
       )}
