@@ -1,7 +1,7 @@
 // Bottom sheet for one plan session: see its structure, change sport/type/length/day,
 // rename it, add notes, or delete it. In add mode it creates a new session on a day.
 import { useState } from 'react'
-import { MessageCircle, Trash2, X } from 'lucide-react'
+import { MessageCircle, Send, Trash2, X } from 'lucide-react'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
 import type { Sport } from '@/lib/api'
@@ -13,7 +13,7 @@ export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: 
 
 const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
 
-export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, onDelete, onAsk, onClose, onDismissed, closing }: {
+export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onClose, onDismissed, closing }: {
   session: PlanSession | null          // null = add mode
   date: string
   kinds: Record<string, string[]>
@@ -22,6 +22,9 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
   onSave: (d: SessionDraft, changed: Partial<SessionDraft>) => Promise<void>
   onDelete?: () => Promise<void>
   onAsk?: () => void
+  onMessage?: () => void
+  messageLabel?: string
+  readOnly?: boolean
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const drag = useSheetDrag(onDismissed)
@@ -40,7 +43,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
   const isRace = session?.kind === 'race'
   const past = date < todayStr()
   const sportKinds = (kinds[d.sport] ?? []).filter((k) => k !== 'race')
-  const locked = isRace || past
+  const locked = isRace || past || !!readOnly
   const choices = [...new Set([...SPORTS.filter((s) => s === 'brick' ? sports.length > 1 : s === 'strength' || s === 'rest' || sports.includes(s)), ...(session ? [session.sport] : [])])]
 
   const set = (p: Partial<SessionDraft>) => setD((x) => {
@@ -109,7 +112,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
 
           {locked ? (
             <p className="px-1 text-[0.7647rem] text-(--text-muted)">
-              {isRace ? 'Race day stays put. Change the race date by rebuilding the plan.' : 'This day has passed, so it can\'t be changed.'}
+              {readOnly ? 'You can view this plan but not change it.' : isRace ? 'Race day stays put. Change the race date by rebuilding the plan.' : 'This day has passed, so it can\'t be changed.'}
             </p>
           ) : (
             <Card>
@@ -145,10 +148,15 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, o
 
           {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {onAsk && (
               <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onAsk}>
-                <MessageCircle className="size-4" /> Ask
+                <MessageCircle className="size-4" /> Ask Rabbit
+              </Button>
+            )}
+            {onMessage && (
+              <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onMessage}>
+                <Send className="size-4" /> {messageLabel ?? 'Message'}
               </Button>
             )}
             {!locked && (

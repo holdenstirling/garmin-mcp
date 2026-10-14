@@ -15,7 +15,6 @@ export function StatsScreen({ onClose, onOpenPlan }: { onClose: () => void; onOp
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [period, setPeriod] = useState<Period>('week')
 
   const load = useCallback((fresh = false) => {
     setBusy(true)
@@ -40,20 +39,26 @@ export function StatsScreen({ onClose, onOpenPlan }: { onClose: () => void; onOp
         </div>
       )}
       {error && !s && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
-      {s && (
-        <>
-          <StreakHero s={s} />
-          {s.plan?.week && s.plan.week.planned > 0 && <PlanProgress s={s} onOpenPlan={onOpenPlan} />}
-          <TotalsCard s={s} period={period} setPeriod={setPeriod} />
-          <WeeklyBars s={s} />
-          <CalendarHeat s={s} />
-          {s.by_sport.length > 0 && <SportsCard s={s} />}
-          {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
-          <BadgesCard s={s} />
-          {s.recent.length > 0 && <RecentCard s={s} />}
-        </>
-      )}
+      {s && <StatsBody s={s} onOpenPlan={onOpenPlan} />}
     </Screen>
+  )
+}
+
+/** All the stats sections (also used in the coach's view of an athlete). */
+export function StatsBody({ s, onOpenPlan }: { s: Stats; onOpenPlan?: () => void }) {
+  const [period, setPeriod] = useState<Period>('week')
+  return (
+    <>
+      <StreakHero s={s} />
+      {s.plan?.week && s.plan.week.planned > 0 && <PlanProgress s={s} onOpenPlan={onOpenPlan} />}
+      <TotalsCard s={s} period={period} setPeriod={setPeriod} />
+      <WeeklyBars s={s} />
+      <CalendarHeat s={s} />
+      {s.by_sport.length > 0 && <SportsCard s={s} />}
+      {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
+      <BadgesCard s={s} />
+      {s.recent.length > 0 && <RecentCard s={s} />}
+    </>
   )
 }
 

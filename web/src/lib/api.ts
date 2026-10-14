@@ -25,6 +25,10 @@ export async function putSettings(patch: Partial<CoachSettings>): Promise<CoachS
 
 export type Me = {
   user_id: string
+  role: 'athlete' | 'coach'
+  coaching: number        // athletes this user coaches
+  coaches: number         // coaches this athlete has
+  coach_unread: number
   profile: { name: string; picture: string }
   chat: { available: boolean; active_turn: string | null }
   settings: CoachSettings

@@ -1,6 +1,6 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, ChevronLeft, Flame, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
+import { CalendarDays, ChevronLeft, Flame, Megaphone, Users, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { MemorySheet } from '@/components/MemorySheet'
@@ -11,6 +11,10 @@ import { SetupWizard } from '@/components/plan/SetupWizard'
 import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { EventsScreen } from '@/components/events/EventsScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
+import { CoachInbox } from '@/components/coach/CoachInbox'
+import { CoachesScreen } from '@/components/coach/CoachesScreen'
+import { CoachApp } from '@/components/coach/CoachApp'
+import { athleteChat, getCoaches } from '@/lib/coach'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -75,7 +79,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -89,6 +93,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
+  const [coachThread, setCoachThread] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -186,6 +191,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
   const startSetup = () => showScreen('setup')
   const openPlan = () => (builtPlan ? setPlanScreen('planner') : open('plan'))
+  // "Message coach" from a session in the plan: open (or create) that workout's thread.
+  const messageCoach = async (s: { id: string }) => {
+    try {
+      const c = (await getCoaches()).coaches[0]
+      if (!c) return
+      const r = await athleteChat.open({ coach: c.email, session_id: s.id })
+      setCoachThread(r.thread.id)
+      setPlanScreen('coach')
+    } catch (e) { showToast((e as Error).message) }
+  }
   const close = () => { setClosing(true); setTimeout(() => { setSheet(null); setClosing(false) }, 200) }
   // Drag-dismiss animates itself out, then unmounts at once (no second exit animation).
   const dismissNow = useCallback(() => { setSheet(null); setClosing(false) }, [])
@@ -427,6 +442,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             onClick={() => showScreen(builtPlan ? 'planner' : 'setup')}>{builtPlan ? 'My plan' : 'Build my plan'}</HomeButton>
           <HomeButton icon={Flame} onClick={() => showScreen('stats')}>Stats</HomeButton>
           <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
+          {me.coaches > 0 && (
+            <HomeButton icon={Megaphone} onClick={() => { setCoachThread(null); showScreen('coach') }}>
+              Coach{me.coach_unread ? ` (${me.coach_unread})` : ''}
+            </HomeButton>
+          )}
+          {me.coaching > 0 && <HomeButton icon={Users} onClick={() => showScreen('athletes')}>Athletes</HomeButton>}
           <HomeButton icon={User} onClick={() => showScreen('profile')}>Profile</HomeButton>
         </nav>
       )}
@@ -602,8 +623,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onAsk={tellRabbit}
           onChanged={() => { void refreshThreads(); loadWeek() }}
           onMeChanged={onChange}
-          onOpenEvents={() => setPlanScreen('events')} />
+          onOpenEvents={() => setPlanScreen('events')}
+          onMessage={me.coaches > 0 ? (s) => void messageCoach(s) : undefined} messageLabel="Message coach" />
       )}
+      {planScreen === 'coach' && (
+        <CoachInbox openThreadId={coachThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
+      )}
+      {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} />}
+      {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'events' && (
         <EventsScreen hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
@@ -627,6 +654,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <div className="modal-body overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
               <SettingsPanels me={me} goal={goal} onEditGoal={() => open('memory')} onChange={onChange}
                 onOpenEvents={() => showScreen('events')} onOpenProfile={() => showScreen('profile')}
+                onOpenCoaches={() => showScreen('coaches')} onOpenAthletes={() => showScreen('athletes')}
                 onOpenPlan={() => showScreen(builtPlan ? 'planner' : 'setup')}
                 onDevDone={() => void reload()} />
             </div>

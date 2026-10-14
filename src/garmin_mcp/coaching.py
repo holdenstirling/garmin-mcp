@@ -586,6 +586,12 @@ class CoachStore:
                 ev_lines.append(bit)
             lines.append("Upcoming events on their calendar (they manage these in the app's "
                          "Events screen):\n" + "\n".join(ev_lines))
+        shared = [n for n in self._s.user_doc(user_id, "coach_notes").load().get("notes", [])
+                  if n.get("shared")]
+        if shared:
+            shared.sort(key=lambda n: (not n.get("pinned"), -n["ts"]))
+            lines.append("Notes from their human coach (follow these; the coach outranks your "
+                         "own suggestions):\n" + "\n".join(f"- {n['text'][:400]}" for n in shared[:10]))
         lines.append(f"Coach notes: {self.notes(user_id) or 'none yet'}")
         if thread is not None:
             lines.append("Thread: the coach log (briefs and workout notes)." if thread["kind"] == "coach"

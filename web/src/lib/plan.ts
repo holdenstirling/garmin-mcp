@@ -45,16 +45,27 @@ export type GoalFull = Goal & {
   priority?: 'A' | 'B' | 'C' | null; limiters?: string[]; course?: string; plan_source?: 'builder' | 'uploaded'
 }
 
-export const getPlan = () => getJSON<{ plan: BuiltPlan | null }>('/api/plan')
+/** Plan reads and session edits, for the athlete ('/api') or a coach ('/api/coach/athletes/{id}'). */
+export function planApi(base = '/api') {
+  return {
+    getPlan: () => getJSON<{ plan: BuiltPlan | null }>(`${base}/plan`),
+    addSession: (s: { date: string; sport: Sport; kind?: string; minutes?: number; title?: string }) =>
+      sendJSON<{ plan: BuiltPlan }>('POST', `${base}/plan/sessions`, s),
+    updateSession: (id: string, patch: Partial<{ date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }>) =>
+      sendJSON<{ plan: BuiltPlan }>('PATCH', `${base}/plan/sessions/${id}`, patch),
+    deleteSession: (id: string) => sendJSON<{ plan: BuiltPlan }>('DELETE', `${base}/plan/sessions/${id}`),
+  }
+}
+export type PlanApi = ReturnType<typeof planApi>
+const own = planApi()
+export const getPlan = own.getPlan
 export const setupPlan = (body: { athlete: Partial<AthleteFull>; goal: Partial<GoalFull>; event?: Record<string, unknown>; start_date?: string; new_goal?: boolean }) =>
   sendJSON<{ plan: BuiltPlan; goal: GoalFull; athlete: AthleteFull }>('POST', '/api/plan/setup', body)
 export const rebuildPlan = (start_date?: string) => sendJSON<{ plan: BuiltPlan }>('POST', '/api/plan/rebuild', start_date ? { start_date } : {})
 export const deletePlan = () => sendJSON<{ ok: boolean; removed: number }>('DELETE', '/api/plan')
-export const addSession = (s: { date: string; sport: Sport; kind?: string; minutes?: number; title?: string }) =>
-  sendJSON<{ plan: BuiltPlan }>('POST', '/api/plan/sessions', s)
-export const updateSession = (id: string, patch: Partial<{ date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }>) =>
-  sendJSON<{ plan: BuiltPlan }>('PATCH', `/api/plan/sessions/${id}`, patch)
-export const deleteSession = (id: string) => sendJSON<{ plan: BuiltPlan }>('DELETE', `/api/plan/sessions/${id}`)
+export const addSession = own.addSession
+export const updateSession = own.updateSession
+export const deleteSession = own.deleteSession
 export const syncGarmin = (days: number) => sendJSON<{ plan: BuiltPlan; result: SyncResult }>('POST', '/api/plan/garmin/sync', { days })
 export const removeFromGarmin = () => sendJSON<{ plan: BuiltPlan; result: { removed: number } }>('POST', '/api/plan/garmin/remove', {})
 export const getGarminNumbers = () => getJSON<{ numbers: GarminNumbers }>('/api/garmin/numbers')

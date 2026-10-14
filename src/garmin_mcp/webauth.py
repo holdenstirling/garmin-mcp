@@ -36,6 +36,7 @@ from starlette.responses import RedirectResponse, Response
 
 from .appstore import AppStore
 from .config import Settings
+from .coaches import CoachLinks
 from .logs import log_event
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,9 @@ class WebAuth:
         self._sessions_doc = store.global_doc("sessions")
         self._identities_doc = store.global_doc("identities")
         self._sessions: dict[str, dict[str, Any]] = self._sessions_doc.load()
+        # Human coaches invited by an allowlisted athlete may sign in too (see coaches.py).
+        self.coach_links = CoachLinks(store, athlete_emails=lambda: {
+            k.lower(): v for k, v in self.s.allowed_google_users.items()}, clock=clock)
         secure = settings.is_https
         # __Host- requires Secure; plain http is only allowed for localhost dev.
         self.session_cookie = "__Host-rabbit_session" if secure else "rabbit_session"
@@ -148,7 +152,10 @@ class WebAuth:
             log_event(logger, logging.WARNING, "google_exchange_failed", error=type(e).__name__)
             return self._fail("google")
 
-        user_id = self.s.allowed_google_users.get(email.lower()) if verified else None
+        user_id = None
+        if verified:
+            user_id = (self.s.allowed_google_users.get(email.lower())
+                       or self.coach_links.user_id_for_email(email))
         if user_id is None:
             log_event(logger, logging.WARNING, "google_user_not_allowed", verified=verified)
             return self._fail("not_allowed")
@@ -231,8 +238,9 @@ class WebAuth:
             rec = self._sessions.get(key)
             if rec is None or rec["expires"] <= now:
                 return None
-            if rec["user_id"] not in self._allowed_user_ids():
-                return None  # removed from the allowlist: revoked immediately
+            if rec["user_id"] not in self._allowed_user_ids() \
+                    and not self.coach_links.is_coach_user(rec["user_id"]):
+                return None  # removed from the allowlist (or every athlete removed the coach)
             if now - rec["last_seen"] > LAST_SEEN_WRITE_INTERVAL:
                 rec["last_seen"] = now
                 rec["expires"] = now + self.s.app_session_ttl_seconds  # sliding

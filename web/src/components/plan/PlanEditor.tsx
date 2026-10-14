@@ -9,7 +9,7 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { cn } from '@/lib/utils'
 import type { Me, Sport } from '@/lib/api'
 import {
-  addSession, deletePlan, deleteSession, getPlan, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, updateSession,
+  deletePlan, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, Screen } from './ui'
@@ -18,8 +18,9 @@ import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
 
 type Editing = { session: PlanSession | null; date: string }
+const OWN = planApi()
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel }: {
   me: Me
   goalTitle: string
   onClose: () => void
@@ -28,6 +29,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   onChanged: () => void
   onMeChanged: () => void
   onOpenEvents: () => void
+  api?: PlanApi
+  coachMode?: boolean      // a coach viewing an athlete's plan: no Garmin, no plan actions
+  readOnly?: boolean       // no edit permission
+  onMessage?: (s: { id: string; title: string; date: string }) => void
+  messageLabel?: string
 }) {
   const [plan, setPlan] = useState<BuiltPlan | null | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -43,12 +49,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [rebuilding, setRebuilding] = useState(false)
 
   const load = useCallback(() => {
-    getPlan().then((r) => {
+    api.getPlan().then((r) => {
       setPlan(r.plan)
       if (r.plan?.garmin.window) setSyncDays(r.plan.garmin.window)
       setWeekIdx((cur) => cur ?? r.plan?.current_week ?? r.plan?.weeks[0]?.index ?? null)
     }, (e) => setLoadError((e as Error).message))
-  }, [])
+  }, [api])
   useEffect(load, [load])
 
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -114,10 +120,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   async function saveSession(d: SessionDraft, changed: Partial<SessionDraft>) {
     if (!editing) return
     if (editing.session) {
-      const r = await updateSession(editing.session.id, changed)
+      const r = await api.updateSession(editing.session.id, changed)
       applied(r.plan)
     } else {
-      const r = await addSession({ date: d.date, sport: d.sport, kind: d.kind, minutes: d.minutes, title: d.title || undefined })
+      const r = await api.addSession({ date: d.date, sport: d.sport, kind: d.kind, minutes: d.minutes, title: d.title || undefined })
       applied(r.plan)
     }
     // Follow a session moved into another week.
@@ -139,7 +145,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
       </div>
-      {(plan.events_changed || plan.race_changed) && (
+      {!coachMode && (plan.events_changed || plan.race_changed) && (
         <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
           <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">
             {plan.race_changed ? 'Your race date or distance changed since this plan was built.' : 'Your events changed since this plan was built.'}
@@ -179,7 +185,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             {week.days.map((d) => {
               const past = d.date < today
               const isToday = d.date === today
-              const canAdd = !past && d.date <= plan.race_date && d.sessions.length < 4
+              const canAdd = !readOnly && !past && d.date <= plan.race_date && d.sessions.length < 4
               return (
                 <div key={d.date} className={cn('flex gap-3 px-4 py-2', isToday && 'bg-(--accent-subtle)', past && 'opacity-60')}>
                   <span className="w-10 shrink-0 pt-2 text-center leading-tight">
@@ -209,6 +215,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">Tap a session to see the workout, change it or move it. Edited sessions stay as you set them.</p>
       </section>
 
+      {!coachMode && <>
       {/* Garmin */}
       <Group label="Garmin calendar" footer={me.garmin.connected
         ? 'Rabbit adds upcoming sessions as structured workouts with your zones. Sync again after changes; edited and moved sessions get updated.'
@@ -260,6 +267,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <Row icon={<Icon tone="danger"><Trash2 /></Icon>} title="Delete plan" danger onClick={() => setConfirmDelete(true)} />
         )}
       </Group>
+      </>}
 
       {editing && (
         <SessionSheet key={editing.session?.id ?? `new-${editing.date}`}
@@ -268,10 +276,17 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           onDismissed={() => { setEditing(null); setSheetClosing(false) }}
           onSave={saveSession}
           onDelete={editing.session && editing.session.kind !== 'race' ? async () => {
-            const r = await deleteSession(editing.session!.id)
+            const r = await api.deleteSession(editing.session!.id)
             applied(r.plan)
           } : undefined}
-          onAsk={editing.session ? () => {
+          readOnly={readOnly}
+          onMessage={editing.session && onMessage ? () => {
+            const s = editing.session!
+            setEditing(null)
+            onMessage({ id: s.id, title: s.title, date: editing.date })
+          } : undefined}
+          messageLabel={messageLabel}
+          onAsk={editing.session && !coachMode ? () => {
             const s = editing.session!
             setEditing(null); close()
             onAsk(`About my ${s.title} on ${fmtDay(editing.date, { weekday: 'long', month: 'short', day: 'numeric' })}: `)

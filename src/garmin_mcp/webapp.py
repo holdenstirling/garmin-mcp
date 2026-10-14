@@ -32,6 +32,8 @@ from .logs import log_event
 from .planbuilder import PlanError, build_plan
 from .plans import public_plan
 from .events import TYPE_DISTANCES, TYPES
+from .coaches import CoachChat, CoachNotes
+from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
 from .webauth import WebAuth
@@ -139,6 +141,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         cd = logins.cooldown(user_id) if logins else None
         return JSONResponse({
             "user_id": user_id,
+            "role": "coach" if user_id.startswith("coach_") else "athlete",
+            "coaching": len(auth.coach_links.athletes_of(user_id)),
+            "coaches": len(auth.coach_links.coaches_of(user_id)),
+            "coach_unread": coach_chat.unread(user_id, "athlete")
+            if coach_chat is not None and not user_id.startswith("coach_") else 0,
             "profile": auth.profile(user_id),
             "settings": _settings_view(user_id),
             "dev": {"fake_garmin": fake_garmin, "tools": sorted(dev) if dev else []},
@@ -557,6 +564,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     # ------------------------------------------------------- plan builder --
     plans = chat.agent.plans if chat is not None else None
+    coach_chat = CoachChat(store) if store is not None else None
+    coach_notes = CoachNotes(store) if store is not None else None
 
     def _plan_resp(user_id: str, plan: dict[str, Any] | None, status: int = 200,
                    **extra: Any) -> JSONResponse:
@@ -751,6 +760,258 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         fresh = request.query_params.get("fresh") == "1"
         return JSONResponse(await _plan_call(lambda: chat.agent.stats.get(user_id, fresh=fresh)))
 
+    # ------------------------------------------------------------- coaches --
+    links = auth.coach_links
+
+    def _session_ref(aid: str, sid: Any) -> dict[str, Any] | None:
+        if not isinstance(sid, str) or not sid or plans is None:
+            return None
+        plan = plans.get(aid)
+        for _, day, x in iter_sessions(plan) if plan else []:
+            if x["id"] == sid:
+                return {"id": sid, "date": day, "title": x["title"]}
+        raise CoachError("That session isn't in the plan anymore.")
+
+    def _notify(to_user: str | None, title: str, body: str) -> None:
+        if push is None or not to_user:
+            return
+        try:
+            push.send(to_user, title, body[:140], url="/app/")
+        except Exception as e:  # notifications are best effort
+            log_event(logger, logging.WARNING, "coach_push_failed", error=type(e).__name__)
+
+    def _coach_view(link: dict[str, Any]) -> dict[str, Any]:
+        return {k: link.get(k) for k in ("email", "status", "can_edit_plan", "can_see_rabbit_chats",
+                                         "invited_at", "accepted_at")}
+
+    # Athlete side: manage coaches, message them, read shared notes.
+    async def coaches_get(request: Request, user_id: str) -> Response:
+        return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)],
+                             "unread": coach_chat.unread(user_id, "athlete")})
+
+    async def coach_invite(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        await _plan_call(lambda: links.invite(user_id, body.get("email", ""),
+                                              can_edit_plan=body.get("can_edit_plan", True) is True,
+                                              can_see_rabbit_chats=body.get("can_see_rabbit_chats") is True))
+        return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]}, status_code=201)
+
+    async def coach_patch(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        await _plan_call(lambda: links.update(user_id, request.path_params["email"], body))
+        return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]})
+
+    async def coach_remove(request: Request, user_id: str) -> Response:
+        await _plan_call(lambda: links.remove(user_id, request.path_params["email"]))
+        return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]})
+
+    def _my_coach(user_id: str, email: Any) -> dict[str, Any]:
+        e = str(email or "").strip().lower()
+        for c in links.coaches_of(user_id):
+            if c["email"] == e:
+                return c
+        raise CoachError("coach not found")
+
+    async def athlete_threads(request: Request, user_id: str) -> Response:
+        return JSONResponse({"threads": coach_chat.threads(user_id),
+                             "coaches": [_coach_view(c) for c in links.coaches_of(user_id)]})
+
+    async def athlete_thread_open(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+
+        def run() -> dict[str, Any]:
+            c = _my_coach(user_id, body.get("coach"))
+            return coach_chat.open_thread(user_id, c["email"], session=_session_ref(user_id, body.get("session_id")))
+        return JSONResponse({"thread": await _plan_call(run)}, status_code=201)
+
+    async def athlete_thread_get(request: Request, user_id: str) -> Response:
+        tid = request.path_params["thread_id"]
+
+        def run() -> dict[str, Any]:
+            t = coach_chat.thread(user_id, tid)
+            coach_chat.mark_read(user_id, tid, "athlete")
+            return t
+        return JSONResponse({"thread": await _plan_call(run)})
+
+    async def athlete_thread_post(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        tid = request.path_params["thread_id"]
+        msg = await _plan_call(lambda: coach_chat.post(user_id, tid, sender="athlete", text=body.get("text")))
+        t = coach_chat.thread(user_id, tid)
+        link = next((c for c in links.coaches_of(user_id) if c["email"] == t["coach"]), None)
+        _notify((link or {}).get("coach_user_id"), f"{auth.profile(user_id).get('name') or 'Your athlete'}",
+                msg["text"])
+        return JSONResponse({"message": msg}, status_code=201)
+
+    async def athlete_notes(request: Request, user_id: str) -> Response:
+        return JSONResponse({"notes": coach_notes.list(user_id, shared_only=True)})
+
+    # Coach side: everything goes through links.require(coach, athlete).
+    def _aid(request: Request) -> str:
+        return str(request.path_params["athlete_id"])
+
+    async def coach_athletes(request: Request, user_id: str) -> Response:
+        out = []
+        for link in links.athletes_of(user_id):
+            aid = link["athlete_id"]
+            goal = _coach().active_goal(aid) if chat else None
+            out.append({"athlete_id": aid, "profile": auth.profile(aid), **_coach_view(link),
+                        "goal": {k: goal.get(k) for k in ("title", "date", "distance")} if goal else None,
+                        "unread": coach_chat.unread(aid, "coach", coach=link["email"])})
+        return JSONResponse({"athletes": out})
+
+    async def coach_athlete(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        link = await _plan_call(lambda: links.require(user_id, aid))
+        coach = _coach()
+        return JSONResponse({
+            "athlete_id": aid, "profile": auth.profile(aid), "link": _coach_view(link),
+            "athlete": coach.athlete(aid), "goal": coach.active_goal(aid),
+            "events": chat.agent.events.list(aid) if chat else [],
+            "notes": coach_notes.list(aid, coach=link["email"]),
+            "unread": coach_chat.unread(aid, "coach", coach=link["email"]),
+        })
+
+    async def coach_athlete_stats(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        return JSONResponse(await _plan_call(lambda: chat.agent.stats.get(aid)))
+
+    async def coach_plan_get(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        assert plans is not None
+        return JSONResponse({"plan": public_plan(plans.get(aid), plans.today(aid))})
+
+    async def coach_session_add(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        assert plans is not None
+
+        def run() -> dict[str, Any]:
+            links.require(user_id, aid, perm="can_edit_plan")
+            return plans.add_session(aid, body)
+        plan = await _plan_call(run)
+        return JSONResponse({"plan": public_plan(plan, plans.today(aid))}, status_code=201)
+
+    async def coach_session_update(request: Request, user_id: str) -> Response:
+        aid, sid = _aid(request), request.path_params["session_id"]
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        assert plans is not None
+
+        def run() -> dict[str, Any]:
+            links.require(user_id, aid, perm="can_edit_plan")
+            return plans.update_session(aid, sid, body)
+        return JSONResponse({"plan": public_plan(await _plan_call(run), plans.today(aid))})
+
+    async def coach_session_delete(request: Request, user_id: str) -> Response:
+        aid, sid = _aid(request), request.path_params["session_id"]
+        assert plans is not None
+
+        def run() -> dict[str, Any]:
+            links.require(user_id, aid, perm="can_edit_plan")
+            return plans.delete_session(aid, sid)
+        return JSONResponse({"plan": public_plan(await _plan_call(run), plans.today(aid))})
+
+    async def coach_threads(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        link = await _plan_call(lambda: links.require(user_id, aid))
+        return JSONResponse({"threads": coach_chat.threads(aid, coach=link["email"])})
+
+    async def coach_thread_open(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+
+        def run() -> dict[str, Any]:
+            link = links.require(user_id, aid)
+            return coach_chat.open_thread(aid, link["email"], session=_session_ref(aid, body.get("session_id")))
+        return JSONResponse({"thread": await _plan_call(run)}, status_code=201)
+
+    async def coach_thread_get(request: Request, user_id: str) -> Response:
+        aid, tid = _aid(request), request.path_params["thread_id"]
+
+        def run() -> dict[str, Any]:
+            link = links.require(user_id, aid)
+            t = coach_chat.thread(aid, tid, coach=link["email"])
+            coach_chat.mark_read(aid, tid, "coach", coach=link["email"])
+            return t
+        return JSONResponse({"thread": await _plan_call(run)})
+
+    async def coach_thread_post(request: Request, user_id: str) -> Response:
+        aid, tid = _aid(request), request.path_params["thread_id"]
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+
+        def run() -> dict[str, Any]:
+            link = links.require(user_id, aid)
+            return coach_chat.post(aid, tid, sender="coach", text=body.get("text"), coach=link["email"])
+        msg = await _plan_call(run)
+        _notify(aid, f"{auth.profile(user_id).get('name') or 'Your coach'}", msg["text"])
+        return JSONResponse({"message": msg}, status_code=201)
+
+    async def coach_note_add(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+
+        def run() -> dict[str, Any]:
+            link = links.require(user_id, aid)
+            return coach_notes.add(aid, link["email"], body.get("text"), shared=body.get("shared", True) is True,
+                                   pinned=body.get("pinned") is True)
+        return JSONResponse({"note": await _plan_call(run)}, status_code=201)
+
+    async def coach_note_update(request: Request, user_id: str) -> Response:
+        aid, nid = _aid(request), request.path_params["note_id"]
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+
+        def run() -> dict[str, Any]:
+            link = links.require(user_id, aid)
+            return coach_notes.update(aid, link["email"], nid, body)
+        return JSONResponse({"note": await _plan_call(run)})
+
+    async def coach_note_delete(request: Request, user_id: str) -> Response:
+        aid, nid = _aid(request), request.path_params["note_id"]
+
+        def run() -> None:
+            link = links.require(user_id, aid)
+            coach_notes.delete(aid, link["email"], nid)
+        await _plan_call(run)
+        return JSONResponse({"ok": True})
+
+    async def coach_rabbit_threads(request: Request, user_id: str) -> Response:
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid, perm="can_see_rabbit_chats"))
+        return JSONResponse({"threads": [_thread_view(t) for t in _coach().threads(aid)]})
+
+    async def coach_rabbit_messages(request: Request, user_id: str) -> Response:
+        aid, tid = _aid(request), request.path_params["thread_id"]
+        await _plan_call(lambda: links.require(user_id, aid, perm="can_see_rabbit_chats"))
+        thread = _coach().get_thread(aid, tid)
+        if thread is None:
+            return _err(404, "thread not found")
+        keys = ("id", "ts", "kind", "label", "user", "parts")
+        turns = _coach().turns(aid, tid)[-60:]
+        return JSONResponse({"thread": _thread_view(thread),
+                             "turns": [{k: t.get(k) for k in keys if k in t} for t in turns]})
+
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
@@ -839,6 +1100,34 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),
+        Route("/app/api/coaches/{email}", _plan_api(coach_patch, mutating=True), methods=["PATCH"]),
+        Route("/app/api/coaches/{email}", _plan_api(coach_remove, mutating=True), methods=["DELETE"]),
+        Route("/app/api/coachchat", _plan_api(athlete_threads, mutating=False), methods=["GET"]),
+        Route("/app/api/coachchat", _plan_api(athlete_thread_open, mutating=True), methods=["POST"]),
+        Route("/app/api/coachchat/{thread_id}", _plan_api(athlete_thread_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coachchat/{thread_id}/messages", _plan_api(athlete_thread_post, mutating=True),
+              methods=["POST"]),
+        Route("/app/api/coachnotes", _plan_api(athlete_notes, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes", _plan_api(coach_athletes, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}", _plan_api(coach_athlete, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/stats", _plan_api(coach_athlete_stats, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/plan", _plan_api(coach_plan_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/plan/sessions", _plan_api(coach_session_add, mutating=True), methods=["POST"]),
+        Route("/app/api/coach/athletes/{athlete_id}/plan/sessions/{session_id}", _plan_api(coach_session_update, mutating=True),
+              methods=["PATCH"]),
+        Route("/app/api/coach/athletes/{athlete_id}/plan/sessions/{session_id}", _plan_api(coach_session_delete, mutating=True),
+              methods=["DELETE"]),
+        Route("/app/api/coach/athletes/{athlete_id}/chat", _plan_api(coach_threads, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/chat", _plan_api(coach_thread_open, mutating=True), methods=["POST"]),
+        Route("/app/api/coach/athletes/{athlete_id}/chat/{thread_id}", _plan_api(coach_thread_get, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/chat/{thread_id}/messages", _plan_api(coach_thread_post, mutating=True), methods=["POST"]),
+        Route("/app/api/coach/athletes/{athlete_id}/notes", _plan_api(coach_note_add, mutating=True), methods=["POST"]),
+        Route("/app/api/coach/athletes/{athlete_id}/notes/{note_id}", _plan_api(coach_note_update, mutating=True), methods=["PATCH"]),
+        Route("/app/api/coach/athletes/{athlete_id}/notes/{note_id}", _plan_api(coach_note_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/coach/athletes/{athlete_id}/rabbit", _plan_api(coach_rabbit_threads, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/rabbit/{thread_id}", _plan_api(coach_rabbit_messages, mutating=False), methods=["GET"]),
         Route("/app/api/garmin/numbers", _plan_api(garmin_numbers, mutating=False),
               methods=["GET"]),
         Route("/app/api/garmin/login", _api(garmin_login, mutating=True), methods=["POST"]),

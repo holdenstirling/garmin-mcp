@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarDays, LogOut, Map as MapIcon, Target, User, Watch } from 'lucide-react'
+import { Bell, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { CoachingSettings } from '@/components/CoachingSettings'
@@ -8,13 +8,15 @@ import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
-export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOpenEvents, onOpenProfile, onOpenPlan }: {
+export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOpenEvents, onOpenProfile, onOpenPlan, onOpenCoaches, onOpenAthletes }: {
   me: Me
   goal: Goal | null
   onEditGoal: () => void
   onOpenEvents: () => void
   onOpenProfile: () => void
   onOpenPlan: () => void
+  onOpenCoaches: () => void
+  onOpenAthletes: () => void
   onChange: () => void
   onDevDone: () => void
 }) {
@@ -86,6 +88,15 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
           onClick={onOpenPlan} />
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="Body, zones, schedule and equipment"
           onClick={onOpenProfile} />
+      </Group>
+
+      <Group label="Coaching" footer="Your coach sees your plan, events and stats. Your Rabbit chats stay private unless you share them.">
+        <Row icon={<Icon><Megaphone /></Icon>} title="Coaches"
+          subtitle={me.coaches ? `${me.coaches} coach${me.coaches === 1 ? '' : 'es'}` : 'Invite a coach by email'} onClick={onOpenCoaches} />
+        {me.coaching > 0 && (
+          <Row icon={<Icon><Users /></Icon>} title="Athletes you coach" subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`}
+            onClick={onOpenAthletes} />
+        )}
       </Group>
 
       <Group label="Garmin"
