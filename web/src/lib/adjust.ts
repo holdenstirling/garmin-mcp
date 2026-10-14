@@ -9,8 +9,8 @@ export type Change = {
   why: string
 }
 export type Proposal =
-  | { status: 'none' | 'ok' | 'watch' | 'dismissed'; reasons?: string[]; id?: string }
-  | { status: 'suggest'; id: string; reasons: string[]; changes: Change[] }
+  | { status: 'none' | 'ok' | 'watch' | 'dismissed'; reasons?: string[]; id?: string; tip?: string }
+  | { status: 'suggest'; id: string; reasons: string[]; changes: Change[]; tip?: string }
 
 export const getAdjust = () => getJSON<Proposal>('/api/plan/adjust')
 export const decideAdjust = (id: string, action: 'apply' | 'dismiss') =>

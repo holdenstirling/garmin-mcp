@@ -2,7 +2,7 @@
 // auto-growing textarea, round send button that turns into a red stop button.
 // Added for Rabbit: image paste, image thumbnails, uploads on add.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileText, Paperclip, X } from 'lucide-react'
+import { FileText, Mic, Paperclip, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ACCEPT, MAX_FILES, formatFileSize, uploadAttachment, type AttachmentMeta } from '@/lib/attachments'
 
@@ -16,7 +16,7 @@ let n = 0
 export const ATTACH_INPUT_ID = 'rabbit-attach'
 
 
-export function Composer({ disabled, streaming, onSend, onStop, placeholder, draft, still }: {
+export function Composer({ disabled, streaming, onSend, onStop, placeholder, draft, still, onMic }: {
   disabled: boolean
   streaming: boolean
   onSend: (text: string, attachments: AttachmentMeta[]) => void
@@ -27,6 +27,8 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
   /** a non-interactive copy (drawn under a chat for the swipe back): no file input, so
    *  ATTACH_INPUT_ID stays unique */
   still?: boolean
+  /** voice check-in (home/coach log only): a small mic next to send */
+  onMic?: () => void
 }) {
   const [input, setInput] = useState('')
   const [files, setFiles] = useState<Pending[]>([])
@@ -178,6 +180,13 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
           className="chat-text max-h-[calc(1.375em*5+36px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((36px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
           style={{ overflowY: 'auto' }}
         />
+        {onMic && !input.trim() && (
+          <button type="button" aria-label="Voice check-in" title="How did it feel? (voice check-in)" onClick={onMic}
+            style={{ marginBottom: 'calc((var(--row) - 32px) / 2)' }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+            <Mic className="size-[18px]" />
+          </button>
+        )}
         {streaming ? (
           <button type="button" aria-label="Stop" onClick={onStop} style={{ marginBottom: 'calc((var(--row) - 36px) / 2)' }}
             className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-destructive text-white shadow-sm transition-all hover:opacity-90 active:scale-95">

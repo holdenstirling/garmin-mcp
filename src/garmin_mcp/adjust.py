@@ -13,6 +13,10 @@ can be used without sending it to an AI model:
   long session next to it: the long session comes back, shortened to 70%.
 * **Missed half or more** of the last 7 days' sessions: next week's volume is cut 15%
   ("ease back in"), never stacking missed work.
+* **Check-ins** (``checkins.py``, athlete-entered): a pain flag in the last 3 days eases the
+  next 3 days (no intensity, about 60-70% duration) with a tip to see a professional if it
+  persists; soreness level 3 in the last 2 days, or the last two check-ins both at feel 2
+  or lower, turn the next hard session into an easy day.
 
 A proposal has an id (hash of the plan's sessions it touches and the changes); applying
 checks the sessions are unchanged, so a stale proposal can't overwrite newer edits.
@@ -59,13 +63,53 @@ def _recovery_flags(recovery: dict[str, Any] | None, tsb: float | None) -> tuple
     return reasons, very
 
 
+PAIN_TIP = "If it persists or gets worse, check with a physio or doctor."
+
+
+def _checkin_flags(checkins: list[dict[str, Any]] | None, today: date) -> tuple[str | None, str | None]:
+    """(pain reason, rough-days reason) from recent check-ins (newest first or any order)."""
+    from .checkins import area_label  # local: keeps adjust importable without the store
+    rows = sorted((c for c in checkins or [] if isinstance(c, dict) and (c.get("date") or "") <= today.isoformat()),
+                  key=lambda c: (c.get("date") or "", c.get("ts") or 0), reverse=True)
+    pain = None
+    since3 = (today - timedelta(days=2)).isoformat()
+    for c in rows:
+        if c.get("date", "") >= since3 and c.get("pain_flag"):
+            worst = max(c.get("soreness") or [], key=lambda s: s.get("level") or 0, default=None)
+            area = area_label(worst) if worst and worst.get("area") != "other" else None
+            pain = f"You mentioned {area} pain." if area else "You mentioned pain."
+            break
+    rough = None
+    since2 = (today - timedelta(days=1)).isoformat()
+    heavy = next((s for c in rows if c.get("date", "") >= since2 for s in c.get("soreness") or []
+                  if (s.get("level") or 0) >= 3), None)
+    if heavy:
+        rough = f"You reported a really sore {area_label(heavy)}."
+    elif len(rows) >= 2 and all(isinstance(c.get("feel"), int) and c["feel"] <= 2 for c in rows[:2]) \
+            and rows[1].get("date", "") >= (today - timedelta(days=6)).isoformat():
+        rough = "Your last two check-ins felt rough."
+    return pain, rough
+
+
+def _easy_change(s: dict[str, Any], d: str, share: float, why: str) -> dict[str, Any] | None:
+    minutes = s.get("minutes") or 0
+    quality = s.get("kind") in QUALITY or s.get("kind") in ("long", "brick")
+    kind = ("easy" if "easy" in KINDS_BY_SPORT.get(s["sport"], ()) else KINDS_BY_SPORT.get(s["sport"], ("easy",))[0]) \
+        if s.get("kind") in QUALITY else s.get("kind")
+    if not minutes or (not quality and minutes <= 30):
+        return None
+    return {"session_id": s["id"], "date": d, "action": "ease" if s.get("kind") in QUALITY else "shorten",
+            "from": _session_view(s), "to": {"sport": s["sport"], "kind": kind, "minutes": _r5(minutes * share)},
+            "why": why}
+
+
 def _session_view(s: dict[str, Any]) -> dict[str, Any]:
     return {k: s.get(k) for k in ("title", "sport", "kind", "minutes")}
 
 
 def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date, *,
             recovery: dict[str, Any] | None = None, tsb: float | None = None,
-            dismissed: list[str] | None = None) -> dict[str, Any]:
+            dismissed: list[str] | None = None, checkins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     if not plan:
         return {"status": "none"}
     changes: list[dict[str, Any]] = []
@@ -93,6 +137,34 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
                 if t <= d and s["sport"] != "rest" and s.get("kind") != "race" and not s.get("adjusted")]
     made_up = set(plan.get("made_up", []))
     taken: set[str] = set()
+    tip: str | None = None
+
+    # Athlete check-ins first: what they told us beats any signal we infer.
+    pain, rough = _checkin_flags(checkins, today)
+    if pain:
+        reasons.append(pain)
+        tip = PAIN_TIP
+        horizon = (today + timedelta(days=2)).isoformat()
+        for w, d, s in upcoming:
+            if d > horizon:
+                break
+            c = _easy_change(s, d, EASE_IF if s.get("kind") in QUALITY else 0.6,
+                             "No intensity and shorter while it settles. " + PAIN_TIP)
+            if c:
+                changes.append(c)
+                taken.add(s["id"])
+    elif rough:
+        tomorrow = (today + timedelta(days=1)).isoformat()
+        for w, d, s in upcoming:
+            if d > tomorrow:
+                break
+            if s.get("kind") in QUALITY or s.get("kind") in ("long", "brick"):
+                c = _easy_change(s, d, EASE_IF, "Make it an easy day; the hard work keeps.")
+                if c:
+                    reasons.append(rough)
+                    changes.append(c)
+                    taken.add(s["id"])
+                    break
 
     if rec_reasons:
         reasons += rec_reasons
@@ -101,6 +173,8 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
         for w, d, s in upcoming:
             if d > horizon:
                 break
+            if s["id"] in taken:
+                continue
             minutes = s.get("minutes") or 0
             if very_low and d == tomorrow:
                 changes.append({"session_id": s["id"], "date": d, "action": "rest", "from": _session_view(s),
@@ -123,7 +197,7 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
     this_week = week_for(plan, today)
     missed_long = [s for s in missed if s.get("kind") in ("long", "brick") and s.get("id") not in made_up
                    and this_week and s.get("id") and any(x["id"] == s["id"] for ss in this_week["days"].values() for x in ss)]
-    if missed_long and this_week and not rec_reasons:
+    if missed_long and this_week and not rec_reasons and not pain and not rough:
         s = missed_long[0]
         free = _free_day(this_week, today)
         if free:
@@ -151,11 +225,17 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
                or c["to"].get("minutes") != c["from"].get("minutes") or c["to"].get("kind") != c["from"].get("kind")]
     if not changes:
         # Low recovery but nothing hard coming up: just say so.
-        return {"status": "watch" if rec_reasons else "ok", "reasons": reasons}
+        out: dict[str, Any] = {"status": "watch" if rec_reasons or pain else "ok", "reasons": reasons}
+        if tip:
+            out["tip"] = tip
+        return out
     pid = proposal_id(plan, changes)
     if pid in (dismissed or []):
         return {"status": "dismissed", "id": pid}
-    return {"status": "suggest", "id": pid, "reasons": reasons, "changes": changes}
+    out = {"status": "suggest", "id": pid, "reasons": reasons, "changes": changes}
+    if tip:
+        out["tip"] = tip
+    return out
 
 
 def _free_day(week: dict[str, Any], today: date) -> str | None:

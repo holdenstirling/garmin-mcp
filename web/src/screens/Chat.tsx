@@ -22,6 +22,7 @@ import { CoachesScreen } from '@/components/coach/CoachesScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { TodayCard } from '@/components/today/TodayCard'
+import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { RecapPill, RecapSheet } from '@/components/recap/RecapSheet'
 import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -109,6 +110,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [menu, setMenu] = useState<MenuTarget | null>(null)
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
+  const [voice, setVoice] = useState(false)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
@@ -692,6 +694,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         onStop={() => void stop()}
         onSend={(t, a) => void (pending ? sendPending(t, a) : isCoach ? sendFromLog(t, a) : send(t, a))}
         draft={draft}
+        onMic={isCoach ? () => setVoice(true) : undefined}
         placeholder={!me.chat.available ? 'Chat isn’t configured yet' : waitingOnYou ? 'Approve or decline above…'
           : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : isCoach ? 'Start a new chat…' : 'Ask Rabbit…'}
       />
@@ -714,6 +717,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             } catch (e) { window.alert((e as Error).message) }
           }} />
       )}
+      <VoiceCheckIn open={voice} onClose={() => setVoice(false)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
       {toast && <div key={toast.n} className="rabbit-toast" role="status">{toast.msg}</div>}
 
       {sheet === 'threads' && (

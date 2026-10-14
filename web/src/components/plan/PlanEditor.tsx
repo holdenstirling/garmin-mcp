@@ -337,6 +337,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             applied(r.plan)
           } : undefined}
           readOnly={readOnly}
+          checkIn={!coachMode && !!editing.session && editing.date <= today}
           onMessage={editing.session && onMessage ? () => {
             const s = editing.session!
             setEditing(null)

@@ -983,6 +983,40 @@
 .celebrate { animation: celebrate-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 @media (prefers-reduced-motion: reduce) { .celebrate { animation: none; } }
 
+/* Voice check-in (components/checkin/VoiceCheckIn.tsx): big round mic, a pulsing ring and
+   five bars "talking" while it listens. Real audio level isn't used. */
+.voice-mic {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 92px; height: 92px; border-radius: 9999px; border: none; cursor: pointer;
+  background: var(--accent); color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 150ms ease, background 150ms ease;
+}
+.voice-mic:active { transform: scale(0.95); }
+.voice-mic--on { background: var(--danger); box-shadow: 0 6px 18px color-mix(in srgb, var(--danger) 35%, transparent); }
+.voice-mic__ring {
+  position: absolute; inset: 0; border-radius: inherit; border: 3px solid var(--danger);
+  animation: voice-ring 1.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+@keyframes voice-ring {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+.voice-wave { display: inline-flex; align-items: center; gap: 3px; height: 20px; }
+.voice-wave i { display: block; width: 3px; height: 100%; border-radius: 2px; background: var(--danger);
+  transform-origin: center; animation: voice-bar 900ms ease-in-out infinite; }
+.voice-wave i:nth-child(2) { animation-delay: -700ms; }
+.voice-wave i:nth-child(3) { animation-delay: -350ms; }
+.voice-wave i:nth-child(4) { animation-delay: -550ms; }
+.voice-wave i:nth-child(5) { animation-delay: -150ms; }
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-mic__ring { animation: none; opacity: 0.5; }
+  .voice-wave i { animation: none; transform: scaleY(0.6); }
+}
+
 /* ── RabbitLoader: the mark running in place ──
    One stride = one --rl-stride: the runner squashes on landing, stretches on push-off and
    leans into the hop; dust pops behind its feet on each landing while the dashed ground

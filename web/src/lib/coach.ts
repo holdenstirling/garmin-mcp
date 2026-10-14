@@ -24,6 +24,8 @@ export type AthleteCard = CoachLink & {
 export type AthleteOverview = {
   athlete_id: string; profile: { name: string; picture: string }; photo?: number | null; link: CoachLink
   athlete: Athlete & Record<string, unknown>; goal: Goal | null; events: RaceEvent[]; notes: Note[]; unread: number
+  /** the athlete's last 5 check-in summaries (training feedback) */
+  checkins?: { date: string; summary: string; feel: number | null; pain_flag: boolean }[]
 }
 
 // ---------------------------------------------------------------- athlete --

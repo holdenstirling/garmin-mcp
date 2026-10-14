@@ -9,6 +9,7 @@ import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
 import { LoadCard } from './LoadChart'
+import { CheckinsCard } from '@/components/checkin/CheckinsCard'
 import { ProgressHero } from '@/components/progress/Progress'
 import { getProgress, type Progress } from '@/lib/progress'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
@@ -61,14 +62,16 @@ export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
       )}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">{error}</p>}
       {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
-        recovery={oura ? <Recovery /> : null} />}
+        recovery={oura ? <Recovery /> : null} more={<CheckinsCard />} />}
     </Screen>
   )
 }
 
 /** The stats sections, most important first (also used in the coach's view of an athlete). */
-export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery }: {
+export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery, more: moreExtra }: {
   s: Stats; progress?: Progress | null; onOpenPlan?: () => void; loadBase?: string; loadKey?: number; recovery?: React.ReactNode
+  /** extra sections under "More stats" (the athlete's own check-ins) */
+  more?: React.ReactNode
 }) {
   const [period, setPeriod] = useState<Period>('week')
   const [more, setMore] = useState(false)
@@ -90,6 +93,7 @@ export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery
         {s.by_sport.length > 0 && <SportsCard s={s} />}
         {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
         {s.recent.length > 0 && <RecentCard s={s} />}
+        {moreExtra}
       </>}
     </>
   )

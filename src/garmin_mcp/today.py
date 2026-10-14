@@ -10,6 +10,8 @@ Priority, first match wins:
 
 1. **Race** (tone ``race``): race day, or the main event within 14 days (race-week
    framing; today's session, if any, kept light). Action: race pack.
+1b. **Rough check-in** (tone ``easy``): today's or yesterday's check-in has a pain flag or
+   feel 2 or lower (``checkins.py``). Action: review the adjustment when there is one.
 2. **Adjustment suggested** (tone ``plan``): ``adjust.propose`` has changes. Action: review.
 3. **Done** (tone ``done``): trained today and nothing else is still planned.
 4. **Recovery low**: readiness under 70 (and 5+ under baseline when there is one) or
@@ -79,7 +81,8 @@ def _signals(form: float | None, readiness: float | None, streak: dict[str, Any]
 def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
               form: float | None = None, readiness: float | None = None,
               readiness_baseline: float | None = None, streak: dict[str, Any] | None = None,
-              adjust: dict[str, Any] | None = None, race: dict[str, Any] | None = None) -> dict[str, Any]:
+              adjust: dict[str, Any] | None = None, race: dict[str, Any] | None = None,
+              checkins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Pure: the card for ``today``. ``days`` is ``weekplan.merge`` output for this week."""
     t = today.isoformat()
     day = next((d for d in days or [] if d.get("date") == t), None)
@@ -114,6 +117,29 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
         else:
             detail = "Nothing planned today: rest, easy movement, and a look at pacing, fueling and the forecast."
         return card("race", head, detail, ("open_racepack", "Open race pack"), session)
+
+    # 1b. The athlete told us it's rough (today's or yesterday's check-in).
+    yday = (today - timedelta(days=1)).isoformat()
+    rough = sorted((c for c in checkins or [] if isinstance(c, dict) and yday <= (c.get("date") or "") <= t
+                    and (c.get("pain_flag") or (isinstance(c.get("feel"), int) and c["feel"] <= 2))),
+                   key=lambda c: (c.get("date") or "", c.get("ts") or 0), reverse=True)
+    if rough:
+        c = rough[0]
+        when = "today" if c.get("date") == t else "yesterday"
+        said = _cut(str(c.get("summary") or "").rstrip("."), 70)
+        if c.get("pain_flag"):
+            detail = (f"You flagged pain {when}. Easy or rest, nothing that hurts. "
+                      "If it's sharp or getting worse, check with a physio or doctor.")
+        else:
+            detail = f"Your check-in {when}: {said or 'felt rough'}. Keep it easy" + (
+                f": {session['title']} truly easy, or shorter." if session else ", or rest.")
+        if adjust and adjust.get("status") == "suggest":
+            action = ("review_adjust", "Review changes")
+        elif session and session.get("id"):
+            action = ("open_session", "See session")
+        else:
+            action = ("log_rest", "Easy day")
+        return card("easy", "Take it easy today", detail, action, session)
 
     # 2. Adjustment suggested.
     if adjust and adjust.get("status") == "suggest":
@@ -236,10 +262,14 @@ class TodayService:
                 base = float(b) if isinstance(b, int | float) else None
             except Exception:  # Oura down: decide from the rest
                 recovery = None
+        try:
+            checkins = a.checkins.list(user_id, 7)
+        except Exception:
+            checkins = []
         adjust = None
         if plan and acts is not None:
             adjust = propose_adjustment(plan, acts, today, recovery=recovery, tsb=form,
-                                        dismissed=plan.get("adjust_dismissed"))
+                                        dismissed=plan.get("adjust_dismissed"), checkins=checkins)
         # This week's planned sessions merged with what was done.
         monday = today - timedelta(days=today.weekday())
         planned: dict[str, list[dict[str, Any]]] | None = None
@@ -269,7 +299,8 @@ class TodayService:
         except Exception:
             race = None
         out = recommend(today=today, days=days, has_plan=bool(plan) or planned is not None, form=form,
-                        readiness=readiness, readiness_baseline=base, streak=streak, adjust=adjust, race=race)
+                        readiness=readiness, readiness_baseline=base, streak=streak, adjust=adjust, race=race,
+                        checkins=checkins)
         out["garmin"] = acts is not None
         return out
 

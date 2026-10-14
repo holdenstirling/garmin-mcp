@@ -1,7 +1,9 @@
 // Bottom sheet for one plan session: see its structure, change sport/type/length/day,
 // rename it, add notes, or delete it. In add mode it creates a new session on a day.
-import { useState } from 'react'
-import { MessageCircle, Send, Trash2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { MessageCircle, Mic, Send, Trash2, X } from 'lucide-react'
+import { CheckinChips, VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
+import { listCheckins, type Checkin } from '@/lib/checkins'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
 import type { Sport } from '@/lib/api'
@@ -13,7 +15,7 @@ export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: 
 
 const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
 
-export function SessionSheet({ session, date, kinds, sports, raceDate, today = todayStr(), onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, onClose, onDismissed, closing }: {
+export function SessionSheet({ session, date, kinds, sports, raceDate, today = todayStr(), onSave, onDelete, onAsk, onMessage, messageLabel, readOnly, checkIn, onClose, onDismissed, closing }: {
   session: PlanSession | null          // null = add mode
   date: string
   kinds: Record<string, string[]>
@@ -27,6 +29,8 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
   onMessage?: () => void
   messageLabel?: string
   readOnly?: boolean
+  /** athlete's own past/today session: offer a voice check-in ("How did it feel?") */
+  checkIn?: boolean
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const drag = useSheetDrag(onDismissed)
@@ -182,6 +186,8 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             </Card>
           )}
 
+          {checkIn && session && session.sport !== 'rest' && <SessionCheckIn session={session} />}
+
           {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
 
           <div className="flex flex-wrap gap-2">
@@ -211,6 +217,29 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
         </div>
       </div>
     </div>
+  )
+}
+
+/** "How did it feel?": the latest check-in for this session, and the voice check-in. */
+function SessionCheckIn({ session }: { session: PlanSession }) {
+  const [latest, setLatest] = useState<Checkin | null>(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    let live = true
+    listCheckins(60, session.id).then((r) => { if (live) setLatest(r.checkins[0] ?? null) }, () => {})
+    return () => { live = false }
+  }, [session.id])
+  return (
+    <Card>
+      <Field label="How did it feel?">
+        {latest && <CheckinChips c={latest} />}
+        <Button variant="default" className="h-10 gap-1.5 self-start px-3.5 text-[0.7647rem]" onClick={() => setOpen(true)}>
+          <Mic className="size-4" /> {latest ? 'Check in again' : 'How did it feel?'}
+        </Button>
+      </Field>
+      <VoiceCheckIn open={open} onClose={() => setOpen(false)} sessionId={session.id} title={session.title}
+        onSaved={(c) => setLatest(c)} />
+    </Card>
   )
 }
 

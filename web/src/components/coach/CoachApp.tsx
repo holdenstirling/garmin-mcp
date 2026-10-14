@@ -204,6 +204,22 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
           </Field>
         </Card>
       )}
+      {(o.checkins?.length ?? 0) > 0 && (
+        <Card>
+          <Field label="Recent check-ins">
+            <ul className="flex flex-col gap-1.5">
+              {o.checkins!.map((c, i) => (
+                <li key={`${c.date}-${i}`} className="flex gap-2 text-[0.7647rem]">
+                  <span className="w-16 shrink-0 text-(--text-muted)">{c.date.slice(5)}</span>
+                  <span className={cn('min-w-0 flex-1', c.pain_flag ? 'text-(--warning)' : 'text-(--text)')}>
+                    {c.summary}{c.feel != null ? ` (feel ${c.feel}/5)` : ''}{c.pain_flag ? ' · pain flagged' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Field>
+        </Card>
+      )}
       <Card>
         <Field label="Profile">
           <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[0.7647rem]">

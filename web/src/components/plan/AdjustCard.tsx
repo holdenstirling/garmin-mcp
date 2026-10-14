@@ -35,6 +35,7 @@ export function AdjustCard({ p, onDone }: { p: Proposal; onDone: (plan: BuiltPla
       <ul className="flex flex-col gap-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
         {p.reasons.map((r) => <li key={r}>• {r}</li>)}
       </ul>
+      {p.tip && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{p.tip}</p>}
       {open && (
         <div className="flex flex-col gap-2 rounded-lg bg-(--bg-surface) p-2.5">
           {p.changes.map((c) => (

@@ -43,6 +43,7 @@ from .share import Shares
 from .share import render as render_share
 from . import legal
 from .planbuilder import iter_sessions
+from .checkins import XP as CHECKIN_XP, CheckinError, xp_bonus as checkin_xp_bonus
 from .gear import GearStore, catalog as gear_catalog, usage as gear_usage
 from .progress import GEAR_XP, quests_view, week_goal
 from .stats import compute as stats_compute
@@ -894,6 +895,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         goal = agent.coach.active_goal(user_id)
         today = date.fromisoformat(stats["today"])
         bonus = {f"gear:{g['id']}": GEAR_XP for g in (gear_store.list(user_id) if gear_store else [])}
+        bonus |= checkin_xp_bonus(agent.checkins.list(user_id))
         out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
             user_id, acts=acts, today=today, stats=stats,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
@@ -939,6 +941,57 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return JSONResponse(await _plan_call(lambda: RecapService(chat.agent).get(user_id, week)))
         except RecapError as e:
             return _err(400, str(e))
+
+    # ------------------------------------------------------------ check-ins --
+    # Voice check-ins (checkins.py): the athlete's words -> structured entry (forced tool call,
+    # deterministic fallback), stored in the encrypted ``checkins`` doc; +10 XP once a day.
+    def _checkin_call(fn: Callable[[], Any]) -> Any:
+        try:
+            return fn()
+        except CheckinError as e:
+            raise _UserError(str(e)) from None
+
+    async def checkins_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        try:
+            days = max(1, min(120, int(request.query_params.get("days") or 30)))
+        except ValueError:
+            days = 30
+        sid = request.query_params.get("session_id") or None
+        items = await anyio.to_thread.run_sync(lambda: chat.agent.checkins.list(user_id, days, session_id=sid))
+        return JSONResponse({"checkins": items})
+
+    async def checkin_create(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("text", ""), str):
+            raise ValueError("body")
+        ledger = chat.agent._store.user_doc(user_id, "progress")
+        try:
+            entry, source = await chat.agent.checkin(
+                user_id, body.get("text") or "", session_id=body.get("session_id"),
+                activity_id=body.get("activity_id"), day=body.get("date"), feel=body.get("feel"))
+        except CheckinError as e:
+            raise _UserError(str(e)) from None
+        awarded = f"checkin:{entry['date']}" in (ledger.load().get("bonus") or [])
+        first = sum(1 for c in chat.agent.checkins.list(user_id) if c.get("date") == entry["date"]) == 1
+        return JSONResponse({"checkin": entry, "source": source, "xp": 0 if awarded or not first else CHECKIN_XP},
+                            status_code=201)
+
+    async def checkin_update(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        cid = request.path_params["checkin_id"]
+        entry = await anyio.to_thread.run_sync(lambda: _checkin_call(lambda: chat.agent.checkins.update(user_id, cid, body)))
+        return JSONResponse({"checkin": entry})
+
+    async def checkin_delete(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        cid = request.path_params["checkin_id"]
+        await anyio.to_thread.run_sync(lambda: _checkin_call(lambda: chat.agent.checkins.delete(user_id, cid)))
+        return JSONResponse({"ok": True})
 
     # ---------------------------------------------------------------- gear --
     # Gear garage (gear.py): items in the encrypted ``gear`` doc, mileage from the cached
@@ -1151,6 +1204,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "events": [coach_event_view(e, link) for e in chat.agent.events.list(aid)] if chat else [],
             "notes": coach_notes.list(aid, coach=link["email"]),
             "unread": coach_chat.unread(aid, "coach", coach=link["email"]),
+            "checkins": chat.agent.checkins.summaries(aid, 5) if chat else [],
         })
 
     async def coach_athlete_stats(request: Request, user_id: str) -> Response:
@@ -1376,7 +1430,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 recovery = None
         load_now = (await _plan_call(lambda: chat.agent.stats.load(user_id))).get("now") or {}
         return propose_adjustment(plan, acts, today, recovery=recovery, tsb=load_now.get("tsb"),
-                                  dismissed=plan.get("adjust_dismissed"))
+                                  dismissed=plan.get("adjust_dismissed"), checkins=chat.agent.checkins.list(user_id, 7))
 
     async def adjust_get(request: Request, user_id: str) -> Response:
         return JSONResponse(await _proposal(user_id))
@@ -1748,6 +1802,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/progress/seen", _plan_api(progress_seen, mutating=True), methods=["POST"]),
         Route("/app/api/sync", _plan_api(sync_post, mutating=True), methods=["POST"]),
         Route("/app/api/today", _plan_api(today_get, mutating=False), methods=["GET"]),
+        Route("/app/api/checkins", _plan_api(checkins_get, mutating=False), methods=["GET"]),
+        Route("/app/api/checkins", _plan_api(checkin_create, mutating=True), methods=["POST"]),
+        Route("/app/api/checkins/{checkin_id}", _plan_api(checkin_update, mutating=True), methods=["PATCH"]),
+        Route("/app/api/checkins/{checkin_id}", _plan_api(checkin_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/recap", _plan_api(recap_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_create, mutating=True), methods=["POST"]),

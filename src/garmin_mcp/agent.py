@@ -44,6 +44,7 @@ from .plans import PlanService
 from .progress import Progress
 from .stats import StatsService
 from . import racefit, racepack
+from .checkins import CHECKIN_SYSTEM, CHECKIN_TOOL, CheckinError, CheckinStore, clean as clean_checkin, fallback_parse
 from .events import STRATEGY_SYSTEM, STRATEGY_TOOL, DEBRIEF_SYSTEM, DEBRIEF_TOOL, TYPE_SPORT, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
@@ -374,6 +375,43 @@ class Agent:
         self.stats = StatsService(service, now=self._now, athlete=self.coach.athlete,
                                   plan=self.plans.get, clock=clock)
         self.progress = Progress(store, clock=clock)
+        self.checkins = CheckinStore(store, clock=clock, today=lambda uid: self._now(uid).date())
+
+    async def checkin(self, user_id: str, text: str, *, session_id: Any = None, activity_id: Any = None,
+                      day: Any = None, feel: Any = None) -> tuple[dict[str, Any], str]:
+        """Voice check-in: one forced tool call fills the schema strictly from the athlete's
+        words; without a model (or if it fails) the deterministic parser does. Returns
+        (entry, source)."""
+        text = " ".join(str(text or "").split())[:1000]
+        feel_in = feel if isinstance(feel, int) and not isinstance(feel, bool) and 1 <= feel <= 5 else None
+        if not text and feel_in is None:
+            raise CheckinError("Say or type how it felt first.")
+        d = self.checkins.resolve_date(user_id, day)
+        sid = self.checkins.ref(session_id, "session_id")
+        aid = self.checkins.ref(activity_id, "activity_id")
+        self.checkins.take_allowance(user_id)
+        fields: dict[str, Any] | None = None
+        source = "fallback"
+        structured = getattr(self._backend, "structured", None)
+        if structured is not None and text:
+            try:
+                out = await structured(CHECKIN_SYSTEM, json.dumps({"athlete_words": text}), CHECKIN_TOOL)
+                if isinstance(out, dict) and out:
+                    fields, source = clean_checkin(out), "model"
+            except Exception as e:  # model down or rate-limited: the parser still works
+                log_event(logger, logging.WARNING, "checkin_model_failed", user_id=user_id, error=type(e).__name__)
+        if fields is None:
+            fields = fallback_parse(text)
+        elif not fields.get("summary"):
+            fields["summary"] = fallback_parse(text)["summary"]
+        if feel_in is not None:
+            fields["feel"] = feel_in
+        if not fields.get("summary"):
+            fields["summary"] = f"Felt {fields['feel']}/5." if fields.get("feel") else "Checked in."
+        entry = self.checkins.add(user_id, text, fields, day=d, session_id=sid, activity_id=aid)
+        log_event(logger, logging.INFO, "checkin", user_id=user_id, source=source,
+                  pain=entry["pain_flag"], areas=len(entry["soreness"]))
+        return entry, source
 
     async def debrief(self, user_id: str, event_id: str, *, result: str | None = None,
                       feel: int | None = None, notes: str | None = None) -> dict[str, Any]:
