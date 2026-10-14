@@ -122,7 +122,7 @@ function ComponentRow({ c }: { c: ReadinessComponent }) {
 }
 
 /** Race card row: grade + status + headline, tap opens the race screen. */
-export function ReadinessRow({ g, onClick }: { g: RaceGrade; onClick: () => void }) {
+export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () => void; extra?: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick}
       className="flex min-h-11 w-full items-center gap-2.5 border-t border-(--border) px-3.5 py-2 text-left active:bg-(--bg-inset)">
@@ -131,6 +131,7 @@ export function ReadinessRow({ g, onClick }: { g: RaceGrade; onClick: () => void
         <span className="flex items-center gap-1.5">
           <StatusChip status={g.status} />
           <span className="truncate text-[0.6471rem] text-(--text-muted)">Readiness & race fit</span>
+          {extra && <span className="ml-auto">{extra}</span>}
         </span>
         <span className="mt-0.5 block truncate text-[0.7647rem] text-(--text)">{headlineRest(g.headline)}</span>
       </span>

@@ -16,7 +16,7 @@ import { countdown, type RaceStrategy } from '@/lib/events'
 import { IMPACT_LABEL, getRaceView, makeStrategy, type FitFactor, type Impact, type RaceView } from '@/lib/racefit'
 import { getReadiness, type Readiness } from '@/lib/readiness'
 import { ReadinessSection } from './Readiness'
-import { PredictedFinish } from '@/components/explore/Estimate'
+import { FinishEstimate } from './FinishEstimate'
 
 const CHIP: Record<Impact, string> = {
   helps: 'bg-(--accent-subtle) text-(--accent)',
@@ -82,7 +82,7 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
       {v && rDone && (
         <>
           <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />
-          <PredictedFinish eventId={eventId} className="px-1" />
+          <FinishEstimate eventId={eventId} />
           <h2 className="mt-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Course & conditions</h2>
           <p className="px-1 text-[0.8824rem] leading-snug text-(--text)">{v.racefit.summary}</p>
           {v.racefit.factors.length > 0 && (

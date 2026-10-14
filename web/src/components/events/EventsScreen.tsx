@@ -16,7 +16,7 @@ import { EventBasics, EventGoal, InfoBlock } from './EventForm'
 import { RacePackScreen } from './RacePackScreen'
 import { RaceFitScreen } from './RaceFitScreen'
 import { ReadinessRow } from './Readiness'
-import { PredictedFinish } from '@/components/explore/Estimate'
+import { FinishChip } from './FinishEstimate'
 import { listReadiness, type RaceGrade } from '@/lib/readiness'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
@@ -131,13 +131,15 @@ function EventCard({ e, grade, onClick, onFit, onPack }: {
   return (
     <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
       <EventCardButton e={e} onClick={onClick} bare />
-      {grade ? <ReadinessRow g={grade} onClick={onFit} /> : (
+      {grade ? <ReadinessRow g={grade} onClick={onFit} extra={n >= 0 ? <FinishChip eventId={e.id} /> : undefined} /> : (
         <button type="button" onClick={onFit}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Gauge className="size-3.5" /> Readiness & race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+          <Gauge className="size-3.5" /> Readiness & race fit
+          <span className="ml-auto flex items-center gap-1.5">
+            {n >= 0 && <FinishChip eventId={e.id} />}<ChevronRight className="size-3.5 text-(--text-muted)" />
+          </span>
         </button>
       )}
-      {n >= 0 && <PredictedFinish eventId={e.id} className="border-t border-(--border) px-3.5 py-1.5" />}
       {onPack && (
         <button type="button" onClick={onPack}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">

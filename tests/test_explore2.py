@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx2
 from starlette.applications import Starlette
 
-from garmin_mcp import explore, foryou, geo, localacts, predict, rabbitexplore
+from garmin_mcp import explore, foryou, geo, localacts, rabbitexplore
 from garmin_mcp.appstore import AppStore
 from garmin_mcp.coaches import coach_user_id
 from garmin_mcp.config import Settings
@@ -205,105 +205,7 @@ def test_rabbit_explore_merge_rank_and_intro() -> None:
     assert rabbitexplore.intro(0, zip_="", state="", radius=50, tunes=0, main=None).startswith("No races turned up")
 
 
-# --------------------------------------------------------------- predict --
-def test_predict_riegel_and_garmin_path() -> None:
-    assert round(predict.riegel(1200, 5, 10)) == 2502
-    b = predict.make_basis(garmin=GARMIN)
-    e = predict.estimate(b, distance_km=21.0975, type_="road")
-    assert e["likely"] == 6020 and e["confidence"] == "high" and e["basis"] == ["Garmin race predictor"]
-    assert e["low"] < e["likely"] < e["high"] and predict.text(e) == "1:37–1:44"
-    # Daily list shape: newest wins.
-    assert predict.garmin_points([{"time5K": 1500}, {"time5K": 1290}]) == [(5.0, 1290.0)]
-    assert predict.garmin_points({"time5K": 5}) == []  # nonsense filtered
-    assert predict.fmt(1290) == "21:30" and predict.fmt(3725) == "1:02"
-
-
-def test_predict_efforts_and_threshold_fallbacks() -> None:
-    acts = [
-        {"sport": "running", "date": "2026-09-20 08:00:00", "distance_km": 10.0, "duration": "0:44:00",
-         "elevation_gain_m": 40, "event": "race"},
-        {"sport": "running", "date": "2026-10-01 07:00:00", "distance_km": 8.0, "duration": "0:48:00"},
-        {"sport": "trail_running", "date": "2026-10-02 07:00:00", "distance_km": 10.0, "duration": "1:20:00",
-         "elevation_gain_m": 900},  # too hilly to judge flat speed
-        {"sport": "running", "date": "2025-01-01 07:00:00", "distance_km": 10.0, "duration": "0:35:00"},  # too old
-        {"sport": "cycling", "date": "2026-10-03", "distance_km": 50.0, "duration": "1:30:00"},
-    ]
-    b = predict.make_basis(acts=acts, today=TODAY)
-    assert [x["km"] for x in b["efforts"]] == [10.0, 8.0]
-    e = predict.estimate(b, distance_km=21.1, type_="road")
-    assert "your recent 10K" in e["basis"] and e["confidence"] == "medium"
-    assert abs(e["likely"] - predict.riegel(2640, 10, 21.1)) < 2
-    t = predict.estimate(predict.make_basis(athlete={"run_threshold_pace": 270}), distance_km=10, type_="running")
-    assert t["basis"] == ["your threshold pace"] and t["confidence"] == "low"
-    none = predict.make_basis()
-    assert predict.estimate(none, distance_km=10, type_="road") is None and not predict.has_data(none)
-    assert predict.estimate(predict.make_basis(garmin=GARMIN), distance_km=10, type_="skydiving") is None
-
-
-def test_predict_course_adjustments() -> None:
-    b = predict.make_basis(garmin=GARMIN, athlete={"home_elevation_m": 10})
-    flat = predict.estimate(b, distance_km=42.195, type_="road")
-    hilly = predict.estimate(b, distance_km=42.195, type_="road", climb_m=1000)
-    assert hilly["likely"] > flat["likely"] * 1.15 and "course: +1,000 m climbing" in hilly["basis"]
-    trail = predict.estimate(b, distance_km=21.1, type_="trail")
-    road = predict.estimate(b, distance_km=21.1, type_="road")
-    tech = predict.estimate(b, distance_km=21.1, type_="trail", terrain="technical")
-    assert road["likely"] < trail["likely"] < tech["likely"] and "trail surface" in trail["basis"]
-    high = predict.estimate(b, distance_km=10, type_="road", elevation_m=2800)
-    assert high["likely"] > predict.estimate(b, distance_km=10, type_="road")["likely"] * 1.06
-    assert "altitude: 2,800 m" in high["basis"]
-    # Living up high (or acclimatized) shrinks the altitude cost; under 1,500 m there's none.
-    local = predict.estimate(predict.make_basis(garmin=GARMIN, athlete={"home_elevation_m": 2700}),
-                             distance_km=10, type_="road", elevation_m=2800)
-    assert local["likely"] == predict.estimate(b, distance_km=10, type_="road")["likely"]
-    assert predict.altitude_factor(1400, b) == (1.0, None)
-    acc = predict.make_basis(garmin=GARMIN, athlete={"altitude_acclimatized": True})
-    assert predict.altitude_factor(2800, acc)[0] < predict.altitude_factor(2800, b)[0]
-    hot = predict.estimate(b, distance_km=10, type_="road", hot=True)
-    assert hot["likely"] > predict.estimate(b, distance_km=10, type_="road")["likely"] and "heat" in hot["basis"]
-
-
-def test_predict_ultra_is_a_rough_guide() -> None:
-    b = predict.make_basis(garmin=GARMIN, athlete={"home_elevation_m": 1609})
-    e = predict.estimate(b, distance_km=161, type_="trail", climb_m=4800, elevation_m=3094)
-    assert e["confidence"] == "low" and e["label"] == "rough guide"
-    assert e["high"] / e["low"] > 1.35 and 18 * 3600 < e["likely"] < 32 * 3600
-    assert "Garmin race predictor (marathon equivalent)" in e["basis"] and "altitude: 3,090 m" in e["basis"]
-    assert predict.text(e).endswith(" h")
-    fifty = predict.estimate(b, distance_km=50, type_="ultra", climb_m=2400)
-    assert fifty["label"] == "rough guide" and fifty["likely"] > predict.estimate(b, distance_km=50, type_="ultra")["likely"]
-
-
-def test_predict_triathlon_composite() -> None:
-    full = predict.make_basis(athlete={"ftp_w": 250, "swim_css": 100, "run_threshold_pace": 270, "weight_kg": 72})
-    e = predict.estimate(full, distance_km=51.5, type_="triathlon")
-    sp = e["splits"]
-    assert e["kind"] == "tri" and e["confidence"] == "medium"
-    assert e["likely"] == sp["swim"] + sp["bike"] + sp["run"] + sp["transitions"]
-    assert sp["swim"] == ((100 + 6) * 15) and sp["run"] == round(270 * 10 * 1.06)
-    assert 3000 < sp["bike"] < 5400 and e["basis"][:3] == ["swim: your CSS", "bike: your FTP", "run: your threshold pace"]
-    weak = predict.make_basis(athlete={"ftp_w": 180, "swim_css": 100, "run_threshold_pace": 270, "weight_kg": 72})
-    assert predict.estimate(weak, distance_km=51.5, type_="triathlon")["splits"]["bike"] > sp["bike"]
-    guess = predict.estimate(predict.make_basis(garmin=GARMIN), distance_km=113, type_="triathlon")
-    assert guess["confidence"] == "low" and guess["label"] == "rough guide"
-    assert "swim: typical age-group pace" in guess["basis"] and "run: Garmin race predictor" in guess["basis"]
-    assert predict.estimate(full, distance_km=80, type_="triathlon") is None  # not a standard format
-    assert predict.bike_speed(250, 81) > predict.bike_speed(250, 81, elevation_m=0, cda=0.40)
-    bike = predict.estimate(full, distance_km=160, type_="cycling", climb_m=1500)
-    assert bike["kind"] == "bike" and 4 * 3600 < bike["likely"] < 8 * 3600
-    assert predict.estimate(full, distance_km=3.8, type_="swim")["likely"] == ((100 + 8) * 38)
-
-
-def test_predict_for_event_and_race() -> None:
-    b = predict.make_basis(garmin=GARMIN)
-    ev = {"name": "Leadville Trail 100 Run", "type": "trail", "distance": "ultra", "location": "Leadville, CO",
-          "info": {"distances": "100 miles", "elevation_gain": "15,600 ft", "typical_weather": "cold nights"}}
-    e = predict.for_event(b, ev)
-    assert e["label"] == "rough guide" and any("climbing" in x for x in e["basis"])
-    r = race(1, "Golden Half", TODAY + timedelta(days=60), dist="13.1 Miles")
-    est = predict.for_race(b, r, {"half"})
-    assert est["text"] == predict.text(est) and est["event"] == "13.1 Miles"
-    assert predict.for_race(b, {"events": []}) is None
+# predict: see tests/test_predict.py
 
 
 # ---------------------------------------------------------- local activities --
@@ -519,32 +421,6 @@ def test_local_api_shares_city_cache_and_sends_only_city(env, tmp_path, monkeypa
         r = await c["bob"].post("/app/api/explore/local", headers=H, json={})
         assert r.status_code == 200 and r.json()["items"] and len(prompts) == 1
         assert r.json()["suggested"][0] == "run"
-    asyncio.run(go())
-
-
-def test_predict_api(env, tmp_path, monkeypatch) -> None:
-    agent, apps = _apps(env, tmp_path, monkeypatch)
-
-    async def go() -> None:
-        c = _clients(apps)
-        fr = c["friend"]  # Garmin connected (fake): the race predictor answers
-        r = await fr.get("/app/api/predict", params={"distance_km": "21.0975", "type": "road"})
-        assert r.status_code == 200, r.text
-        est = r.json()["estimate"]
-        assert est["basis"] == ["Garmin race predictor"] and est["likely"] == 6020 and est["text"] == "1:37–1:44"
-        r = await fr.get("/app/api/predict", params={"distance_km": "42.2", "type": "trail", "climb_m": "2400",
-                                                     "elevation_m": "2900"})
-        b = r.json()["estimate"]["basis"]
-        assert "course: +2,400 m climbing" in b and "altitude: 2,900 m" in b
-        assert (await fr.get("/app/api/predict", params={"distance_km": "abc"})).status_code == 400
-        assert (await fr.get("/app/api/predict", params={"distance_km": "nan"})).status_code == 400
-        ev = agent.events.create("friend", {"name": "Spring Half", "date": "2027-04-10", "type": "running",
-                                            "distance": "half marathon", "priority": "B"})
-        r = await fr.get("/app/api/predict", params={"event_id": ev["id"]})
-        assert r.json()["estimate"]["likely"] > 6000
-        # Explore cards carry the estimate too.
-        r = await c["ann"].get("/app/api/predict", params={"distance_km": "10", "type": "road"})
-        assert r.status_code == 200 and r.json()["estimate"] is None and "Connect Garmin" in r.json()["reason"]
     asyncio.run(go())
 
 
