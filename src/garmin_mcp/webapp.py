@@ -40,6 +40,7 @@ from .adjust import propose as propose_adjustment
 from . import racepack
 from .share import Shares
 from .share import render as render_share
+from . import legal
 from .planbuilder import iter_sessions
 from .progress import quests_view, week_goal
 from .stats import compute as stats_compute
@@ -1320,6 +1321,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                             chat.agent.events.list(uid), plans.get(uid), plans.today(uid))
         return HTMLResponse(page, headers=headers)
 
+    async def legal_page(request: Request) -> Response:
+        headers = {"Cache-Control": "public, max-age=3600", "Referrer-Policy": "no-referrer",
+                   "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}
+        if not host_ok(request):
+            return HTMLResponse("Not found", status_code=404, headers=headers)
+        fn = legal.privacy if request.url.path.endswith("/privacy") else legal.terms
+        return HTMLResponse(fn(settings.contact_email), headers=headers)
+
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
@@ -1429,6 +1438,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/share", _plan_api(share_create, mutating=True), methods=["POST"]),
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
         Route("/app/s/{token}", share_page, methods=["GET"]),
+        Route("/app/privacy", legal_page, methods=["GET"]),
+        Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),

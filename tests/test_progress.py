@@ -99,3 +99,20 @@ def test_progress_api(env, tmp_path) -> None:
 
 def test_today_is_wednesday() -> None:
     assert TODAY.weekday() == 2 and isinstance(TODAY, date)
+
+
+def test_privacy_and_terms_pages(env, tmp_path) -> None:
+    agent, _ = env.agent([])
+    settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,
+                        allowed_google_users={"friend@example.com": "friend"}, contact_email="me@example.com")
+    auth = WebAuth(settings, env.store, "")
+    app = Starlette(routes=build_app_routes(settings, auth, env.tokens, None, None, ChatRunner(agent)))
+
+    async def go_() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=BASE) as c:
+            p = await c.get("/app/privacy")
+            t = await c.get("/app/terms")
+            assert p.status_code == t.status_code == 200
+            assert "never sent to the AI coach" in p.text and "me@example.com" in p.text
+            assert "Not medical advice" in t.text
+    asyncio.run(go_())
