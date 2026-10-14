@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Award, CalendarCheck, ChevronLeft, ChevronRight, Flame, MessageCircle, Trophy, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, Screen } from '@/components/plan/ui'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { WeekRing } from '@/components/progress/Progress'
 import { cn } from '@/lib/utils'
 import { getRecap, shiftWeek, type Recap } from '@/lib/live'
@@ -52,8 +52,8 @@ export function RecapSheet({ week: initialWeek, onClose, onAsk }: {
       }>
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">{error}</p>}
       {!error && loading && (
-        <div className="flex justify-center py-16" role="status" aria-label="Loading recap">
-          <RabbitLogo size={40} thinking />
+        <div className="flex justify-center py-16">
+          <RabbitLoader label="Loading your week" cycle={['Tallying your XP…', 'Counting the miles…', 'Planning next week…']} />
         </div>
       )}
       {!error && !loading && r && <RecapBody r={r} onAsk={onAsk} />}

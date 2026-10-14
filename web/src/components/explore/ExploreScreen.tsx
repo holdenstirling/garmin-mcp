@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, Screen, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
@@ -167,8 +167,8 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
         </div>
         {!nearOk(f.near) && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
         {(loading || filters === null) && races === null ? (
-          <div className="flex justify-center py-16" role="status" aria-label="Finding races">
-            <RabbitLogo size={48} thinking className="text-(--brand) opacity-60" />
+          <div className="flex justify-center py-16">
+            <RabbitLoader label="Finding races" cycle={['Scouting start lines…', 'Checking the calendar…', 'Reading course maps…']} />
           </div>
         ) : error ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">
