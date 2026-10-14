@@ -63,6 +63,7 @@ RACE_STEPS = ((56, 3, "8w"), (28, 3, "4w"), (14, 2, "2w"), (7, 2, "week"), (1, 0
 GRADE_ORDER = ("F", "D", "C", "C+", "B-", "B", "B+", "A-", "A")
 WORKOUT_TYPES = frozenset({"workout"})  # exempt from the daily cap and quiet hours
 PUSH_TYPES = frozenset({"streak_risk", "race"})
+MILESTONE_TYPES = frozenset({"streak", "level", "badge", "challenge"})  # may become Community drafts
 
 _EMOJI = re.compile("[\U0001F000-\U0001FAFF☀-➿⭐⏳]")
 
@@ -244,6 +245,13 @@ class Moments:
         self.events = events
         self.grade = grade
         self.push = push
+        # Community (community.py): a milestone moment (streak/level/badge/challenge) may
+        # become a share draft; the hook returns extra action chips ([Share] [Not now]).
+        self.on_milestone: Callable[[str, dict[str, Any]], list[dict[str, Any]] | None] | None = None
+        # Called after new workouts were handled (personal bests, race finished).
+        self.after_workouts: Callable[[str], None] | None = None
+        # Called from tick outside quiet hours (club meetup reminders).
+        self.on_tick: Callable[[str], Any] | None = None
 
     def _doc(self, uid: str):
         return self._s.user_doc(uid, "moments")
@@ -294,6 +302,15 @@ class Moments:
         today = local.date()
         exempt = m["type"] in WORKOUT_TYPES
         quiet = self.quiet(local)
+        if self.on_milestone is not None and m["type"] in MILESTONE_TYPES \
+                and not self._seen(self._doc(uid).load(), m["key"], today, m.get("ttl_days")):
+            try:
+                extra = self.on_milestone(uid, m)
+            except Exception as e:  # the moment still goes out
+                log_event(logger, logging.WARNING, "moment_milestone_failed", user_id=uid, error=type(e).__name__)
+                extra = None
+            if extra:
+                m = {**m, "actions": [*(m.get("actions") or []), *extra][:3]}
 
         def apply(d: dict[str, Any]) -> str:
             if self._seen(d, m["key"], today, m.get("ttl_days")):
@@ -404,6 +421,11 @@ class Moments:
             n += self.post(uid, m) == "posted"
         if ms is not None:
             self.post(uid, ms)
+        if self.after_workouts is not None:
+            try:
+                self.after_workouts(uid)
+            except Exception as e:  # milestones never break the workout moment
+                log_event(logger, logging.WARNING, "after_workouts_failed", user_id=uid, error=type(e).__name__)
         return n
 
     def on_progress(self, uid: str, out: dict[str, Any],
@@ -465,6 +487,11 @@ class Moments:
             self.check_race(uid, today)
         if t >= GRADE_FROM and self.grade is not None and self._claim(uid, "grade", today):
             self.check_grade(uid, today)
+        if self.on_tick is not None:
+            try:
+                self.on_tick(uid)
+            except Exception as e:  # reminders never break the tick
+                log_event(logger, logging.WARNING, "moment_tick_hook_failed", user_id=uid, error=type(e).__name__)
 
     def check_streak_risk(self, uid: str, today: date) -> str:
         if self.stats is None:

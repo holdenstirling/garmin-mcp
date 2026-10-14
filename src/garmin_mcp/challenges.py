@@ -784,6 +784,77 @@ class Challenges:
             self._groups().update(apply)
         return c
 
+    # -------------------------------------------------------------- clubs --
+    # A club challenge (clubs.py) is a friend group tagged ``club``: an admin starts it from
+    # one of their own suggestions; club members join it without an invite or follow edge.
+    def start_club(self, uid: str, template: Any, period: Any, club: str, *, max_people: int) -> dict[str, Any]:
+        """Join ``template`` and open it to ``club``. Returns the group's id."""
+        c = self.join(uid, template, period)
+        gid = c["id"]
+        g = {k: c.get(k) for k in ("template", "period", "period_start", "period_end", "target", "metric",
+                                   "sport", "name")}
+        g.update(id=gid, owner=uid, participants=[uid], invited={}, club=club, max=max_people)
+
+        def apply(d: dict[str, Any]) -> None:
+            d.setdefault("groups", {})[gid] = g
+        with self._glock:
+            self._groups().update(apply)
+
+        def link(d: dict[str, Any]) -> None:
+            for x in d.get("joined") or []:
+                if x["id"] == gid:
+                    x["group"] = gid
+        self._doc(uid).update(link)
+        return {"id": gid}
+
+    def join_club(self, uid: str, gid: Any, club: str) -> dict[str, Any]:
+        """Join a club challenge (the caller checked club membership)."""
+        self._require(uid)
+        if not isinstance(gid, str) or not _ID.match(gid):
+            raise ChallengeError("Challenge not found.", 404)
+        today = local_today(self._now(uid))
+        g = (self._groups().load().get("groups") or {}).get(gid)
+        if not g or g.get("club") != club or g["period_end"] < today.isoformat() \
+                or g["period_start"] > today.isoformat():
+            raise ChallengeError("Challenge not found.", 404)
+        if uid in g.get("participants", []):
+            raise ChallengeError("You're already doing this challenge.", 409)
+        if len(g.get("participants", [])) >= int(g.get("max") or MAX_PARTICIPANTS):
+            raise ChallengeError("This challenge is full.", 409)
+        c = {"id": _new_id(), "template": g["template"], "period": g["period"], "period_start": g["period_start"],
+             "period_end": g["period_end"], "target": g["target"], "metric": g["metric"], "sport": g.get("sport"),
+             "name": g["name"], "joined_at": self._stamp(uid), "group": gid}
+        self._add(uid, c)
+
+        def apply(d: dict[str, Any]) -> None:
+            gg = (d.get("groups") or {}).get(gid)
+            if gg is not None and uid not in gg["participants"]:
+                gg["participants"].append(uid)
+        with self._glock:
+            self._groups().update(apply)
+        return c
+
+    def club_view(self, uid: str, gids: list[str], club: str) -> list[dict[str, Any]]:
+        """Live club challenges: name, target, period, participants, joined, and the top 5 by
+        stored progress (first names and % only)."""
+        today = local_today(self._now(uid)).isoformat()
+        groups = self._groups().load().get("groups") or {}
+        out = []
+        for gid in gids:
+            g = groups.get(gid)
+            if not g or g.get("club") != club or g["period_end"] < today:
+                continue
+            stored = g.get("progress") or {}
+            board = sorted(({"user_id": p, "name": self._names(p),
+                             "pct": stored.get(p) if isinstance(stored.get(p), int) else None, "me": p == uid}
+                            for p in g.get("participants", [])),
+                           key=lambda r: -(r["pct"] if r["pct"] is not None else -1))[:5]
+            out.append({"id": gid, "name": g["name"], "period": g["period"], "period_end": g["period_end"],
+                        "metric": g["metric"], "sport": g.get("sport"), "target": g["target"],
+                        "participants": len(g.get("participants", [])), "joined": uid in g.get("participants", []),
+                        "leaders": board, "xp": XP[g["period"]]})
+        return out
+
     def decline(self, uid: str, gid: Any) -> None:
         self._require(uid)
         if not isinstance(gid, str) or not _ID.match(gid):

@@ -1,5 +1,5 @@
-// The "Me" tab: who you are and everything around your training that isn't the plan,
-// progress or races. Rows open the existing screens and the Settings sheet.
+// "Me" (from the avatar in every tab header): who you are and everything around your
+// training that isn't the plan, progress or events, plus Settings. Friends live in Community.
 import { Brain, ClipboardList, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
@@ -16,16 +16,15 @@ const Count = ({ n, label }: { n: number; label: string }) => (
     <span className="min-w-5 rounded-full bg-(--accent) px-1.5 text-center text-[0.7059rem] font-semibold leading-5 text-white" aria-label={label}>{n}</span>
   </span>
 )
-const Dot = ({ label }: { label: string }) => <span className="size-2 rounded-full bg-(--accent)" role="img" aria-label={label} />
 
-export function MePage({ me, goal, progress, friendsDot, onOpen }: {
-  me: Me; goal: Goal | null; progress: Progress | null; friendsDot: boolean; onOpen: (r: MeRow) => void
+export function MePage({ me, goal, progress, onOpen, onClose }: {
+  me: Me; goal: Goal | null; progress: Progress | null; onOpen: (r: MeRow) => void; onClose: () => void
 }) {
   const name = me.profile.name || me.user_id
   const countdown = goalCountdown(goal)
   const coachStatus = me.athlete.coach_status ?? null
   return (
-    <Screen title="Me" onClose={() => {}}>
+    <Screen title="Me" onClose={onClose}>
       <button type="button" onClick={() => onOpen('profile')}
         className="flex items-center gap-3.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
         <Avatar name={name} picture={me.profile.picture} photo={photoUrl(me.photo)} size={56} />
@@ -47,6 +46,7 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
         <Row icon={<Icon><Brain /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
+        <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="In Community, with your clubs" onClick={() => onOpen('friends')} />
       </Group>
 
       {coachStatus === 'looking' && me.coaches === 0 && (
@@ -56,10 +56,7 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
         </Group>
       )}
 
-      <Group label="People">
-        <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="Train together, cheer each other on"
-          trailing={friendsDot ? <span className="flex items-center gap-2"><Dot label="New activity" /></span> : undefined}
-          onClick={() => onOpen('friends')} />
+      <Group label="Coaching">
         {me.coaches > 0 && (
           <Row icon={<Icon><Mail /></Icon>} title="Coach messages" subtitle="Chat with your coach"
             trailing={me.coach_unread ? <Count n={me.coach_unread} label={`${me.coach_unread} unread`} /> : undefined}

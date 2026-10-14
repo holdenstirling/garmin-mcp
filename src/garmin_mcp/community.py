@@ -1,0 +1,1148 @@
+"""Community: a small, calm feed of life events and accomplishments (not every workout).
+
+Posts
+-----
+* **What people choose to share**: a category (race, personal best, milestone, life event,
+  comeback, gratitude, other), text <= ``TEXT_LEN``, up to ``MAX_PHOTOS`` photos (resized in
+  the browser to <= 1600 px JPEG/WebP <= 800 KB, checked here by magic bytes and size, stored
+  encrypted; per-user quota ``PHOTO_QUOTA_COUNT`` photos / ``PHOTO_QUOTA_BYTES``), an optional
+  link to one of their events, an optional feeling.
+* **Milestones**, spotted deterministically: race finished (result, debrief or a race-day
+  workout), personal best (the reaction card's 12-month bests), streak 7/14/30/50/100, level
+  up, badge, challenge completed, firsts (first ultra, marathon, 70.3, century...). They are
+  **drafts**, never posted on their own, unless the athlete turned on auto-share for that
+  type: Rabbit posts a moment "🎉 ... Share it?" [Share] [Not now] and the drafts tray shows them.
+* **Shared workouts**: only from the reaction card, on request: sport, distance, time and a
+  highlight line. Never maps, heart rate, power or any health/Oura data.
+
+Audience per post: ``friends`` (people with an active follow edge to the author),
+``club:<id>`` (members of that club or race group), ``public`` (every allowlisted athlete on
+Rabbit) or ``private`` (only me, a journal). Blocked people (either way) never see each other's
+posts, comments or reactions. Reactions (one per person, switchable): 🎉 💪 ❤️ 🐇. Comments
+<= ``COMMENT_LEN``, threaded one level (a reply to a reply joins its parent), at most
+``MAX_COMMENTS`` per post; the post's author can delete any comment on it. Hide = gone for me;
+report = hidden + logged for the operator. Rate limits per athlete and local day:
+``POSTS_PER_DAY`` posts and ``COMMENTS_PER_DAY`` comments.
+
+Pushes for reactions/comments go to the author (and a reply's parent author) at most once per
+post per hour, never in quiet hours (21:00-07:00 local, same as moments).
+
+Storage
+-------
+* Per author ``posts`` doc ``{"posts": {pid: post}}`` (bounded).
+* Per user ``community`` doc: ``settings``, ``drafts``, dedupe ``keys``, photo usage,
+  ``hidden`` posts, daily ``rate`` counters.
+* Per author ``cphoto-<id>`` doc: one encrypted photo.
+* Global ``community`` doc: ``index`` {pid: author}, ``public`` {pid: [author, created]} and
+  capped ``reports``.
+"""
+
+from __future__ import annotations
+
+import base64
+import logging
+import re
+import secrets
+import threading
+import time
+from collections.abc import Callable
+from datetime import date, datetime, timedelta
+from typing import Any
+
+from .appstore import AppStore
+from .explore import parse_distance_km
+from .logs import log_event
+from .progress import tier_name
+from .stats import _rows
+
+logger = logging.getLogger(__name__)
+
+TEXT_LEN = 500
+COMMENT_LEN = 280
+MAX_COMMENTS = 200
+MAX_PHOTOS = 4
+PAGE = 20
+MAX_POSTS = 1000          # per author; oldest dropped
+MAX_PUBLIC = 2000         # public index; oldest dropped
+MAX_DRAFTS = 20
+DRAFT_TTL_DAYS = 14
+MAX_KEYS = 600
+MAX_HIDDEN = 1000
+MAX_REPORTS = 500
+FEED_FOLLOWEES = 500
+PREVIEW_COMMENTS = 2
+PUSH_EVERY_S = 3600
+POSTS_PER_DAY = 20
+COMMENTS_PER_DAY = 100
+PHOTO_MAX = 800 * 1024
+PHOTO_MAX_SIDE = 1600
+PHOTO_QUOTA_COUNT = 300
+PHOTO_QUOTA_BYTES = 300 * 1024 * 1024
+ORPHAN_TTL_S = 86400
+REMIND_EVERY_S = 600
+
+CATEGORIES = ("race", "pb", "milestone", "life", "comeback", "gratitude", "other")
+FEELINGS = ("😀", "🥳", "💪", "😅", "🥹", "🙏", "😤", "😴", "❤️", "🔥")
+REACTIONS = ("party", "strong", "heart", "rabbit")  # 🎉 💪 ❤️ 🐇
+AUDIENCES = ("friends", "public", "private")      # + "club:<id>"
+MILESTONES = ("race", "pb", "streak", "level", "badge", "challenge", "first")
+MILESTONE_CATEGORY = {"race": "race", "pb": "pb", "streak": "milestone", "level": "milestone",
+                      "badge": "milestone", "challenge": "milestone", "first": "race"}
+FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First half marathon",
+          "70.3": "First 70.3", "140.6": "First full-distance triathlon", "century": "First century ride"}
+RACE_SCAN_DAYS = 7
+# Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
+WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight")
+EVENT_FIELDS = ("id", "name", "date", "type", "distance")
+_PID = re.compile(r"^p[0-9a-f]{16}$")
+_ID = re.compile(r"^[a-z][0-9a-f]{12,16}$")
+_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+_LEAD_EMOJI = re.compile(r"^[^\w]+")
+
+
+class CommunityError(ValueError):
+    """Message is safe to show the user."""
+
+    def __init__(self, message: str, status: int = 400) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+def _text(v: Any, limit: int, *, what: str = "Text") -> str:
+    if v is None:
+        return ""
+    if not isinstance(v, str):
+        raise CommunityError(f"{what} must be text")
+    s = _CTRL.sub("", v.replace("\r\n", "\n")).strip()
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    if len(s) > limit:
+        raise CommunityError(f"Keep it under {limit} characters.")
+    return s
+
+
+def _clip(s: str, n: int) -> str:
+    s = " ".join(s.split())
+    return s if len(s) <= n else s[: n - 1].rstrip() + "…"
+
+
+def valid_pid(pid: Any) -> str:
+    if not isinstance(pid, str) or not _PID.match(pid):
+        raise CommunityError("post not found", 404)
+    return pid
+
+
+def norm_audience(v: Any) -> Any:
+    """Older names: ``followers`` -> ``friends``, ``group:`` -> ``club:``."""
+    if v == "followers":
+        return "friends"
+    if isinstance(v, str) and v.startswith("group:"):
+        return "club:" + v[6:]
+    return v
+
+
+# ------------------------------------------------------------------ photos --
+def sniff_photo(data: bytes) -> str:
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    raise CommunityError("Use a JPEG or WebP photo.")
+
+
+def image_size(data: bytes) -> tuple[int, int] | None:
+    """(width, height) from a JPEG or WebP header, else None."""
+    try:
+        if data.startswith(b"\xff\xd8"):
+            i = 2
+            while i + 9 < len(data):
+                if data[i] != 0xFF:
+                    return None
+                marker = data[i + 1]
+                if marker == 0xFF:
+                    i += 1
+                    continue
+                if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                    i += 2
+                    continue
+                seg = int.from_bytes(data[i + 2:i + 4], "big")
+                if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    h = int.from_bytes(data[i + 5:i + 7], "big")
+                    w = int.from_bytes(data[i + 7:i + 9], "big")
+                    return w, h
+                if seg < 2:
+                    return None
+                i += 2 + seg
+            return None
+        if data[:4] == b"RIFF" and data[8:12] == b"WEBP" and len(data) >= 30:
+            kind = data[12:16]
+            if kind == b"VP8 ":
+                return (int.from_bytes(data[26:28], "little") & 0x3FFF,
+                        int.from_bytes(data[28:30], "little") & 0x3FFF)
+            if kind == b"VP8L":
+                b = data[21:25]
+                return 1 + (b[0] | (b[1] & 0x3F) << 8), 1 + ((b[1] >> 6) | b[2] << 2 | (b[3] & 0x0F) << 10)
+            if kind == b"VP8X":
+                return 1 + int.from_bytes(data[24:27], "little"), 1 + int.from_bytes(data[27:30], "little")
+    except (IndexError, ValueError):
+        return None
+    return None
+
+
+def check_photo(data: bytes) -> str:
+    if not data:
+        raise CommunityError("That photo is empty.")
+    if len(data) > PHOTO_MAX:
+        raise CommunityError("That photo is too large (max 800 KB).", 413)
+    mime = sniff_photo(data)
+    size = image_size(data)
+    if size is None or not all(size):
+        raise CommunityError("We couldn't read that photo. Try another one.")
+    if max(size) > PHOTO_MAX_SIDE:
+        raise CommunityError(f"That photo is too big (max {PHOTO_MAX_SIDE} px).")
+    return mime
+
+
+# ------------------------------------------------------------- milestones --
+def event_class(ev: dict[str, Any]) -> str | None:
+    """The "first ..." an event counts for: ultra, marathon, half, 70.3, 140.6, century."""
+    dist = str(ev.get("distance") or "").strip().lower()
+    typ = str(ev.get("type") or "").lower()
+    name = str(ev.get("name") or "").lower()
+    if dist in ("70.3",) or "70.3" in name or "half iron" in name:
+        return "70.3"
+    if dist == "140.6" or "140.6" in name or ("ironman" in name and typ == "triathlon"):
+        return "140.6"
+    if dist == "ultra":
+        return "ultra"
+    if dist == "century ride" or "century" in name:
+        return "century"
+    if dist == "half marathon":
+        return "half"
+    if dist == "marathon":
+        return "marathon"
+    km = parse_distance_km(dist) if dist else None
+    if km is None:
+        return None
+    if typ in ("running", "trail", "mountaineering", ""):
+        if km > 42.6:
+            return "ultra"
+        if km >= 42.0:
+            return "marathon"
+        if 21.0 <= km <= 21.2:
+            return "half"
+    if typ == "cycling" and km >= 160:
+        return "century"
+    return None
+
+
+def event_snapshot(ev: dict[str, Any]) -> dict[str, Any]:
+    return {k: ev.get(k) for k in EVENT_FIELDS}
+
+
+def _fmt_km(km: float, imperial: bool) -> str:
+    return f"{km * 0.621371:.1f} mi" if imperial else f"{km:.1f} km"
+
+
+def _fmt_min(minutes: float) -> str:
+    m = int(round(minutes))
+    return f"{m // 60}:{m % 60:02d} h" if m >= 60 else f"{m} min"
+
+
+def pb_text(best: dict[str, Any], imperial: bool) -> str:
+    key, v = best["key"], float(best["value"])
+    what = {"longest_run_km": "longest run", "longest_ride_km": "longest ride", "longest_swim_km": "longest swim",
+            "longest_workout_min": "longest workout", "biggest_climb_m": "biggest climb"}.get(key, "best")
+    if key.endswith("_km"):
+        val = _fmt_km(v, imperial) if key != "longest_swim_km" else (
+            f"{round(v * 1093.61):,} yd" if imperial else f"{round(v * 1000):,} m")
+    elif key.endswith("_min"):
+        val = _fmt_min(v)
+    else:
+        val = f"{round(v * 3.28084):,} ft" if imperial else f"{round(v):,} m"
+    return f"New personal best: {what} this year, {val}."
+
+
+def workout_card(acts: list[dict[str, Any]], aid: int, today: date) -> dict[str, Any] | None:
+    """A compact, shareable workout: sport, title, date, distance, time, climb and a
+    highlight line. Never HR, power, location or health data."""
+    from .workoutday import new_bests
+    r = next((r for r in _rows(acts) if r["id"] == aid), None)
+    if r is None:
+        return None
+    bests = new_bests(acts, aid, today)
+    hl = bests[0]["label"] if bests else ""
+    return {"activity_id": aid, "sport": r["sport"], "title": _clip(str(r["name"] or "Workout"), 80),
+            "date": r["date"].isoformat(), "km": round(r["km"], 2) if r["km"] else None,
+            "minutes": round(r["min"]) if r["min"] else None, "climb_m": int(r["climb"]) if r["climb"] else None,
+            "highlight": hl}
+
+
+def from_moment_text(m: dict[str, Any]) -> tuple[str, str] | None:
+    """(milestone type, post text) for a moment that may become a draft."""
+    t, key, text = m.get("type"), str(m.get("key") or ""), str(m.get("text") or "")
+    if t == "streak":
+        days = key.split(":")[-1]
+        return "streak", f"{days}-day streak! Showing up, day after day. 🔥"
+    if t == "level":
+        try:
+            n = int(key.split(":")[-1])
+        except ValueError:
+            return None
+        return "level", f"Reached level {n} on Rabbit: {tier_name(n)}. ⭐"
+    if t == "badge":
+        mm = re.search(r"Badge earned: (.+?)\.(?: \+\d+ XP\.)?$", text)
+        return "badge", f"Earned the {mm.group(1) if mm else 'new'} badge. 🏅"
+    if t == "challenge":
+        mm = re.search(r"Challenge complete: (.+?) · ", text)
+        return "challenge", f"Challenge complete: {mm.group(1) if mm else 'done'}. 🏆"
+    return None
+
+
+def meetup_line(m: dict[str, Any], today: date) -> str:
+    """"📍 Tomorrow 7:00: Long run with Trail Crew · City Park.\""""
+    t = datetime.fromisoformat(m["next"])
+    day = "Today" if t.date() == today else "Tomorrow" if t.date() == today + timedelta(days=1) else t.strftime("%a")
+    return _clip(f"📍 {day} {t.hour}:{t.minute:02d}: {m['title']} with {m['club']['name']} · {m['where']}.", 140)
+
+
+# ------------------------------------------------------------------ service --
+Push = Callable[[str, str, str], None]  # (to, title, body)
+
+
+class Community:
+    def __init__(self, store: AppStore, *, social: Any, clubs: Any, now: Callable[[str], datetime],
+                 clock: Callable[[], float] = time.time,
+                 moment: Callable[[str, dict[str, Any]], Any] | None = None,
+                 push: Push | None = None, quiet: Callable[[str], bool] | None = None,
+                 name: Callable[[str], str] = lambda u: "Someone") -> None:
+        """``social``: ``social.Social``; ``clubs``: ``clubs.Clubs``; ``moment(uid, m)``:
+        ``Moments.post``; ``quiet(uid)``: the recipient's quiet hours."""
+        self._s = store
+        self.social = social
+        self.clubs = clubs
+        self._now = now
+        self._clock = clock
+        self.moment = moment
+        self.push = push
+        self._quiet = quiet
+        self._name = name
+        self._g = store.global_doc("community")
+        self._lock = threading.Lock()
+        self._pushed: dict[tuple[str, str], float] = {}
+        self._reminded: dict[str, float] = {}
+
+    # ------------------------------------------------------------ docs --
+    def _posts(self, uid: str):
+        return self._s.user_doc(uid, "posts")
+
+    def _mine(self, uid: str):
+        return self._s.user_doc(uid, "community")
+
+    def require(self, uid: str) -> None:
+        if uid.startswith("coach_") or not self.social.is_athlete(uid):
+            raise CommunityError("Community is for athletes on Rabbit.", 403)
+
+    # -------------------------------------------------------- settings --
+    @staticmethod
+    def _settings_of(d: dict[str, Any]) -> dict[str, Any]:
+        s = d.get("settings") or {}
+        aud = norm_audience(s.get("audience") or s.get("visibility"))
+        return {"milestones": {t: bool((s.get("milestones") or {}).get(t, True)) for t in MILESTONES},
+                "auto_share": {t: bool((s.get("auto_share") or {}).get(t, False)) for t in MILESTONES},
+                "audience": aud if aud in AUDIENCES else "friends"}
+
+    def settings(self, uid: str) -> dict[str, Any]:
+        self.require(uid)
+        return self._settings_of(self._mine(uid).load())
+
+    def put_settings(self, uid: str, patch: Any) -> dict[str, Any]:
+        self.require(uid)
+        if not isinstance(patch, dict):
+            raise CommunityError("settings must be an object")
+        clean: dict[str, Any] = {}
+        for k in ("milestones", "auto_share"):
+            if k in patch:
+                v = patch[k]
+                if not isinstance(v, dict) or any(t not in MILESTONES or not isinstance(b, bool) for t, b in v.items()):
+                    raise CommunityError(f"{k} must map milestone types to true/false")
+                clean[k] = v
+        if "audience" in patch:
+            a = norm_audience(patch["audience"])
+            if a not in AUDIENCES:
+                raise CommunityError("audience must be friends, public or private")
+            clean["audience"] = a
+
+        def apply(d: dict[str, Any]) -> dict[str, Any]:
+            cur = self._settings_of(d)
+            for k in ("milestones", "auto_share"):
+                cur[k] = {**cur[k], **clean.get(k, {})}
+            if "audience" in clean:
+                cur["audience"] = clean["audience"]
+            d["settings"] = cur
+            return cur
+        return self._mine(uid).update(apply)
+
+    # ----------------------------------------------------------- access --
+    def _audience(self, uid: str, v: Any) -> str:
+        v = norm_audience(v)
+        if v is None:
+            return self._settings_of(self._mine(uid).load())["audience"]
+        if v in AUDIENCES:
+            return str(v)
+        if isinstance(v, str) and v.startswith("club:") and self.clubs.is_member(v[5:], uid):
+            return v
+        raise CommunityError("Pick who can see this: friends, a club you're in, everyone on Rabbit, or only you.")
+
+    def can_see(self, viewer: str, post: dict[str, Any]) -> bool:
+        author = post["author"]
+        if viewer == author:
+            return True
+        if not (self.social.is_athlete(viewer) and self.social.is_athlete(author)):
+            return False
+        if self.social.blocked_between(viewer, author):
+            return False
+        v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
+        if v == "public":
+            return True
+        if v == "friends":
+            return bool(self.social.follows(viewer, author))
+        if v.startswith("club:"):
+            cid = v[5:]
+            return self.clubs.is_member(cid, viewer) and self.clubs.is_member(cid, author)
+        return False
+
+    def _owner(self, pid: Any) -> str:
+        pid = valid_pid(pid)
+        owner = (self._g.load().get("index") or {}).get(pid)
+        if not owner:
+            raise CommunityError("post not found", 404)
+        return str(owner)
+
+    def _load(self, viewer: str, pid: Any) -> tuple[str, dict[str, Any]]:
+        owner = self._owner(pid)
+        post = (self._posts(owner).load().get("posts") or {}).get(pid)
+        if post is None or not self.can_see(viewer, post):
+            raise CommunityError("post not found", 404)
+        return owner, post
+
+    # ------------------------------------------------------- rate limits --
+    def _take(self, uid: str, what: str, limit: int) -> None:
+        today = self._now(uid).date().isoformat()
+
+        def apply(d: dict[str, Any]) -> None:
+            r = d.get("rate") or {}
+            if r.get("day") != today:
+                r = {"day": today}
+            if int(r.get(what) or 0) >= limit:
+                noun = "posts" if what == "posts" else "comments"
+                raise CommunityError(f"That's {limit} {noun} today, the daily limit. Try again tomorrow.", 429)
+            r[what] = int(r.get(what) or 0) + 1
+            d["rate"] = r
+        self._mine(uid).update(apply)
+
+    # ------------------------------------------------------------ views --
+    def view(self, viewer: str, post: dict[str, Any], *, all_comments: bool = False) -> dict[str, Any]:
+        reactions = {u: r for u, r in (post.get("reactions") or {}).items()
+                     if u == viewer or not self.social.blocked_between(viewer, u)}
+        counts = {k: 0 for k in REACTIONS}
+        for r in reactions.values():
+            if r in counts:
+                counts[r] += 1
+        mine = post["author"] == viewer
+        comments = [c for c in post.get("comments") or [] if c["by"] == viewer or not self.social.blocked_between(viewer, c["by"])]
+        top = {c["id"] for c in comments if not c.get("parent")}
+        comments = [c for c in comments if not c.get("parent") or c["parent"] in top]
+        shown = comments if all_comments else comments[-PREVIEW_COMMENTS:]
+        v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
+        out = {k: post.get(k) for k in ("id", "author", "kind", "category", "text", "feeling", "event", "workout",
+                                         "milestone", "created", "edited")}
+        photos = post.get("photos") or ([post["photo"]] if post.get("photo") else [])
+        out.update({
+            "audience": v, "club": None, "mine": mine,
+            "photos": [p["v"] for p in photos],
+            "reactions": counts, "reaction_total": sum(counts.values()), "my_reaction": reactions.get(viewer),
+            "comment_count": len(comments),
+            "comments": [{"id": c["id"], "by": c["by"], "text": c["text"], "ts": c["ts"], "parent": c.get("parent"),
+                          "mine": c["by"] == viewer, "can_delete": c["by"] == viewer or mine} for c in shown],
+        })
+        if v.startswith("club:"):
+            out["club"] = {"id": v[5:], "name": self.clubs.name_of(v[5:], viewer) or "Club"}
+        return out
+
+    # ------------------------------------------------------------ posts --
+    def _event_link(self, uid: str, eid: Any) -> dict[str, Any] | None:
+        if eid in (None, ""):
+            return None
+        ev = (self._s.user_doc(uid, "events").load().get("events") or {}).get(eid) if isinstance(eid, str) else None
+        if ev is None:
+            raise CommunityError("event not found", 404)
+        return event_snapshot(ev)
+
+    def _fields(self, uid: str, body: dict[str, Any], *, partial: bool) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if not partial or "text" in body:
+            out["text"] = _text(body.get("text"), TEXT_LEN)
+        if not partial or "category" in body:
+            c = body.get("category") or "other"
+            if c not in CATEGORIES:
+                raise CommunityError("Pick a category.")
+            out["category"] = c
+        if not partial or "feeling" in body:
+            f = body.get("feeling")
+            if f not in (None, "") and f not in FEELINGS:
+                raise CommunityError("Pick a feeling from the list.")
+            out["feeling"] = f or None
+        if not partial or "event_id" in body:
+            out["event"] = self._event_link(uid, body.get("event_id"))
+        if not partial or "audience" in body or "visibility" in body:
+            out["audience"] = self._audience(uid, body.get("audience", body.get("visibility")))
+        return out
+
+    @staticmethod
+    def _photo_ids(body: dict[str, Any]) -> list[str] | None:
+        """``photo_ids`` (or a single ``photo_id``); None when not given."""
+        if "photo_ids" in body:
+            ids = body["photo_ids"]
+        elif "photo_id" in body:
+            ids = [body["photo_id"]] if body["photo_id"] else []
+        else:
+            return None
+        if not isinstance(ids, list) or not all(isinstance(x, str) for x in ids):
+            raise CommunityError("photo not found", 404)
+        ids = list(dict.fromkeys(ids))
+        if len(ids) > MAX_PHOTOS:
+            raise CommunityError(f"Up to {MAX_PHOTOS} photos per post.")
+        return ids
+
+    def _store_post(self, uid: str, post: dict[str, Any]) -> None:
+        def apply(d: dict[str, Any]) -> list[dict[str, Any]]:
+            posts = d.setdefault("posts", {})
+            posts[post["id"]] = post
+            old = sorted(posts, key=lambda k: posts[k]["created"])[: max(0, len(posts) - MAX_POSTS)]
+            return [posts.pop(k) for k in old]
+        dropped = self._posts(uid).update(apply)
+        for x in dropped:
+            self._drop_photos(uid, x)
+
+        def index(g: dict[str, Any]) -> None:
+            ix = g.setdefault("index", {})
+            ix[post["id"]] = uid
+            for x in dropped:
+                ix.pop(x["id"], None)
+                (g.get("public") or {}).pop(x["id"], None)
+            self._index_public(g, post)
+        self._g.update(index)
+
+    @staticmethod
+    def _index_public(g: dict[str, Any], post: dict[str, Any]) -> None:
+        pub = g.setdefault("public", {})
+        if post.get("audience") == "public":
+            pub[post["id"]] = [post["author"], post["created"]]
+            if len(pub) > MAX_PUBLIC:
+                for k in sorted(pub, key=lambda k: pub[k][1])[: len(pub) - MAX_PUBLIC]:
+                    del pub[k]
+        else:
+            pub.pop(post["id"], None)
+
+    def create(self, uid: str, body: Any, *, workout: dict[str, Any] | None = None,
+               milestone: dict[str, Any] | None = None, limited: bool = True) -> dict[str, Any]:
+        """A new post. ``workout``: a ``workout_card`` (server-built); ``milestone``:
+        ``{type, key}`` from a draft. ``limited``: counts toward the daily post limit."""
+        self.require(uid)
+        if not isinstance(body, dict):
+            raise CommunityError("bad request")
+        f = self._fields(uid, body, partial=False)
+        photo_ids = self._photo_ids(body) or []
+        if not f["text"] and not photo_ids and workout is None and milestone is None:
+            raise CommunityError("Write something or add a photo.")
+        if limited:
+            self._take(uid, "posts", POSTS_PER_DAY)
+        pid = "p" + secrets.token_hex(8)
+        post: dict[str, Any] = {"id": pid, "author": uid, "kind": "workout" if workout else "milestone" if milestone else "moment",
+                                **f, "photos": [], "created": int(self._clock()), "edited": None,
+                                "reactions": {}, "comments": []}
+        if workout is not None:
+            post["workout"] = {k: workout.get(k) for k in WORKOUT_FIELDS}
+        if milestone is not None:
+            post["milestone"] = {"type": milestone.get("type"), "key": milestone.get("key")}
+        post["photos"] = self._attach_photos(uid, photo_ids, pid)
+        self._store_post(uid, post)
+        log_event(logger, logging.INFO, "community_post", user_id=uid, kind=post["kind"], audience=post["audience"].split(":")[0])
+        return self.view(uid, post)
+
+    def update(self, uid: str, pid: Any, body: Any) -> dict[str, Any]:
+        self.require(uid)
+        if not isinstance(body, dict):
+            raise CommunityError("bad request")
+        pid = valid_pid(pid)
+        if self._owner(pid) != uid:
+            raise CommunityError("post not found", 404)
+        f = self._fields(uid, body, partial=True)
+        ids = self._photo_ids(body)
+        cur = (self._posts(uid).load().get("posts") or {}).get(pid)
+        if cur is None:
+            raise CommunityError("post not found", 404)
+        old = {p["id"]: p for p in cur.get("photos") or []}
+        new_photos: list[dict[str, Any]] | None = None
+        if ids is not None:
+            fresh = {p["id"]: p for p in self._attach_photos(uid, [i for i in ids if i not in old], pid)}
+            new_photos = [old.get(i) or fresh[i] for i in ids]
+
+        def apply(d: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+            p = (d.get("posts") or {}).get(pid)
+            if p is None:
+                raise CommunityError("post not found", 404)
+            p.update(f)
+            gone: list[dict[str, Any]] = []
+            if new_photos is not None:
+                keep = {x["id"] for x in new_photos}
+                gone = [x for x in p.get("photos") or [] if x["id"] not in keep]
+                p["photos"] = new_photos
+            if not p.get("text") and not p.get("photos") and not p.get("workout") and not p.get("milestone"):
+                raise CommunityError("Write something or add a photo.")
+            p["edited"] = int(self._clock())
+            return p, gone
+        post, gone = self._posts(uid).update(apply)
+        self._drop_photos(uid, {"photos": gone})
+        self._g.update(lambda g: self._index_public(g, post))
+        return self.view(uid, post)
+
+    def delete(self, uid: str, pid: Any) -> None:
+        self.require(uid)
+        pid = valid_pid(pid)
+        if self._owner(pid) != uid:
+            raise CommunityError("post not found", 404)
+
+        def apply(d: dict[str, Any]) -> dict[str, Any] | None:
+            return (d.get("posts") or {}).pop(pid, None)
+        gone = self._posts(uid).update(apply)
+        if gone:
+            self._drop_photos(uid, gone)
+
+        def unindex(g: dict[str, Any]) -> None:
+            (g.get("index") or {}).pop(pid, None)
+            (g.get("public") or {}).pop(pid, None)
+        self._g.update(unindex)
+
+    def get(self, viewer: str, pid: Any) -> dict[str, Any]:
+        self.require(viewer)
+        _, post = self._load(viewer, pid)
+        if pid in self._hidden(viewer):
+            raise CommunityError("post not found", 404)
+        return self.view(viewer, post, all_comments=True)
+
+    # ------------------------------------------------------------- feed --
+    def _hidden(self, uid: str) -> set[str]:
+        return set(self._mine(uid).load().get("hidden") or [])
+
+    def feed(self, viewer: str, cursor: Any = None, *, club: str | None = None, scope: str = "all",
+             limit: int = PAGE) -> dict[str, Any]:
+        """Newest first, ``limit`` per page. ``cursor``: the ``next`` of the previous page.
+        ``scope``: ``all`` (friends, my clubs, everyone's public posts) or ``friends`` (only
+        people I follow, and me)."""
+        self.require(viewer)
+        after: tuple[int, str] | None = None
+        if cursor:
+            try:
+                ts, _, cid = str(cursor).partition(".")
+                after = (int(ts), cid)
+            except ValueError:
+                raise CommunityError("bad cursor") from None
+        if scope not in ("all", "friends"):
+            raise CommunityError("scope must be all or friends")
+        if club is not None:
+            if not self.clubs.is_member(club, viewer):
+                raise CommunityError("club not found", 404)
+            owners = self.clubs.member_ids(club, viewer)
+        else:
+            owners = [viewer, *self.social.following_ids(viewer, limit=FEED_FOLLOWEES)]
+            if scope == "all":
+                for cid in self.clubs.ids_of(viewer):
+                    owners += self.clubs.member_ids(cid, viewer)
+                owners += [a for a, _ in (self._g.load().get("public") or {}).values()]
+        hidden = self._hidden(viewer)
+        posts: list[dict[str, Any]] = []
+        for owner in dict.fromkeys(owners):
+            if owner != viewer and self.social.blocked_between(viewer, owner):
+                continue
+            for p in (self._posts(owner).load().get("posts") or {}).values():
+                if p["id"] in hidden:
+                    continue
+                aud = norm_audience(p.get("audience") or p.get("visibility") or "friends")
+                if club is not None and aud != f"club:{club}":
+                    continue
+                if after is not None and (p["created"], p["id"]) >= after:
+                    continue
+                if self.can_see(viewer, p):
+                    posts.append(p)
+        posts.sort(key=lambda p: (p["created"], p["id"]), reverse=True)
+        page = posts[:limit]
+        nxt = f"{page[-1]['created']}.{page[-1]['id']}" if len(posts) > limit else None
+        return {"items": [self.view(viewer, p) for p in page], "next": nxt}
+
+    # -------------------------------------------------------- reactions --
+    def _touch(self, owner: str, pid: str, fn: Callable[[dict[str, Any]], Any]) -> Any:
+        def apply(d: dict[str, Any]) -> Any:
+            p = (d.get("posts") or {}).get(pid)
+            if p is None:
+                raise CommunityError("post not found", 404)
+            return fn(p)
+        return self._posts(owner).update(apply)
+
+    def react(self, viewer: str, pid: Any, kind: Any) -> dict[str, Any]:
+        self.require(viewer)
+        if kind not in REACTIONS:
+            raise CommunityError("Pick a reaction.")
+        owner, _ = self._load(viewer, pid)
+
+        def fn(p: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+            r = p.setdefault("reactions", {})
+            new = viewer not in r
+            r[viewer] = kind
+            return p, new
+        post, new = self._touch(owner, pid, fn)
+        if new and owner != viewer:
+            self._notify(owner, pid, f"{self._name(viewer)} cheered your post", post.get("text") or "Your post")
+        return self.view(viewer, post)
+
+    def unreact(self, viewer: str, pid: Any) -> dict[str, Any]:
+        self.require(viewer)
+        owner, _ = self._load(viewer, pid)
+
+        def fn(p: dict[str, Any]) -> dict[str, Any]:
+            (p.get("reactions") or {}).pop(viewer, None)
+            return p
+        return self.view(viewer, self._touch(owner, pid, fn))
+
+    # --------------------------------------------------------- comments --
+    def comment(self, viewer: str, pid: Any, text: Any, reply_to: Any = None) -> dict[str, Any]:
+        """A comment, or a reply (one level: a reply to a reply joins the same thread)."""
+        self.require(viewer)
+        body = _text(text, COMMENT_LEN, what="Comment")
+        if not body:
+            raise CommunityError("Write a comment first.")
+        owner, _ = self._load(viewer, pid)
+        if reply_to is not None and not isinstance(reply_to, str):
+            raise CommunityError("comment not found", 404)
+        self._take(viewer, "comments", COMMENTS_PER_DAY)
+        c = {"id": "c" + secrets.token_hex(6), "by": viewer, "text": body, "ts": int(self._clock()), "parent": None}
+
+        def fn(p: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+            cs = p.setdefault("comments", [])
+            if len(cs) >= MAX_COMMENTS:
+                raise CommunityError(f"That post has {MAX_COMMENTS} comments, the most it can hold.")
+            to = None
+            if reply_to:
+                target = next((x for x in cs if x["id"] == reply_to), None)
+                if target is None or (target["by"] != viewer and self.social.blocked_between(viewer, target["by"])):
+                    raise CommunityError("comment not found", 404)
+                c["parent"] = target.get("parent") or target["id"]
+                to = target["by"]
+            cs.append(c)
+            return p, to
+        _, to = self._touch(owner, pid, fn)
+        if owner != viewer:
+            self._notify(owner, pid, f"{self._name(viewer)} commented", body)
+        if to and to not in (viewer, owner):
+            self._notify(to, pid, f"{self._name(viewer)} replied", body)
+        return {**c, "mine": True, "can_delete": True}
+
+    def delete_comment(self, viewer: str, pid: Any, cid: Any) -> None:
+        """The comment's author, or the post's author. Replies go with their comment."""
+        self.require(viewer)
+        owner, _ = self._load(viewer, pid)
+
+        def fn(p: dict[str, Any]) -> None:
+            cs = p.get("comments") or []
+            target = next((c for c in cs if c["id"] == cid and (c["by"] == viewer or owner == viewer)), None)
+            if target is None:
+                raise CommunityError("comment not found", 404)
+            p["comments"] = [c for c in cs if c["id"] != cid and c.get("parent") != cid]
+        self._touch(owner, pid, fn)
+
+    # ------------------------------------------------------ hide/report --
+    def hide(self, viewer: str, pid: Any) -> None:
+        """Gone from my feed (nobody is told)."""
+        self.require(viewer)
+        owner, _ = self._load(viewer, pid)
+        if owner == viewer:
+            raise CommunityError("That's your own post. You can delete it instead.")
+
+        def apply(d: dict[str, Any]) -> None:
+            h = d.setdefault("hidden", [])
+            if pid not in h:
+                h.append(pid)
+                del h[: max(0, len(h) - MAX_HIDDEN)]
+        self._mine(viewer).update(apply)
+
+    def report(self, viewer: str, pid: Any, reason: Any = None) -> None:
+        """Hide for the reporter and log for the operator."""
+        self.hide(viewer, pid)
+        owner = self._owner(pid)
+        why = _clip(reason, 200) if isinstance(reason, str) else ""
+
+        def log(g: dict[str, Any]) -> None:
+            r = g.setdefault("reports", [])
+            r.append({"post": pid, "author": owner, "by": viewer, "reason": why, "ts": int(self._clock())})
+            del r[: max(0, len(r) - MAX_REPORTS)]
+        self._g.update(log)
+        log_event(logger, logging.WARNING, "community_report", user_id=viewer, post=pid, author=owner)
+
+    # ------------------------------------------------------------- push --
+    def _notify(self, to: str, pid: str, title: str, body: str) -> None:
+        """At most one push per post per hour per person; none in their quiet hours."""
+        if self.push is None:
+            return
+        try:
+            if self._quiet is not None and self._quiet(to):
+                return
+        except Exception:
+            return
+        now = self._clock()
+        with self._lock:
+            last = self._pushed.get((to, pid))
+            if last is not None and now - last < PUSH_EVERY_S:
+                return
+            self._pushed[(to, pid)] = now
+            if len(self._pushed) > 5000:
+                self._pushed.pop(next(iter(self._pushed)))
+        try:
+            self.push(to, title[:60], _clip(body, 140))
+        except Exception as e:
+            log_event(logger, logging.WARNING, "community_push_failed", error=type(e).__name__)
+
+    # ----------------------------------------------------------- photos --
+    def save_photo(self, uid: str, data: bytes) -> dict[str, Any]:
+        self.require(uid)
+        mime = check_photo(data)
+        now = int(self._clock())
+        phid = "f" + secrets.token_hex(8)
+        orphans: list[str] = []
+
+        def reserve(d: dict[str, Any]) -> None:
+            u = d.setdefault("photos", {"items": {}})
+            items = u.setdefault("items", {})
+            for k, it in list(items.items()):  # uploaded but never posted
+                if it.get("post") is None and now - it.get("ts", now) > ORPHAN_TTL_S:
+                    orphans.append(k)
+                    del items[k]
+            if len(items) >= PHOTO_QUOTA_COUNT or sum(it["size"] for it in items.values()) + len(data) > PHOTO_QUOTA_BYTES:
+                raise CommunityError(f"You've reached the photo limit ({PHOTO_QUOTA_COUNT} photos or "
+                                     f"{PHOTO_QUOTA_BYTES // 1024 // 1024} MB). Delete old posts to free space.", 413)
+            items[phid] = {"size": len(data), "ts": now, "post": None}
+        self._mine(uid).update(reserve)
+        for k in orphans:
+            self._s.user_doc(uid, f"cphoto-{k}").delete()
+        self._s.user_doc(uid, f"cphoto-{phid}").save({"mime": mime, "data": base64.b64encode(data).decode("ascii")})
+        return {"photo_id": phid}
+
+    def _attach_photos(self, uid: str, ids: list[str], pid: str) -> list[dict[str, Any]]:
+        if not ids:
+            return []
+        for phid in ids:
+            if not _ID.match(phid):
+                raise CommunityError("photo not found", 404)
+
+        def apply(d: dict[str, Any]) -> None:
+            items = (d.get("photos") or {}).get("items") or {}
+            for phid in ids:
+                it = items.get(phid)
+                if it is None or it.get("post") not in (None, pid):
+                    raise CommunityError("photo not found", 404)
+            for phid in ids:
+                items[phid]["post"] = pid
+        self._mine(uid).update(apply)
+        v = int(self._clock())
+        return [{"id": phid, "v": v + i} for i, phid in enumerate(ids)]
+
+    def _drop_photos(self, uid: str, post: dict[str, Any]) -> None:
+        ids = [p["id"] for p in post.get("photos") or [] if p.get("id")]
+        if not ids:
+            return
+        for phid in ids:
+            self._s.user_doc(uid, f"cphoto-{phid}").delete()
+
+        def apply(d: dict[str, Any]) -> None:
+            items = (d.get("photos") or {}).get("items") or {}
+            for phid in ids:
+                items.pop(phid, None)
+        self._mine(uid).update(apply)
+
+    def photo(self, viewer: str, pid: Any, n: int = 0) -> tuple[str, bytes] | None:
+        """Photo ``n`` of a post, only for its audience."""
+        self.require(viewer)
+        owner, post = self._load(viewer, pid)
+        photos = post.get("photos") or []
+        if not 0 <= n < len(photos):
+            return None
+        d = self._s.user_doc(owner, f"cphoto-{photos[n]['id']}").load()
+        if not d.get("data"):
+            return None
+        data = base64.b64decode(d["data"])
+        try:
+            return sniff_photo(data), data
+        except CommunityError:
+            return None
+
+    def usage(self, uid: str) -> dict[str, int]:
+        items = ((self._mine(uid).load().get("photos") or {}).get("items") or {})
+        return {"photos": len(items), "bytes": sum(it["size"] for it in items.values()),
+                "max_photos": PHOTO_QUOTA_COUNT, "max_bytes": PHOTO_QUOTA_BYTES}
+
+    # ------------------------------------------------------- milestones --
+    def drafts(self, uid: str) -> list[dict[str, Any]]:
+        self.require(uid)
+        today = self._now(uid).date()
+        ds = list((self._mine(uid).load().get("drafts") or {}).values())
+        ds = [x for x in ds if (today - date.fromisoformat(x["day"])).days <= DRAFT_TTL_DAYS]
+        ds.sort(key=lambda x: x["created"], reverse=True)
+        return ds
+
+    def _seen(self, d: dict[str, Any], key: str, today: date, ttl_days: int | None) -> bool:
+        when = (d.get("keys") or {}).get(key)
+        if when is None:
+            return False
+        if ttl_days is None:
+            return True
+        try:
+            return (today - date.fromisoformat(when)).days < ttl_days
+        except ValueError:
+            return True
+
+    def milestone(self, uid: str, mtype: str, key: str, text: str, *, event: dict[str, Any] | None = None,
+                  ttl_days: int | None = None, announce: bool = True) -> dict[str, Any] | None:
+        """Make a milestone: a draft (``{"draft": ...}``), or a post when auto-share is on
+        for that type (``{"post": ...}``); None when turned off or already made. With
+        ``announce`` Rabbit posts a moment with [Share] [Not now] (or "Shared")."""
+        if uid.startswith("coach_") or not self.social.is_athlete(uid) or mtype not in MILESTONES:
+            return None
+        today = self._now(uid).date()
+        now = int(self._clock())
+
+        def apply(d: dict[str, Any]) -> dict[str, Any] | None:
+            s = self._settings_of(d)
+            if not s["milestones"][mtype] or self._seen(d, key, today, ttl_days):
+                return None
+            keys = d.setdefault("keys", {})
+            keys[key] = today.isoformat()
+            if len(keys) > MAX_KEYS:
+                for k in sorted(keys, key=lambda k: keys[k])[: len(keys) - MAX_KEYS]:
+                    del keys[k]
+            draft = {"id": "d" + secrets.token_hex(6), "type": mtype, "key": key, "text": _clip(text, TEXT_LEN),
+                     "category": MILESTONE_CATEGORY[mtype], "event": event, "created": now, "day": today.isoformat()}
+            if s["auto_share"][mtype]:
+                return {"auto": draft, "audience": s["audience"]}
+            drafts = d.setdefault("drafts", {})
+            drafts[draft["id"]] = draft
+            if len(drafts) > MAX_DRAFTS:
+                for k in sorted(drafts, key=lambda k: drafts[k]["created"])[: len(drafts) - MAX_DRAFTS]:
+                    del drafts[k]
+            return {"draft": draft}
+        res = self._mine(uid).update(apply)
+        if res is None:
+            return None
+        if "auto" in res:
+            dr = res["auto"]
+            post = self.create(uid, {"text": dr["text"], "category": dr["category"], "audience": res["audience"],
+                                     "event_id": (dr.get("event") or {}).get("id")},
+                               milestone={"type": mtype, "key": key}, limited=False)
+            out: dict[str, Any] = {"post": post}
+        else:
+            out = {"draft": res["draft"]}
+        if announce and self.moment is not None:
+            self._announce(uid, out, key)
+        return out
+
+    @staticmethod
+    def share_actions(out: dict[str, Any]) -> list[dict[str, Any]]:
+        if "post" in out:
+            return [{"id": "community", "label": "See it in Community", "post_id": out["post"]["id"]}]
+        did = out["draft"]["id"]
+        return [{"id": "community_share", "label": "Share", "draft_id": did},
+                {"id": "community_later", "label": "Not now", "draft_id": did}]
+
+    def _announce(self, uid: str, out: dict[str, Any], key: str) -> None:
+        text = (out.get("post") or out.get("draft") or {}).get("text") or ""
+        text = _LEAD_EMOJI.sub("", text).strip()
+        tail = " Shared in Community." if "post" in out else " Share it with your people?"
+        line = _clip(f"🎉 {_clip(text, 140 - len(tail) - 3)}{tail}", 140)
+        try:
+            assert self.moment is not None
+            self.moment(uid, {"type": "milestone", "key": f"cm:{key}", "text": line, "ttl_days": 30,
+                              "actions": self.share_actions(out)})
+        except Exception as e:  # the draft stands without the Rabbit-log line
+            log_event(logger, logging.WARNING, "community_moment_failed", user_id=uid, error=type(e).__name__)
+
+    def from_moment(self, uid: str, m: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """``Moments.on_milestone``: a streak/level/badge/challenge moment becomes a draft
+        (or an auto-shared post); returns the chips for that moment."""
+        got = from_moment_text(m)
+        if got is None:
+            return None
+        mtype, text = got
+        out = self.milestone(uid, mtype, str(m["key"]), text, ttl_days=m.get("ttl_days"), announce=False)
+        return self.share_actions(out) if out else None
+
+    def dismiss(self, uid: str, did: Any) -> None:
+        self.require(uid)
+
+        def apply(d: dict[str, Any]) -> None:
+            (d.get("drafts") or {}).pop(did, None) if isinstance(did, str) else None
+        self._mine(uid).update(apply)
+
+    def share(self, uid: str, did: Any, body: Any = None) -> dict[str, Any]:
+        """Post a draft (text/audience/photos/feeling may be edited first). Sharing a draft
+        that was already shared or dismissed is a 404."""
+        self.require(uid)
+        body = body if isinstance(body, dict) else {}
+
+        def take(d: dict[str, Any]) -> dict[str, Any] | None:
+            return (d.get("drafts") or {}).pop(did, None) if isinstance(did, str) else None
+        dr = self._mine(uid).update(take)
+        if dr is None:
+            raise CommunityError("That one's already shared or dismissed.", 404)
+        fields = {"text": dr["text"], "category": dr["category"], "event_id": (dr.get("event") or {}).get("id"),
+                  **{k: body[k] for k in ("text", "category", "feeling", "audience", "photo_ids", "event_id") if k in body}}
+        try:
+            return self.create(uid, fields, milestone={"type": dr["type"], "key": dr["key"]})
+        except CommunityError:
+            self._mine(uid).update(lambda d: d.setdefault("drafts", {}).__setitem__(dr["id"], dr))
+            raise
+
+    # ------------------------------------------------------------ people --
+    def suggestions(self, uid: str, limit: int = 20) -> list[dict[str, Any]]:
+        """People you might follow: followers you don't follow back, people in your clubs
+        (race groups too). Allowlisted athletes only; never blocked either way."""
+        self.require(uid)
+        skip = {uid, *self.social.following_ids(uid, limit=FEED_FOLLOWEES), *self.social.pending_ids(uid)}
+        out: dict[str, str] = {}
+        for f in self.social.follower_ids(uid):
+            if f not in skip:
+                out.setdefault(f, "Follows you")
+        for cid in self.clubs.ids_of(uid):
+            name = self.clubs.name_of(cid, uid) or "your club"
+            for m in self.clubs.member_ids(cid, uid):
+                if m not in skip:
+                    out.setdefault(m, f"In {name}")
+        return [{"user_id": u, "reason": why} for u, why in out.items()
+                if self.social.is_athlete(u) and not self.social.blocked_between(uid, u)][:limit]
+
+    def related(self, viewer: str, other: str) -> bool:
+        """May ``viewer`` see ``other``'s profile photo: self, a follow edge either way, a
+        shared club, or ``other`` posted publicly."""
+        if viewer == other:
+            return True
+        if self.social.blocked_between(viewer, other):
+            return False
+        if self.social.follows(viewer, other) or self.social.follows(other, viewer):
+            return True
+        if any(self.clubs.is_member(c, other) for c in self.clubs.ids_of(viewer)):
+            return True
+        return any(a == other for a, _ in (self._g.load().get("public") or {}).values())
+
+    # ----------------------------------------------------------- meetups --
+    def meetup_reminders(self, uid: str) -> int:
+        """``Moments.tick``: a Rabbit moment for each "going" meetup in the next 18 h (once
+        each; checked at most every 10 minutes)."""
+        if uid.startswith("coach_") or self.moment is None:
+            return 0
+        now = self._clock()
+        with self._lock:
+            if now - self._reminded.get(uid, 0) < REMIND_EVERY_S:
+                return 0
+            self._reminded[uid] = now
+        local = self._now(uid)
+        n = 0
+        for m in self.clubs.reminders(uid, local):
+            self.moment(uid, {"type": "meetup", "key": f"meetup:{m['id']}:{m['next']}", "ttl_days": 3,
+                              "text": meetup_line(m, local.date()),
+                              "actions": [{"id": "community", "label": "Open club", "club_id": m["club"]["id"]}]})
+            n += 1
+        return n
+
+    # ---------------------------------------------------------- scanning --
+    def scan_events(self, uid: str, events: list[dict[str, Any]], today: date,
+                    acts: list[dict[str, Any]] | None = None) -> int:
+        """Races finished in the last week: a result or debrief, or a workout on race day.
+        Also "firsts" (first ultra, 70.3, ...) from the event's distance. Only race events
+        (not trips, group activities or life events)."""
+        if uid.startswith("coach_"):
+            return 0
+        act_days: dict[str, set[str]] = {}
+        for r in _rows(acts or []):
+            act_days.setdefault(r["date"].isoformat(), set()).add(r["sport"])
+        n = 0
+        races = [e for e in events if e.get("kind") in (None, "", "race")]
+        done = sorted((e for e in races if e.get("id") and e.get("date")
+                       and 0 <= (today - _day(e["date"], today)).days <= RACE_SCAN_DAYS),
+                      key=lambda e: e["date"])
+        for ev in done:
+            day = ev["date"]
+            finished = bool(ev.get("result") or ev.get("debrief")) or bool(act_days.get(day))
+            if not finished:
+                continue
+            name = _clip(str(ev.get("name") or "my race"), 60)
+            result = _clip(str(ev.get("result") or ""), 40)
+            text = f"Finished {name}!" + (f" {result}." if result and len(result) <= 40 else "")
+            if self.milestone(uid, "race", f"race:{ev['id']}", text, event=event_snapshot(ev)):
+                n += 1
+            cls = event_class(ev)
+            if cls is None:
+                continue
+            earlier = [e for e in races if e.get("id") != ev["id"] and str(e.get("date") or "") < day
+                       and (e.get("result") or e.get("debrief")) and event_class(e) == cls]
+            if earlier:
+                continue
+            got = self.milestone(uid, "first", f"first:{cls}", f"{FIRSTS[cls]}! {name}, done.", event=event_snapshot(ev))
+            n += bool(got)
+        return n
+
+    def scan_bests(self, uid: str, acts: list[dict[str, Any]], today: date, *, imperial: bool) -> int:
+        """Personal bests (12-month bests, as on the reaction card) set today or yesterday."""
+        if uid.startswith("coach_"):
+            return 0
+        from .workoutday import new_bests
+        n = 0
+        recent = [r for r in _rows(acts) if isinstance(r["id"], int) and 0 <= (today - r["date"]).days <= 1]
+        for r in recent[-3:]:
+            for b in new_bests(acts, r["id"], today)[:1]:
+                if self.milestone(uid, "pb", f"pb:{b['key']}:{r['id']}", pb_text(b, imperial)):
+                    n += 1
+        return n
+
+
+def _day(s: str, fallback: date) -> date:
+    try:
+        return date.fromisoformat(str(s)[:10])
+    except ValueError:
+        return fallback + timedelta(days=9999)
+
+
+__all__ = [
+    "AUDIENCES",
+    "CATEGORIES",
+    "COMMENTS_PER_DAY",
+    "COMMENT_LEN",
+    "FEELINGS",
+    "MAX_COMMENTS",
+    "MAX_PHOTOS",
+    "MILESTONES",
+    "PAGE",
+    "PHOTO_MAX",
+    "PHOTO_QUOTA_BYTES",
+    "PHOTO_QUOTA_COUNT",
+    "POSTS_PER_DAY",
+    "REACTIONS",
+    "TEXT_LEN",
+    "Community",
+    "CommunityError",
+    "check_photo",
+    "event_class",
+    "from_moment_text",
+    "image_size",
+    "meetup_line",
+    "pb_text",
+    "valid_pid",
+    "workout_card",
+]

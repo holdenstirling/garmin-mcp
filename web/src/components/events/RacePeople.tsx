@@ -184,7 +184,7 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
         {friends === null && <div className="skeleton h-11" aria-hidden />}
         {friends !== null && pickable.length === 0 && (
           <p className="text-[0.7647rem] text-(--text-muted)">
-            {friends.length === 0 ? 'Follow friends (Me → Friends) to invite them here, or share a link with family and crew.' : 'Everyone on your list is already invited.'}
+            {friends.length === 0 ? 'Follow friends (Community → People) to invite them here, or share a link with family and crew.' : 'Everyone on your list is already invited.'}
           </p>
         )}
         {pickable.map((f) => (

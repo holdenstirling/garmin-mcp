@@ -318,6 +318,22 @@ class Social:
         es.sort(key=lambda e: e.get("accepted") or e.get("ts", 0), reverse=True)
         return [str(e["followee"]) for e in es[:limit]]
 
+    def follower_ids(self, uid: str) -> list[str]:
+        """People with an active edge to ``uid`` (still athletes)."""
+        live = self._athlete_ids()
+        return [str(e["follower"]) for e in (self._doc.load().get("edges") or {}).values()
+                if e.get("followee") == uid and e["status"] == "active" and e["follower"] in live]
+
+    def pending_ids(self, uid: str) -> set[str]:
+        """People ``uid`` asked to follow (still pending)."""
+        return {str(e["followee"]) for e in (self._doc.load().get("edges") or {}).values()
+                if e["follower"] == uid and e["status"] == "pending" and e.get("followee")}
+
+    def blocked_between(self, a: str, b: str) -> bool:
+        """Either one blocked the other."""
+        users = self._doc.load().get("users") or {}
+        return b in ((users.get(a) or {}).get("blocked") or []) or a in ((users.get(b) or {}).get("blocked") or [])
+
     def ever_followed(self, uid: str) -> bool:
         return bool(((self._doc.load().get("users") or {}).get(uid) or {}).get("ever_followed"))
 

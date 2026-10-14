@@ -254,7 +254,7 @@ const PRIVACY: [keyof SocialSettings, string, string][] = [
   ['races', 'Races', 'Workouts you tagged as races'],
 ]
 
-function PeopleTab({ people, onOpen, onChanged, setPeople }: {
+export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
   people: People; onOpen: (id: string) => void; onChanged: () => void; setPeople: (p: People) => void
 }) {
   const [value, setValue] = useState('')

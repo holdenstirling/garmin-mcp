@@ -10,6 +10,7 @@ import { fmtDay } from '@/components/plan/PlanParts'
 import { fmtDuration, fmtMeters } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { burst, useCountUp } from '@/components/anim'
+import { ShareWorkoutButton } from '@/components/community/ShareWorkout'
 import { fmtDist, getReaction, type CheckInRequest, type Reaction, type Verdict } from '@/lib/workout'
 
 const LOADING = ['Studying your splits…', 'Comparing to plan…', 'Counting your XP…']
@@ -169,6 +170,7 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
         )}
         <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={onDone}>Done</Button>
       </div>
+      {typeof a.id === 'number' && <ShareWorkoutButton activityId={a.id} />}
     </>
   )
 }

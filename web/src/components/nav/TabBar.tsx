@@ -1,18 +1,20 @@
 // The app's five sections, always one tap away. Rabbit (the AI: log, Today, composer) is home.
 import { useEffect, useState } from 'react'
-import { CalendarRange, CircleUser, Flag, Rabbit, TrendingUp } from 'lucide-react'
+import { CalendarRange, Flag, Rabbit, TrendingUp, Users } from 'lucide-react'
 import { getBadge } from '@/lib/social'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { REPLY_DONE_EVENT } from '@/components/fx/motion'
 
-export type TabId = 'rabbit' | 'plan' | 'progress' | 'races' | 'me'
+// 'races' keeps its id (stored tabs, deep links); the label is Events. "Me" opens from the
+// avatar in the tab headers (Chat.tsx), not a tab.
+export type TabId = 'rabbit' | 'plan' | 'community' | 'races' | 'progress'
 
 const TABS: { id: TabId; label: string; icon: typeof Rabbit }[] = [
   { id: 'rabbit', label: 'Rabbit', icon: Rabbit },
   { id: 'plan', label: 'Plan', icon: CalendarRange },
+  { id: 'community', label: 'Community', icon: Users },
+  { id: 'races', label: 'Events', icon: Flag },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
-  { id: 'races', label: 'Races', icon: Flag },
-  { id: 'me', label: 'Me', icon: CircleUser },
 ]
 
 const KEY = 'rabbit.tab'
@@ -77,9 +79,9 @@ export function TabBar({ tab, onSelect, dots }: {
   )
 }
 
-const SEEN_EVENT = 'rabbit:social-seen' // FriendsScreen fires it after marking the feed seen
+const SEEN_EVENT = 'rabbit:social-seen' // Community → People fires it after marking it seen
 
-/** Pending friend requests or new kudos since Friends was last opened. */
+/** Pending friend requests or new kudos since People (Community) was last opened. */
 export function useSocialBadge(): boolean {
   const [on, setOn] = useState(false)
   useEffect(() => {

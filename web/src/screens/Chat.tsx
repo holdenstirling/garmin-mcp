@@ -17,7 +17,7 @@ import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
 import { GearScreen } from '@/components/gear/GearScreen'
 import { ExploreScreen } from '@/components/explore/ExploreScreen'
-import { FriendsScreen } from '@/components/social/FriendsScreen'
+import { CommunityScreen, type CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
@@ -27,6 +27,7 @@ import { FindCoachScreen } from '@/components/coach/FindCoachScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
+import { dismissDraft, shareDraft } from '@/lib/community'
 import { TodayCard } from '@/components/today/TodayCard'
 import { useTopInsight } from '@/lib/insights'
 import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
@@ -115,7 +116,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the tabs (each with its own close): plan setup, profile, people, gear.
-type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'friends' | 'findcoach'
+type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'findcoach'
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
@@ -152,14 +153,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // feed resizes (keyboard opening/closing) we can keep the newest messages in view.
   const atBottom = useRef(true)
 
-  // Tabs (components/nav/TabBar): Rabbit | Plan | Progress | Races | Me. The last tab is kept
-  // for this browser session; notification links pick their own.
+  // Tabs (components/nav/TabBar): Rabbit | Plan | Community | Events | Progress; Me opens from
+  // the header avatar. The last tab is kept for this browser session; notification links pick their own.
   const openParam = useRef(new URLSearchParams(window.location.search).get('open')).current
-  const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'progress' : openParam === 'coach' ? 'rabbit' : readTab())
+  const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'progress' : openParam === 'coach' ? 'rabbit'
+    : openParam === 'community' ? 'community' : readTab())
   const setTab = useCallback((t: TabId) => { setTabState(t); saveTab(t) }, [])
   const [progressView, setProgressView] = useState<ProgressView>(openParam === 'recap' ? 'recap' : 'overview')
   const [recapWeek, setRecapWeek] = useState<string | undefined>(undefined)
   const [racesView, setRacesView] = useState<RacesView>('mine')
+  const [meOpen, setMeOpen] = useState(false) // Me: from the avatar in the tab headers
+  const [communityView, setCommunityView] = useState<CommunityView>('feed')
+  const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [composerFocus, setComposerFocus] = useState(false)
   const friendsDot = useSocialBadge()
 
@@ -260,11 +265,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const goTab = (t: TabId) => {
     if (sheet) { setSheet(null); setClosing(false) }
     setPlanScreen(null)
+    setMeOpen(false)
     setTab(t)
   }
   const openPlan = () => goTab('plan')
   const openRaces = () => { setRacesView('mine'); goTab('races') }
+  const openProgress = () => { setProgressView('overview'); goTab('progress') }
   const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
+  const openCommunity = (v: CommunityView = 'feed', club?: string) => {
+    setCommunityView(v); setCommunityClub(club ?? null); goTab('community')
+  }
   // Nothing open over the tabs: progress, Today and live sync refresh.
   const overlayFree = !planScreen && !sheet
   const homeInView = tab === 'rabbit' && overlayFree
@@ -331,9 +341,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Weekly recap (recap.py): from the Sunday push (?open=recap: Progress → Weekly recap), the
   // status banner (Sunday noon through Monday, dismissible per week) and Progress.
   useEffect(() => {
-    if (openParam === 'recap') window.history.replaceState(null, '', '/app/')
+    if (openParam === 'recap' || openParam === 'community') window.history.replaceState(null, '', '/app/')
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === 'open' && String(e.data.url).includes('open=recap')) openRecap()
+      if (e.data?.type === 'open' && String(e.data.url).includes('open=community')) openCommunity()
     }
     navigator.serviceWorker?.addEventListener('message', onMsg)
     return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
@@ -357,7 +368,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'coach') { showScreen('coaches'); return }
     if (q === 'coach_status') { setCoachAsk(true); return }
     if (q === 'gear') { showScreen('gear'); return }
-    if (q === 'friend') { showScreen('friends'); return }
+    if (q === 'friend') { openCommunity('people'); return }
     if (q === 'interests') { setRacesView('explore'); goTab('races'); return }
     if (q === 'sync' && builtPlan) { openPlan(); return }
     showScreen('setup')
@@ -526,7 +537,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'readiness') { if (a.event_id) setFitEvent(a.event_id); else openRaces() }
     else if (a.id === 'racepack') { openRaces(); setPlanScreen('racepack') }
     else if (a.id === 'plan') openPlan()
-    else if (a.id === 'progress') goTab('progress')
+    else if (a.id === 'progress') openProgress()
+    else if (a.id === 'community_share' && a.draft_id) {
+      shareDraft(a.draft_id).then(() => showToast('Shared in Community 🎉'), (e) => showToast((e as Error).message))
+    } else if (a.id === 'community_later' && a.draft_id) {
+      dismissDraft(a.draft_id).then(() => showToast('Okay, kept it to yourself.'), () => showToast('Okay.'))
+    } else if (a.id === 'community') { if (a.club_id) openCommunity('clubs', a.club_id); else openCommunity() }
     else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
     else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
   }
@@ -558,6 +574,15 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Typing on a phone: the keyboard needs the room, so the banner, Today and the tab bar step aside.
   const typing = composerFocus
 
+  // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
+  const meButton = (
+    <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
+      me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => setMeOpen(true)}>
+      <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
+      {me.coach_unread > 0 && <span className="absolute right-1 top-1 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+    </button>
+  )
+
   function renderHeader(isLog: boolean, under = false) {
     return (
       <header className="flex shrink-0 items-center gap-2 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
@@ -584,9 +609,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <Button variant="ghost" size="icon" aria-label="Chats with Rabbit" onClick={() => open('threads')}>
           <MessagesSquare className="size-5" />
         </Button>
-        <button className="flex size-11 items-center justify-center rounded-full" aria-label="Settings" onClick={() => open('settings')}>
-          <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
-        </button>
+        {meButton}
       </header>
     )
   }
@@ -641,10 +664,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
     races: soonRace && 'race soon',
-    me: me.coach_unread > 0 ? `${me.coach_unread} unread from your coach` : friendsDot && 'new from friends',
+    community: friendsDot && 'new from friends',
   }
   const openMeRow = (r: MeRow) => {
-    if (r === 'settings') open('settings')
+    if (r === 'friends') { setMeOpen(false); openCommunity('people') }
+    else if (r === 'settings') open('settings')
     else if (r === 'memory') open('memory')
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
     else if (r === 'coachstatus') setCoachAsk(true)
@@ -655,7 +679,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" lead={weekLead}>
+        <TabScreen key="planner" title="Plan" lead={weekLead} action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'} onClose={noop}
             onRebuild={startSetup}
             onAsk={tellRabbit}
@@ -668,7 +692,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="start">
+      <TabScreen key="start" action={meButton}>
         <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'} onClose={noop}>
           {weekLead}
           {goal?.plan ? (
@@ -705,13 +729,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       options={[['overview', 'Overview'], ['recap', 'Weekly recap']] as const} />
     if (progressView === 'recap') {
       return (
-        <TabScreen key="recap" title="Progress" top={seg}>
+        <TabScreen key="recap" title="Progress" top={seg} action={meButton}>
           <RecapSheet week={recapWeek} onClose={() => setProgressView('overview')} onAsk={tellRabbit} />
         </TabScreen>
       )
     }
     return (
-      <TabScreen key="overview" title="Progress" top={seg}>
+      <TabScreen key="overview" title="Progress" top={seg} action={meButton}>
         <StatsScreen onClose={noop} oura={me.oura.connected} onOpenPlan={builtPlan ? openPlan : undefined}
           onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
@@ -720,16 +744,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
 
   function racesTab() {
-    const seg = <Segmented label="Races" value={racesView} onChange={setRacesView}
-      options={[['mine', 'My races'], ['explore', 'Explore']] as const} />
+    const seg = <Segmented label="Events" value={racesView} onChange={setRacesView}
+      options={[['mine', 'My events'], ['explore', 'Explore']] as const} />
     return racesView === 'mine' ? (
-      <TabScreen key="mine" title="Races" top={seg}>
+      <TabScreen key="mine" title="Events" top={seg} action={meButton}>
         <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} onClose={noop}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={openPlan} onBuildPlan={startSetup} />
       </TabScreen>
     ) : (
-      <TabScreen key="explore" title="Races" top={seg}>
+      <TabScreen key="explore" title="Events" top={seg} action={meButton}>
         <ExploreScreen imperial={imperial} onClose={noop} onAsk={tellRabbit} onChanged={onChange} />
       </TabScreen>
     )
@@ -758,7 +782,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && today && (today.garmin || !!goal) && !typing && (
         <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
-          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={() => goTab('progress')} />
+          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={openProgress} />
       )}
 
       {pending ? (
@@ -893,15 +917,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       </div>
 
       {tab === 'plan' && <div className="tab-page flex min-h-0 flex-1 flex-col">{planTab()}</div>}
-      {tab === 'progress' && <div className="tab-page flex min-h-0 flex-1 flex-col">{progressTab()}</div>}
-      {tab === 'races' && <div className="tab-page flex min-h-0 flex-1 flex-col">{racesTab()}</div>}
-      {tab === 'me' && (
+      {tab === 'community' && (
         <div className="tab-page flex min-h-0 flex-1 flex-col">
-          <TabScreen key="me">
-            <MePage me={me} goal={goal} progress={progress} friendsDot={friendsDot} onOpen={openMeRow} />
+          <TabScreen key="community" action={meButton}>
+            <CommunityScreen imperial={imperial} view={communityView} onView={setCommunityView} onChanged={onChange}
+              club={communityClub} onClub={setCommunityClub} />
           </TabScreen>
         </div>
       )}
+      {tab === 'races' && <div className="tab-page flex min-h-0 flex-1 flex-col">{racesTab()}</div>}
+      {tab === 'progress' && <div className="tab-page flex min-h-0 flex-1 flex-col">{progressTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
 
       {menu && (
@@ -950,6 +975,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onEdit={() => open('memory')} onBuild={startSetup} />
       )}
       {addPlan && <AddPlanLauncher onClose={() => setAddPlan(false)} onApplied={() => { setAddPlan(false); onChange(); void refreshThreads(); loadWeek() }} />}
+      {meOpen && <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onClose={() => setMeOpen(false)} />}
       {planScreen === 'setup' && (
         <SetupWizard me={{ ...me, goal }} onClose={() => setPlanScreen(null)}
           onDone={() => { onChange(); void refreshThreads(); loadWeek(); celebrate(null, 'plan') }}
@@ -986,7 +1012,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onCheckIn={(c) => { setReaction(null); setVoice(c) }} />
       )}
       {planScreen === 'gear' && <GearScreen imperial={imperial} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}
-      {planScreen === 'friends' && <FriendsScreen imperial={imperial} onClose={() => setPlanScreen(null)} onChanged={onChange} />}
       {planScreen === 'quests' && progress && (
         <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
       )}

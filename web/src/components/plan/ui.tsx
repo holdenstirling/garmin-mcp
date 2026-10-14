@@ -8,12 +8,14 @@ import { useDialog } from '@/hooks/useDialog'
 // Tab pages (components/nav): the first Screen rendered inside a TabScreen becomes the tab's
 // page (no close button, no slide, sits above the tab bar). Screens it opens on top (event
 // editor, race pack, a friend) stay full-screen overlays.
-type Embed = { claim: { owner: string | null }; title?: string; top?: React.ReactNode; lead?: React.ReactNode }
+type Embed = { claim: { owner: string | null }; title?: string; top?: React.ReactNode; lead?: React.ReactNode; action?: React.ReactNode }
 const EmbedCtx = createContext<Embed | null>(null)
 
-export function TabScreen({ title, top, lead, children }: {
+export function TabScreen({ title, top, lead, action, children }: {
   /** replaces the embedded screen's own title */
   title?: string
+  /** right of the title (the Me avatar) */
+  action?: React.ReactNode
   /** under the title, above the screen's own header extras (segmented control) */
   top?: React.ReactNode
   /** first thing in the scrolling body */
@@ -21,7 +23,7 @@ export function TabScreen({ title, top, lead, children }: {
   children: React.ReactNode
 }) {
   const claim = useRef<{ owner: string | null }>({ owner: null }).current
-  return <EmbedCtx.Provider value={{ claim, title, top, lead }}>{children}</EmbedCtx.Provider>
+  return <EmbedCtx.Provider value={{ claim, title, top, lead, action }}>{children}</EmbedCtx.Provider>
 }
 
 /** Full-screen page that slides up over the app (setup wizard, plan editor), or a tab page
@@ -52,9 +54,12 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
     <>
       <header className="shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         {embedded && !onBack ? (
-          <div className="mx-auto max-w-xl px-1">
-            <h1 className="truncate font-display text-[1.4118rem] leading-tight text-(--brand)">{name}</h1>
-            {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
+          <div className="mx-auto flex max-w-xl items-center gap-2 px-1">
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate font-display text-[1.4118rem] leading-tight text-(--brand)">{name}</h1>
+              {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
+            </div>
+            {embed.action}
           </div>
         ) : (
           <div className="flex items-center gap-2">

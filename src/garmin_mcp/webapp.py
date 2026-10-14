@@ -2810,6 +2810,57 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             imperial=lambda u: chat.agent.coach.athlete(u).get("units") == "imperial",
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json)
 
+    # ---------------------------------------------------------- community --
+    # Community (community.py + clubs.py, routes in community_web.py): a calm feed of what people
+    # choose to share (milestones are drafts until they tap Share), audiences friends / club /
+    # public / only me, reactions + one-level comments, photos; clubs with meetups (RSVP,
+    # reminder moments) and club challenges (challenges.py groups). Athletes only.
+    from . import clubs as _clubs, community as _cmm, community_web as _cmw
+    community_routes: list[BaseRoute] = []
+    if soc is not None and chat is not None and plans is not None and store is not None:
+        _ag = chat.agent
+        clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
+                           blocked=soc.blocked_between, race_groups=rp.groups_of if race_routes else None)
+        cm = _cmm.Community(store, social=soc, clubs=clb, now=_ag._now, moment=_ag.moments.post, name=_soc_name,
+                            quiet=lambda u: _ag.moments.quiet(_ag._now(u)),
+                            push=(lambda to, t, b: push.send(to, t, b, url="/app/?open=community")) if push else None)
+
+        def _cm_scan(uid: str, *, workouts: bool) -> None:
+            today = _ag._now(uid).date()
+            acts: list[dict[str, Any]] = []
+            if workouts:
+                _, acts = _ag.stats.activities(uid)
+                cm.scan_bests(uid, acts, today, imperial=_ag.coach.athlete(uid).get("units") == "imperial")
+            # The raw doc, not events.list: this runs inside an events write (list may write).
+            evs = list((store.user_doc(uid, "events").load().get("events") or {}).values())
+            cm.scan_events(uid, evs, today, acts)
+
+        def _cm_push(to: str, key: str, window: float, title: str, body: str) -> None:
+            if push is None or not push_allowed(key, 1, window):
+                return
+            try:
+                push.send(to, title, body[:140], url="/app/?open=community")
+            except Exception as e:  # best effort
+                log_event(logger, logging.WARNING, "community_push_failed", error=type(e).__name__)
+
+        def _cm_home(uid: str) -> dict[str, str]:
+            athlete = _ag.coach.athlete(uid)
+            loc = _geo.resolve(athlete.get("interests") or {}, athlete, _geo.load_saved(store, uid))
+            return {"city": str(loc.get("city") or ""), "state": str(loc.get("state") or "")}
+
+        _ag.moments.on_milestone = cm.from_moment
+        _ag.moments.after_workouts = lambda uid: _cm_scan(uid, workouts=True)
+        _ag.moments.on_tick = cm.meetup_reminders
+        _ag._store.on_user_write(lambda uid, name: _cm_scan(uid, workouts=False)
+                                 if name == "events" and soc.is_athlete(uid) else None)
+        community_routes = _cmw.make_routes(
+            cm=cm, clubs=clb, plan_api=_plan_api, person=_soc_person, first_name=_soc_name, push=_cm_push,
+            activities=lambda u: _ag.stats.activities(u), events=_ag.events.list,
+            shares_races=lambda u: soc.settings(u)["races"], today=lambda u: _ag._now(u).date(), now=_ag._now,
+            home=_cm_home, local_groups=_local_finder.cached, chal=chal, chal_error=_chal.ChallengeError,
+            photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
+            host_ok=host_ok, origin=settings.public_base_url)
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -2988,6 +3039,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
         Route("/app/s/{token}", share_page, methods=["GET"]),
         *race_routes,
+        *community_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),

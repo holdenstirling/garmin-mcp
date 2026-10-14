@@ -528,6 +528,21 @@ class RacePeople:
             members.append({"user_id": m, "event_id": meid, "date": mev.get("date"), "settings": self._settings_of(mr)})
         return {"group": r["group"], "members": members}
 
+    def groups_of(self, uid: str) -> list[dict[str, Any]]:
+        """Race groups ``uid`` is in (Community mirrors them): ``{id, members, name, date}``
+        from ``uid``'s own copy of the race; members still athletes."""
+        out = []
+        evs = self._events(uid)
+        for gid, g in ((self._doc.load().get("groups") or {}).items()):
+            mine = (g.get("members") or {}).get(uid)
+            ev = evs.get(mine) if mine else None
+            if ev is None:
+                continue
+            members = [m for m in g["members"] if m == uid or self._is_athlete(m)]
+            out.append({"id": gid, "members": members, "name": str(ev.get("name") or "Race")[:60],
+                        "date": ev.get("date"), "event_id": ev.get("id")})
+        return out
+
     def _group_for(self, uid: str, eid: Any) -> tuple[str, list[str]]:
         t = self.team(uid, eid)
         if t is None:
