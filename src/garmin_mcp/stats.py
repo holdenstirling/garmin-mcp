@@ -86,20 +86,35 @@ def _rows(acts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
-def _streaks(days: set[date], today: date) -> tuple[int, int, bool]:
-    """(current streak, best streak, trained today). Today not done yet doesn't break it."""
+def _streaks(days: set[date], today: date, rest: set[date] | frozenset[date] = frozenset()) -> dict[str, Any]:
+    """Day streak that rewards consistency without punishing recovery.
+
+    A day keeps the streak if you trained, if your plan scheduled rest, or (once per
+    Monday-start week) as a free rest day. Only trained days add to the count. Today not
+    done yet never breaks it.
+    """
     best = run = 0
-    prev: date | None = None
-    for d in sorted(days):
-        run = run + 1 if prev is not None and (d - prev).days == 1 else 1
-        best = max(best, run)
-        prev = d
-    cur = 0
-    d = today if today in days else today - timedelta(days=1)
-    while d in days:
-        cur += 1
-        d -= timedelta(days=1)
-    return cur, best, today in days
+    graced: set[date] = set()
+    cur_week_grace = False
+    if days:
+        d = min(days)
+        while d <= today:
+            week = d - timedelta(days=d.weekday())
+            if d in days:
+                run += 1
+            elif d in rest or d == today:
+                pass
+            elif week not in graced:
+                graced.add(week)
+            else:
+                run = 0
+            best = max(best, run)
+            d += timedelta(days=1)
+        cur_week_grace = (today - timedelta(days=today.weekday())) in graced
+    done = today in days
+    return {"current": run, "best": best, "today_done": done,
+            "grace_left": not cur_week_grace,
+            "at_risk": run > 0 and not done and today not in rest and cur_week_grace}
 
 
 def _week_streaks(rows: list[dict[str, Any]], today: date) -> tuple[int, int]:
@@ -173,7 +188,8 @@ def compute(acts: list[dict[str, Any]], today: date, *, imperial: bool = False,
     monday = today - timedelta(days=today.weekday())
     month1 = today.replace(day=1)
     days = {r["date"] for r in rows}
-    cur, best, today_done = _streaks(days, today)
+    st = _streaks(days, today, plan_rest_days(plan, today))
+    cur, best, today_done = st["current"], st["best"], st["today_done"]
     wcur, wbest = _week_streaks(rows, today)
 
     # Weekly volume, last 12 weeks, by sport (oldest first).
@@ -247,25 +263,28 @@ def compute(acts: list[dict[str, Any]], today: date, *, imperial: bool = False,
     return {
         "today": today.isoformat(), "units": "imperial" if imperial else "metric",
         "streak": {"current": cur, "best": best, "today_done": today_done,
+                   "grace_left": st["grace_left"], "at_risk": st["at_risk"],
                    "weeks_current": wcur, "weeks_best": wbest, "active_week": ACTIVE_WEEK},
         "totals": totals, "weekly": weekly, "calendar": calendar, "by_sport": by_sport,
         "bests": bests, "badges": badges, "plan": adh,
         "recent": [{"date": r["date"].isoformat(), "name": r["name"], "sport": r["sport"],
                     "minutes": round(r["min"]), "km": round(r["km"], 1), "id": r["id"]}
                    for r in sorted(rows, key=lambda x: x["date"], reverse=True)[:8]],
-        "headline": headline(cur, today_done, best, totals["week"], adh, wcur),
+        "headline": headline(cur, today_done, best, totals["week"], adh, wcur, at_risk=st["at_risk"]),
     }
 
 
 def headline(cur: int, today_done: bool, best: int, week: dict[str, Any],
-             adh: dict[str, Any] | None, wcur: int) -> str:
+             adh: dict[str, Any] | None, wcur: int, *, at_risk: bool = False) -> str:
     """One encouraging, honest line for the top of the screen."""
     pw = (adh or {}).get("week")
     if cur >= 2 and today_done:
         return f"{cur} days in a row. That's how fitness gets built." if cur < best or best < 7 \
             else f"{cur} days in a row: your best streak yet."
+    if cur >= 1 and at_risk:
+        return f"{cur}-day streak on the line. You've used this week's free rest day, so a short session today keeps it going."
     if cur >= 1 and not today_done:
-        return f"{cur}-day streak on the line. A short session today keeps it going."
+        return f"{cur}-day streak. Train today to add to it; a rest day won't break it."
     if pw and pw["planned"]:
         left = pw["planned"] - pw["done"]
         return (f"{pw['done']} of {pw['planned']} planned sessions done this week."
@@ -277,6 +296,24 @@ def headline(cur: int, today_done: bool, best: int, week: dict[str, Any],
     return "Every streak starts with one workout. Today's a good day for it."
 
 
+def plan_rest_days(plan: dict[str, Any] | None, today: date) -> set[date]:
+    """Days the plan scheduled no training (they keep the streak alive)."""
+    out: set[date] = set()
+    for w in (plan or {}).get("weeks") or []:
+        try:
+            start = date.fromisoformat(w["start"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        for i in range(7):
+            d = start + timedelta(days=i)
+            if d > today:
+                break
+            ss = (w.get("days") or {}).get(d.isoformat()) or []
+            if not any(s.get("sport") != "rest" for s in ss):
+                out.add(d)
+    return out
+
+
 class StatsService:
     def __init__(self, service: "GarminService", *, now: Callable[[str], datetime],
                  athlete: Callable[[str], dict[str, Any]],
@@ -286,7 +323,7 @@ class StatsService:
         self._athlete = athlete
         self._plan = plan
         self._clock = clock
-        self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
+        self._cache: dict[str, tuple[float, date, dict[str, Any]]] = {}
         self._acts: dict[str, tuple[float, date, list[dict[str, Any]]]] = {}
 
     def activities(self, user_id: str, *, fresh: bool = False) -> tuple[date, list[dict[str, Any]]]:
@@ -301,14 +338,18 @@ class StatsService:
 
     def get(self, user_id: str, *, fresh: bool = False) -> dict[str, Any]:
         hit = self._cache.get(user_id)
-        if hit and not fresh and self._clock() - hit[0] < CACHE_S:
-            return hit[1]
+        if hit and not fresh and self._clock() - hit[0] < CACHE_S and hit[1] == self._now(user_id).date():
+            return hit[2]
         today, acts = self.activities(user_id, fresh=fresh)
         a = self._athlete(user_id)
         out = compute(acts, today, imperial=a.get("units") == "imperial", plan=self._plan(user_id),
                       favorites=a.get("favorite_sports"))
-        self._cache[user_id] = (self._clock(), out)
+        self._cache[user_id] = (self._clock(), today, out)
         return out
+
+    def invalidate(self, user_id: str) -> None:
+        """Drop cached stats (after a plan edit) so adherence is current."""
+        self._cache.pop(user_id, None)
 
     def load(self, user_id: str) -> dict[str, Any]:
         from .load import compute as load_compute
@@ -317,4 +358,4 @@ class StatsService:
         return load_compute(acts, today, threshold_hr=a.get("threshold_hr"), plan=self._plan(user_id))
 
 
-__all__ = ["StatsService", "compute", "adherence", "headline", "BADGES"]
+__all__ = ["StatsService", "compute", "adherence", "headline", "plan_rest_days", "BADGES"]

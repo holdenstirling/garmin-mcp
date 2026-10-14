@@ -1,26 +1,35 @@
-// Your progress: streaks, this week vs plan, totals, weekly volume, a training calendar,
-// sports, bests and badges. Sport-agnostic: everything Garmin records counts.
+// Your progress, focused: level and streak, recovery, fitness and form, this week's plan,
+// the training trend and the next badges. Everything else sits under "More stats".
+// Sport-agnostic: everything Garmin records counts.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Award, CalendarCheck, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
+import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
 import { LoadCard } from './LoadChart'
+import { ProgressHero } from '@/components/progress/Progress'
+import { getProgress, type Progress } from '@/lib/progress'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
 
 type Period = 'week' | 'month' | 'year'
 
 export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void; onOpenPlan?: () => void; oura?: boolean }) {
   const [s, setS] = useState<Stats | null>(null)
+  const [p, setP] = useState<Progress | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [loadKey, setLoadKey] = useState(0)
 
   const load = useCallback((fresh = false) => {
     setBusy(true)
-    getStats(fresh).then((r) => { setS(r); setError(null) }, (e) => setError((e as Error).message)).finally(() => setBusy(false))
+    getStats(fresh).then((r) => {
+      setS(r); setError(null)
+      getProgress().then(setP, () => {})
+    }, (e) => setError((e as Error).message)).finally(() => setBusy(false))
+    if (fresh) setLoadKey((k) => k + 1)
   }, [])
   useEffect(() => load(), [load])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -40,28 +49,38 @@ export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void
           <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
         </div>
       )}
-      {error && !s && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
-      {s && oura && <Recovery />}
-      {s && <StatsBody s={s} onOpenPlan={onOpenPlan} loadBase="/api" />}
+      {error && <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">{error}</p>}
+      {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
+        recovery={oura ? <Recovery /> : null} />}
     </Screen>
   )
 }
 
-/** All the stats sections (also used in the coach's view of an athlete). */
-export function StatsBody({ s, onOpenPlan, loadBase }: { s: Stats; onOpenPlan?: () => void; loadBase?: string }) {
+/** The stats sections, most important first (also used in the coach's view of an athlete). */
+export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery }: {
+  s: Stats; progress?: Progress | null; onOpenPlan?: () => void; loadBase?: string; loadKey?: number; recovery?: React.ReactNode
+}) {
   const [period, setPeriod] = useState<Period>('week')
+  const [more, setMore] = useState(false)
   return (
     <>
-      <StreakHero s={s} />
+      {progress ? <ProgressHero p={progress} headline={s.headline} /> : <StreakHero s={s} />}
+      {recovery}
+      {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
       {s.plan?.week && s.plan.week.planned > 0 && <PlanProgress s={s} onOpenPlan={onOpenPlan} />}
-      <TotalsCard s={s} period={period} setPeriod={setPeriod} />
-      {loadBase && <LoadCard base={loadBase} />}
       <WeeklyBars s={s} />
-      <CalendarHeat s={s} />
-      {s.by_sport.length > 0 && <SportsCard s={s} />}
-      {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
       <BadgesCard s={s} />
-      {s.recent.length > 0 && <RecentCard s={s} />}
+      <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
+        className="flex items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+        {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} />
+      </button>
+      {more && <>
+        <TotalsCard s={s} period={period} setPeriod={setPeriod} />
+        <CalendarHeat s={s} />
+        {s.by_sport.length > 0 && <SportsCard s={s} />}
+        {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
+        {s.recent.length > 0 && <RecentCard s={s} />}
+      </>}
     </>
   )
 }
@@ -303,13 +322,19 @@ function BestsCard({ s }: { s: Stats }) {
 }
 
 function BadgesCard({ s }: { s: Stats }) {
+  const [all, setAll] = useState(false)
   const earned = s.badges.filter((b) => b.earned)
   const next = s.badges.filter((b) => !b.earned).sort((a, b) => b.progress - a.progress)
+  const shown = all ? [...next, ...earned] : next.slice(0, 3)
   return (
     <section className="flex flex-col gap-2">
-      <SectionLabel>Badges · {earned.length} of {s.badges.length}</SectionLabel>
+      <div className="flex items-center justify-between">
+        <SectionLabel>{all ? 'All badges' : 'Next badges'} · {earned.length} of {s.badges.length} earned</SectionLabel>
+        <button type="button" onClick={() => setAll((a) => !a)} className="text-[0.6471rem] font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
+      </div>
+      {shown.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Every badge earned. Legendary.</p>}
       <div className="grid grid-cols-3 gap-2">
-        {[...earned, ...next].map((b) => (
+        {shown.map((b) => (
           <div key={b.id} title={b.description}
             className={cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
               b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
@@ -319,9 +344,12 @@ function BadgesCard({ s }: { s: Stats }) {
             <span className={cn('text-[0.7059rem] font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
             <span className="text-[0.5882rem] leading-tight text-(--text-muted)">{b.description}</span>
             {!b.earned && (
-              <span className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
-                <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.round(b.progress * 100)}%` }} />
-              </span>
+              <>
+                <span className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
+                  <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.round(b.progress * 100)}%` }} />
+                </span>
+                <span className="text-[0.5294rem] text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
+              </>
             )}
           </div>
         ))}
@@ -367,7 +395,7 @@ function Recovery() {
     if (v == null || base == null) return null
     const d = Math.round((v - base) * 10) / 10
     const good = higherIsBetter ? d >= 0 : d <= 0
-    return <span className={good ? 'text-(--accent)' : 'text-(--warning)'}>{d >= 0 ? '+' : ''}{d}{unit} vs usual</span>
+    return <span className={good ? 'text-(--accent)' : 'text-(--warning)'}>{d >= 0 ? '+' : ''}{d}{unit}</span>
   }
   const tiles: [string, string, React.ReactNode][] = [
     ['Readiness', last.readiness != null ? String(last.readiness) : '–', delta(last.readiness, b?.readiness, '', true)],
@@ -375,28 +403,19 @@ function Recovery() {
     ['Resting HR', last.resting_hr != null ? `${last.resting_hr} bpm` : '–', delta(last.resting_hr, b?.resting_hr, ' bpm', false)],
     ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–', delta(last.sleep_hours, b?.sleep_hours, ' h', true)],
   ]
-  const days = r.days.slice(-14)
   return (
     <section className="flex flex-col gap-2">
       <SectionLabel>Recovery · Oura · {new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</SectionLabel>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {tiles.map(([label, v, d]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-            <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
-            <span className="mt-1 block font-display text-[1.3rem] leading-tight text-(--text)">{v}</span>
-            {d && <span className="text-[0.6471rem]">{d}</span>}
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
+            <span className="block text-[0.5882rem] text-(--text-muted)">{label}</span>
+            <span className="mt-0.5 block font-display text-[1.05rem] leading-tight text-(--text)">{v}</span>
+            {d && <span className="block text-[0.5294rem] leading-tight">{d}</span>}
           </div>
         ))}
       </div>
-      <Card className="p-4">
-        <div className="flex h-16 items-end gap-1" aria-label="Readiness, last 14 days">
-          {days.map((x) => (
-            <span key={x.date} title={`${x.date}: ${x.readiness ?? '–'}`} className="flex-1 rounded-t-[3px]"
-              style={{ height: `${Math.max(8, (x.readiness ?? 0))}%`, background: (x.readiness ?? 0) >= 85 ? 'var(--accent)' : (x.readiness ?? 0) >= 70 ? 'color-mix(in srgb, var(--accent) 55%, var(--bg-elevated))' : 'var(--warning)' }} />
-          ))}
-        </div>
-        <p className="mt-2 text-[0.6471rem] text-(--text-muted)">Readiness, last 14 days. Shown here only; Oura data isn't sent to the AI coach.</p>
-      </Card>
+      <p className="px-1 text-[0.5882rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data isn't sent to the AI coach.</p>
     </section>
   )
 }

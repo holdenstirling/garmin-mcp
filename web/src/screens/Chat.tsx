@@ -12,6 +12,8 @@ import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { EventsScreen } from '@/components/events/EventsScreen'
 import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
+import { Celebration, HomeProgress, SetupScreen } from '@/components/progress/Progress'
+import { getProgress, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
 import { CoachesScreen } from '@/components/coach/CoachesScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
@@ -81,7 +83,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -203,6 +205,22 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }, [builtPlan, planScreen])
   const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
   const startSetup = () => showScreen('setup')
+  // Gamification: level, streak, this week and setup quests, refreshed whenever home is in view.
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const homeInView = !planScreen && !sheet
+  useEffect(() => {
+    if (!homeInView) return
+    let live = true
+    getProgress().then((p) => { if (live) setProgress(p) }, () => {})
+    return () => { live = false }
+  }, [homeInView, me])
+  const doQuest = (q: QuestId) => {
+    if (q === 'garmin' || q === 'notify' || q === 'calendar' || q === 'oura') { setPlanScreen(null); open('settings'); return }
+    if (q === 'sports') { showScreen('profile'); return }
+    if (q === 'coach') { showScreen('coaches'); return }
+    if (q === 'sync') { showScreen(builtPlan ? 'planner' : 'setup'); return }
+    showScreen('setup')
+  }
   const openPlan = () => (builtPlan ? setPlanScreen('planner') : open('plan'))
   // "Message coach" from a session in the plan: open (or create) that workout's thread.
   const messageCoach = async (s: { id: string }) => {
@@ -497,6 +515,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <HomeButton icon={User} onClick={() => showScreen('profile')}>Profile</HomeButton>
         </nav>
       )}
+      {isCoach && progress && (
+        <HomeProgress p={progress} onOpenStats={() => showScreen('stats')} onOpenSetup={() => showScreen('quests')} />
+      )}
 
       {pending ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
@@ -691,6 +712,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'stats' && (
         <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
       )}
+      {planScreen === 'quests' && progress && (
+        <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
+      )}
+      {progress && homeInView && isCoach && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
       {planScreen === 'profile' && (
         <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
           onSaved={onChange} onRebuild={() => setPlanScreen('setup')} />

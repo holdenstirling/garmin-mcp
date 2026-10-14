@@ -41,6 +41,7 @@ from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
+from .progress import Progress
 from .stats import StatsService
 from .events import DEBRIEF_SYSTEM, DEBRIEF_TOOL, TYPE_SPORT, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
@@ -365,6 +366,7 @@ class Agent:
                                  events=self.events)
         self.stats = StatsService(service, now=self._now, athlete=self.coach.athlete,
                                   plan=self.plans.get, clock=clock)
+        self.progress = Progress(store, clock=clock)
 
     async def debrief(self, user_id: str, event_id: str, *, result: str | None = None,
                       feel: int | None = None, notes: str | None = None) -> dict[str, Any]:

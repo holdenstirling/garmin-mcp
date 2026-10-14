@@ -33,7 +33,7 @@ def test_streaks_and_totals() -> None:
     acts.append(act(TODAY - timedelta(days=3), sport="cycling", minutes=200, km=80, climb=900, hour=14, aid=9))
     s = compute(acts, TODAY)
     assert s["streak"]["current"] == 5 and s["streak"]["best"] == 10 and not s["streak"]["today_done"]
-    assert "streak on the line" in s["headline"]
+    assert "rest day won't break it" in s["headline"] and not s["streak"]["at_risk"]
     assert s["totals"]["week"]["workouts"] == 2  # Mon + Tue of this week
     assert s["totals"]["year"]["workouts"] == 16
     assert s["bests"]["longest_ride_km"]["value"] == 80

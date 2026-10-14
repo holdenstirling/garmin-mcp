@@ -41,6 +41,8 @@ from . import racepack
 from .share import Shares
 from .share import render as render_share
 from .planbuilder import iter_sessions
+from .progress import quests_view, week_goal
+from .stats import compute as stats_compute
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
 from .webauth import WebAuth
@@ -848,6 +850,54 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         fresh = request.query_params.get("fresh") == "1"
         return JSONResponse(await _plan_call(lambda: chat.agent.stats.get(user_id, fresh=fresh)))
 
+    def _quest_state(user_id: str) -> tuple[dict[str, bool], dict[str, bool]]:
+        assert chat is not None
+        try:
+            garmin = token_store.load(user_id) is not None
+        except TokenStoreError:
+            garmin = False
+        a = chat.agent.coach.athlete(user_id)
+        plan = plans.get(user_id) if plans is not None else None
+        synced = bool(plan) and any(x.get("garmin") for _, _, x in iter_sessions(plan))
+        has_goal = chat.agent.coach.active_goal(user_id) is not None or bool(chat.agent.events.list(user_id))
+        state = {
+            "garmin": garmin, "sports": bool(a.get("favorite_sports")), "goal": has_goal,
+            "plan": plan is not None, "sync": synced,
+            "notify": bool(push and push.count(user_id)),
+            "calendar": bool(auth.calendar and auth.calendar.connected(user_id)),
+            "oura": bool(auth.oura and auth.oura.connected(user_id)),
+            "coach": bool(auth.coach_links.coaches_of(user_id)),
+        }
+        available = {"notify": push is not None, "calendar": auth.calendar is not None, "oura": auth.oura is not None}
+        return state, available
+
+    async def progress_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        agent = chat.agent
+        state, available = _quest_state(user_id)
+        try:
+            stats = await _plan_call(lambda: agent.stats.get(user_id))
+            _, acts = await _plan_call(lambda: agent.stats.activities(user_id))
+            stats_ok = True
+        except Exception:  # Garmin not connected or unreachable: quests still work
+            today = agent._now(user_id).date()
+            stats, acts, stats_ok = stats_compute([], today), [], False
+        goal = agent.coach.active_goal(user_id)
+        today = date.fromisoformat(stats["today"])
+        out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
+            user_id, acts=acts, today=today, stats=stats,
+            plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state))
+        quests = quests_view(state, available)
+        core = [q for q in quests if not q["optional"]]
+        return JSONResponse({**out, "quests": quests,
+                             "setup": {"done": sum(q["done"] for q in core), "total": len(core)},
+                             "week": week_goal(stats), "streak": stats["streak"], "stats_ok": stats_ok})
+
+    async def progress_seen(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        await anyio.to_thread.run_sync(lambda: chat.agent.progress.seen(user_id))
+        return JSONResponse({"ok": True})
+
     # ------------------------------------------------------------- coaches --
     links = auth.coach_links
 
@@ -1360,6 +1410,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
+        Route("/app/api/progress", _plan_api(progress_get, mutating=False), methods=["GET"]),
+        Route("/app/api/progress/seen", _plan_api(progress_seen, mutating=True), methods=["POST"]),
         Route("/app/api/load", _plan_api(load_get, mutating=False), methods=["GET"]),
         Route("/app/api/coach/athletes/{athlete_id}/load", _plan_api(coach_athlete_load, mutating=False),
               methods=["GET"]),
