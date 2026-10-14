@@ -1,10 +1,14 @@
 // Gamification UI: level + XP, the home progress strip, setup quests and celebrations.
-import { useEffect, useState } from 'react'
-import { Award, Check, ChevronRight, Flame, ListChecks, Sparkles, Star, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Award, Check, ChevronRight, ListChecks, Sparkles, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { RabbitLogo } from '@/components/RabbitLogo'
+import { HopPrints } from '@/components/fx/HopPrints'
+import { StreakFlame } from '@/components/fx/StreakFlame'
+import { celebrate } from '@/components/fx/motion'
 import { markProgressSeen, nextQuest, type Progress, type Quest, type QuestId } from '@/lib/progress'
 
 /** Round level badge. */
@@ -21,9 +25,12 @@ export function LevelBadge({ level, size = 'md' }: { level: number; size?: 'sm' 
 export function XpBar({ p, className }: { p: Progress; className?: string }) {
   const pct = Math.max(2, Math.min(100, Math.round((100 * p.level_xp) / Math.max(1, p.level_span))))
   return (
-    <span className={cn('block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)', className)}
-      role="progressbar" aria-valuemin={0} aria-valuemax={p.level_span} aria-valuenow={p.level_xp} aria-label="XP to next level">
-      <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${pct}%` }} />
+    <span className={cn('fx-bar w-full', className)}>
+      <span className="block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)"
+        role="progressbar" aria-valuemin={0} aria-valuemax={p.level_span} aria-valuenow={p.level_xp} aria-label="XP to next level">
+        <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${pct}%` }} />
+      </span>
+      <HopPrints pct={pct} value={p.xp} storeKey="xp" />
     </span>
   )
 }
@@ -63,7 +70,7 @@ export function HomeProgress({ p, onOpenStats, onOpenSetup }: { p: Progress; onO
         <span className={cn('flex shrink-0 items-center gap-0.5 text-[0.8235rem] font-semibold',
           p.streak.at_risk ? 'text-(--warning-text)' : p.streak.current ? 'text-(--accent)' : 'text-(--text-muted)')}
           aria-label={`${p.streak.current} day streak${p.streak.at_risk ? ', at risk today' : ''}`}>
-          <Flame className="size-4" />{p.streak.current}
+          <StreakFlame streak={p.streak.current} atRisk={p.streak.at_risk} className="size-4" />{p.streak.current}
         </span>
         <WeekRing done={p.week.done} target={p.week.target} size={34} />
       </button>
@@ -118,7 +125,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
         <div className="relative flex items-center gap-2.5 rounded-xl bg-(--bg-inset) py-2.5 pl-3 pr-8">
           <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
             s.at_risk ? 'bg-(--warning) text-white' : s.current ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-muted)')}>
-            <Flame className="size-5" />
+            <StreakFlame streak={s.current} atRisk={s.at_risk} className="size-5" />
           </span>
           <span className="min-w-0">
             <span className="flex items-baseline gap-1">
@@ -161,8 +168,11 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
           <span className="font-medium text-(--text)">{pct === 100 ? 'All set. Nice work!' : 'Your setup'}</span>
           <span className="text-(--text-muted)">{pct}%</span>
         </div>
-        <span className="block h-2 overflow-hidden rounded-full bg-(--bg-elevated)">
-          <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${Math.max(3, pct)}%` }} />
+        <span className="fx-bar">
+          <span className="block h-2 overflow-hidden rounded-full bg-(--bg-elevated)">
+            <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${Math.max(3, pct)}%` }} />
+          </span>
+          <HopPrints pct={pct} value={p.setup.done} storeKey="setup" />
         </span>
       </div>
       <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
@@ -204,6 +214,13 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
     void markProgressSeen().catch(() => {}).finally(onDone)
   }
   const active = shown && (p.level_up || p.new_badges.length > 0)
+  // A carrot burst from the card as it pops in (once per Celebration: Chat keys it by XP).
+  const card = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!active) return
+    const t = window.setTimeout(() => celebrate(card.current, p.level_up ? 'level' : 'badge'), 180)
+    return () => window.clearTimeout(t)
+  }, [active]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!active) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setShown(false); void markProgressSeen().catch(() => {}).finally(onDone) } }
@@ -213,10 +230,11 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
   if (!active) return null
   return (
     <div className="modal-overlay" onClick={finish}>
-      <div role="dialog" aria-modal="true" aria-label="Achievement"
+      <div ref={card} role="dialog" aria-modal="true" aria-label="Achievement"
         className="celebrate relative mx-auto mt-[20vh] flex w-[min(92vw,360px)] flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center shadow-xl"
         onClick={(e) => e.stopPropagation()}>
         <button type="button" className="hit-44 absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-4" /></button>
+        <span className="fx-leap-lane" aria-hidden="true"><span className="fx-leap"><RabbitLogo size={34} /></span></span>
         {p.level_up ? (
           <>
             <span className="flex items-center gap-1 text-(--accent)"><Sparkles className="size-4" /><Star className="size-5" /><Sparkles className="size-4" /></span>
@@ -229,9 +247,10 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
         )}
         {p.new_badges.length > 0 && (
           <div className="flex w-full flex-col gap-2">
-            {p.new_badges.slice(0, 4).map((b) => (
+            {p.new_badges.slice(0, 4).map((b, i) => (
               <div key={b.id} className="flex items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3 py-2 text-left">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"><Award className="size-4" /></span>
+                <span className="fx-medal flex size-8 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"
+                  style={{ animationDelay: `${250 + i * 120}ms` }}><Award className="size-4" /></span>
                 <span className="min-w-0">
                   <span className="block text-[0.8235rem] font-medium text-(--accent)">{b.title}</span>
                   <span className="block text-[0.6471rem] text-(--text-muted)">{b.description} · +100 XP</span>

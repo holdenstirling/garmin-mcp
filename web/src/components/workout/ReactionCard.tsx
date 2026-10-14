@@ -1,7 +1,7 @@
 // Post-workout reaction (server: workoutday.py): shown once after live sync finds a new
 // workout. Verdict badge and planned vs actual first, then XP and streak, PR ribbon, gear mileage, a
 // "How did it feel?" check-in and tomorrow's session. Deterministic, no AI.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Award, Check, ChevronRight, Flame, Footprints, Moon, Shuffle, Sparkles, Target, X } from 'lucide-react'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { fmtDay } from '@/components/plan/PlanParts'
 import { fmtDuration, fmtMeters } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { celebrate } from '@/components/fx/motion'
 import { fmtDist, getReaction, type CheckInRequest, type Reaction, type Verdict } from '@/lib/workout'
 
 const LOADING = ['Studying your splits…', 'Comparing to plan…', 'Counting your XP…']
@@ -89,6 +90,13 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
   const a = r.activity
   const p = r.planned
   const best = r.bests[0]
+  // "Nailed it": a carrot burst from the verdict badge as the card pops in (once per card).
+  const badge = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (r.verdict !== 'nailed') return
+    const t = window.setTimeout(() => celebrate(badge.current, 'xp'), 250)
+    return () => window.clearTimeout(t)
+  }, [r.verdict])
   return (
     <>
       <div className="celebrate relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface) px-4 pb-4 pt-5 text-center">
@@ -96,7 +104,7 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
           <span className="absolute right-[-34px] top-[14px] rotate-45 bg-(--brand) px-10 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-widest text-white"
             aria-hidden="true">PR</span>
         )}
-        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.9412rem] font-semibold', b.cls)}>
+        <span ref={badge} className={cn('inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.9412rem] font-semibold', b.cls)}>
           <BIcon className="size-4" strokeWidth={3} /> {b.label}
         </span>
         <p className="max-w-sm text-[0.8824rem] leading-snug text-(--text)">{r.line}</p>
@@ -127,7 +135,8 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
 
       <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3 text-center">
         <div className="flex items-center gap-4">
-          <span className="font-display text-[1.6rem] leading-none text-(--accent)" aria-label={`${r.xp.total} XP earned`}>+{xp} XP</span>
+          <span className={cn('font-display text-[1.6rem] leading-none text-(--accent)', r.xp.total > 0 && xp === r.xp.total && 'fx-hop')}
+            aria-label={`${r.xp.total} XP earned`}>+{xp} XP</span>
           {r.streak.current > 0 && (
             <span className="flex items-center gap-1 text-[0.9412rem] font-semibold text-(--accent)" aria-label={`${r.streak.current} day streak`}>
               <Flame className="size-4" />{r.streak.current}-day streak

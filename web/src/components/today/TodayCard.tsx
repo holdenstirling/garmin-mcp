@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { Today, TodayActionKind, TodayTone } from '@/lib/live'
 import type { WeekDay } from '@/lib/api'
 import { WeekDots } from '@/components/week/WeekStrip'
+import { TodayFx, fxTone, useTodayFx } from '@/components/fx/TodayFx'
 
 const KEY = 'rabbit.today.seen'
 
@@ -49,11 +50,15 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
     try { window.localStorage.setItem(KEY, today.date) } catch { /* storage unavailable: open each time */ }
   }, [today.date])
   const toggle = () => setCollapsed((c) => !c)
+  // First view of the day: a tone flourish (go: sprint, easy: sway, rest: nap). components/fx
+  const fx = fxTone(today.tone)
+  const play = useTodayFx(today.date) && !!fx
   return (
-    <section aria-label="Today" className={cn('coach-pins mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface)', t.border)}>
+    <section aria-label="Today" className={cn('coach-pins relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface)', t.border)}>
+      {play && fx && <TodayFx tone={fx} />}
       <button type="button" onClick={toggle} aria-expanded={!collapsed}
         className="flex w-full items-center gap-2.5 px-3 pt-2.5 text-left" style={{ paddingBottom: collapsed ? 10 : 0 }}>
-        <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-white', t.bg)}>
+        <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-white', t.bg, play && fx === 'easy' && 'fx-sway')}>
           <Icon className="size-4" />
         </span>
         <span className="min-w-0 flex-1">

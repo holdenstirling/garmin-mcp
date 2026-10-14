@@ -15,6 +15,9 @@ import {
   targetLine, type ChallengePeriod, type ChallengesView, type Joined, type Suggestion,
 } from '@/lib/challenges'
 import { getPeople, type PersonEdge } from '@/lib/social'
+import { HopPrints } from '@/components/fx/HopPrints'
+import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { celebrate } from '@/components/fx/motion'
 
 const SEEN_KEY = 'rabbit.challenges.celebrated'
 const KIND_LABEL: Record<Suggestion['kind'], string> = { easy: 'Easy', stretch: 'Stretch', fun: 'Fun' }
@@ -43,6 +46,13 @@ export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
     }, (e) => setError((e as Error).message))
   }, [])
   useEffect(() => load(), [load])
+  useEffect(() => {
+    if (!party) return
+    // Carrot burst from the finished challenge's row (components/fx).
+    const el = document.querySelector(`[data-challenge="${CSS.escape(party)}"]`)
+    const b = window.setTimeout(() => celebrate(el, 'challenge'), 150)
+    return () => window.clearTimeout(b)
+  }, [party])
   useEffect(() => {
     if (!party) return
     const t = window.setTimeout(() => setParty(null), 2600)
@@ -100,8 +110,10 @@ export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
       )}
       {(canAdd('week') || canAdd('month')) && (
         <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
-          className="hit-44 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) py-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          {weekly.length === 0 ? <><Target className="size-4" /> Pick this week's challenge</> : <><Plus className="size-4" /> Add a challenge</>}
+          className={cn('hit-44 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) py-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)',
+            v.joined.length === 0 && v.invites.length === 0 && 'flex-col pt-4')}>
+          {v.joined.length === 0 && v.invites.length === 0 && <PeekingRabbit size={56} />}
+          <span className="inline-flex items-center gap-1.5">{weekly.length === 0 ? <><Target className="size-4" /> Pick this week's challenge</> : <><Plus className="size-4" /> Add a challenge</>}</span>
         </button>
       )}
       {v.recent.length > 0 && v.joined.length === 0 && (
@@ -135,7 +147,7 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
 }) {
   const board = c.leaderboard && c.leaderboard.length > 1 ? c.leaderboard : null
   return (
-    <div className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
+    <div data-challenge={c.id} className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
       {party && <Confetti />}
       <div className="flex items-start gap-3">
         <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
@@ -150,10 +162,13 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
           {c.done ? `+${c.xp} XP` : `${c.pct}%`}
         </span>
       </div>
-      <span className="block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
-        aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.pct} aria-label={`${c.name} progress`}>
-        <span className={cn('block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none', c.done ? 'bg-(--brand)' : 'bg-(--accent)')}
-          style={{ width: `${Math.max(2, c.pct)}%` }} />
+      <span className="fx-bar">
+        <span className="block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
+          aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.pct} aria-label={`${c.name} progress`}>
+          <span className={cn('block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none', c.done ? 'bg-(--brand)' : 'bg-(--accent)')}
+            style={{ width: `${Math.max(2, c.pct)}%` }} />
+        </span>
+        <HopPrints pct={c.pct} storeKey={`challenge.${c.id}`} />
       </span>
       <div className="flex items-center gap-2 text-[0.7059rem] text-(--text-muted)">
         <span className="min-w-0 flex-1">{c.done ? 'Done. Nice work.' : `${progressLine(c, imperial)} · ${daysLeft(c.days_left)}`}</span>

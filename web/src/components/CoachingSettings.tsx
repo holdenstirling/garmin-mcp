@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarCheck, Clock, FlaskConical, Sunrise, Watch } from 'lucide-react'
+import { CalendarCheck, Clock, FlaskConical, Sparkles, Sunrise, Watch } from 'lucide-react'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { postJSON, putSettings, type CoachSettings, type Me } from '@/lib/api'
+import { MotionLab } from '@/components/fx/MotionLab'
 
 export function CoachingSettings({ me, onChange, onDevDone }: {
   me: Me; onChange: () => void; onDevDone: () => void
@@ -9,6 +10,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
   const [s, setS] = useState<CoachSettings>(me.settings)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [lab, setLab] = useState(false)
 
   const sRef = useRef(s)
   sRef.current = s
@@ -95,6 +97,9 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
             <Row icon={<Icon tone="muted"><FlaskConical /></Icon>} title="Send brief now" disabled={busy}
               onClick={() => void dev('brief_now', 'Morning brief')} />
           )}
+          <Row icon={<Icon tone="muted"><Sparkles /></Icon>} title="Motion lab" subtitle={lab ? 'Tap to close' : 'Try each animation'}
+            onClick={() => setLab((v) => !v)} />
+          {lab && <MotionLab />}
         </Group>
       )}
       {msg && <p className="-mt-4 break-words px-4 text-[0.7647rem] text-(--text-muted)">{msg}</p>}

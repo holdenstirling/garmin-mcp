@@ -19,6 +19,7 @@ import { MainRaceGrade } from '@/components/events/Readiness'
 import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 import { ChallengesCard } from '@/components/challenges/ChallengesCard'
 import { InsightsCard } from '@/components/insights/InsightsCard'
+import { PullToRefresh } from '@/components/fx/PullToRefresh'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -62,6 +63,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
             <RefreshCw className={cn('size-3', busy && 'animate-spin')} /> Refresh
           </button>
         </div>) : undefined}>
+      <PullToRefresh onRefresh={() => { if (!busy) load(true) }} />
       {!s && !error && (
         <div className="flex flex-col gap-3">
           <RabbitLoader className="py-8" label="Loading your progress" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />

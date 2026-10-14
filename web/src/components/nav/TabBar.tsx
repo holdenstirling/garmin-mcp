@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { CalendarRange, CircleUser, Flag, Rabbit, TrendingUp } from 'lucide-react'
 import { getBadge } from '@/lib/social'
+import { RabbitLogo } from '@/components/RabbitLogo'
+import { REPLY_DONE_EVENT } from '@/components/fx/motion'
 
 export type TabId = 'rabbit' | 'plan' | 'progress' | 'races' | 'me'
 
@@ -32,14 +34,35 @@ export function TabBar({ tab, onSelect, dots }: {
   onSelect: (t: TabId) => void
   dots?: Partial<Record<TabId, string | false | null | undefined>>
 }) {
+  // Motion (styles/fx.css): the tapped tab's icon hops once (not on first paint); the Rabbit
+  // tab shows the rabbit mark wiggling when Rabbit finished a reply while you were elsewhere.
+  const [hop, setHop] = useState<{ id: TabId; n: number } | null>(null)
+  const [wiggle, setWiggle] = useState(0)
+  useEffect(() => {
+    const on = () => setWiggle((n) => n + 1)
+    window.addEventListener(REPLY_DONE_EVENT, on)
+    return () => window.removeEventListener(REPLY_DONE_EVENT, on)
+  }, [])
+  useEffect(() => {
+    if (!wiggle) return
+    const t = window.setTimeout(() => setWiggle(0), 1000)
+    return () => window.clearTimeout(t)
+  }, [wiggle])
   return (
     <nav className="tab-bar" aria-label="Sections">
       {TABS.map(({ id, label, icon: Icon }) => {
         const dot = dots?.[id]
         return (
           <button key={id} type="button" className="tab-bar__item" aria-current={tab === id ? 'page' : undefined}
-            aria-label={dot ? `${label}, ${dot}` : label} onClick={() => onSelect(id)}>
-            <Icon className="size-[22px]" strokeWidth={tab === id ? 2.25 : 1.75} aria-hidden />
+            aria-label={dot ? `${label}, ${dot}` : label}
+            onClick={() => { if (id !== tab) setHop((h) => ({ id, n: (h?.n ?? 0) + 1 })); onSelect(id) }}>
+            {id === 'rabbit' && wiggle > 0 ? (
+              <span key={`w${wiggle}`} className="fx-tab-wiggle" aria-hidden><RabbitLogo size={22} /></span>
+            ) : (
+              <span key={hop?.id === id ? `h${hop.n}` : 'still'} className={hop?.id === id ? 'fx-tab-hop' : 'inline-flex'} aria-hidden>
+                <Icon className="size-[22px]" strokeWidth={tab === id ? 2.25 : 1.75} aria-hidden />
+              </span>
+            )}
             <span aria-hidden>{label}</span>
             {dot && <span className="tab-bar__dot" aria-hidden />}
           </button>

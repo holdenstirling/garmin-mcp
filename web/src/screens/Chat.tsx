@@ -43,6 +43,7 @@ import { ThreadsSheet } from '@/components/ThreadsSheet'
 import { Group, Icon, Row as SettingsRow } from '@/components/settings/Grouped'
 import { WeekList } from '@/components/week/WeekStrip'
 import { TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@/components/nav/TabBar'
+import { PullToRefresh, celebrate, signalReplyDone } from '@/components/fx'
 import { Segmented } from '@/components/nav/Segmented'
 import { MePage, type MeRow } from '@/components/nav/MePage'
 import { StatusBanner, type Banner } from '@/components/nav/StatusBanner'
@@ -177,7 +178,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // After each reply: pick up a new thread title, or a goal/plan Rabbit just saved.
   const prevStatus = useRef(status)
   useEffect(() => {
-    if ((prevStatus.current === 'streaming' || prevStatus.current === 'busy') && status === 'idle') { void refreshThreads(); onChange() }
+    if ((prevStatus.current === 'streaming' || prevStatus.current === 'busy') && status === 'idle') {
+      void refreshThreads(); onChange()
+      if (tab !== 'rabbit') signalReplyDone() // the Rabbit tab wiggles
+    }
     prevStatus.current = status
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -298,6 +302,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         const a = r.new[r.new.length - 1]
         if (a?.id != null && !reactionShown(a.id)) { markReactionShown(a.id); setReaction(a.id); return }
         const xp = p && p.gained > 0 ? ` · +${p.gained} XP` : ''
+        if (p && p.gained > 0) celebrate({ x: window.innerWidth / 2, y: window.innerHeight - 120 }, 'xp')
         showToast(a ? `Workout synced: ${a.name}${xp}` : `Workout synced${xp}`)
       } catch { /* offline or signed out: try again next time */ } finally {
         syncing.current = false
@@ -836,6 +841,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
           }}>
           <div className="mx-auto max-w-2xl space-y-4 py-4">
+            <PullToRefresh onRefresh={() => { void refreshThreads(); loadToday(); getProgress().then(setProgress, () => {}) }} />
             {renderRows(shownRows, isCoach)}
             {thinking && (
               <div className="flex items-center gap-2 pl-1 text-sm text-muted-foreground">
@@ -923,7 +929,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {planScreen === 'setup' && (
         <SetupWizard me={{ ...me, goal }} onClose={() => setPlanScreen(null)}
-          onDone={() => { onChange(); void refreshThreads(); loadWeek() }}
+          onDone={() => { onChange(); void refreshThreads(); loadWeek(); celebrate(null, 'plan') }}
           onOpenPlan={openPlan}
           onUploadPlan={() => tellRabbit("Here's my training plan.")}
           onMeChanged={onChange} />

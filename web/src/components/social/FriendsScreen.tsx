@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity, Ban, Bike, Check, Copy, Dumbbell, Flame, Footprints, Heart, Layers, MessageCircle, Mountain,
-  Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Users, Waves, X,
+  Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
+import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
@@ -116,7 +117,7 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
     <>
       {following === 0 && (
         <div className="celebrate flex flex-col items-center gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Users className="size-6" /></span>
+          <PeekingRabbit size={72} />
           <h3 className="font-display text-[1.1765rem] text-(--brand)">Training's better together</h3>
           <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
             Follow a friend to see their workouts here and send kudos. Share your invite code so they can follow you back.
