@@ -829,6 +829,22 @@ def _target(sport: str, zone: int, athlete: dict[str, Any], kind: str) -> dict[s
             "zoneNumber": int(zone)}
 
 
+def _exact_target(step: dict[str, Any], s: dict[str, Any], sport: str, athlete: dict[str, Any]) -> None:
+    """Imported workout files (Zwift .zwo, .erg/.mrc) carry the exact %FTP (bike) or % of
+    threshold speed (run) as ``pct``: target +-3% around it instead of the whole zone."""
+    pct = s.get("pct")
+    if not isinstance(pct, int | float) or pct <= 0:
+        return
+    ftp, pace = athlete.get("ftp_w"), athlete.get("run_threshold_pace")
+    if sport == "bike" and isinstance(ftp, int | float) and ftp > 0 and \
+            step["targetType"]["workoutTargetTypeKey"] == "power.zone":
+        step["targetValueOne"], step["targetValueTwo"] = round(ftp * (pct - 3) / 100), round(ftp * (pct + 3) / 100)
+    elif sport == "run" and isinstance(pace, int | float) and pace > 0 and \
+            step["targetType"]["workoutTargetTypeKey"] == "pace.zone":
+        speed = 1000.0 / pace * pct / 100.0
+        step["targetValueOne"], step["targetValueTwo"] = round(speed * 0.97, 4), round(speed * 1.03, 4)
+
+
 class _Order:
     def __init__(self) -> None:
         self.n = 0
@@ -874,6 +890,7 @@ def _garmin_steps(steps: list[dict[str, Any]], sport: str, athlete: dict[str, An
             step["strokeType"] = {"strokeTypeId": 6, "strokeTypeKey": "free", "displayOrder": 6}
         step.update(_target(sport, int(s.get("zone") or 2),
                             athlete, "recover_free" if s["type"] == "recover" and sport == "swim" else s["type"]))
+        _exact_target(step, s, sport, athlete)
         out.append(step)
     return out
 
