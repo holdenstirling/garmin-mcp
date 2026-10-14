@@ -1,8 +1,9 @@
 // Explore races: upcoming races near you from RunSignup, grouped by month, with quick fit
 // hints against your main race. "Find more with Rabbit" searches the web for big races that
 // aren't on RunSignup. Tap a race for details, "Add to my races", or to ask Rabbit about it.
-// "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx); the
-// first visit with no interests opens "What are you into?" (InterestsSheet.tsx).
+// "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx), or ones
+// inferred from training, with "Let Rabbit explore" on top. "Near you" switches between races
+// and Local: recurring clubs, rides and leagues in your city (LocalActivities.tsx).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,14 +20,22 @@ import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { RaceDetail } from './RaceDetail'
 import { ForYouFeedView, InterestsStrip, useForYou } from './ForYou'
 import { InterestsSheet } from './InterestsSheet'
+import { LocalActivities } from './LocalActivities'
+import { EstimateLine } from './Estimate'
+import type { RaceX } from '@/lib/explore2'
 
 /** The nav icon for Explore (exported so the home nav needs no extra icon import). */
 export const ExploreIcon = Search
 
 type Mode = 'foryou' | 'search'
+type Segment = 'races' | 'local'
 const MODE_KEY = 'rabbit.explore.mode'
+const SEG_KEY = 'rabbit.explore.segment'
 function readMode(): Mode {
   try { return localStorage.getItem(MODE_KEY) === 'search' ? 'search' : 'foryou' } catch { return 'foryou' }
+}
+function readSegment(): Segment {
+  try { return localStorage.getItem(SEG_KEY) === 'local' ? 'local' : 'races' } catch { return 'races' }
 }
 
 const EMPTY: ExploreFilters = { near: '', radius: 50, months: 6, types: [], distance: null, q: '' }
@@ -68,15 +77,16 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   const seq = useRef(0)
   const [mode, setModeState] = useState<Mode>(readMode)
   const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* private mode */ } }
-  const fy = useForYou(mode === 'foryou')
+  const [segment, setSegmentState] = useState<Segment>(readSegment)
+  const setSegment = (v: Segment) => { setSegmentState(v); try { localStorage.setItem(SEG_KEY, v) } catch { /* private mode */ } }
+  const fy = useForYou(mode === 'foryou' && segment === 'races')
   const [editing, setEditing] = useState(false)
-  useEffect(() => { if (fy.askNow) { setEditing(true); fy.clearAsk() } }, [fy.askNow]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Defaults (home zip, favorite sports) fill in the filters the first time.
   useEffect(() => {
     exploreDefaults().then((d) => {
       setHome(d.near)
-      setFilters((f) => f ?? { ...EMPTY, near: d.near, types: d.types, radius: d.radius, months: d.months })
+      setFilters((f) => f ? (f.near ? f : { ...f, near: d.near }) : { ...EMPTY, near: d.near, types: d.types, radius: d.radius, months: d.months })
     }, () => setFilters((f) => f ?? EMPTY))
   }, [])
 
@@ -96,10 +106,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   useEffect(() => {
     if (!filters) return
     saveFilters(filters)
-    if (mode !== 'search' || !nearOk(filters.near)) return
+    if (mode !== 'search' || segment !== 'races' || !nearOk(filters.near)) return
     const t = setTimeout(() => run(filters, 1), 350)
     return () => clearTimeout(t)
-  }, [filters, run, mode])
+  }, [filters, run, mode, segment])
 
   const set = (p: Partial<ExploreFilters>) => setFilters((f) => ({ ...(f ?? EMPTY), ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -121,6 +131,16 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     if (g && g.month === m) g.races.push(r)
     else groups.push({ month: m, races: [r] })
   }
+
+  const segments = (
+    <div role="tablist" aria-label="Near you" className="mx-auto mt-1.5 flex w-full max-w-xl rounded-xl bg-(--bg-elevated) p-1">
+      {([['races', 'Races'], ['local', 'Local']] as const).map(([v, l]) => (
+        <button key={v} type="button" role="tab" aria-selected={segment === v} onClick={() => setSegment(v)}
+          className={cn('min-h-9 flex-1 rounded-lg text-[0.7647rem] font-medium transition-colors',
+            segment === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+      ))}
+    </div>
+  )
 
   const modes = (
     <div role="tablist" aria-label="Explore view" className="mx-auto mt-1.5 flex w-full max-w-xl gap-4 px-1">
@@ -185,9 +205,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
 
   return (
     <>
-      <Screen title="Explore races" subtitle="Find your next start line" closing={closing} onClose={close}
-        headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
-        {mode === 'foryou' ? (
+      <Screen title="Explore" subtitle="Find your next start line" closing={closing} onClose={close}
+        headerExtra={<>{segments}{segment === 'races' && <>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}</>}>
+        {segment === 'local' ? (
+          <LocalActivities onAsk={onAsk} onSaveZip={fy.saveZip} onLocationChanged={() => fy.load(true)} />
+        ) : mode === 'foryou' ? (
           <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')} />
         ) : <>
         <div className="relative">
@@ -281,6 +303,7 @@ function RaceCard({ r, onClick }: { r: ExploreRace; onClick: () => void }) {
             {hint && <span className={cn('rounded-full px-2 py-0.5 text-[0.6471rem] font-medium', HINT_CLS[hint.tone])}>{hint.label}</span>}
           </span>
         )}
+        {(r as RaceX).estimate && <EstimateLine e={(r as RaceX).estimate!} />}
         {(r.registration_open || fee) && (
           <span className="flex items-center gap-2 text-[0.6471rem]">
             {r.registration_open && <span className="font-semibold uppercase tracking-wider text-(--accent)">Registration open</span>}

@@ -54,6 +54,13 @@ class FakeGarmin:
         return {"activityId": activity_id, "geoPolylineDTO": {"polyline": [[1, 2]] * 500},
                 "activityDetailMetrics": [{"metrics": [1.0, 2.0]}] * 3000}
 
+    def get_race_predictions(self, startdate: str | None = None, enddate: str | None = None,
+                             _type: str | None = None) -> dict[str, Any]:
+        """Return race predictions for the 5k, 10k, half marathon and marathon."""
+        self.calls.append(("get_race_predictions", {"startdate": startdate, "_type": _type}))
+        return {"calendarDate": "2026-10-14", "time5K": 1290, "time10K": 2710,
+                "timeHalfMarathon": 6020, "timeMarathon": 12780}
+
     def add_weigh_in(self, weight: float, unitKey: str = "kg") -> dict[str, Any]:
         """Add a weigh-in."""
         self.calls.append(("add_weigh_in", {"weight": weight}))

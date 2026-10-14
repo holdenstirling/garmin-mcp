@@ -1872,7 +1872,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     def _explore_hinted(uid: str, races: list[dict[str, Any]]) -> list[dict[str, Any]]:
         main = next((e for e in _events().list(uid) if e["main"]), None)
         athlete, today = _coach().athlete(uid), _explore_today(uid)
-        return [dict(r, hints=_explore.fit_hints(r, main, athlete, today)) for r in races]
+        basis = _pred_basis(uid)  # finish-time estimates (explore v2 block below)
+        prefer = set((athlete.get("interests") or {}).get("distances") or [])
+        out = []
+        for r in races:
+            est = _predict.for_race(basis, r, prefer) if _predict.has_data(basis) else None
+            out.append(dict(r, hints=_explore.fit_hints(r, main, athlete, today), **({"estimate": est} if est else {})))
+        return out
 
     async def explore_get(request: Request, user_id: str) -> Response:
         f = _explore_filters(dict(request.query_params), user_id)
@@ -1885,7 +1891,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     async def explore_defaults(request: Request, user_id: str) -> Response:
         athlete = await _plan_call(lambda: _coach().athlete(user_id))
-        return JSONResponse(_explore.defaults(athlete))
+        out = _explore.defaults(athlete)
+        # Search starts where For you looks (device location, home zip, profile city/state).
+        loc = await anyio.to_thread.run_sync(lambda: _geo.resolve(
+            athlete.get("interests") or {}, athlete, _geo.load_auto(store, user_id)))
+        out["near"] = loc.get("zip") or (loc.get("state") if loc.get("state") in _geo.US_STATES else "") or ""
+        return JSONResponse(out)
 
     async def explore_ai(request: Request, user_id: str) -> Response:
         assert chat is not None
@@ -2151,9 +2162,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         events = await _plan_call(lambda: _events().list(user_id))
         today = _explore_today(user_id)
         status = await anyio.to_thread.run_sync(lambda: _fy_readiness(user_id, events, today))
+        loc, eff, inferred = await anyio.to_thread.run_sync(lambda: _x2_context(user_id, athlete, events, today))
         res = await _foryou.default_foryou().sections(
-            user_id, interests=interests, athlete=athlete, events=events, today=today,
-            readiness_status=status, fresh=request.query_params.get("fresh") == "1")
+            user_id, interests=eff, athlete=athlete, events=events, today=today,
+            readiness_status=status, fresh=request.query_params.get("fresh") == "1", loc=loc)
         sections = [dict(sec, races=await _plan_call(lambda sec=sec: _explore_hinted(user_id, sec["races"])))
                     for sec in res["sections"]]
         friends = await _plan_call(lambda: _fy_friends(user_id, today))
@@ -2166,10 +2178,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if wants and stored and stored.get("races"):
             sections.append({"id": "bucket", "title": "Bucket list", "source": "web",
                              "races": await _plan_call(lambda: _explore_hinted(user_id, stored["races"]))})
+        if not any(s["id"] in ("picks", "tuneups", "near", "bucket") and s["races"] for s in sections):
+            sections.append(await _x2_popular(user_id, eff, today, verify=not (res["zip"] or res["state"])))
         eligible = wants and store is not None
         can_web = chat is not None and getattr(chat.agent._backend, "research", None) is not None
         return JSONResponse({
-            "interests": interests, "has_interests": bool(interests), "sections": sections,
+            "interests": interests, "has_interests": _foryou.has_own_interests(interests), "sections": sections,
+            "inferred": inferred, "effective": eff, "location": _x2_loc_view(loc),
             "partial": res["partial"], "failed": res["failed"], "zip": res["zip"], "radius": res["radius"],
             "bucket": {"eligible": eligible, "due": eligible and can_web and not fresh_bucket}})
 
@@ -2206,6 +2221,223 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         found = races
         return JSONResponse({"section": {"id": "bucket", "title": "Bucket list", "source": "web",
                                          "races": await _plan_call(lambda: _explore_hinted(user_id, found))}})
+
+    # ------------------------- explore v2: location, Let Rabbit explore, local, predict --
+    # Location (geo.py): device location is rounded to 2 decimals before anything else,
+    # reverse-geocoded server-side (Nominatim, 1 req/s, cached 30 days) and only
+    # {zip, city, state, lat2, lon2, ts} is stored as profile "location_auto" (never in Rabbit's
+    # context or a coach view). For you never comes back empty: inferred interests when none are
+    # set, popular big races when there's no location. "Let Rabbit explore" (rabbitexplore.py)
+    # = RunSignup + the Explore web research. Local activities (localacts.py): web research once
+    # per city per week, shared by everyone in that city; the prompt holds only "City, ST".
+    # Finish-time estimates (predict.py): Garmin race predictor / recent efforts / profile
+    # thresholds, never Oura. Athletes only (coach accounts get 403 from _api).
+    from . import geo as _geo
+    from . import localacts as _local
+    from . import predict as _predict
+    from . import rabbitexplore as _rx
+    _geocoder = _geo.Geocoder(contact=settings.contact_email or settings.public_base_url, store=store)
+    _local_finder = _local.LocalFinder(store)
+    _pred_cache = _predict.BasisCache()
+
+    def _x2_by_sport(uid: str) -> list[dict[str, Any]]:
+        try:
+            return list(chat.agent.stats.get(uid).get("by_sport") or []) if chat is not None else []
+        except Exception:  # Garmin not connected or down: favorites and the main race still count
+            return []
+
+    def _pred_basis(uid: str) -> dict[str, Any]:
+        def build() -> dict[str, Any]:
+            if chat is None:
+                return _predict.make_basis()
+            agent = chat.agent
+            garmin, acts = None, []
+            try:
+                garmin = agent._service.execute(uid, "get_race_predictions", {}).get("result")
+            except Exception:  # no predictor on this watch / not connected
+                pass
+            try:
+                _, acts = agent.stats.activities(uid)
+            except Exception:
+                pass
+            return _predict.make_basis(garmin=garmin, acts=acts, athlete=agent.coach.athlete(uid),
+                                       today=_explore_today(uid))
+        return _pred_cache.get(uid, build)
+
+    def _x2_context(uid: str, athlete: dict[str, Any], events: list[dict[str, Any]],
+                    today: date) -> tuple[dict[str, Any], dict[str, Any], bool]:
+        """(resolved location, interests to rank with, inferred?)."""
+        interests = athlete.get("interests") or {}
+        loc = _geo.resolve(interests, athlete, _geo.load_auto(store, uid))
+        eff, inferred = _foryou.effective_interests(
+            interests, lambda: _foryou.infer_interests(athlete, _x2_by_sport(uid), events, today))
+        return loc, eff, inferred
+
+    def _x2_loc_view(loc: dict[str, Any]) -> dict[str, Any]:
+        return {"source": loc.get("source"), "label": _geo.label(loc), "zip": loc.get("zip") or "",
+                "state": loc.get("state") or "", "city": loc.get("city") or "",
+                "searchable": bool(loc.get("zip") or loc.get("state") in _geo.US_STATES)}
+
+    async def _x2_popular(uid: str, interests: dict[str, Any], today: date, *, verify: bool) -> dict[str, Any]:
+        verified: dict[str, Any] = {}
+        if verify:
+            try:
+                verified = await _foryou.verify_popular(_explore.default_search(), today)
+            except Exception:
+                verified = {}
+        races = _foryou.popular_races(interests, today, verified)
+        return {"id": "popular", "title": "Popular big races", "source": "curated",
+                "races": await _plan_call(lambda: _explore_hinted(uid, races))}
+
+    async def location_get(request: Request, user_id: str) -> Response:
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        auto = await anyio.to_thread.run_sync(lambda: _geo.load_auto(store, user_id))
+        loc = _geo.resolve(athlete.get("interests") or {}, athlete, auto)
+        view = {k: auto.get(k) for k in ("zip", "city", "state", "ts")} if auto else None
+        return JSONResponse({"device": view, "resolved": _x2_loc_view(loc)})
+
+    async def location_post(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        try:
+            lat2, lon2 = _geo.round2(body.get("lat"), body.get("lon"))  # precise values stop here
+        except _geo.LocationError as e:
+            raise _UserError(str(e)) from None
+        if store is None:
+            raise _UserError("Location isn't available on this server.", 503)
+        try:
+            place = await _geocoder.reverse(lat2, lon2)
+        except _geo.LocationError as e:
+            raise _UserError(str(e), 502) from None
+        entry = await anyio.to_thread.run_sync(
+            lambda: _geo.save_auto(store, user_id, place, lat2, lon2, time.time()))
+        log_event(logger, logging.INFO, "location_set", user_id=user_id, has_zip=bool(entry["zip"]))
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        loc = _geo.resolve(athlete.get("interests") or {}, athlete, entry)
+        return JSONResponse({"device": {k: entry[k] for k in ("zip", "city", "state", "ts")},
+                             "resolved": _x2_loc_view(loc)})
+
+    async def location_delete(request: Request, user_id: str) -> Response:
+        await anyio.to_thread.run_sync(lambda: _geo.forget(store, user_id))
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        return JSONResponse({"device": None, "resolved": _x2_loc_view(
+            _geo.resolve(athlete.get("interests") or {}, athlete, None))})
+
+    async def explore_rabbit(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        events = await _plan_call(lambda: _events().list(user_id))
+        today = _explore_today(user_id)
+        loc, eff, inferred = await anyio.to_thread.run_sync(lambda: _x2_context(user_id, athlete, events, today))
+        zip_, state = _foryou.ForYou.place(eff, athlete, loc)
+        radius = _foryou.RADIUS.get(eff.get("travel") or "", _foryou.DEFAULT_RADIUS)
+        near = {"near": zip_, "radius": radius} if zip_ else ({"near": state} if state else {})
+        cats = sorted({c for t in eff.get("race_types") or [] for c in _foryou.INTEREST_CATS.get(t, set())}
+                      & set(_explore.CATEGORIES), key=list(_explore.CATEGORIES).index)[:_explore.MAX_RSU_TYPES]
+        rsu: list[dict[str, Any]] = []
+        partial = False
+        if near:
+            f = _explore.parse_filters({**near, "months": _rx.MONTHS}, today)
+            f["rsu"] = _foryou.ForYou.rsu_types(eff, athlete)
+            try:
+                rsu = (await _explore.default_search().search(f))["races"]
+            except _explore.ExploreError:
+                partial = True
+        web_state, web = "ok", []
+        wf = _explore.parse_filters({**near, "months": _rx.MONTHS, "types": cats}, today)
+        finder = _explore.default_web()
+        hit = finder.cached(wf)
+        research = getattr(chat.agent._backend, "research", None)
+        if hit is not None:
+            web = hit
+        elif research is None:
+            web_state = "unavailable"
+        else:
+            try:
+                await _plan_call(lambda: _events().take_allowance(
+                    user_id, "explore_ai", today, limit=_explore.AI_PER_DAY, message="limit"))
+            except _UserError:
+                web_state = "limit"
+            if web_state == "ok":
+                try:
+                    web = await finder.find(research, wf, today)
+                except Exception as e:
+                    log_event(logger, logging.WARNING, "explore_rabbit_web_failed", user_id=user_id,
+                              error=type(e).__name__)
+                    web_state = "failed"
+        merged = _rx.dedupe([rsu, web])
+        ranked, tunes = _rx.rank(merged, interests=eff, events=events, today=today)
+        main = _foryou.main_race(events, today)
+        shown = ranked[:_rx.LIMIT]
+        log_event(logger, logging.INFO, "explore_rabbit", user_id=user_id, rsu=len(rsu), web=len(web),
+                  shown=len(shown), web_state=web_state)
+        return JSONResponse({
+            "intro": _rx.intro(len(ranked), zip_=zip_, state=state, radius=radius, tunes=tunes, main=main),
+            "races": await _plan_call(lambda: _explore_hinted(user_id, shown)),
+            "total": len(ranked), "web": web_state, "partial": partial, "inferred": inferred,
+            "location": _x2_loc_view(loc)})
+
+    async def explore_local(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        today = _explore_today(user_id)
+        loc = _geo.resolve(athlete.get("interests") or {}, athlete,
+                           await anyio.to_thread.run_sync(lambda: _geo.load_auto(store, user_id)))
+        city, state = loc.get("city") or "", loc.get("state") or ""
+        if not city and loc.get("zip"):
+            place = await _geocoder.zip_place(loc["zip"])
+            city, state = place.get("city") or "", place.get("state") or state
+        cats = _local.relevant(athlete, await anyio.to_thread.run_sync(lambda: _x2_by_sport(user_id)))
+        base = {"city": city, "state": state, "suggested": cats, "chips": _local.CHIPS}
+        if not city:
+            return JSONResponse({**base, "items": [], "needs_location": True})
+        items = await anyio.to_thread.run_sync(lambda: _local_finder.cached(city, state, today))
+        if items is None:
+            research = getattr(chat.agent._backend, "research", None)
+            if research is None:
+                raise _UserError("Web search isn't available on this server.", 503)
+            await _plan_call(lambda: _events().take_allowance(
+                user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                message="That's today's Rabbit searches used up. Try again tomorrow."))
+            try:
+                items = await _local_finder.find(research, city, state, today)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "explore_local_failed", user_id=user_id, error=type(e).__name__)
+                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
+            log_event(logger, logging.INFO, "explore_local", user_id=user_id, found=len(items))
+        return JSONResponse({**base, "items": _local.order(items, cats), "needs_location": False})
+
+    async def predict_get(request: Request, user_id: str) -> Response:
+        q = request.query_params
+
+        def num(k: str) -> float | None:
+            v = q.get(k)
+            if v in (None, ""):
+                return None
+            try:
+                x = float(v)
+            except ValueError:
+                raise _UserError(f"{k} must be a number") from None
+            if not 0 <= x <= 10_000:  # also rejects nan/inf
+                raise _UserError(f"{k} is out of range")
+            return x
+
+        def run() -> dict[str, Any]:
+            basis = _pred_basis(user_id)
+            if q.get("event_id"):
+                ev = _events().get(user_id, str(q["event_id"])[:64])
+                est = _predict.for_event(basis, ev)
+            else:
+                est = _predict.estimate(basis, distance_km=num("distance_km"), type_=(q.get("type") or "")[:20],
+                                        climb_m=num("climb_m"), elevation_m=num("elevation_m"),
+                                        terrain=q.get("terrain") if q.get("terrain") in _predict.TRAIL_X else None)
+            if not est:
+                why = ("Connect Garmin or add a threshold pace, FTP or CSS in your profile to see estimates."
+                       if not _predict.has_data(basis) else "No estimate for this kind of race yet.")
+                return {"estimate": None, "reason": why}
+            return {"estimate": {**est, "text": _predict.text(est)}}
+        return JSONResponse(await _plan_call(run))
 
     # --------------------------------------------------------- challenges --
     # Weekly/monthly challenges (challenges.py): personal targets from the Garmin baseline,
@@ -2357,6 +2589,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/explore/add", _plan_api(explore_add, mutating=True), methods=["POST"]),
         Route("/app/api/explore/foryou", _plan_api(foryou_get, mutating=False), methods=["GET"]),
         Route("/app/api/explore/foryou/bucket", _plan_api(foryou_bucket, mutating=True), methods=["POST"]),
+        Route("/app/api/explore/rabbit", _plan_api(explore_rabbit, mutating=True), methods=["POST"]),
+        Route("/app/api/explore/local", _plan_api(explore_local, mutating=True), methods=["POST"]),
+        Route("/app/api/location", _plan_api(location_get, mutating=False), methods=["GET"]),
+        Route("/app/api/location", _plan_api(location_post, mutating=True), methods=["POST"]),
+        Route("/app/api/location", _plan_api(location_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/predict", _plan_api(predict_get, mutating=False), methods=["GET"]),
         Route("/app/api/social", _social_api(social_get, mutating=False), methods=["GET"]),
         Route("/app/api/social/follow", _social_api(social_follow, mutating=True), methods=["POST"]),
         Route("/app/api/social/requests/{edge_id}/accept", _social_api(_edge_route(lambda u, e: soc.accept(u, e)), mutating=True), methods=["POST"]),

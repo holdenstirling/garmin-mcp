@@ -3,6 +3,7 @@
 // GET /api/explore/foryou and the weekly bucket-list web search is POST /api/explore/foryou/bucket.
 import { getJSON, sendJSON } from '@/lib/api'
 import type { ExploreRace, HintTone } from '@/lib/explore'
+import type { Estimate, ResolvedLocation } from '@/lib/explore2'
 
 export type RaceType =
   | 'road' | 'trail' | 'ultra' | 'triathlon' | 'duathlon' | 'gravel' | 'road_cycling' | 'mtb' | 'swim'
@@ -61,14 +62,17 @@ export function interestsSummary(i: Interests | null | undefined, max = 4): stri
 
 export type ForYouRace = ExploreRace & {
   why?: string; fit?: { label: string; tone: HintTone }; score?: number; reasons?: string[]; friends?: string[]
+  estimate?: Estimate; check_dates?: boolean; usual_month?: number; popular?: boolean
 }
 export type ForYouSection = {
-  id: 'picks' | 'tuneups' | 'near' | 'friends' | 'bucket'; title: string; note?: string; source?: 'web'
+  id: 'picks' | 'tuneups' | 'near' | 'friends' | 'bucket' | 'popular'; title: string; note?: string; source?: 'web' | 'curated'
   races: ForYouRace[]
 }
 export type ForYouFeed = {
   interests: Interests; has_interests: boolean; sections: ForYouSection[]
   partial: boolean; failed: boolean; zip: string; radius: number
+  /** Explore v2: interests were guessed from training (none set), the ones used, and where we searched. */
+  inferred?: boolean; effective?: Interests; location?: ResolvedLocation
   bucket: { eligible: boolean; due: boolean }
 }
 

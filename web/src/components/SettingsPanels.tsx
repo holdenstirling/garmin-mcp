@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
+import { LocationRow } from '@/components/settings/LocationRow'
 import { DataSourcesSheet } from '@/components/settings/DataSourcesSheet'
 import { defaultSources, sourcesSummary } from '@/lib/sources'
 import { CoachingSettings } from '@/components/CoachingSettings'
@@ -161,6 +162,8 @@ export function SettingsPanels({ me, onChange, onDevDone, onToast }: {
       <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
         <ShareRow />
       </Group>
+
+      <Group label="Location" footer="Used by Explore to find races and local activities near you."><LocationRow /></Group>
 
       <Group label="Notifications" footer={pushMsg ?? undefined}>
         <Row icon={<Icon><Bell /></Icon>} title="Notifications" subtitle={pushStatus}

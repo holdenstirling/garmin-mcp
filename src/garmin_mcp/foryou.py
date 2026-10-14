@@ -31,6 +31,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from . import explore as ex
+from . import geo
 
 CACHE_TTL = 6 * 3600
 PICKS_MAX = 6
@@ -383,6 +384,159 @@ def clean_bucket(raw: Any, interests: dict[str, Any], today: date) -> list[dict[
     return out
 
 
+# ------------------------------------------------------------ inferred defaults --
+# No interests yet: guess them from what the athlete already told us and what they train.
+FAV_TYPES = {"run": "road", "trail": "trail", "bike": "road_cycling", "gravel": "gravel", "mtb": "mtb",
+             "swim": "swim", "open_water": "swim", "hike": "hike", "climb": "hike"}
+SPORT_TYPES = {"run": "road", "bike": "road_cycling", "swim": "swim", "hike": "hike", "climb": "hike"}
+EVENT_TYPES = {"running": "road", "trail": "trail", "triathlon": "triathlon", "duathlon": "duathlon",
+               "cycling": "road_cycling", "swimming": "swim", "mountaineering": "hike"}
+# Main race distance -> that distance plus a natural tune-up distance.
+EVENT_DISTANCES = {"5k": ["5k"], "10k": ["5k", "10k"], "half marathon": ["10k", "half"],
+                   "marathon": ["half", "marathon"], "ultra": ["marathon", "ultra_50k"],
+                   "sprint triathlon": ["sprint"], "olympic triathlon": ["sprint", "olympic"],
+                   "70.3": ["olympic", "70.3"], "140.6": ["70.3", "140.6"], "century ride": ["century"]}
+TYPE_DISTANCES = {"road": ["5k", "10k", "half"], "trail": ["half", "ultra_50k"], "triathlon": ["sprint", "olympic"],
+                  "road_cycling": ["century"], "gravel": ["century"], "ultra": ["ultra_50k"]}
+
+
+def infer_interests(athlete: dict[str, Any], by_sport: list[dict[str, Any]] | None,
+                    events: list[dict[str, Any]], today: date) -> dict[str, Any]:
+    """Defaults from favorite sports, the top 2 Garmin sports (stats ``by_sport``) and the main
+    race. Always returns race types, distances and travel "regional"."""
+    types: list[str] = []
+    dists: list[str] = []
+
+    def add(lst: list[str], v: str | None) -> None:
+        if v and v not in lst:
+            lst.append(v)
+    main = main_race(events, today)
+    if main:
+        add(types, EVENT_TYPES.get(str(main.get("type") or "")))
+        d = str(main.get("distance") or "").lower()
+        if d == "ultra":
+            add(types, "ultra")
+        for x in EVENT_DISTANCES.get(d, []):
+            add(dists, x)
+    for f in athlete.get("favorite_sports") or []:
+        add(types, FAV_TYPES.get(f))
+    top = [str(x.get("sport")) for x in sorted(
+        (x for x in by_sport or [] if isinstance(x, dict) and (x.get("hours") or 0) > 0),
+        key=lambda x: -float(x.get("hours") or 0))[:3]]
+    if {"swim", "bike", "run"} <= set(top):
+        add(types, "triathlon")
+    for sp in top[:2]:
+        add(types, SPORT_TYPES.get(sp))
+    if not types:
+        types = ["road", "trail"]
+    for t in types:
+        for x in TYPE_DISTANCES.get(t, []):
+            if len(dists) < 4:
+                add(dists, x)
+    allowed_t = set(INTEREST_RSU)
+    return {"race_types": [t for t in types if t in allowed_t][:4], "distances": [d for d in dists if d in BUCKETS][:4],
+            "travel": "regional"}
+
+
+def has_own_interests(interests: dict[str, Any]) -> bool:
+    """The athlete answered "What are you into?" (a zip alone doesn't count)."""
+    return any(k != "home_zip" for k in (interests or {}))
+
+
+def effective_interests(interests: dict[str, Any], inferred: Callable[[], dict[str, Any]]) -> tuple[dict[str, Any], bool]:
+    """(interests to rank with, inferred?). Own race types/distances win; otherwise the inferred
+    defaults fill in, keeping whatever the athlete did set (zip, months to avoid, travel)."""
+    interests = interests or {}
+    if interests.get("race_types") or interests.get("distances"):
+        return interests, False
+    return {**inferred(), **interests}, True
+
+
+# --------------------------------------------------------------- popular races --
+# Nationwide fallback when we don't know where the athlete is. Dates move every year, so these
+# show "Usually in <month>" plus "Check dates" unless RunSignup confirms a date.
+POPULAR: tuple[dict[str, Any], ...] = (
+    {"name": "Boston Marathon", "city": "Boston", "state": "MA", "month": 4, "type": "road", "km": 42.195,
+     "url": "https://www.baa.org", "why": "The classic: qualify, then run Boylston"},
+    {"name": "Bolder Boulder", "city": "Boulder", "state": "CO", "month": 5, "type": "road", "km": 10.0,
+     "url": "https://www.bolderboulder.com", "why": "A huge, fun Memorial Day 10K"},
+    {"name": "Western States 100", "city": "Olympic Valley", "state": "CA", "month": 6, "type": "trail", "km": 161.0,
+     "url": "https://www.wser.org", "why": "The original 100-mile trail race (lottery entry)"},
+    {"name": "Peachtree Road Race", "city": "Atlanta", "state": "GA", "month": 7, "type": "road", "km": 10.0,
+     "url": "https://www.atlantatrackclub.org/peachtree", "why": "The world's biggest 10K, every July 4th"},
+    {"name": "Leadville Trail 100 Run", "city": "Leadville", "state": "CO", "month": 8, "type": "trail", "km": 161.0,
+     "url": "https://www.leadvilleraceseries.com", "why": "100 miles at 10,000 ft: the Race Across the Sky"},
+    {"name": "Pikes Peak Marathon", "city": "Manitou Springs", "state": "CO", "month": 9, "type": "trail",
+     "km": 42.195, "url": "https://www.pikespeakmarathon.org", "why": "Up and down a 14er"},
+    {"name": "Chicago Marathon", "city": "Chicago", "state": "IL", "month": 10, "type": "road", "km": 42.195,
+     "url": "https://www.chicagomarathon.com", "why": "Flat and fast: a PR course"},
+    {"name": "New York City Marathon", "city": "New York", "state": "NY", "month": 11, "type": "road", "km": 42.195,
+     "url": "https://www.nyrr.org/tcsnycmarathon", "why": "Five boroughs, two million fans"},
+    {"name": "Unbound Gravel", "city": "Emporia", "state": "KS", "month": 5, "type": "gravel", "km": 322.0,
+     "url": "https://www.unboundgravel.com", "why": "Gravel's biggest day out, in the Flint Hills"},
+    {"name": "Triple Bypass", "city": "Evergreen", "state": "CO", "month": 7, "type": "cycling", "km": 193.0,
+     "url": "https://www.triplebypass.org", "why": "Three Rocky Mountain passes in one ride"},
+)
+
+
+def _norm_name(n: Any) -> str:
+    s = re.sub(r"\b(19|20)\d{2}\b|\bthe\b|\bannual\b|\btcs\b|\bbank of america\b", " ", str(n or "").lower())
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", s).split())
+
+
+def same_name(a: Any, b: Any) -> bool:
+    x, y = _norm_name(a), _norm_name(b)
+    if not x or not y:
+        return False
+    return x == y or (min(len(x), len(y)) >= 8 and (x in y or y in x))
+
+
+def popular_races(interests: dict[str, Any], today: date, verified: dict[str, dict[str, Any]] | None = None,
+                  limit: int = SECTION_MAX) -> list[dict[str, Any]]:
+    """Curated big races in our race shape. ``verified``: name -> a RunSignup race with a real
+    date (used as-is); the rest carry ``date: ""``, ``usual_month`` and ``check_dates``."""
+    cats = _cats(interests)
+    avoid = set(interests.get("months_avoid") or [])
+    out = []
+    for p in POPULAR:
+        hit = (verified or {}).get(p["name"])
+        if hit:
+            out.append(dict(hit, why=p["why"], popular=True))
+            continue
+        if p["month"] in avoid:
+            continue
+        rid = "pop:" + re.sub(r"[^a-z0-9]+", "-", p["name"].lower()).strip("-")
+        label = BUCKET_LABEL.get(next((b for b, (lo, hi, c) in BUCKETS.items()
+                                       if p["type"] in c and lo <= p["km"] and (hi is None or p["km"] <= hi)), ""), "")
+        ev = {"name": label or p["name"], "distance_km": p["km"], "distance_label": label or f"{p['km']:g} km",
+              "type": p["type"], "start_time": None, "date": "", "fee_from": None}
+        out.append({"id": rid, "source": "curated", "name": p["name"], "date": "", "end_date": None,
+                    "city": p["city"], "state": p["state"], "zip": "", "url": p["url"], "website": None, "logo": None,
+                    "registration_open": None, "summary": "", "events": [ev], "types": [p["type"]],
+                    "min_km": p["km"], "max_km": p["km"], "why": p["why"], "usual_month": p["month"],
+                    "check_dates": True, "popular": True})
+    # Their kind of race first, then by the month it usually happens (from now).
+    out.sort(key=lambda r: (not (set(r["types"]) & cats),
+                            ((r.get("usual_month") or (_d(r["date"]) or today).month) - today.month) % 12))
+    return out[:limit]
+
+
+async def verify_popular(search: ex.RaceSearch, today: date) -> dict[str, dict[str, Any]]:
+    """Look each curated race up on RunSignup by name (cached by RaceSearch); keep matches."""
+    end = ex._add_months(today, 12).isoformat()
+
+    async def one(p: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+        f = ex.parse_filters({"q": p["name"][:60], "start": today.isoformat(), "end": end}, today)
+        f["rsu"] = []
+        try:
+            res = await search.search(f)
+        except Exception:
+            return p["name"], None
+        return p["name"], next((r for r in res["races"] if same_name(r["name"], p["name"])), None)
+    got = await asyncio.gather(*(one(p) for p in POPULAR))
+    return {n: r for n, r in got if r}
+
+
 # ------------------------------------------------------------------- service --
 class ForYou:
     """Fetches RunSignup for the athlete's interests and caches the computed sections per user
@@ -397,6 +551,15 @@ class ForYou:
     def location(interests: dict[str, Any], athlete: dict[str, Any]) -> tuple[str, int]:
         z = interests.get("home_zip") or ex.home_zip(athlete.get("home_location"))
         return z, RADIUS.get(interests.get("travel") or "", DEFAULT_RADIUS)
+
+    @staticmethod
+    def place(interests: dict[str, Any], athlete: dict[str, Any], loc: dict[str, Any] | None) -> tuple[str, str]:
+        """(zip, state) to search around: the resolved location (``geo.resolve``) when given."""
+        if loc is None:
+            loc = geo.resolve(interests, athlete, None)
+        z = loc.get("zip") or ""
+        st = loc.get("state") or ""
+        return z, (st if not z and st in geo.US_STATES else "")
 
     @staticmethod
     def rsu_types(interests: dict[str, Any], athlete: dict[str, Any]) -> list[str]:
@@ -423,20 +586,25 @@ class ForYou:
 
     async def sections(self, uid: str, *, interests: dict[str, Any], athlete: dict[str, Any],
                        events: list[dict[str, Any]], today: date, readiness_status: str | None = None,
-                       fresh: bool = False) -> dict[str, Any]:
-        """{"sections", "partial", "zip", "radius"}."""
-        zip_, radius = self.location(interests, athlete)
+                       fresh: bool = False, loc: dict[str, Any] | None = None) -> dict[str, Any]:
+        """{"sections", "partial", "failed", "zip", "state", "radius"}. ``loc`` is the resolved
+        location (``geo.resolve``); with no zip or state there's no RunSignup search (the caller
+        shows popular big races and asks for a location instead)."""
+        zip_, state = self.place(interests, athlete, loc)
+        radius = RADIUS.get(interests.get("travel") or "", DEFAULT_RADIUS)
         types = self.rsu_types(interests, athlete)
         sig = [(e.get("id"), e.get("name"), e.get("date"), e.get("priority"), e.get("main"), e.get("distance"))
                for e in events]
-        key = uid + ":" + _key({"i": interests, "z": zip_, "r": radius, "t": types, "e": sig,
+        key = uid + ":" + _key({"i": interests, "z": zip_, "s": state, "r": radius, "t": types, "e": sig,
                                 "d": today.isoformat(), "rs": readiness_status})
         if not fresh and (hit := self.cache.get(key)) is not None:
             return hit
+        if not zip_ and not state:
+            return {"sections": [], "partial": False, "failed": False, "zip": "", "state": "", "radius": radius}
         fs = []
         for s, e in self.windows(events, today):
-            f = ex.parse_filters({"near": zip_, "radius": radius, "start": s.isoformat(), "end": e.isoformat()}
-                                 if zip_ else {"start": s.isoformat(), "end": e.isoformat()}, today)
+            near = {"near": zip_, "radius": radius} if zip_ else {"near": state}
+            f = ex.parse_filters({**near, "start": s.isoformat(), "end": e.isoformat()}, today)
             f["rsu"] = types
             fs.append(f)
         search = self._search()
@@ -444,9 +612,9 @@ class ForYou:
         ok = [g for g in got if isinstance(g, dict)]
         partial = len(ok) < len(got) or any(g.get("partial") for g in ok)
         races = [r for g in ok for r in g["races"]]
-        out = {"sections": compute(races, interests=interests, events=events, today=today, near_ok=bool(zip_),
+        out = {"sections": compute(races, interests=interests, events=events, today=today, near_ok=True,
                                    readiness_status=readiness_status),
-               "partial": partial, "failed": not ok, "zip": zip_, "radius": radius}
+               "partial": partial, "failed": not ok, "zip": zip_, "state": state, "radius": radius}
         if not partial:
             self.cache.put(key, out)
         return out
@@ -462,5 +630,7 @@ def default_foryou() -> ForYou:
     return _default
 
 
-__all__ = ["BUCKETS", "ForYou", "a_race_dates", "blocked", "bucket_prompt", "clean_bucket", "compute",
-           "default_foryou", "event_bucket", "friend_races", "main_race", "score", "tune_up", "wants_bucket"]
+__all__ = ["BUCKETS", "ForYou", "POPULAR", "a_race_dates", "blocked", "bucket_prompt", "clean_bucket", "compute",
+           "default_foryou", "effective_interests", "event_bucket", "friend_races", "has_own_interests",
+           "infer_interests", "main_race", "popular_races", "same_name", "score", "tune_up", "verify_popular",
+           "wants_bucket"]

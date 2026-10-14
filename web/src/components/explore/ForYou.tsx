@@ -1,27 +1,31 @@
 // Explore "For you": personal race picks in horizontal snap-scroll rows (Picked for you, Tune-ups,
 // Coming up near you, Your friends are racing, Bucket list). Every card says why it's here.
 // Tap a card for the usual RaceDetail (add to races, ask Rabbit, register).
+// Never empty (explore v2): with no interests the server ranks with ones inferred from your
+// training (a dismissible "Based on your training" chip says so); with no location it shows
+// popular big races and asks for a zip or "Use my location" inline. "Let Rabbit explore" sits on top.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Pencil, RefreshCw, Sparkles, Users } from 'lucide-react'
+import { Activity, Carrot, Pencil, RefreshCw, Sparkles, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import { placeOf, raceDate } from '@/lib/explore'
 import {
-  fetchBucket, getForYou, hasInterests, interestsSummary,
+  fetchBucket, getForYou, hasInterests, interestsSummary, saveInterests,
   type ForYouFeed, type ForYouRace, type ForYouSection, type Interests,
 } from '@/lib/foryou'
+import { MONTH_LONG, type RaceX } from '@/lib/explore2'
 import { CATEGORY_ICON, HINT_CLS } from './icons'
+import { EstimateLine } from './Estimate'
+import { LocationLine, LocationPrompt } from './LocationPrompt'
+import { RabbitExploreHero } from './RabbitExplore'
 
-const ASKED_KEY = 'rabbit.explore.interests.asked'
-const SCOUT = ['Scouting races for you…', 'Checking your calendar…', 'Lining up tune-ups…', 'Asking around the start line…']
+const CHIP_KEY = 'rabbit.explore.inferred.dismissed'
+const SCOUT = ['Scouting races for you…', 'Sniffing out start lines…', 'Checking your calendar…', 'Lining up tune-ups…']
 
-function asked(): boolean {
-  try { return localStorage.getItem(ASKED_KEY) === '1' } catch { return true }
-}
-function markAsked(): void {
-  try { localStorage.setItem(ASKED_KEY, '1') } catch { /* private mode */ }
+function chipDismissed(): boolean {
+  try { return localStorage.getItem(CHIP_KEY) === '1' } catch { return false }
 }
 
 /** Feed state for the For you view (the sheet trigger lives here so the header can share it). */
@@ -31,7 +35,6 @@ export function useForYou(active: boolean) {
   const [error, setError] = useState<string | null>(null)
   const [bucketBusy, setBucketBusy] = useState(false)
   const [bucketError, setBucketError] = useState<string | null>(null)
-  const [askNow, setAskNow] = useState(false)
   const seq = useRef(0)
   const bucketTried = useRef(false)
 
@@ -41,7 +44,6 @@ export function useForYou(active: boolean) {
     getForYou(fresh).then((f) => {
       if (n !== seq.current) return
       setFeed(f)
-      if (!f.has_interests && !asked()) { markAsked(); setAskNow(true) }
     }, (e) => { if (n === seq.current) setError((e as Error).message) })
       .finally(() => { if (n === seq.current) setLoading(false) })
   }, [])
@@ -64,7 +66,14 @@ export function useForYou(active: boolean) {
     bucketTried.current = false
     load()
   }
-  return { feed, loading, error, load, saved, bucketBusy, bucketError, askNow, clearAsk: () => setAskNow(false) }
+  /** Save a zip typed into the inline location ask (it lives on interests.home_zip). */
+  const saveZip = async (zip: string) => {
+    const current = feed?.interests ?? (await getForYou()).interests  // never drop the other interests
+    const i = { ...(current ?? {}), home_zip: zip }
+    await saveInterests(i)
+    setFeed((f) => f && { ...f, interests: i })
+  }
+  return { feed, loading, error, load, saved, saveZip, bucketBusy, bucketError }
 }
 
 /** "Your interests" chip summary + edit, for the Explore header. */
@@ -90,25 +99,33 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
   onEdit: () => void
   onSearch: () => void
 }) {
-  const { feed, loading, error, load, bucketBusy, bucketError } = state
+  const { feed, loading, error, load, saveZip, bucketBusy, bucketError } = state
+  const [hideChip, setHideChip] = useState(chipDismissed)
   if (!feed && (loading || !error)) {
     return <div className="flex justify-center py-16"><RabbitLoader label="Scouting races for you" cycle={SCOUT} /></div>
   }
   if (!feed) return <ErrorState message={`Couldn't load your picks: ${error}`} onRetry={() => load()} />
 
   const empty = feed.sections.length === 0
+  const loc = feed.location
+  const dismissChip = () => { setHideChip(true); try { localStorage.setItem(CHIP_KEY, '1') } catch { /* private mode */ } }
   return (
     <div className={cn('flex flex-col gap-6 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
-      {!feed.has_interests && (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-(--accent) bg-(--accent-subtle) px-4 py-5 text-center">
-          <Sparkles className="size-6 text-(--accent)" />
-          <p className="text-[0.9412rem] font-medium text-(--text)">Get races picked just for you</p>
-          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">
-            Four quick taps: what you race, how far, the vibe, and how far you'll travel.
-          </p>
-          <Button variant="primary" className="h-11 px-5 text-[0.8235rem]" onClick={onEdit}>What are you into? · +50 XP</Button>
+      <RabbitExploreHero onOpen={(r) => onOpen(r as ForYouRace)} />
+      {feed.inferred && !hideChip && (
+        <div className="-mb-3 flex items-center gap-1 self-start rounded-full bg-(--accent-subtle) py-0.5 pl-3 text-[0.7059rem] text-(--accent)">
+          <Sparkles className="size-3.5 shrink-0" />
+          <button type="button" className="min-h-11 text-left font-medium" onClick={onEdit}>
+            Based on your training. <span className="underline underline-offset-2">Tune your interests</span>
+          </button>
+          <button type="button" className="hit-44 inline-flex size-8 items-center justify-center" aria-label="Dismiss" onClick={dismissChip}>
+            <X className="size-3.5" />
+          </button>
         </div>
       )}
+      {loc && !loc.searchable ? (
+        <LocationPrompt title="Find races near you" onSaveZip={saveZip} onChanged={() => load(true)} />
+      ) : loc ? <LocationLine loc={loc} onChanged={() => load(true)} /> : null}
       {feed.failed && (
         <div className="flex items-center gap-2 rounded-xl bg-(--warning-subtle) px-3 py-2 text-[0.7059rem] text-(--warning-text)" role="status">
           <span className="flex-1">Race search isn't answering right now, so picks are missing. Showing what we have.</span>
@@ -116,11 +133,6 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
             <RefreshCw className="size-3.5" /> Retry
           </button>
         </div>
-      )}
-      {feed.has_interests && !feed.zip && (
-        <button type="button" onClick={onEdit} className="min-h-11 rounded-xl bg-(--bg-elevated) px-3 py-2 text-left text-[0.7059rem] text-(--text-secondary)">
-          Add your home zip to see races near you.
-        </button>
       )}
       {feed.sections.map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
       {bucketBusy && (
@@ -132,7 +144,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
         </section>
       )}
       {bucketError && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Bucket list: {bucketError}</p>}
-      {empty && feed.has_interests && !bucketBusy && (
+      {empty && !bucketBusy && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <p className="text-[0.9412rem] font-medium text-(--text)">No picks yet</p>
           <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">
@@ -149,7 +161,8 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch }: {
 }
 
 function SectionTitle({ s }: { s: ForYouSection }) {
-  const icon = s.id === 'friends' ? <Users className="size-3.5" /> : s.id === 'bucket' || s.id === 'picks' ? <Sparkles className="size-3.5" /> : null
+  const icon = s.id === 'friends' ? <Users className="size-3.5" /> : s.id === 'picks' ? <Carrot className="size-3.5" />
+    : s.id === 'bucket' || s.id === 'popular' ? <Sparkles className="size-3.5" /> : null
   return (
     <h3 className={cn('flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest',
       s.id === 'picks' ? 'text-(--accent)' : 'text-(--text-muted)')}>
@@ -167,11 +180,17 @@ function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => v
         {s.races.map((r) => <PickCard key={r.id} r={r} onClick={() => onOpen(r)} />)}
       </div>
       {s.source === 'web' && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Found online by Rabbit. Check dates on the official site.</p>}
+      {s.source === 'curated' && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Famous races everyone talks about. Dates move each year, so check the official site.</p>}
     </section>
   )
 }
 
-function PickCard({ r, onClick }: { r: ForYouRace; onClick: () => void }) {
+/** "Sat, May 22", or "Usually in April" for a popular race whose date isn't confirmed. */
+export function whenText(r: RaceX): string {
+  return r.check_dates || !r.date ? (r.usual_month ? `Usually in ${MONTH_LONG[r.usual_month - 1]}` : 'Date to be announced') : raceDate(r.date)
+}
+
+export function PickCard({ r, onClick }: { r: ForYouRace | RaceX; onClick: () => void }) {
   const [logoOk, setLogoOk] = useState(true)
   const Icon = CATEGORY_ICON[r.types[0] ?? 'other'] ?? Activity
   const dists = [...new Set(r.events.map((e) => e.distance_label).filter(Boolean))].slice(0, 3)
@@ -190,7 +209,7 @@ function PickCard({ r, onClick }: { r: ForYouRace; onClick: () => void }) {
         )}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="line-clamp-2 text-[0.8824rem] font-medium leading-snug text-(--text)">{r.name}</span>
-          <span className="truncate text-[0.7059rem] text-(--text-muted)">{raceDate(r.date)}{place ? ` · ${place}` : ''}</span>
+          <span className="truncate text-[0.7059rem] text-(--text-muted)">{whenText(r)}{place ? ` · ${place}` : ''}</span>
         </span>
       </span>
       {dists.length > 0 && (
@@ -199,9 +218,11 @@ function PickCard({ r, onClick }: { r: ForYouRace; onClick: () => void }) {
         </span>
       )}
       {r.why && <span className="line-clamp-2 text-[0.7647rem] font-medium leading-snug text-(--text)">{r.why}</span>}
+      {r.estimate && <EstimateLine e={r.estimate} />}
       <span className="mt-auto flex flex-wrap items-center gap-1.5 text-[0.6471rem]">
-        {r.fit && <span className={cn('rounded-full px-2 py-0.5 font-medium', HINT_CLS[r.fit.tone])}>{r.fit.label}</span>}
+        {'fit' in r && r.fit && <span className={cn('rounded-full px-2 py-0.5 font-medium', HINT_CLS[r.fit.tone])}>{r.fit.label}</span>}
         {r.registration_open && <span className="font-semibold uppercase tracking-wider text-(--accent)">Open</span>}
+        {r.check_dates && <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 font-medium text-(--warning-text)">Check dates</span>}
         {r.source === 'web' && <span className="text-(--text-muted)">Found online</span>}
       </span>
     </button>

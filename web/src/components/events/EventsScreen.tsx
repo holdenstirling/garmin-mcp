@@ -14,6 +14,7 @@ import { EventBasics, EventGoal, InfoBlock } from './EventForm'
 import { RacePackScreen } from './RacePackScreen'
 import { RaceFitScreen } from './RaceFitScreen'
 import { ReadinessRow } from './Readiness'
+import { PredictedFinish } from '@/components/explore/Estimate'
 import { listReadiness, type RaceGrade } from '@/lib/readiness'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
@@ -134,6 +135,7 @@ function EventCard({ e, grade, onClick, onFit, onPack }: {
           <Gauge className="size-3.5" /> Readiness & race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
         </button>
       )}
+      {n >= 0 && <PredictedFinish eventId={e.id} className="border-t border-(--border) px-3.5 py-1.5" />}
       {onPack && (
         <button type="button" onClick={onPack}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
