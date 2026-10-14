@@ -58,7 +58,10 @@ import {
   createThread, deleteThread, getPlanWeek, goalCountdown, listThreads, putSettings,
   type Goal, type Me, type PlannedSession, type PlanWeek, type Thread, type WeekDay,
 } from '@/lib/api'
-import { useCoach, type QueuedSend, type ChartItem, type Approval, type ChatItem, type ChatMessage, type ThreadLink, type ToolCall } from '@/hooks/useCoach'
+import { useCoach, type QueuedSend, type ChartItem, type Approval, type ChatItem, type ChatMessage, type MomentAction, type MomentItem, type ThreadLink, type ToolCall } from '@/hooks/useCoach'
+import { MomentCard } from '@/components/chat/MomentCard'
+import { ReplyChips, replyChips, useRotatingPrompt } from '@/components/chat/ReplyChips'
+import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
 import { Chart } from '@/components/chat/Chart'
 import { MessageMenu, type MenuTarget } from '@/components/chat/MessageMenu'
@@ -81,6 +84,7 @@ type Row =
   | { kind: 'link'; item: ThreadLink }
   | { kind: 'approval'; item: Approval }
   | { kind: 'chart'; item: ChartItem }
+  | { kind: 'moment'; item: MomentItem }
 
 // Consecutive tool calls collapse into one group (Dolly's ToolCallGroup); a
 // speaker label shows only when the speaker changes.
@@ -101,6 +105,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
     if (it.kind === 'link') { rows.push({ kind: 'link', item: it }); lastSpeaker = null; continue }
     if (it.kind === 'approval') { rows.push({ kind: 'approval', item: it }); lastSpeaker = 'agent'; continue }
     if (it.kind === 'chart') { rows.push({ kind: 'chart', item: it }); lastSpeaker = 'agent'; continue }
+    if (it.kind === 'moment') { rows.push({ kind: 'moment', item: it }); lastSpeaker = null; continue }
     rows.push({ kind: 'message', item: it, showLabel: lastSpeaker !== it.role && !it.label })
     lastSpeaker = it.role
   }
@@ -139,6 +144,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
+  const [fitEvent, setFitEvent] = useState<string | null>(null) // race readiness from a moment
+  const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
@@ -299,6 +306,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         if (!r.changed) return
         const p = await getProgress().catch(() => null)
         if (p) setProgress(p)
+        setFeedTick((n) => n + 1) // the sync posted a "Logged: …" moment in Rabbit's log
         loadToday()
         loadWeek()
         const a = r.new[r.new.length - 1]
@@ -311,11 +319,15 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       }
     }
     void run()
-    const onVis = () => { if (document.visibilityState === 'visible') void run() }
+    const onVis = () => { if (document.visibilityState === 'visible') { setFeedTick((n) => n + 1); void run() } }
     document.addEventListener('visibilitychange', onVis)
     const timer = window.setInterval(() => void run(), 60_000)
     return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
   }, [overlayFree, me.garmin.connected, loadToday]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Moments that arrived while the app was open: refresh the log without a reload.
+  useEffect(() => {
+    if (feedTick && status === 'idle' && thread?.kind === 'coach') void reload()
+  }, [feedTick]) // eslint-disable-line react-hooks/exhaustive-deps
   // Weekly recap (recap.py): from the Sunday push (?open=recap: Progress → Weekly recap), the
   // status banner (Sunday noon through Monday, dismissible per week) and Progress.
   useEffect(() => {
@@ -507,6 +519,21 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
   }
   const suggestions = isCoach ? COACH_SUGGESTIONS : TOPIC_SUGGESTIONS
+  // A moment's action chip, routed to the screens that already exist.
+  const momentAction = (a: MomentAction) => {
+    if (a.id === 'checkin') setVoice({ activityId: a.activity_id, title: a.title })
+    else if (a.id === 'reaction') { if (a.activity_id != null) setReaction(a.activity_id) }
+    else if (a.id === 'readiness') { if (a.event_id) setFitEvent(a.event_id); else openRaces() }
+    else if (a.id === 'racepack') { openRaces(); setPlanScreen('racepack') }
+    else if (a.id === 'plan') openPlan()
+    else if (a.id === 'progress') goTab('progress')
+    else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
+  }
+  // Quick replies under Rabbit's latest message when it asks something (max 3).
+  const lastRow = shownRows[shownRows.length - 1]
+  const chips = status === 'idle' && me.chat.available && lastRow?.kind === 'message' && lastRow.item.role === 'agent' && !lastRow.item.error
+    ? replyChips(lastRow.item.text) : []
+  const idlePrompt = useRotatingPrompt(tab === 'rabbit' && status === 'idle' && !composerFocus)
   const countdown = goalCountdown(goal)
   const coachThread = coachId ? byId[coachId] : undefined
 
@@ -581,6 +608,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         return <ApprovalCard key={r.item.id} item={r.item}
           onDecide={(ok, why) => void decide(r.item.id, ok, why).then(() => { if (ok) onChange() })} />
       }
+      if (r.kind === 'moment') return <MomentCard key={r.item.id} item={r.item} onAction={momentAction} />
       if (r.kind === 'tool') return <ToolCallCard key={r.item.id} toolCall={r.item} />
       if (r.kind === 'group') return <ToolCallGroup key={`g-${r.items[0]!.id}`} toolCalls={r.items} />
       const m = r.item
@@ -835,6 +863,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <div className="mx-auto max-w-2xl space-y-4 py-4">
             <PullToRefresh onRefresh={() => { void refreshThreads(); loadToday(); getProgress().then(setProgress, () => {}) }} />
             {renderRows(shownRows, isCoach)}
+            <ReplyChips chips={chips} disabled={busy} onPick={(t) => void (isCoach ? sendFromLog(t, []) : send(t))} />
             {thinking && (
               <div className="flex items-center gap-2 pl-1 text-sm text-muted-foreground">
                 <div className="thinking-dots flex items-center gap-[3px]"><span /><span /><span /></div>
@@ -856,7 +885,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           draft={draft}
           onMic={isCoach ? () => setVoice({}) : undefined}
           placeholder={!me.chat.available ? 'Chat isn’t configured yet' : waitingOnYou ? 'Approve or decline above…'
-            : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : isCoach ? 'Start a new chat…' : 'Ask Rabbit…'}
+            : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : idlePrompt}
         />
       </div>
       </div>
@@ -944,6 +973,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           }} />
       )}
       {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
+      {fitEvent && <RaceFitScreen eventId={fitEvent} onClose={() => setFitEvent(null)} />}
       {planScreen === 'racepack' && <RacePackScreen imperial={imperial} onClose={() => setPlanScreen(null)} />}
       {workout && (
         <WorkoutDayScreen key={workout.sessionId ?? 'today'} sessionId={workout.sessionId} imperial={imperial}

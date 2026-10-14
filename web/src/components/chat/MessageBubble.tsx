@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/hooks/useCoach'
 import { FileText } from 'lucide-react'
 import { attachmentUrl, formatFileSize } from '@/lib/attachments'
+import { RabbitLogo } from '@/components/RabbitLogo'
 
 const REMARK_PLUGINS = [remarkGfm]
 
@@ -19,11 +20,15 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
   const isUser = message.role === 'user'
   return (
     <div className={cn('relative flex w-full min-w-0 flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
-      {showLabel && (
-        <span className={cn('px-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground', isUser ? 'pr-2' : 'pl-1')}>
-          {isUser ? 'You' : 'Rabbit'}
+      {showLabel && (isUser ? (
+        <span className="px-1 pr-2 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">You</span>
+      ) : (
+        // Every Rabbit message carries the same mark: the brand tile + name.
+        <span className="flex items-center gap-1.5 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
+          <span className="logo-tile flex size-5 items-center justify-center rounded-[6px] bg-(--brand)" aria-hidden><RabbitLogo size={15} /></span>
+          Rabbit
         </span>
-      )}
+      ))}
       {message.attachments && message.attachments.length > 0 && (
         <div className={cn('flex max-w-[85%] flex-wrap gap-1.5', isUser ? 'justify-end' : 'justify-start')}>
           {message.attachments.map((a) => a.kind === 'image' ? (

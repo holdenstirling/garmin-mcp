@@ -14,6 +14,10 @@ once a minute and, for each allowlisted user with Garmin tokens:
   when they connect again.
 * **Fresh stats**: when the poller sees a new activity, ``on_new_activity`` drops the
   user's cached stats/activities (XP, streak and load are current at once).
+* **Moments** (``moments.Moments``, optional): the poller hands new activities to
+  ``Moments.workouts`` before the AI note fires (instant "Logged: ..." line in the Rabbit log),
+  and every tick runs ``Moments.tick`` (quiet-hour queue, streak at risk, race countdown,
+  readiness grade change).
 * **Weekly recap**: Sundays at ``recap_time`` (default 18:00 local, ``recap_enabled``
   default on), claimed once per week before sending like the brief (up to 3 tries on a
   definite failure, skipped when 3+ hours late). A plain push, no model call.
@@ -105,7 +109,8 @@ class Proactive:
                  schedule: Schedule, state_dir: Path, default_tz: str,
                  clock: Callable[[], datetime] = lambda: datetime.now(UTC),
                  on_new_activity: Callable[[str], None] | None = None,
-                 recap: Recap | None = None, notify_url: NotifyUrl | None = None) -> None:
+                 recap: Recap | None = None, notify_url: NotifyUrl | None = None,
+                 moments: Any = None) -> None:
         self._service = service
         self._store = store
         self._tokens = token_store
@@ -120,6 +125,7 @@ class Proactive:
         self._on_new = on_new_activity
         self._recap = recap
         self._notify_url = notify_url
+        self._moments = moments  # moments.Moments: instant workout confirmations + time-based updates
         self._pollers: dict[str, Poller] = {}
         self._lock = threading.Lock()
 
@@ -144,8 +150,19 @@ class Proactive:
                     fetch, StateStore(self._state_dir / f"{user_id}.json"),
                     _Routine(user_id, self._deliver),  # type: ignore[arg-type]
                     token_fingerprint=token_fingerprint(lambda _u=user_id: self._tokens.load(_u)),
+                    on_new=(lambda acts, _u=user_id: self._moment_workouts(_u, acts))
+                    if self._moments is not None else None,
                 )
             return p
+
+    def _moment_workouts(self, user_id: str, acts: list[dict[str, Any]]) -> None:
+        # The poller runs only with workout feedback on, so the AI note follows this moment.
+        if self._on_new is not None:
+            try:
+                self._on_new(user_id)  # fresh streak/XP for the moment
+            except Exception:
+                pass
+        self._moments.workouts(user_id, acts, ai_note=True)
 
     def _connected(self, user_id: str) -> bool:
         try:
@@ -169,6 +186,8 @@ class Proactive:
                     self._maybe_brief(user_id, profile, now)
                 if profile.get("recap_enabled", True):
                     self._maybe_recap(user_id, profile, now)
+                if self._moments is not None:
+                    self._moments.tick(user_id)
             except Exception as e:  # one user's problem never stops the others
                 log_event(logger, logging.ERROR, "proactive_error", user_id=user_id,
                           error=type(e).__name__)

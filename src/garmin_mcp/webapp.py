@@ -55,6 +55,7 @@ from .progress import GEAR_XP, quests_view, week_goal
 from .stats import compute as stats_compute
 from .recap import RecapError, RecapService
 from .sync import LiveSync
+from .moments import completed_challenges
 from .today import TodayService
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -403,7 +404,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if not isinstance(bt, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", bt):
                 return _err(400, "brief_time must be HH:MM")
             upd["brief_time"] = bt
-        for key in ("brief_enabled", "workout_feedback", "recap_enabled", "data_sources_asked"):
+        for key in ("brief_enabled", "workout_feedback", "recap_enabled", "data_sources_asked", "moments_push"):
             if key in body:
                 if not isinstance(body[key], bool):
                     return _err(400, f"{key} must be true or false")
@@ -927,11 +928,21 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             user_id, acts=acts, today=today, stats=stats,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
             bonus=bonus))
+        await anyio.to_thread.run_sync(lambda: _progress_moments(user_id, out))
         quests = quests_view(state, available)
         core = [q for q in quests if not q["optional"]]
         return JSONResponse({**out, "quests": quests,
                              "setup": {"done": sum(q["done"] for q in core), "total": len(core)},
                              "week": week_goal(stats), "streak": stats["streak"], "stats_ok": stats_ok})
+
+    # Rabbit moments (moments.py): level up / badge / challenge lines in the Rabbit log.
+    def _progress_moments(uid: str, out: dict[str, Any]) -> None:
+        assert chat is not None and store is not None
+        try:
+            done = completed_challenges(store.user_doc(uid, "challenges").load())
+            chat.agent.moments.on_progress(uid, out, done)
+        except Exception as e:  # moments never break the progress view
+            log_event(logger, logging.WARNING, "progress_moments_failed", error=type(e).__name__)
 
     async def progress_seen(request: Request, user_id: str) -> Response:
         assert chat is not None
@@ -949,8 +960,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     live_sync = (LiveSync(store, lambda uid: chat.agent._service.read_uncached(
         uid, "get_activities", {"start": 0, "limit": 5}), connected=_garmin_connected,
-        on_new=lambda uid: chat.agent.stats.invalidate(uid, activities=True))
+        on_new=lambda uid: chat.agent.stats.invalidate(uid, activities=True),
+        on_activities=lambda uid, acts: chat.agent.moments.workouts(uid, acts))
         if store is not None and chat is not None else None)
+    if chat is not None and push is not None:  # moments push only streak-at-risk + race countdown
+        chat.agent.moments.push = lambda u, t, b, url: push.send(u, t, b, url=url)
 
     async def sync_post(request: Request, user_id: str) -> Response:
         if live_sync is None:
@@ -1382,7 +1396,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             links=links, auth=auth, settings=settings, host_ok=host_ok, plan_api=_plan_api,
             plan_call=_plan_call, user_error=_UserError, public_plan=public_plan, notify=_notify,
             coach_chat=coach_chat, structured=getattr(chat.agent._backend, "structured", None),
-            now=chat.agent._now)
+            now=chat.agent._now, moment=chat.agent.moments.coach_plan)
 
     async def coach_threads(request: Request, user_id: str) -> Response:
         aid = _aid(request)
@@ -1474,8 +1488,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(404, "thread not found")
         keys = ("id", "ts", "kind", "label", "user", "parts")
         turns = _coach().turns(aid, tid)[-60:]
-        return JSONResponse({"thread": _thread_view(thread),
-                             "turns": [{k: t.get(k) for k in keys if k in t} for t in turns]})
+
+        def view(t: dict[str, Any]) -> dict[str, Any]:
+            v = {k: t.get(k) for k in keys if k in t}
+            if t.get("kind") == "moment":  # read-only coach view: the moment's line, no actions
+                v["parts"] = [{"type": "text", "text": p.get("text", "")} for p in t.get("parts") or []]
+                v["label"] = "update"
+            return v
+        return JSONResponse({"thread": _thread_view(thread), "turns": [view(t) for t in turns]})
 
     # ------------------------------------------------- calendar / travel --
     async def calendar_get(request: Request, user_id: str) -> Response:

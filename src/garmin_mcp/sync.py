@@ -52,11 +52,13 @@ def activity_view(a: dict[str, Any]) -> dict[str, Any]:
 class LiveSync:
     def __init__(self, store: AppStore, fetch: Callable[[str], list[dict[str, Any]]], *,
                  connected: Callable[[str], bool], on_new: Callable[[str], None],
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 on_activities: Callable[[str, list[dict[str, Any]]], None] | None = None) -> None:
         self._s = store
         self._fetch = fetch
         self._connected = connected
         self._on_new = on_new
+        self._on_activities = on_activities  # Rabbit moments: "Logged: ..." in the Rabbit log
         self._clock = clock
         self._last: dict[str, tuple[float, dict[str, Any]]] = {}
         self._locks: dict[str, threading.Lock] = {}
@@ -112,6 +114,12 @@ class LiveSync:
         except Exception as e:
             log_event(logger, logging.WARNING, "sync_invalidate_failed", user_id=user_id,
                       error=type(e).__name__)
+        if self._on_activities is not None and new:
+            try:
+                self._on_activities(user_id, new)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "sync_moments_failed", user_id=user_id,
+                          error=type(e).__name__)
         log_event(logger, logging.INFO, "sync_new", user_id=user_id, new=len(new))
         return {**base, "changed": True, "new": [activity_view(a) for a in new]}
 

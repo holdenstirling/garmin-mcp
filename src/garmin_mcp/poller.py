@@ -184,8 +184,10 @@ class Poller:
         max_fires_per_day: int = 10,
         token_fingerprint: Callable[[], str | None] = lambda: None,
         clock: Callable[[], float] = time.time,
+        on_new: Callable[[list[dict[str, Any]]], None] | None = None,
     ) -> None:
         self._fetch = fetch_page
+        self._on_new = on_new  # sees the new activities before the routine fires (Rabbit moments)
         self._store = store
         self._routine = routine
         self._dry_run = dry_run
@@ -283,6 +285,11 @@ class Poller:
             self._ok()
             return {**summary, "would_send": text}
 
+        if self._on_new is not None:
+            try:
+                self._on_new(new)
+            except Exception as e:  # never blocks the routine
+                log_event(logger, logging.WARNING, "on_new_failed", error=type(e).__name__)
         now = self._clock()
         state.fires = [t for t in state.fires if now - t < DAY]
         if len(state.fires) >= self._max_fires:

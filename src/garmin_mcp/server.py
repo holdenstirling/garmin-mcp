@@ -330,6 +330,7 @@ def build_rabbit(settings: Settings, fernet_key: str, token_store: EncryptedFile
             on_new_activity=lambda u: chat.agent.stats.invalidate(u, activities=True),
             recap=lambda u: RecapService(chat.agent).get(u),
             notify_url=(lambda u, t, b, url: push.send(u, t, b, url=url)) if push else None,
+            moments=chat.agent.moments,
         )
     hook = on_tokens_changed or (lambda user_id: None)
 

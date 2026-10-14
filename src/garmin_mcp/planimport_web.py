@@ -89,7 +89,8 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
                 user_error: type[Exception], public_plan: Callable[..., Any],
                 notify: Callable[..., None], coach_chat: Any,
                 structured: Callable[..., Awaitable[dict[str, Any]]] | None,
-                now: Callable[[str], datetime]) -> list[Route]:
+                now: Callable[[str], datetime],
+                moment: Callable[[str, str], Any] | None = None) -> list[Route]:
 
     def err(status: int, message: str) -> JSONResponse:
         return JSONResponse({"error": message}, status_code=status)
@@ -512,6 +513,11 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
             except Exception as e:  # the plan is in; the message is best effort
                 log_event(logger, logging.WARNING, "plan_import_message_failed", error=type(e).__name__)
             notify(aid, summary["by_name"] or "Your coach", text)
+            if moment is not None:  # the Rabbit log's line for it (moments.py; no extra push)
+                try:
+                    moment(aid, first)
+                except Exception as e:
+                    log_event(logger, logging.WARNING, "plan_import_moment_failed", error=type(e).__name__)
         log_event(logger, logging.INFO, "plan_imported", user_id=aid, role=role, weeks=summary["weeks"],
                   sessions=summary["sessions"], source=summary["source"])
         return JSONResponse({"plan": public_plan(plan, plans.today(aid)), "summary": summary})

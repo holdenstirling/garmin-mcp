@@ -30,7 +30,11 @@ export type Approval = {
   status: 'pending' | 'approved' | 'declined'; reason?: string | null
 }
 export type ChartItem = { kind: 'chart'; id: string; spec: ChartSpec }
-export type ChatItem = ChatMessage | ToolCall | ThreadLink | Approval | ChartItem
+/** Rabbit moments (moments.py): a short deterministic update with action chips. */
+export type MomentActionId = 'checkin' | 'reaction' | 'readiness' | 'racepack' | 'plan' | 'progress' | 'ask'
+export type MomentAction = { id: MomentActionId; label: string; activity_id?: number; event_id?: string; prompt?: string; title?: string }
+export type MomentItem = { kind: 'moment'; id: string; ts: number; moment: string; text: string; actions: MomentAction[] }
+export type ChatItem = ChatMessage | ToolCall | ThreadLink | Approval | ChartItem | MomentItem
 /** 'busy': idle here, but a reply is still running in another thread. */
 export type Status = 'loading' | 'idle' | 'streaming' | 'busy'
 
@@ -38,10 +42,11 @@ type Part =
   | { type: 'text'; text: string }
   | { type: 'thread_link'; thread_id: string; from_turn: string | null }
   | { type: 'chart'; spec: ChartSpec }
+  | { type: 'moment'; moment: string; text: string; actions?: MomentAction[] }
   | { type: 'tool_call'; toolCallId: string; toolName: string; params: Record<string, unknown>; result?: unknown; error?: string
       approval?: { summary: ApprovalSummary; approved: boolean; reason: string | null } }
 type StoredTurn = {
-  id: string; ts: number; kind: 'chat' | 'proactive' | 'seed' | 'link'
+  id: string; ts: number; kind: 'chat' | 'proactive' | 'seed' | 'link' | 'moment'
   label?: 'brief' | 'workout' | null; user: string | null; parts: Part[]
   attachments?: AttachmentMeta[]
 }
@@ -58,7 +63,9 @@ function turnsToItems(turns: StoredTurn[]): ChatItem[] {
     }
     let first = true
     t.parts.forEach((p, i) => {
-      if (p.type === 'chart') {
+      if (p.type === 'moment') {
+        items.push({ kind: 'moment', id: `${t.id}-${i}`, ts: t.ts, moment: p.moment, text: p.text, actions: p.actions ?? [] })
+      } else if (p.type === 'chart') {
         items.push({ kind: 'chart', id: `${t.id}-${i}`, spec: p.spec })
       } else if (p.type === 'thread_link') {
         items.push({ kind: 'link', id: `${t.id}-${i}`, threadId: p.thread_id, fromTurn: p.from_turn, ts: t.ts })

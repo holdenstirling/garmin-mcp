@@ -42,6 +42,7 @@ from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
 from .progress import Progress
+from .moments import Moments
 from .stats import StatsService
 from . import racefit, racepack
 from .checkins import CHECKIN_SYSTEM, CHECKIN_TOOL, CheckinError, CheckinStore, clean as clean_checkin, fallback_parse
@@ -62,6 +63,7 @@ MODEL_RESULT_CHARS = 16_000
 DISPLAY_RESULT_CHARS = 3_000
 NOTES_MAX = 2_000
 MESSAGE_MAX = 4_000
+LONG_REPLY_WORDS = 250  # a normal chat reply longer than this is logged (metric only)
 
 SYSTEM_PROMPT = """You are Rabbit, the coach inside the Rabbit training app: upbeat, sharp and \
 practical, like a great running buddy who happens to be a coach. Athletes train for anything from \
@@ -392,6 +394,16 @@ class Agent:
                                   plan=self.plans.get, clock=clock)
         self.progress = Progress(store, clock=clock)
         self.checkins = CheckinStore(store, clock=clock, today=lambda uid: self._now(uid).date())
+        # Rabbit moments (moments.py): deterministic updates in the Rabbit log; push is set by the app.
+        self.moments = Moments(store, self.coach, now=self._now, clock=clock, stats=self.stats.get,
+                               events=self.events.list, grade=self._main_grade)
+        self._readiness: Any = None
+
+    def _main_grade(self, user_id: str, event_id: str) -> str | None:
+        from .readiness import ReadinessService
+        if self._readiness is None:
+            self._readiness = ReadinessService.from_agent(self)
+        return self._readiness.get(user_id, event_id).get("grade")
 
     async def checkin(self, user_id: str, text: str, *, session_id: Any = None, activity_id: Any = None,
                       day: Any = None, feel: Any = None) -> tuple[dict[str, Any], str]:
@@ -567,8 +579,8 @@ class Agent:
     def _context_messages(self, user_id: str, thread_id: str) -> list[dict[str, Any]]:
         msgs: list[dict[str, Any]] = []
         for t in self.history(user_id, thread_id)[-CONTEXT_TURNS:]:
-            if t.get("kind") == "link":
-                continue  # UI-only cards
+            if t.get("kind") in ("link", "moment"):
+                continue  # UI-only cards and Rabbit moments
             user = t.get("user")
             if user:
                 for a in t.get("attachments") or []:  # older attachments: placeholders only
@@ -780,6 +792,10 @@ class Agent:
                 record["attachments"] = attachments
             if record["assistant"] or record["user"]:
                 self.coach.append_turn(user_id, thread_id, record)
+            words = len(record["assistant"].split())
+            if kind == "chat" and status == "done" and words > LONG_REPLY_WORDS:
+                # Length guard: never truncated, only measured (SYSTEM_PROMPT asks for ~80 words).
+                log_event(logger, logging.INFO, "long_reply", user_id=user_id, words=words)
             total = st.tokens_in + st.tokens_out
             if total:
                 self._add_usage(user_id, day, total)
