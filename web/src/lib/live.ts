@@ -31,6 +31,8 @@ export type Recap = {
   browse: { oldest: string; newest: string }
   summary: string
   units?: 'metric' | 'imperial'
+  /** weekly challenges done/joined plus monthly ones finished that week (null: none) */
+  challenges?: { done: number; joined: number; xp: number; items: { name: string; period: 'week' | 'month'; done: boolean }[] } | null
 }
 export const getRecap = (week?: string) => getJSON<Recap>(`/api/recap${week ? `?week=${encodeURIComponent(week)}` : ''}`)
 

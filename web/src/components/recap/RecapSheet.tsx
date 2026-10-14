@@ -101,6 +101,15 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
           icon={<Flame className={cn('size-5', r.streak ? 'text-(--accent)' : 'text-(--text-muted)')} />} />
       </div>
 
+      {r.challenges && r.challenges.items.length > 0 && (
+        <p className="flex items-center gap-1.5 px-1 text-[0.7647rem] text-(--text-secondary)">
+          <Trophy className="size-3.5 text-(--accent)" />
+          Challenges: {r.challenges.joined ? `${r.challenges.done} of ${r.challenges.joined} weekly done` : ''}
+          {r.challenges.joined && r.challenges.items.some((i) => i.period === 'month' && i.done) ? ' · ' : ''}
+          {r.challenges.items.filter((i) => i.period === 'month' && i.done).map((i) => i.name).join(', ')}
+          {r.challenges.xp ? ` · +${r.challenges.xp} XP` : ''}
+        </p>
+      )}
       {r.badges.length > 0 && (
         <Card>
           <div className="flex flex-col gap-2 px-4 py-3">

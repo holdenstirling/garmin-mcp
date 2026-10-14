@@ -915,6 +915,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         bonus = {f"gear:{g['id']}": GEAR_XP for g in (gear_store.list(user_id) if gear_store else [])}
         bonus |= checkin_xp_bonus(agent.checkins.list(user_id))
         bonus.update(_social_bonus(user_id))
+        bonus.update(_challenge_bonus(user_id, acts, today))
         out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
             user_id, acts=acts, today=today, stats=stats,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
@@ -1965,6 +1966,71 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(404, "no photo")
         return await _photo_resp(pid)
 
+    # --------------------------------------------------------- challenges --
+    # Weekly/monthly challenges (challenges.py): personal targets from the Garmin baseline,
+    # live progress, XP via progress bonus keys "challenge:<id>", friend invites need an
+    # active follow edge (social.py). Athletes only; coach accounts get 403 from _api.
+    from . import challenges as _chal
+    chal = (_chal.for_agent(chat.agent, follows=(soc.follows if soc is not None else None), names=_soc_name)
+            if chat is not None and store is not None else None)
+
+    def _challenge_bonus(uid: str, acts: list[dict[str, Any]], today: date) -> dict[str, int]:
+        if chal is None:
+            return {}
+        try:
+            return chal.refresh(uid, acts=acts, today=today)
+        except Exception:
+            return {}
+
+    def _chal_api(handler: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
+        async def inner(request: Request, user_id: str) -> Response:
+            if chal is None:
+                return _err(503, "Challenges aren't configured on this server.")
+            try:
+                return await handler(request, user_id)
+            except _chal.ChallengeError as e:
+                return _err(e.status, e.message)
+            except _UserError as e:
+                return _err(e.status, e.message)
+        return _plan_api(inner, mutating=mutating) if plans is not None else _api(inner, mutating=mutating)
+
+    async def challenges_get(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        return JSONResponse(await _plan_call(lambda: chal.get(user_id)))
+
+    async def challenges_join(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        c = await _plan_call(lambda: chal.join(user_id, body.get("template"), body.get("period")))
+        return JSONResponse({"challenge": c, **await _plan_call(lambda: chal.get(user_id))}, status_code=201)
+
+    async def challenges_leave(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        await anyio.to_thread.run_sync(lambda: chal.leave(user_id, request.path_params["cid"]))
+        return JSONResponse({"ok": True})
+
+    async def challenges_invite(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        body = await read_json(request)
+        ids = body.get("user_ids") if isinstance(body, dict) else None
+        res = await anyio.to_thread.run_sync(lambda: chal.invite(user_id, request.path_params["cid"], ids))
+        for to in ids or []:
+            _social_push(to, f"challenge-invite:{to}:{user_id}", 86400, "Challenge invite",
+                         f"{_soc_name(user_id)} invited you to a challenge on Rabbit.")
+        return JSONResponse(res)
+
+    async def challenges_accept(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        c = await anyio.to_thread.run_sync(lambda: chal.accept(user_id, request.path_params["cid"]))
+        return JSONResponse({"challenge": c}, status_code=201)
+
+    async def challenges_decline(request: Request, user_id: str) -> Response:
+        assert chal is not None
+        await anyio.to_thread.run_sync(lambda: chal.decline(user_id, request.path_params["cid"]))
+        return JSONResponse({"ok": True})
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -2066,6 +2132,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/social/cheers/{owner_id}/{activity_id}/{cheer_id}", _social_api(social_cheer_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/social/people/{person_id}", _social_api(social_person, mutating=False), methods=["GET"]),
         Route("/app/api/social/people/{person_id}/photo", _photo_cache(_social_api(social_photo, mutating=False)), methods=["GET"]),
+        Route("/app/api/challenges", _chal_api(challenges_get, mutating=False), methods=["GET"]),
+        Route("/app/api/challenges/join", _chal_api(challenges_join, mutating=True), methods=["POST"]),
+        Route("/app/api/challenges/{cid}", _chal_api(challenges_leave, mutating=True), methods=["DELETE"]),
+        Route("/app/api/challenges/{cid}/invite", _chal_api(challenges_invite, mutating=True), methods=["POST"]),
+        Route("/app/api/challenges/{cid}/accept", _chal_api(challenges_accept, mutating=True), methods=["POST"]),
+        Route("/app/api/challenges/{cid}/decline", _chal_api(challenges_decline, mutating=True), methods=["POST"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
         Route("/app/api/events/{event_id}/readiness", _plan_api(event_readiness, mutating=False), methods=["GET"]),

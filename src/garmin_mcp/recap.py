@@ -7,7 +7,8 @@ if the app wasn't opened), then builds. No model call.
 
 Numbers: XP gained that week, workouts / hours / active days (multisport legs count
 once), the day streak at the end of the week (or today, for the current week), plan
-adherence (done / planned sessions that week), badges first earned that week, the best
+adherence (done / planned sessions that week), badges first earned that week, challenges
+(weekly done/joined plus monthly ones completed that week; "2/2 challenges done" in the push), the best
 (longest) workout, level progress, and next week's focus: the plan's phase/focus and its
 2-3 key sessions (long, brick, race or quality), or a simple target without a plan.
 """
@@ -74,7 +75,7 @@ def _key_sessions(w: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def build(*, start: date, today: date, acts: list[dict[str, Any]], plan: dict[str, Any] | None,
-          ledger: dict[str, Any]) -> dict[str, Any]:
+          ledger: dict[str, Any], challenges: dict[str, Any] | None = None) -> dict[str, Any]:
     end = start + timedelta(days=6)
     upto = min(end, today)
     rows = [r for r in _rows(acts) if r["date"] <= today]
@@ -125,6 +126,7 @@ def build(*, start: date, today: date, acts: list[dict[str, Any]], plan: dict[st
         "browse": {"oldest": (today - timedelta(days=today.weekday()) - timedelta(weeks=BROWSE_WEEKS - 1)).isoformat(),
                    "newest": (today - timedelta(days=today.weekday())).isoformat()},
     }
+    out["challenges"] = challenges  # challenges.Challenges.week_summary (None: none joined)
     out["summary"] = push_text(out)
     return out
 
@@ -140,6 +142,9 @@ def push_text(r: dict[str, Any]) -> str:
         parts.append(f"{r['streak']}-day streak")
     elif r["hours"]:
         parts.append(f"{r['hours']:g} h")
+    ch = r.get("challenges")
+    if ch and ch.get("joined"):
+        parts.append(f"{ch['done']}/{ch['joined']} challenges done")
     return " · ".join(parts)
 
 
@@ -160,7 +165,13 @@ class RecapService:
                               plan_key=goal["id"] if goal and plan else None, quests={})
         except Exception:
             pass
-        out = build(start=start, today=today, acts=acts, plan=plan, ledger=a.progress.ledger(user_id))
+        try:
+            from .challenges import for_agent
+            ch = for_agent(a).week_summary(user_id, start, acts=acts, today=today)
+        except Exception:
+            ch = None
+        out = build(start=start, today=today, acts=acts, plan=plan, ledger=a.progress.ledger(user_id),
+                    challenges=ch)
         try:
             out["units"] = "imperial" if a.coach.athlete(user_id).get("units") == "imperial" else "metric"
         except Exception:
