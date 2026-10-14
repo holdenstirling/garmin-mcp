@@ -1,6 +1,6 @@
 // Athlete side: messages with your coach (general or about a workout) and the notes they shared.
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronRight, Dumbbell, MessageSquare, Pin, StickyNote } from 'lucide-react'
+import { ChevronRight, Dumbbell, Flag, MessageSquare, Pin, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Screen } from '@/components/plan/ui'
@@ -33,7 +33,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
 
   if (open) {
     return (
-      <Screen title={active?.session_id ? 'Workout chat' : 'Coach'} subtitle={active?.coach ?? coaches[0]?.email}
+      <Screen title={active?.event_id ? 'Race chat' : active?.session_id ? 'Workout chat' : 'Coach'} subtitle={active?.coach ?? coaches[0]?.email}
         closing={closing} onClose={close} onBack={() => { setOpen(null); load() }}>
         <ThreadView api={athleteChat} threadId={open} me="athlete" otherName={(active?.coach ?? coaches[0]?.email ?? 'your coach').split('@')[0]!} />
       </Screen>
@@ -81,8 +81,8 @@ export function ThreadList({ threads, onOpen, me }: { threads: ThreadSummary[]; 
             <button key={t.id} type="button" onClick={() => onOpen(t.id)}
               className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
               <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl',
-                t.session_id ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
-                {t.session_id ? <Dumbbell className="size-4" /> : <MessageSquare className="size-4" />}
+                t.session_id || t.event_id ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
+                {t.event_id ? <Flag className="size-4" /> : t.session_id ? <Dumbbell className="size-4" /> : <MessageSquare className="size-4" />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8824rem] text-(--text)">{t.title}</span>

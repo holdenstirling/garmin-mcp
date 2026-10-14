@@ -1,6 +1,6 @@
 // The "Me" tab: who you are and everything around your training that isn't the plan,
 // progress or races. Rows open the existing screens and the Settings sheet.
-import { Brain, ClipboardList, Mail, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { Brain, ClipboardList, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -9,7 +9,7 @@ import { photoUrl } from '@/lib/photo'
 import { goalCountdown, type Goal, type Me } from '@/lib/api'
 import type { Progress } from '@/lib/progress'
 
-export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings'
+export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
@@ -23,6 +23,7 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
 }) {
   const name = me.profile.name || me.user_id
   const countdown = goalCountdown(goal)
+  const coachStatus = me.athlete.coach_status ?? null
   return (
     <Screen title="Me" onClose={() => {}}>
       <button type="button" onClick={() => onOpen('profile')}
@@ -48,6 +49,13 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
       </Group>
 
+      {coachStatus === 'looking' && me.coaches === 0 && (
+        <Group>
+          <Row icon={<Icon><Search /></Icon>} title="Find a coach" subtitle="Coaches who fit your race, contact them directly"
+            onClick={() => onOpen('findcoach')} />
+        </Group>
+      )}
+
       <Group label="People">
         <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="Train together, cheer each other on"
           trailing={friendsDot ? <span className="flex items-center gap-2"><Dot label="New activity" /></span> : undefined}
@@ -60,6 +68,14 @@ export function MePage({ me, goal, progress, friendsDot, onOpen }: {
         <Row icon={<Icon><UserCheck /></Icon>} title="Coaches"
           subtitle={me.coaches ? `${me.coaches} coach${me.coaches === 1 ? '' : 'es'}` : 'Invite a coach by email'}
           onClick={() => onOpen('coaches')} />
+        {me.coaches === 0 && coachStatus === null && (
+          <Row icon={<Icon tone="muted"><Search /></Icon>} title="Looking for a coach?" subtitle="Find one or go solo"
+            onClick={() => onOpen('coachstatus')} />
+        )}
+        {me.coaches === 0 && coachStatus === 'self_coached' && (
+          <Row icon={<Icon tone="muted"><Search /></Icon>} title="Find a coach" subtitle="If you change your mind"
+            onClick={() => onOpen('findcoach')} />
+        )}
         {me.coaching > 0 && (
           <Row icon={<Icon><ClipboardList /></Icon>} title="Athletes you coach"
             subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`} onClick={() => onOpen('athletes')} />

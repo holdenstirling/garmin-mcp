@@ -49,6 +49,7 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
     ("calendar", "Connect Google Calendar", "Plans around busy days and travel", 50, True),
     ("oura", "Connect Oura", "Readiness and sleep in your stats", 50, True),
     ("coach", "Invite a coach", "Train with a real person in the loop", 50, True),
+    ("coach_status", "Coaching: do you want a coach?", "Find one or go solo", 25, True),
     ("gear", "Add your shoes or bike", "Track mileage and get retirement alerts", 50, True),
     ("friend", "Follow a friend", "Cheer each other on", 50, True),
     ("interests", "Tell Rabbit what you're into", "Personal race picks", 50, True),

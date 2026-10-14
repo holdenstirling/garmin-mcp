@@ -21,6 +21,8 @@ import { Celebration, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
 import { CoachesScreen } from '@/components/coach/CoachesScreen'
+import { CoachStatusSheet } from '@/components/coach/CoachStatusSheet'
+import { FindCoachScreen } from '@/components/coach/FindCoachScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
@@ -106,7 +108,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the tabs (each with its own close): plan setup, profile, people, gear.
-type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'friends'
+type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'friends' | 'findcoach'
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
@@ -127,6 +129,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
+  const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -333,6 +336,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'garmin' || q === 'notify' || q === 'calendar' || q === 'oura') { setPlanScreen(null); open('settings'); return }
     if (q === 'sports') { showScreen('profile'); return }
     if (q === 'coach') { showScreen('coaches'); return }
+    if (q === 'coach_status') { setCoachAsk(true); return }
     if (q === 'gear') { showScreen('gear'); return }
     if (q === 'friend') { showScreen('friends'); return }
     if (q === 'interests') { setRacesView('explore'); goTab('races'); return }
@@ -607,6 +611,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (r === 'settings') open('settings')
     else if (r === 'memory') open('memory')
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
+    else if (r === 'coachstatus') setCoachAsk(true)
     else showScreen(r)
   }
   const weekLead = goal ? <WeekList imperial={me.athlete.units === 'imperial'} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} onAskDay={askDay} /> : null
@@ -926,7 +931,19 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'coach' && (
         <CoachInbox openThreadId={coachMsgThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
       )}
-      {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} />}
+      {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} onFindCoach={() => setPlanScreen('findcoach')} />}
+      {planScreen === 'findcoach' && (
+        <FindCoachScreen athleteName={me.profile.name} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} onInvited={onChange} />
+      )}
+      {coachAsk && (
+        <CoachStatusSheet current={me.athlete.coach_status} onClose={() => setCoachAsk(false)}
+          onSaved={(s) => {
+            setCoachAsk(false); onChange(); getProgress().then(setProgress, () => {})
+            if (s === 'looking') showScreen('findcoach')
+            else if (s === 'have_coach') showScreen('coaches')
+            else showToast('Going solo. Rabbit has your back.')
+          }} />
+      )}
       {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'racepack' && <RacePackScreen imperial={imperial} onClose={() => setPlanScreen(null)} />}
       {workout && (

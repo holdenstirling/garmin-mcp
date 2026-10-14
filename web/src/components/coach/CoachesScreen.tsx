@@ -1,13 +1,17 @@
 // Settings > Coaches (athlete side): invite a coach by email, choose what they can do,
 // remove them. The coach signs in at this app with their Google account.
 import { useEffect, useState } from 'react'
-import { Copy, Trash2, UserPlus } from 'lucide-react'
+import { Copy, Search, Trash2, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
 import { getCoaches, inviteCoach, removeCoach, updateCoach, type CoachLink } from '@/lib/coach'
 
-export function CoachesScreen({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
+  onClose: () => void; onChanged: () => void
+  /** "Find a coach" link when there's no coach yet */
+  onFindCoach?: () => void
+}) {
   const [coaches, setCoaches] = useState<CoachLink[] | null>(null)
   const [closing, setClosing] = useState(false)
   const [email, setEmail] = useState('')
@@ -58,6 +62,12 @@ export function CoachesScreen({ onClose, onChanged }: { onClose: () => void; onC
         </section>
       )}
 
+      {coaches !== null && coaches.length === 0 && onFindCoach && (
+        <Group footer="Rabbit doesn't take a cut; you contact coaches directly.">
+          <Row icon={<Search className="size-5 text-(--accent)" />} title="Don't have a coach yet?" subtitle="Find one who fits your race"
+            onClick={onFindCoach} />
+        </Group>
+      )}
       <Card>
         <Field label="Invite a coach" hint="Use the email of their Google account. They'll see your plan, events, stats and anything you share. Your Rabbit chats stay private unless you turn that on.">
           <input className={inputCls} type="email" inputMode="email" autoComplete="off" placeholder="coach@example.com"

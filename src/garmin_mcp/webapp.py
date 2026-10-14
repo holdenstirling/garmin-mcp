@@ -895,6 +895,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "calendar": bool(auth.calendar and auth.calendar.connected(user_id)),
             "oura": bool(auth.oura and auth.oura.connected(user_id)),
             "coach": bool(auth.coach_links.coaches_of(user_id)),
+            "coach_status": bool(a.get("coach_status") or auth.coach_links.coaches_of(user_id)),
             "gear": bool(gear_store and gear_store.list(user_id)),
             "friend": bool(soc and soc.is_athlete(user_id) and soc.ever_followed(user_id)),
             "interests": bool(a.get("interests")),
@@ -1140,6 +1141,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 return {"id": sid, "date": day, "title": x["title"]}
         raise CoachError("That session isn't in the plan anymore.")
 
+    def _event_ref(aid: str, eid: Any) -> dict[str, Any] | None:
+        """A race-strategy thread: the event must be on this athlete's calendar."""
+        if eid is None or eid == "":
+            return None
+        if not isinstance(eid, str) or chat is None:
+            raise CoachError("event not found")
+        ev = chat.agent.events.get(aid, eid)
+        return {"id": eid, "title": f"{ev.get('name') or 'Race'} strategy"}
+
     def _notify(to_user: str | None, title: str, body: str, *, thread: str = "") -> None:
         if push is None or not to_user:
             return
@@ -1197,7 +1207,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         def run() -> dict[str, Any]:
             c = _my_coach(user_id, body.get("coach"))
-            return coach_chat.open_thread(user_id, c["email"], session=_session_ref(user_id, body.get("session_id")))
+            return coach_chat.open_thread(user_id, c["email"], session=_session_ref(user_id, body.get("session_id")),
+                                          event=_event_ref(user_id, body.get("event_id")))
         return JSONResponse({"thread": await _plan_call(run)}, status_code=201)
 
     async def athlete_thread_get(request: Request, user_id: str) -> Response:
@@ -1225,6 +1236,56 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         current = links.coach_emails(user_id)
         return JSONResponse({"notes": [n for n in coach_notes.list(user_id, shared_only=True) if n["coach"] in current]})
 
+    # Find a coach (coachdir.py): curated directory, athletes only (coach accounts are 403'd
+    # by _api since these paths aren't in COACH_PATHS). The athlete contacts coaches directly.
+    from .coachdir import CoachDirectory
+    coach_dir = CoachDirectory(store) if store is not None else None
+
+    def _main_race(uid: str) -> dict[str, Any] | None:
+        if chat is None:
+            return None
+        g = chat.agent.coach.active_goal(uid)
+        evs = chat.agent.events.list(uid)
+        today = chat.agent._now(uid).date().isoformat()
+        ev = next((e for e in evs if e.get("main")), None) or \
+            next((e for e in evs if (e.get("date") or "") >= today), None)
+        if ev:
+            return {"id": ev["id"], "name": ev.get("name"), "type": ev.get("type"),
+                    "distance": ev.get("distance"), "date": ev.get("date")}
+        if g:
+            return {"id": None, "name": g.get("title"), "type": g.get("type"),
+                    "distance": g.get("distance"), "date": g.get("date")}
+        return None
+
+    async def coach_directory(request: Request, user_id: str) -> Response:
+        assert coach_dir is not None and chat is not None
+        athlete = chat.agent.coach.athlete(user_id)
+        race = _main_race(user_id)
+        qp = request.query_params
+        found = await _plan_call(lambda: coach_dir.search(athlete, race, sport=qp.get("sport"), q=qp.get("q")))
+        return JSONResponse({"coaches": found, "race": race, "coach_status": athlete.get("coach_status"),
+                             "has_coach": bool(links.coaches_of(user_id))})
+
+    async def coach_directory_one(request: Request, user_id: str) -> Response:
+        assert coach_dir is not None and chat is not None
+        from .coachdir import match, public_view
+        c = await _plan_call(lambda: coach_dir.get(str(request.path_params["coach_id"])))
+        return JSONResponse({"coach": public_view(c) | {"match": match(c, chat.agent.coach.athlete(user_id),
+                                                                       _main_race(user_id))},
+                             "race": _main_race(user_id)})
+
+    async def coach_directory_invite(request: Request, user_id: str) -> Response:
+        """"Invite as my coach" for a directory coach who has a Rabbit login."""
+        assert coach_dir is not None
+
+        def run() -> None:
+            c = coach_dir.get(str(request.path_params["coach_id"]))
+            if not c.get("rabbit_user_email"):
+                raise CoachError("This coach isn't on Rabbit yet. Contact them directly.")
+            links.invite(user_id, c["rabbit_user_email"], can_edit_plan=True, can_see_rabbit_chats=False)
+        await _plan_call(run)
+        return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]}, status_code=201)
+
     # Coach side: everything goes through links.require(coach, athlete).
     def _aid(request: Request) -> str:
         return str(request.path_params["athlete_id"])
@@ -1245,7 +1306,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         coach = _coach()
         return JSONResponse({
             "athlete_id": aid, "profile": auth.profile(aid), "photo": _photo_version(aid), "link": _coach_view(link),
-            "athlete": coach.athlete(aid), "goal": coach_goal_view(coach.active_goal(aid), link),
+            "athlete": {k: v for k, v in coach.athlete(aid).items() if k != "coach_status"},
+            "goal": coach_goal_view(coach.active_goal(aid), link),
             "events": [coach_event_view(e, link) for e in chat.agent.events.list(aid)] if chat else [],
             "notes": coach_notes.list(aid, coach=link["email"]),
             "unread": coach_chat.unread(aid, "coach", coach=link["email"]),
@@ -1321,7 +1383,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         def run() -> dict[str, Any]:
             link = links.require(user_id, aid)
-            return coach_chat.open_thread(aid, link["email"], session=_session_ref(aid, body.get("session_id")))
+            return coach_chat.open_thread(aid, link["email"], session=_session_ref(aid, body.get("session_id")),
+                                          event=_event_ref(aid, body.get("event_id")))
         return JSONResponse({"thread": await _plan_call(run)}, status_code=201)
 
     async def coach_thread_get(request: Request, user_id: str) -> Response:
@@ -2381,6 +2444,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
         Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),
+        Route("/app/api/coaches/directory", _plan_api(coach_directory, mutating=False), methods=["GET"]),
+        Route("/app/api/coaches/directory/{coach_id}", _plan_api(coach_directory_one, mutating=False), methods=["GET"]),
+        Route("/app/api/coaches/directory/{coach_id}/invite", _plan_api(coach_directory_invite, mutating=True),
+              methods=["POST"]),
         Route("/app/api/coaches/{email}", _plan_api(coach_patch, mutating=True), methods=["PATCH"]),
         Route("/app/api/coaches/{email}", _plan_api(coach_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coachchat", _plan_api(athlete_threads, mutating=False), methods=["GET"]),

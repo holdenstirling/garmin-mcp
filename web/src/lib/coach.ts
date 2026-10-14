@@ -11,6 +11,8 @@ export type CoachLink = {
 export type Message = { id: string; from: 'athlete' | 'coach'; text: string; ts: number }
 export type ThreadSummary = {
   id: string; coach: string; title: string; session_id: string | null; session_date: string | null
+  /** race-strategy thread: the event it's about */
+  event_id?: string | null
   created: number; updated: number; last: Message | null; count: number
   /** last message id each side has seen */
   read?: { athlete: string | null; coach: string | null }
@@ -41,7 +43,7 @@ export const getCoachNotes = () => getJSON<{ notes: Note[] }>('/api/coachnotes')
 export function chatApi(base: string) {
   return {
     list: () => getJSON<{ threads: ThreadSummary[]; coaches?: CoachLink[] }>(base),
-    open: (b: { coach?: string; session_id?: string }) => sendJSON<{ thread: Thread }>('POST', base, b),
+    open: (b: { coach?: string; session_id?: string; event_id?: string }) => sendJSON<{ thread: Thread }>('POST', base, b),
     get: (id: string) => getJSON<{ thread: Thread }>(`${base}/${id}`),
     post: (id: string, text: string) => sendJSON<{ message: Message }>('POST', `${base}/${id}/messages`, { text }),
   }
