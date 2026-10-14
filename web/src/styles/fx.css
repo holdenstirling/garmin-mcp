@@ -1,0 +1,179 @@
+/* Rabbit's motion kit (components/fx). Rules: transform/opacity only, <= 1.2 s, decorative
+   (aria-hidden), never blocks taps (pointer-events: none), nothing under reduced motion. */
+:root {
+  --fx-carrot: #ee7d23;
+  --fx-leaf: #4f9a5c;
+  --fx-ear: #f2a7b4;
+  --fx-spark: #f2b632;
+  --fx-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+/* ---- CarrotBurst ---- */
+.fx-burst { position: fixed; z-index: 90; width: 0; height: 0; pointer-events: none; }
+.fx-burst__bit, .fx-burst__puff { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+.fx-burst__bit { animation: fx-fling 900ms cubic-bezier(0.15, 0.7, 0.3, 1) both; }
+.fx-burst__spark { color: var(--fx-spark); }
+.fx-burst__puff { color: var(--text-muted); animation: fx-puff 600ms ease-out both; }
+@keyframes fx-fling {
+  0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 22px)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes fx-puff {
+  0% { transform: translate(calc(-50% + var(--dx, 0px)), -50%) scale(0.4); opacity: 0.45; }
+  100% { transform: translate(calc(-50% + var(--dx, 0px) * 1.6), calc(-50% - 6px)) scale(1.5); opacity: 0; }
+}
+
+/* ---- HopPrints (on a progress bar's relative wrapper) ---- */
+.fx-bar { position: relative; display: block; }
+.fx-hops { position: absolute; inset: 0; pointer-events: none; }
+.fx-hops__print {
+  position: absolute; color: var(--accent); opacity: 0;
+  animation: fx-print 820ms var(--fx-spring) both;
+}
+@keyframes fx-print {
+  0% { transform: translate(-50%, 5px) scale(0.3); opacity: 0; }
+  25% { transform: translate(-50%, -2px) scale(1.15); opacity: 1; }
+  40% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  75% { opacity: 0.9; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 0; }
+}
+
+/* ---- PeekingRabbit ---- */
+.fx-peek { position: relative; display: inline-block; overflow: hidden; flex-shrink: 0; }
+.fx-peek svg { display: block; }
+.fx-peek__body { animation: fx-peek-up 620ms var(--fx-spring) 120ms both; }
+.fx-peek__ear--r { transform-origin: 40px 22px; animation: fx-ear-flick 460ms ease-in-out 760ms both; }
+.fx-peek__ear--l { transform-origin: 24px 22px; }
+.fx-peek__eyes { transform-origin: 32px 33px; animation: fx-blink 220ms ease-in-out 1000ms both; }
+.fx-peek__edge { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--border-strong); }
+@keyframes fx-peek-up { from { transform: translateY(30px); } to { transform: translateY(0); } }
+@keyframes fx-ear-flick { 0%, 100% { transform: rotate(0deg); } 35% { transform: rotate(16deg); } 70% { transform: rotate(-5deg); } }
+@keyframes fx-blink { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
+
+/* ---- StreakFlame ---- */
+.fx-flame { position: relative; display: inline-flex; }
+.fx-flame--risk { animation: fx-flame-pulse 1.8s ease-in-out infinite; transform-origin: 50% 80%; }
+.fx-flame--flicker > svg:first-child { transform-origin: 50% 90%; animation: fx-flicker 900ms ease-in-out both; }
+.fx-flame__hot { position: absolute; left: 0; top: 0; color: var(--fx-carrot); transform-origin: 50% 90%;
+  animation: fx-flicker 900ms ease-in-out both, fx-hot 900ms ease-in-out both; }
+.fx-flame__carrot { position: absolute; left: 50%; top: -6px; animation: fx-carrot-rise 900ms ease-out both; pointer-events: none; }
+@keyframes fx-flame-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes fx-flicker {
+  0%, 100% { transform: scale(1) skewX(0deg); }
+  25% { transform: scale(1.25, 1.35) skewX(-6deg); }
+  50% { transform: scale(0.95, 1.05) skewX(4deg); }
+  75% { transform: scale(1.12, 1.2) skewX(-3deg); }
+}
+@keyframes fx-hot { 0% { opacity: 0; } 20%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fx-carrot-rise {
+  0% { transform: translate(-50%, 4px) scale(0.4) rotate(-20deg); opacity: 0; }
+  35% { transform: translate(-50%, -8px) scale(1) rotate(10deg); opacity: 1; }
+  100% { transform: translate(-50%, -16px) scale(0.9) rotate(0deg); opacity: 0; }
+}
+
+/* ---- Tab bar: hop on select, Rabbit wiggle after a background reply ---- */
+.fx-tab-hop { display: inline-flex; animation: fx-tab-hop 380ms var(--fx-spring) both; transform-origin: 50% 100%; }
+@keyframes fx-tab-hop {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-5px) scale(0.94, 1.08); }
+  60% { transform: translateY(0) scale(1.08, 0.92); }
+  100% { transform: translateY(0) scale(1); }
+}
+.fx-tab-wiggle { display: inline-flex; animation: fx-wiggle 900ms ease-in-out both; transform-origin: 50% 85%; }
+.fx-tab-wiggle .rabbit-logo { color: var(--accent); }
+@keyframes fx-wiggle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  15% { transform: rotate(-12deg) translateY(-2px); }
+  35% { transform: rotate(10deg) translateY(-3px); }
+  55% { transform: rotate(-7deg) translateY(-1px); }
+  75% { transform: rotate(4deg); }
+}
+
+/* ---- Pull to refresh ---- */
+.fx-ptr { position: fixed; z-index: 40; height: 120px; overflow: hidden; pointer-events: none; visibility: hidden; }
+.fx-ptr.is-on { visibility: visible; }
+.fx-ptr__bunny {
+  position: absolute; left: 50%; top: 0; display: block; color: var(--brand); opacity: 0;
+  transform: translate3d(-50%, -40px, 0); transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.fx-ptr__crouch { display: block; transform-origin: 50% 100%; transition: transform 0.15s var(--fx-spring); }
+.fx-ptr__bunny.is-ready .fx-ptr__crouch { transform: translateY(3px) scale(1.1, 0.78); }
+.fx-ptr__bunny.is-leap { animation: fx-ptr-leap 700ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards; }
+.fx-ptr__puff { position: absolute; left: 50%; bottom: -4px; color: var(--text-muted); animation: fx-puff 600ms ease-out both; }
+@keyframes fx-ptr-leap {
+  0% { transform: translate3d(-50%, 24px, 0) rotate(0deg); opacity: 1; }
+  35% { transform: translate3d(-50%, 2px, 0) rotate(-14deg); opacity: 1; }
+  100% { transform: translate3d(-50%, -46px, 0) rotate(-24deg); opacity: 0; }
+}
+
+/* ---- Today card (once a day, by tone) ---- */
+.fx-today { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.fx-today__sprint { position: absolute; left: 0; top: 4px; display: flex; align-items: center; color: var(--accent);
+  animation: fx-sprint 1100ms cubic-bezier(0.5, 0, 0.35, 1) both; }
+.fx-today__dash { display: block; width: 44px; height: 2px; margin-right: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent)); opacity: 0.6; }
+@keyframes fx-sprint {
+  0% { transform: translateX(-80px); opacity: 0; }
+  12% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateX(100vw); opacity: 0; }
+}
+.fx-sway { animation: fx-sway 1200ms ease-in-out both; transform-origin: 50% 70%; }
+@keyframes fx-sway {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  25% { transform: rotate(-9deg) translateX(-1px); }
+  75% { transform: rotate(9deg) translateX(1px); }
+}
+.fx-today__nap { position: absolute; right: 38px; top: 6px; display: flex; align-items: flex-end; color: var(--text-muted); }
+.fx-today__curl { display: block; transform-origin: 50% 100%; animation: fx-curl 1200ms ease-in-out both; }
+.fx-today__curl .rabbit-logo { color: var(--text-muted); }
+.fx-today__z { display: block; font-size: 0.7059rem; font-weight: 600; line-height: 1; opacity: 0;
+  animation: fx-z 900ms ease-out both; }
+.fx-today__z--2 { font-size: 0.6471rem; }
+.fx-today__z--3 { font-size: 0.6471rem; }
+@keyframes fx-curl {
+  0% { transform: scale(0.6, 0.6) rotate(-20deg); opacity: 0; }
+  25% { transform: scale(0.95, 0.85) rotate(-8deg); opacity: 1; }
+  60% { transform: scale(1, 0.9) rotate(-8deg); opacity: 1; }
+  100% { transform: scale(1, 0.9) rotate(-8deg); opacity: 0; }
+}
+@keyframes fx-z {
+  0% { transform: translate(0, 4px) scale(0.6); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(6px, -14px) scale(1); opacity: 0; }
+}
+
+/* ---- Celebration (level up / badge) ---- */
+.fx-leap { display: block; color: var(--brand); animation: fx-leap 1100ms cubic-bezier(0.35, 0, 0.3, 1) both; }
+@keyframes fx-leap {
+  0% { transform: translate(-90px, 18px) rotate(10deg) scale(0.9, 1.05); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translate(0, -26px) rotate(-8deg) scale(1); }
+  80% { transform: translate(60px, 6px) rotate(6deg) scale(1.1, 0.88); opacity: 1; }
+  100% { transform: translate(90px, 18px) rotate(0deg) scale(1); opacity: 0; }
+}
+.fx-leap-lane { position: absolute; left: 0; right: 0; top: -30px; height: 36px; display: flex; justify-content: center; pointer-events: none; }
+.fx-medal { animation: fx-medal 700ms var(--fx-spring) both; backface-visibility: hidden; }
+@keyframes fx-medal {
+  0% { transform: perspective(300px) rotateY(-180deg) scale(0.6); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: perspective(300px) rotateY(0deg) scale(1); opacity: 1; }
+}
+
+/* ---- Small hops ---- */
+.fx-hop { display: inline-block; animation: fx-tab-hop 420ms var(--fx-spring) both; transform-origin: 50% 100%; }
+
+/* ---- Press squish (primary buttons) ---- */
+.press { transition: transform 260ms var(--fx-spring), scale 260ms var(--fx-spring), background-color 0.15s, color 0.15s, border-color 0.15s; }
+.press:active:not(:disabled) { transform: scale(1.03, 0.9); transition-duration: 90ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-burst, .fx-hops, .fx-flame__hot, .fx-flame__carrot, .fx-today, .fx-ptr__puff { display: none; }
+  .fx-burst__bit, .fx-hops__print, .fx-peek__body, .fx-peek__ear--r, .fx-peek__eyes, .fx-flame--risk,
+  .fx-flame--flicker > svg:first-child, .fx-tab-hop, .fx-tab-wiggle, .fx-ptr__bunny.is-leap, .fx-sway,
+  .fx-leap, .fx-medal, .fx-hop { animation: none; }
+  .fx-leap { display: none; }
+  .fx-ptr__bunny, .fx-ptr__crouch, .press { transition: none; }
+  .press:active:not(:disabled) { transform: none; }
+}

@@ -7,6 +7,7 @@ import { InstallPrompt } from './screens/InstallPrompt'
 import { SignIn } from './screens/SignIn'
 import { RabbitLogo } from './components/RabbitLogo'
 import { RabbitLoader } from './components/RabbitLoader'
+import { FxHost } from './components/fx/CarrotBurst'
 
 const BOOT_MESSAGES = ['Lacing up…', 'Warming up…', 'Checking your watch…', 'Crunching the numbers…']
 
@@ -67,6 +68,7 @@ export function App() {
           <button className="underline" onClick={() => void load()}>Try again</button>
         </div>
       )}
+      <FxHost />
     </div>
   )
 }

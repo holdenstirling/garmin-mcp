@@ -17,6 +17,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, ChipRow } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
+import { celebrate } from '@/components/fx/motion'
 import { DENIED_ERRORS, speechCtor, type SpeechRecognizer, type SpeechResultEvent } from '@/lib/speech'
 import {
   AREA_LABEL, checkinChips, createCheckin, sorenessLabel, updateCheckin,
@@ -328,16 +329,22 @@ function Result({ saved, onDone, onEdited }: {
 }) {
   const { c, xp } = saved
   const [editing, setEditing] = useState(false)
+  // Saved: a small carrot burst from the check mark (once, when the result first shows).
+  const mark = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const t = window.setTimeout(() => celebrate(mark.current, 'checkin'), 120)
+    return () => window.clearTimeout(t)
+  }, [])
   const chips = checkinChips(c)
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"><Check className="size-5" /></span>
+        <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"><Check className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{c.summary || 'Checked in.'}</p>
           <p className="text-[0.7059rem] text-(--text-muted)">Saved. Rabbit will use it for your next days.</p>
         </div>
-        {xp > 0 && <span className="celebrate shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 font-mono text-[0.7059rem] font-semibold text-(--accent)">+{xp} XP</span>}
+        {xp > 0 && <span className="fx-hop shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 font-mono text-[0.7059rem] font-semibold text-(--accent)">+{xp} XP</span>}
       </div>
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

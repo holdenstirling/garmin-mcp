@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
+import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
@@ -84,7 +86,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             {upcoming.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <CalendarPlus className="size-8 text-(--text-muted)" />
+                <PeekingRabbit size={72} />
                 <p className="text-[0.8824rem] text-(--text)">No upcoming races yet</p>
                 <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Add your races, rides and big days. Rabbit plans around all of them.</p>
               </div>
@@ -217,7 +219,15 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
       footer={<>
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
           disabled={!(v.name ?? '').trim() || !v.date}
-          onClick={() => void run('save', () => event ? updateEvent(event.id, payload()) : createEvent({ ...payload(), main }))}>
+          onClick={(e) => {
+            const btn = e.currentTarget
+            void run('save', async () => {
+              if (event) return updateEvent(event.id, payload())
+              const r = await createEvent({ ...payload(), main })
+              celebrate(btn, 'race') // a new race on the calendar
+              return r
+            })
+          }}>
           {event ? 'Save changes' : 'Add event'}
         </Button>
       </>}>

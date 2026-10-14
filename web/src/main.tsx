@@ -5,6 +5,7 @@ import '@fontsource/dm-serif-display/400.css'
 import '@fontsource/dm-serif-display/400-italic.css'
 import './styles/globals.css'
 import './styles/rabbit.css'
+import './styles/fx.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
