@@ -10,7 +10,7 @@ export type RaceGear = {
 }
 
 export type RacePack = {
-  event: { id: string; name: string; type: string; distance: string; date: string; location: string; url: string; priority: string }
+  event: { id: string; name: string; type: string; distance: string; date: string; location: string; url: string; priority: string; kind?: string }
   days_out: number; info: EventInfo
   pacing: { leg: string; target: string; detail: string }[]
   fueling: { carbs_g_per_h: number; expected_hours: number; total_carbs_g: number; fluid_ml_per_h: string; sodium_mg_per_h: string; steps: string[] }

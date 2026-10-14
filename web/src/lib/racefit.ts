@@ -12,7 +12,7 @@ export type RaceFit = {
   course_profile: CourseProfile | null; climb_m_per_km: number | null
 }
 export type RaceView = {
-  event: { id: string; name: string; date: string; type: string; distance: string; location: string; main: boolean }
+  event: { id: string; name: string; date: string; type: string; distance: string; location: string; main: boolean; kind?: string }
   racefit: RaceFit; strategy: RaceStrategy | null; coach_notes: Note[]
 }
 

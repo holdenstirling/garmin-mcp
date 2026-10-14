@@ -9,7 +9,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import type { Me, Sport } from '@/lib/api'
 import {
-  deletePlan, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
+  deletePlan, placedEventLabel, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, Screen } from './ui'
@@ -216,7 +216,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       )}
       {plan.events.length > 0 && (
         <p className="-mb-2 px-1 text-[0.7059rem] text-(--text-muted)">
-          Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${e.priority === 'C' ? 'training race' : 'B race'})`).join(' · ')}
+          Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${placedEventLabel(e)})`).join(' · ')}
         </p>
       )}
       <Card className="p-4">
@@ -317,7 +317,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       <Group label="Plan">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close(); onAsk('About my plan: ') }} />
-        <Row icon={<Icon><CalendarDays /></Icon>} title="Races" subtitle="Add B and C races; they go into the plan"
+        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
           onClick={onOpenEvents} />
         <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
           onClick={() => setTravel('new')} />

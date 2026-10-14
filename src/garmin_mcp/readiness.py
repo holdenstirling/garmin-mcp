@@ -471,6 +471,9 @@ class ReadinessService:
     def get(self, user_id: str, event_id: str) -> dict[str, Any]:
         from .coaching import CoachError
         ev = self._events.get(user_id, event_id)
+        from .events import is_race
+        if not is_race(ev):
+            raise CoachError("Readiness is for races. This one's on your calendar for planning.")
         if ev["date"] < self._today(user_id).isoformat():
             raise CoachError("That race is done. Write a debrief instead.")
         return self._one(user_id, ev, None)[0]
@@ -478,8 +481,9 @@ class ReadinessService:
     def upcoming(self, user_id: str) -> list[dict[str, Any]]:
         today = self._today(user_id).isoformat()
         out, inp = [], None
+        from .events import is_race
         for ev in self._events.list(user_id):
-            if (ev.get("date") or "") < today:
+            if (ev.get("date") or "") < today or not is_race(ev):
                 continue
             r, inp = self._one(user_id, ev, inp)
             out.append(compact(r, ev))

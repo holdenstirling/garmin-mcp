@@ -1,4 +1,5 @@
-// Events: every race or challenge on the calendar. The main one is what the plan builds to.
+// Events: races, group activities, trips, challenges and life events on the calendar. The
+// main one (a race or a challenge) is what the plan builds to.
 import { getJSON, sendJSON } from '@/lib/api'
 
 export type CourseProfile = 'flat' | 'rolling' | 'hilly' | 'mountainous'
@@ -16,8 +17,15 @@ export type EventInfo = {
   sources?: string[]; fetched_at?: number
 }
 
+/** What kind of event it is. Events saved before kinds existed come back as "race". */
+export type EventKind = 'race' | 'group_activity' | 'trip' | 'challenge' | 'milestone' | 'other'
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+export type Recurring = { weekday: Weekday; until: string }
+
 export type RaceEvent = {
   id: string; name: string; type: EventType; distance: string; date: string
+  kind?: EventKind; end_date?: string | null; time?: string | null; recurring?: Recurring | null
+  with?: string; at?: string; duration_min?: number | null; intensity?: 'easy' | 'moderate' | 'hard' | null
   location: string; url: string; priority: 'A' | 'B' | 'C'
   goal_type: 'finish' | 'time' | 'compete' | null; target_time: string | null
   course: string; notes: string; result: string; info: EventInfo | null
@@ -31,7 +39,7 @@ export type RaceStrategy = {
   taper_notes: string; mental: string[]; phase: string; weeks_to_race: number; created: number
 }
 export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' | 'main' | 'debrief' | 'strategy'>>
-type ListResp = { events: RaceEvent[]; types: Record<EventType, string[]> }
+type ListResp = { events: RaceEvent[]; types: Record<EventType, string[]>; kinds?: EventKind[] }
 
 export const listEvents = () => getJSON<ListResp>('/api/events')
 export const createEvent = (e: EventFields & { main?: boolean }) =>
@@ -44,6 +52,28 @@ export const writeDebrief = (id: string, b: { result?: string; feel?: number; no
   sendJSON<ListResp & { debrief: Debrief }>('POST', `/api/events/${id}/debrief`, b)
 export const lookupEvent = (q: { name: string; type?: string; date?: string; location?: string; event_id?: string }) =>
   sendJSON<{ info: EventInfo }>('POST', '/api/events/lookup', q)
+
+export const EVENT_KINDS: [EventKind, string][] = [
+  ['race', 'Race'], ['group_activity', 'Group activity'], ['trip', 'Trip'], ['challenge', 'Challenge'],
+  ['milestone', 'Life event'], ['other', 'Other'],
+]
+export const KIND_LABEL = Object.fromEntries(EVENT_KINDS) as Record<EventKind, string>
+/** One line under each kind chip. */
+export const KIND_HINT: Record<EventKind, string> = {
+  race: 'A race with a start line. Rabbit tapers you for it.',
+  group_activity: 'Group ride, run, swim or a league game. Rabbit counts it as a session.',
+  trip: 'Training camp, adventure or hut trip. Rabbit lightens those days.',
+  challenge: 'A 14er, an FKT attempt, a solo century. Prepped like a training race.',
+  milestone: 'Wedding, a move, a new baby. Rabbit plans rest around it.',
+  other: 'Anything else worth having on the calendar.',
+}
+export const kindOf = (e: { kind?: EventKind | null } | null | undefined): EventKind => e?.kind ?? 'race'
+export const isRace = (e: { kind?: EventKind | null } | null | undefined) => kindOf(e) === 'race'
+/** Kinds that can be the main event (the plan builds toward it). */
+export const MAIN_KINDS: EventKind[] = ['race', 'challenge', 'other']
+export const WEEKDAYS: [Weekday, string][] = [
+  ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
+]
 
 export const EVENT_TYPES: [EventType, string][] = [
   ['triathlon', 'Triathlon'], ['running', 'Road run'], ['trail', 'Trail / ultra'], ['cycling', 'Cycling'],

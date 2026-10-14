@@ -129,7 +129,7 @@ def make_routes(*, rp: RacePeople, soc: Any, links: Any, plan_api: Callable[...,
         if to:
             race = await run(lambda: _event_name(user_id, eid))
             text = invite_text(first_name(user_id), p["role"], race)
-            push(to, f"race-invite:{to}:{p['id']}", 86400, "Race invite", text + ".")
+            push(to, f"race-invite:{to}:{p['id']}", 86400, "Event invite", text + ".")
             if moment is not None:
                 try:
                     await run(lambda: moment(to, {"type": "race_invite", "key": f"raceinvite:{p['id']}",

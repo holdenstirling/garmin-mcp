@@ -638,35 +638,164 @@ EVENT_SPORT = {"triathlon": "brick", "duathlon": "brick", "running": "run", "tra
                "cycling": "bike", "swimming": "swim", "mountaineering": "other", "other": "other"}
 
 
+# Event kinds (events.KINDS) that the plan treats like races (taper / hard day).
+RACE_KINDS = ("race", "challenge")
+# Effort word -> (zone for a steady group session, swim kind).
+INTENSITY = {"easy": (2, "easy"), "moderate": (3, "endurance"), "hard": (4, "css")}
+WEEKDAYS = DAYS
+MAX_OCCURRENCES = 60
+MAX_SPAN_DAYS = 30
+
+
+def _ev_kind(ev: dict[str, Any]) -> str:
+    return ev.get("kind") or "race"
+
+
+def _span(ev: dict[str, Any], d: date) -> list[date]:
+    """Every day of a (possibly multi-day) event, capped at ``MAX_SPAN_DAYS``."""
+    try:
+        end = date.fromisoformat(ev.get("end_date") or "")
+    except ValueError:
+        end = d
+    end = max(d, min(end, d + timedelta(days=MAX_SPAN_DAYS - 1)))
+    return [d + timedelta(days=i) for i in range((end - d).days + 1)]
+
+
+def occurrences(ev: dict[str, Any], until: date) -> list[date]:
+    """The dates a (possibly weekly) event happens, before ``until``."""
+    try:
+        d = date.fromisoformat(ev.get("date") or "")
+    except ValueError:
+        return []
+    rec = ev.get("recurring") if isinstance(ev.get("recurring"), dict) else None
+    if not rec:
+        return [d] if d < until else []
+    wd = rec.get("weekday")
+    if wd in WEEKDAYS:
+        d += timedelta(days=(WEEKDAYS.index(wd) - d.weekday()) % 7)
+    try:
+        last = min(until - timedelta(days=1), date.fromisoformat(rec.get("until") or ""))
+    except ValueError:
+        last = until - timedelta(days=1)
+    out = []
+    while d <= last and len(out) < MAX_OCCURRENCES:
+        out.append(d)
+        d += timedelta(weeks=1)
+    return out
+
+
+def group_session(ev: dict[str, Any], swim_pace: float = 120.0) -> dict[str, Any]:
+    """One occurrence of a group activity (group ride/run/swim, league game) as a planned
+    session: sport from the event type, minutes from ``duration_min`` (60 by default),
+    moderate effort unless the event says otherwise."""
+    sport = EVENT_SPORT.get(ev.get("type") or "other", "other")
+    if sport == "brick":
+        sport = "bike"
+    try:
+        minutes = clamp_minutes(ev.get("duration_min") or 60)
+    except PlanError:
+        minutes = 60
+    zone, swim_kind = INTENSITY.get(ev.get("intensity") or "moderate", INTENSITY["moderate"])
+    name = (ev.get("name") or "Group session")[:50]
+    if sport == "swim":
+        s = make_session("swim", swim_kind, minutes, swim_pace=swim_pace)
+    else:
+        s = make_session(sport, "easy", minutes, swim_pace=swim_pace)
+        s["steps"] = [_st("steady", minutes, zone)]
+        s["minutes"] = _r5(minutes)
+        s["detail"] = describe(s["steps"])
+    effort = {2: "Easy effort", 3: "Moderate effort", 4: "Hard effort"}[zone]
+    where = ", ".join(x for x in (ev.get("with") and f"with {ev['with']}", ev.get("at") and f"at {ev['at']}",
+                                   ev.get("time")) if x)
+    s["title"] = f"Group: {name}"[:60]
+    s["detail"] = (f"{name}{' (' + where + ')' if where else ''}. {effort}: go with the group, "
+                   f"don't race it. {s.get('detail') or ''}").strip()[:400]
+    s["event_id"], s["group"] = ev.get("id"), True
+    return s
+
+
 def apply_events(weeks: list[dict[str, Any]], events: list[dict[str, Any]], inp: Inputs,
                  start: date) -> list[dict[str, Any]]:
-    """Drop the athlete's other events (B and C races) into the plan as race days.
+    """Drop the athlete's other events into the plan.
 
-    B race: easy two days out, short openers the day before, rest the day after, and the
-    next day easy. C race: raced as a hard training day with an easy day either side.
-    Events on or after the main race, before the plan starts, or in race week are skipped.
-    Returns the events that were placed."""
+    Races (and challenges, as training races): B race = easy two days out, short openers
+    the day before, rest the day after, and the next day easy. C race / challenge = raced as
+    a hard training day with an easy day either side. Trips: sessions on those days become
+    short and easy (≤ 45'). Life events (milestones): rest on the day(s), short easy days
+    either side. Group activities: each occurrence (weekly when recurring) becomes a planned
+    session in place of that day's same-sport session. Events on or after the main race,
+    before the plan starts, or in race week are skipped. Returns the events that were placed."""
     by_day: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
     for w in weeks:
         for d in w["days"]:
             by_day[d] = (w, w["days"])
+
+    def usable(d: date) -> bool:
+        return start <= d < inp.race_date and d.isoformat() in by_day and by_day[d.isoformat()][0]["phase"] != "race"
+
+    order = {"race": 0, "challenge": 0, "milestone": 1, "trip": 2, "group_activity": 3, "other": 3}
     placed: list[dict[str, Any]] = []
-    for ev in sorted(events, key=lambda e: e.get("date") or ""):
+    blocked: set[str] = set()  # milestone and trip days: no group sessions there
+    for ev in sorted(events, key=lambda e: (order.get(_ev_kind(e), 3), e.get("date") or "")):
+        kind = _ev_kind(ev)
+        if kind in ("group_activity", "other"):
+            if kind == "other" and not ev.get("duration_min"):
+                continue  # nothing to train: it stays on the calendar only
+            days = [d for d in occurrences(ev, inp.race_date) if usable(d) and d.isoformat() not in blocked]
+            if not days:
+                continue
+            for d in days:
+                s = group_session(ev, inp.swim_pace)
+                cur = by_day[d.isoformat()][1][d.isoformat()]
+                if any(x.get("kind") == "race" for x in cur):
+                    continue
+                keep = [x for x in cur if x["sport"] not in ("rest", s["sport"])][: MAX_PER_DAY - 1]
+                by_day[d.isoformat()][1][d.isoformat()] = keep + [s]
+            placed.append({"id": ev.get("id"), "name": ev.get("name"), "date": days[0].isoformat(),
+                           "kind": kind, "priority": None, "occurrences": len(days)})
+            continue
         try:
             d = date.fromisoformat(ev.get("date") or "")
         except ValueError:
             continue
-        if d < start or d >= inp.race_date or d.isoformat() not in by_day:
+        if kind in ("trip", "milestone"):
+            span = [x for x in _span(ev, d) if usable(x)]
+            if not span:
+                continue
+            name = (ev.get("name") or ("Trip" if kind == "trip" else "Life event"))[:50]
+            for x in span:
+                blocked.add(x.isoformat())
+                ss = by_day[x.isoformat()][1][x.isoformat()]
+                if any(y.get("kind") == "race" for y in ss):
+                    continue
+                if kind == "milestone":
+                    r = make_session("rest", "rest", 0, title=f"Rest: {name}"[:60])
+                    r["detail"], r["event_id"] = f"{name}. A day off training; enjoy it.", ev.get("id")
+                    _put(by_day, x, [r])
+                else:
+                    by_day[x.isoformat()][1][x.isoformat()] = [_lighter(y, name, inp.swim_pace) for y in ss]
+            if kind == "milestone":  # short, easy days either side
+                for x in (span[0] - timedelta(days=1), span[-1] + timedelta(days=1)):
+                    if x.isoformat() in by_day and x.isoformat() not in blocked:
+                        ss = by_day[x.isoformat()][1][x.isoformat()]
+                        if not any(y.get("kind") == "race" for y in ss):
+                            by_day[x.isoformat()][1][x.isoformat()] = [_lighter(y, name, inp.swim_pace, cap=30)
+                                                                       for y in ss][:1]
+            placed.append({"id": ev.get("id"), "name": ev.get("name"), "date": span[0].isoformat(),
+                           "end_date": span[-1].isoformat(), "kind": kind, "priority": None})
             continue
-        week, _ = by_day[d.isoformat()]
-        if week["phase"] == "race":
+        # race / challenge
+        if not usable(d):
             continue
-        prio = ev.get("priority") if ev.get("priority") in ("B", "C") else "B"
+        prio = "C" if kind == "challenge" else (ev.get("priority") if ev.get("priority") in ("B", "C") else "B")
         sport = EVENT_SPORT.get(ev.get("type") or "other", "other")
-        race = make_session("other", "race", 0, title=f"Race: {ev.get('name') or 'Event'}"[:60])
+        word = "Challenge" if kind == "challenge" else "Race"
+        race = make_session("other", "race", 0, title=f"{word}: {ev.get('name') or 'Event'}"[:60])
         race["sport"], race["kind"], race["event_id"] = sport, "race", ev.get("id")
         race["race_distance"] = (ev.get("distance") or "").lower()  # not the main race's
-        race["detail"] = (f"{prio} race. Race it with intent, but it's a step toward {inp.title}: "
+        race["detail"] = (f"Your challenge. Go for it, but it's a step toward {inp.title}: pace it, "
+                          "fuel it and recover well after." if kind == "challenge" else
+                          f"{prio} race. Race it with intent, but it's a step toward {inp.title}: "
                           "start controlled and recover well after." if prio == "B" else
                           f"Training race: treat it as a hard workout on the way to {inp.title}. "
                           "No taper; keep it controlled.")
@@ -682,11 +811,43 @@ def apply_events(weeks: list[dict[str, Any]], events: list[dict[str, Any]], inp:
             _put(by_day, d - timedelta(days=1), [make_session(train, "easy", 30, swim_pace=inp.swim_pace)])
             _put(by_day, d + timedelta(days=1), [make_session("bike" if sport != "bike" else "run",
                                                               "recovery", 40, swim_pace=inp.swim_pace)])
-        placed.append({"id": ev.get("id"), "name": ev.get("name"), "date": d.isoformat(),
-                       "priority": prio})
+        item = {"id": ev.get("id"), "name": ev.get("name"), "date": d.isoformat(), "priority": prio}
+        if kind != "race":
+            item["kind"] = kind
+        placed.append(item)
     for w in weeks:
         recompute_week(w)
+    placed.sort(key=lambda e: e["date"])
     return placed
+
+
+def placed_label(e: dict[str, Any]) -> str:
+    """"B race" / "challenge" / "trip to 2026-07-04" / "group activity, 8 sessions"."""
+    kind = e.get("kind") or "race"
+    if kind == "race":
+        return f"{e.get('priority') or 'B'} race"
+    if kind == "group_activity" or kind == "other":
+        n = e.get("occurrences") or 1
+        return f"{'group activity' if kind == 'group_activity' else 'activity'}, {n} session{'s' if n != 1 else ''}"
+    if kind in ("trip", "milestone"):
+        word = "trip" if kind == "trip" else "life event"
+        return f"{word} to {e['end_date']}" if e.get("end_date") and e["end_date"] != e["date"] else word
+    return kind
+
+
+def _lighter(s: dict[str, Any], name: str, swim_pace: float, cap: int = 45) -> dict[str, Any]:
+    """A session made short and easy (trips, days around a life event); rest stays rest."""
+    if s["sport"] == "rest" or s.get("kind") == "race":
+        return s
+    sport = "run" if s["sport"] == "brick" else s["sport"]
+    kind = "strength" if sport == "strength" else "easy"
+    new = make_session(sport, kind, min(cap, int(s.get("minutes") or cap)), swim_pace=swim_pace)
+    if sport == "strength":
+        for k in ("exercises", "prehab"):
+            if k in s:
+                new[k] = s[k]
+    new["detail"] = f"{name}: keep it short and easy, or skip it. {new.get('detail') or ''}".strip()[:400]
+    return new
 
 
 def _put(by_day: dict[str, tuple[dict[str, Any], dict[str, Any]]], d: date,
@@ -761,9 +922,9 @@ def summary_markdown(plan: dict[str, Any], goal: dict[str, Any]) -> str:
         if goal.get("limiters"):
             lines.append("- Extra focus on: " + ", ".join(goal["limiters"]))
     if plan.get("events"):
-        lines += ["", "### Other races in the plan"]
+        lines += ["", "### Other events in the plan"]
         for e in plan["events"]:
-            lines.append(f"- {e['date']}: {e['name']} ({e['priority']} race)")
+            lines.append(f"- {e['date']}: {e['name']} ({placed_label(e)})")
     lines += ["", "### Rules",
               "- Easy days stay easy (Z1-2). Quality days are the ones with Z4-5 work.",
               "- Missed a session? Skip it and carry on; never stack two hard days.",

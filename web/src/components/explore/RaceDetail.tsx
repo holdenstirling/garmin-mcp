@@ -65,7 +65,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
         ) : (
           <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} disabled={needsPick || undated}
             onClick={() => void add()}>
-            <CalendarPlus className="size-4" /> {undated ? 'Check the date on the official site' : needsPick ? 'Pick a distance to add' : 'Add to my races'}
+            <CalendarPlus className="size-4" /> {undated ? 'Check the date on the official site' : needsPick ? 'Pick a distance to add' : 'Add to my events'}
           </Button>
         )}>
         <div className="flex items-center gap-3 px-1">
@@ -100,7 +100,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
         {added && (
           <div className="flex items-start gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3 text-[0.7647rem] leading-snug text-(--accent)">
             <Check className="mt-px size-4 shrink-0" />
-            <span>{added.already ? "It's already in your races." : 'Added to your races as a training race. Change its priority any time in Events.'}</span>
+            <span>{added.already ? "It's already in your events." : 'Added to your events as a training race. Change its priority any time in Events.'}</span>
           </div>
         )}
 

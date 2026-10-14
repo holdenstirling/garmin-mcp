@@ -434,7 +434,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
                 {u.level != null && <LevelBadge level={u.level} />}
               </div>
               <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setRaceInvite(true)}>
-                <Flag className="size-4" /> Invite to a race
+                <Flag className="size-4" /> Invite to an event
               </Button>
               {card.week && (
                 <div className="grid grid-cols-2 gap-2">

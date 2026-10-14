@@ -37,7 +37,9 @@ from .planbuilder import PlanError, build_plan
 from .plans import public_plan
 from . import planimport_web
 from .planimport import ImportService
-from .events import TYPE_DISTANCES, TYPES
+from .events import KINDS, TYPE_DISTANCES, TYPES
+from .events import MAIN_KINDS as _EV_MAIN_KINDS
+from .events import is_race as _ev_is_race
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
@@ -792,7 +794,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     def _events_resp(user_id: str, status: int = 200, **extra: Any) -> JSONResponse:
         return JSONResponse({"events": _events().list(user_id),
-                             "types": {t: list(TYPE_DISTANCES[t]) for t in TYPES}, **extra},
+                             "types": {t: list(TYPE_DISTANCES[t]) for t in TYPES}, "kinds": list(KINDS), **extra},
                             status_code=status)
 
     async def events_list(request: Request, user_id: str) -> Response:
@@ -806,6 +808,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         main = body.pop("main", False) is True
 
         def run() -> dict[str, Any]:
+            if main and body.get("kind") not in (None, "", *_EV_MAIN_KINDS):
+                raise CoachError("Only a race or a challenge can be your main event.")
             ev = _events().create(user_id, body)
             return _events().set_main(user_id, ev["id"]) if main else ev
         ev = await _plan_call(run)
@@ -1266,7 +1270,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         evs = chat.agent.events.list(uid)
         today = chat.agent._now(uid).date().isoformat()
         ev = next((e for e in evs if e.get("main")), None) or \
-            next((e for e in evs if (e.get("date") or "") >= today), None)
+            next((e for e in evs if (e.get("date") or "") >= today and _ev_is_race(e)), None)
         if ev:
             return {"id": ev["id"], "name": ev.get("name"), "type": ev.get("type"),
                     "distance": ev.get("distance"), "date": ev.get("date")}
@@ -1280,9 +1284,72 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         athlete = chat.agent.coach.athlete(user_id)
         race = _main_race(user_id)
         qp = request.query_params
-        found = await _plan_call(lambda: coach_dir.search(athlete, race, sport=qp.get("sport"), q=qp.get("q")))
+        scope, fmt = qp.get("scope") or None, qp.get("format") or None
+        try:
+            within = int(qp["within"]) if qp.get("within") else None
+        except ValueError:
+            raise _UserError("distance must be a number of miles") from None
+        # Distances only from a location the athlete saved in Explore (never shown back).
+        saved = await anyio.to_thread.run_sync(lambda: _geo.load_saved(store, user_id))
+        origin = None
+        if saved and isinstance(saved.get("lat"), int | float) and isinstance(saved.get("lon"), int | float):
+            origin = (float(saved["lat"]), float(saved["lon"]))
+        coords: dict[str, tuple[float, float] | None] = {}
+        if origin is not None:
+            for c in await _plan_call(coach_dir.all):
+                if _coachdir.coach_coords(c) is None and c.get("id"):
+                    pl = _coachdir.coach_place(c)
+                    got = await _geocoder.city_place(pl["city"], pl["state"]) if pl["city"] and pl["state"] else {}
+                    if isinstance(got.get("lat"), int | float) and isinstance(got.get("lon"), int | float):
+                        coords[c["id"]] = (float(got["lat"]), float(got["lon"]))
+        home = _geo.resolve(athlete.get("interests") or {}, athlete, saved)
+        found = await _plan_call(lambda: coach_dir.search(
+            athlete, race, sport=qp.get("sport"), q=qp.get("q"), scope=scope, fmt=fmt, within_mi=within,
+            origin=origin, coords=coords, home_state=str(home.get("state") or "")))
         return JSONResponse({"coaches": found, "race": race, "coach_status": athlete.get("coach_status"),
-                             "has_coach": bool(links.coaches_of(user_id))})
+                             "has_coach": bool(links.coaches_of(user_id)),
+                             "has_location": origin is not None, "area": _geo.label(home) if home.get("source") else ""})
+
+    # "Find coaches near me on the web" (coachweb.py): one web search per city + sport, shared
+    # and cached 7 days, on the Explore AI daily allowance. The model gets the sport and
+    # "City, ST" only; results need an https URL and carry no contact details.
+    from . import coachdir as _coachdir
+    from . import coachweb as _coachweb
+    _coach_web = _coachweb.CoachWebFinder(store)
+
+    async def coach_directory_web(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        body = body if isinstance(body, dict) else {}
+        sport = str(body.get("sport") or "")
+        if sport and sport not in _coachdir.SPORTS:
+            raise _UserError(f"sport must be one of {', '.join(_coachdir.SPORTS)}")
+        athlete = chat.agent.coach.athlete(user_id)
+        saved = await anyio.to_thread.run_sync(lambda: _geo.load_saved(store, user_id))
+        city, state = await _x2_area(_geo.resolve(athlete.get("interests") or {}, athlete, saved))
+        if not city or not state:
+            return JSONResponse({"coaches": [], "state": "needs_location", "area": "", "label": _coachweb.LABEL})
+        area = f"{city}, {state}"
+        items = await anyio.to_thread.run_sync(lambda: _coach_web.cached(sport, city, state))
+        if items is not None:
+            return JSONResponse({"coaches": items, "state": "ok", "area": area, "label": _coachweb.LABEL})
+        research = getattr(chat.agent._backend, "research", None)
+        if research is None:
+            return JSONResponse({"coaches": [], "state": "unavailable", "area": area, "label": _coachweb.LABEL})
+        today = _explore_today(user_id)
+        try:
+            await _plan_call(lambda: _events().take_allowance(
+                user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                message="That's today's web searches used up. Try again tomorrow."))
+        except _UserError:
+            return JSONResponse({"coaches": [], "state": "limit", "area": area, "label": _coachweb.LABEL})
+        try:
+            items = await _coach_web.find(research, sport, city, state)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "coach_web_failed", user_id=user_id, error=type(e).__name__)
+            return JSONResponse({"coaches": [], "state": "failed", "area": area, "label": _coachweb.LABEL})
+        log_event(logger, logging.INFO, "coach_web", user_id=user_id, found=len(items))
+        return JSONResponse({"coaches": items, "state": "ok", "area": area, "label": _coachweb.LABEL})
 
     async def coach_directory_one(request: Request, user_id: str) -> Response:
         assert coach_dir is not None and chat is not None
@@ -1778,7 +1845,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     def _race_view(uid: str, eid: str) -> dict[str, Any]:
         ev = _events().get(uid, eid)
         return {"event": {k: ev.get(k) for k in ("id", "name", "type", "distance", "date", "location", "priority",
-                                                   "main", "elevation_m", "course_profile")},
+                                                   "main", "elevation_m", "course_profile", "kind")},
                 "racefit": racefit.analyze(ev, _coach().athlete(uid)),
                 "strategy": ev.get("strategy"), "coach_notes": _race_notes(uid, eid)}
 
@@ -2705,6 +2772,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     def _pred_event(uid: str, eid: str) -> dict[str, Any]:
         ev = _events().get(uid, eid)
+        if not _ev_is_race(ev):
+            raise _UserError("Finish estimates are for races.")
         basis = _pred_basis(uid)
         inp = _predict.event_inputs(ev)["kwargs"]
         if not inp.get("distance_km") and not inp.get("tri"):
@@ -3047,6 +3116,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
         Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),
         Route("/app/api/coaches/directory", _plan_api(coach_directory, mutating=False), methods=["GET"]),
+        Route("/app/api/coaches/directory/web", _plan_api(coach_directory_web, mutating=True), methods=["POST"]),
         Route("/app/api/coaches/directory/{coach_id}", _plan_api(coach_directory_one, mutating=False), methods=["GET"]),
         Route("/app/api/coaches/directory/{coach_id}/invite", _plan_api(coach_directory_invite, mutating=True),
               methods=["POST"]),

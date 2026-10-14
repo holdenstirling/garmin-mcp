@@ -1,5 +1,7 @@
-// Events: every race on your calendar. Add, edit, look up, delete, and pick the main one
-// (the race your plan builds toward). Other races become B/C race days in the plan.
+// Events: races, group activities, trips, challenges and life events on your calendar. Add,
+// edit, look up, delete, and pick the main one (the race or challenge your plan builds
+// toward). Other races become B/C race days in the plan; group activities become sessions,
+// trips lighten those days and life events get rest days.
 import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,11 +11,12 @@ import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
-  DISTANCE_LABEL, TYPE_LABEL, countdown, createEvent, deleteEvent, daysUntil, listEvents, makeMainEvent, updateEvent, writeDebrief,
-  type Debrief, type EventFields, type EventType, type RaceEvent,
+  DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, TYPE_LABEL, WEEKDAYS, countdown, createEvent, deleteEvent, daysUntil, isRace, kindOf, listEvents,
+  makeMainEvent, updateEvent, writeDebrief,
+  type Debrief, type EventFields, type EventKind, type EventType, type RaceEvent,
 } from '@/lib/events'
-import { EventBasics, EventGoal, InfoBlock } from './EventForm'
-import { RacePackScreen } from './RacePackScreen'
+import { EventBasics, EventGoal, EventKindFields, InfoBlock, KIND_ICON, KindPicker, kindDefaults } from './EventForm'
+import { RacePackScreen, packTitle } from './RacePackScreen'
 import { RaceFitScreen } from './RaceFitScreen'
 import { ReadinessRow } from './Readiness'
 import { FinishChip } from './FinishEstimate'
@@ -40,8 +43,8 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const [editing, setEditing] = useState<RaceEvent | 'new' | null>(null)
   const [showPast, setShowPast] = useState(false)
   const [changed, setChanged] = useState(false)
-  const [fit, setFit] = useState<string | null>(null)
-  const [pack, setPack] = useState<string | null>(null)
+  const [fit, setFit] = useState<RaceEvent | null>(null)
+  const [pack, setPack] = useState<RaceEvent | null>(null)
   const [grades, setGrades] = useState<Record<string, RaceGrade>>({})
   const [people, setPeople] = useState<Record<string, PeopleSummary>>({})
   const [peopleFor, setPeopleFor] = useState<RaceEvent | null>(null)
@@ -64,14 +67,14 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   // "Add" waits for the list: whether a new event becomes the main one depends on it.
   return (
     <>
-      <Screen title="Races" subtitle="Races and challenges on your calendar" closing={closing} onClose={close}
+      <Screen title="Events" subtitle="Races, group sessions, trips and big days" closing={closing} onClose={close}
         footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={events === null}
           onClick={() => setEditing('new')}>
-          <CalendarPlus className="size-4" /> Add a race</Button>}>
+          <CalendarPlus className="size-4" /> Add an event</Button>}>
         <PullToRefresh onRefresh={load} disabled={events === null && !error} />
         {events === null && !error ? (
           <div className="flex flex-col gap-2.5">
-            <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your races…']} />
+            <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your events…']} />
             <div className="skeleton h-16" aria-hidden="true" />
             <div className="skeleton h-16" aria-hidden="true" />
           </div>
@@ -93,15 +96,16 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
               </div>
             )}
             {upcoming.length === 0 && (
-              <EmptyRabbit className="py-10" size={60} mode="peek" title="No upcoming races yet"
-                body="Add your races, rides and big days. Rabbit plans around all of them." />
+              <EmptyRabbit className="py-10" size={60} mode="peek" title="Nothing on the calendar yet"
+                body="Add races, group rides, trips and big days. Rabbit plans around all of them." />
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">
                 {upcoming.map((e, i) => (
                   <HopIn key={e.id} index={i}>
-                    <EventCard e={e} grade={grades[e.id]} people={people[e.id]} onPeople={() => setPeopleFor(e)} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
-                      onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />
+                    <EventCard e={e} grade={grades[e.id]} people={people[e.id]} onPeople={() => setPeopleFor(e)} onClick={() => setEditing(e)}
+                      onFit={kindOf(e) === 'milestone' ? undefined : () => setFit(e)}
+                      onPack={daysUntil(e.date) <= 21 && kindOf(e) !== 'milestone' ? () => setPack(e) : undefined} />
                   </HopIn>
                 ))}
               </section>
@@ -118,7 +122,8 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
               Your <Star className="inline size-3 -translate-y-px fill-current" /> main event is what your plan builds toward.
-              Other upcoming races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
+              Other races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
+              Group activities count as sessions, trips keep those days light and life events get rest days.
             </p>
           </>
         )}
@@ -127,8 +132,8 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         <EventEditor event={editing === 'new' ? null : editing} isFirst={events !== null && events.length === 0} imperial={imperial}
           onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
       )}
-      {fit && <RaceFitScreen eventId={fit} onClose={() => setFit(null)} />}
-      {pack && <RacePackScreen eventId={pack} imperial={imperial} onClose={() => setPack(null)} />}
+      {fit && <RaceFitScreen eventId={fit.id} race={isRace(fit)} onClose={() => setFit(null)} />}
+      {pack && <RacePackScreen eventId={pack.id} kind={kindOf(pack)} imperial={imperial} onClose={() => setPack(null)} />}
       {peopleFor && <PeopleSheet eventId={peopleFor.id} eventName={peopleFor.name} onClose={() => setPeopleFor(null)}
         onChanged={() => { getPeopleSummary().then((r) => setPeople(r.events), () => {}) }} />}
     </>
@@ -139,11 +144,17 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
   e: RaceEvent; grade?: RaceGrade; people?: PeopleSummary; onPeople?: () => void; onClick: () => void; onFit?: () => void; onPack?: () => void
 }) {
   const n = daysUntil(e.date)
-  if (!onFit) return <EventCardButton e={e} onClick={onClick} />
+  const race = isRace(e)
+  if (!onFit && !onPeople) return <EventCardButton e={e} onClick={onClick} />
   return (
     <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
       <EventCardButton e={e} onClick={onClick} bare />
-      {grade ? <ReadinessRow g={grade} onClick={onFit} extra={n >= 0 ? <FinishChip eventId={e.id} /> : undefined} /> : (
+      {!onFit ? null : !race ? (
+        <button type="button" onClick={onFit}
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-3.5" /> Event prep <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+        </button>
+      ) : grade ? <ReadinessRow g={grade} onClick={onFit} extra={n >= 0 ? <FinishChip eventId={e.id} /> : undefined} /> : (
         <button type="button" onClick={onFit}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
           <Gauge className="size-3.5" /> Readiness & race fit
@@ -155,7 +166,7 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
       {onPack && (
         <button type="button" onClick={onPack}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Backpack className="size-3.5" /> Race-week pack <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+          <Backpack className="size-3.5" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
         </button>
       )}
       {onPeople && <PeopleRow s={people} onOpen={onPeople} />}
@@ -164,7 +175,8 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
 }
 
 function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => void; bare?: boolean }) {
-  const Icon = TYPE_ICON[e.type] ?? Activity
+  const kind = kindOf(e)
+  const Icon = kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
   const n = daysUntil(e.date)
   return (
     <button type="button" onClick={onClick}
@@ -181,13 +193,16 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
         </span>
         <span className="block truncate text-[0.7059rem] text-(--text-muted)">
           {new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-          {' · '}{TYPE_LABEL[e.type]}{e.distance && e.distance !== 'other' ? ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}` : ''}
-          {e.location ? ` · ${e.location}` : ''}
+          {e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
+          {e.recurring ? ` · weekly on ${WEEKDAYS.find(([d]) => d === e.recurring!.weekday)?.[1] ?? e.recurring.weekday}` : ''}
+          {kind === 'milestone' ? '' : ` · ${TYPE_LABEL[e.type]}`}
+          {kind !== 'race' || !e.distance || e.distance === 'other' ? '' : ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}`}
+          {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
         <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
-          {e.main ? 'Main' : e.priority === 'C' ? 'Training' : `${e.priority} race`}
+          {e.main ? 'Main' : kind !== 'race' ? KIND_LABEL[kind] : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
         <span className="text-[0.6471rem] text-(--text-muted)">{e.result && n < 0 ? e.result : countdown(e.date)}</span>
       </span>
@@ -200,8 +215,13 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
   onClose: () => void; onSaved: (list: RaceEvent[]) => void
 }) {
   const [closing, setClosing] = useState(false)
-  const [v, setV] = useState<EventFields>(() => event ? { ...event } : { type: 'triathlon', distance: '70.3', priority: isFirst ? 'A' : 'B', goal_type: 'finish' })
-  const [main, setMain] = useState(isFirst)
+  // A new event starts with the kind picker; the rest of the form follows the kind.
+  const [v, setV] = useState<EventFields>(() => event ? { ...event, kind: kindOf(event) } : {})
+  const kind: EventKind | null = event ? kindOf(event) : (v.kind ?? null)
+  const canBeMain = kind != null && MAIN_KINDS.includes(kind)
+  const race = kind === 'race'
+  const [mainPick, setMain] = useState(isFirst)
+  const main = mainPick && canBeMain
   const [busy, setBusy] = useState<'save' | 'delete' | 'main' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -220,8 +240,9 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
 
   function payload(): EventFields {
     const f: EventFields = {}
-    for (const k of ['name', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info', 'elevation_m', 'course_profile'] as const) {
-      if (v[k] !== undefined && (!event || v[k] !== event[k])) (f as Record<string, unknown>)[k] = v[k]
+    for (const k of ['name', 'kind', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info', 'elevation_m', 'course_profile',
+      'end_date', 'time', 'recurring', 'with', 'at', 'duration_min', 'intensity'] as const) {
+      if (v[k] !== undefined && (!event || JSON.stringify(v[k]) !== JSON.stringify(event[k]))) (f as Record<string, unknown>)[k] = v[k]
     }
     if (f.goal_type !== undefined && f.goal_type !== 'time' && !event?.target_time) delete f.target_time
     if (v.goal_type !== 'time' && event?.target_time) f.target_time = null
@@ -233,22 +254,27 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
       closing={closing} onClose={close} onBack={close}
       footer={<>
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
-          disabled={!(v.name ?? '').trim() || !v.date}
+          disabled={!kind || !(v.name ?? '').trim() || !v.date}
           onClick={(e) => {
             const btn = e.currentTarget
             void run('save', async () => {
               if (event) return updateEvent(event.id, payload())
               const r = await createEvent({ ...payload(), main })
-              celebrate(btn, 'race') // a new race on the calendar
+              celebrate(btn, 'race') // a new event on the calendar
               return r
             })
           }}>
           {event ? 'Save changes' : 'Add event'}
         </Button>
       </>}>
+      {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
+      {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />
+      <EventKindFields value={v} onChange={set} />
       {v.info && <Card className="p-4"><InfoBlock info={v.info} /></Card>}
-      <EventGoal value={v} onChange={set} hidePriority={event?.main} imperial={imperial} />
+      {(race || kind === 'challenge') && (
+        <EventGoal value={v} onChange={set} hidePriority={event?.main || !race} imperial={imperial} raceOnly={race} />
+      )}
       <Card>
         <Field label="Notes" hint="Logistics, travel, who's coming, gear to sort.">
           <textarea className={areaCls} value={v.notes ?? ''} maxLength={1000} onChange={(e) => set({ notes: e.target.value })} />
@@ -260,26 +286,27 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
           </Field>
         )}
       </Card>
-      {event && past && <DebriefCard event={event} result={v.result ?? ''} notes={v.notes ?? ''} onSaved={(list) => onSaved(list)} />}
-      {!event && !isFirst && (
+      {event && past && race && <DebriefCard event={event} result={v.result ?? ''} notes={v.notes ?? ''} onSaved={(list) => onSaved(list)} />}
+      </>)}
+      {!event && !isFirst && canBeMain && (
         <label className="flex items-center gap-3 px-1 text-[0.8235rem] text-(--text)">
           <input type="checkbox" className="size-4 accent-(--accent)" checked={main} onChange={(e) => setMain(e.target.checked)} />
           Make this my main event (the plan builds toward it)
         </label>
       )}
-      {event && !past && (
+      {event && !past && kind !== 'milestone' && (
         <div className="flex gap-2">
           <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setPack(true)}>
-            <Backpack className="size-4" /> Race-week pack
+            <Backpack className="size-4" /> {packTitle(kind)}
           </Button>
           <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFitOpen(true)}>
-            <Gauge className="size-4" /> Readiness
+            <Gauge className="size-4" /> {race ? 'Readiness' : 'Event prep'}
           </Button>
         </div>
       )}
-      {fitOpen && event && <RaceFitScreen eventId={event.id} onClose={() => setFitOpen(false)} />}
-      {pack && event && <RacePackScreen eventId={event.id} imperial={imperial} onClose={() => setPack(false)} />}
-      {event && !event.main && !past && (
+      {fitOpen && event && <RaceFitScreen eventId={event.id} race={race} onClose={() => setFitOpen(false)} />}
+      {pack && event && <RacePackScreen eventId={event.id} kind={kind} imperial={imperial} onClose={() => setPack(false)} />}
+      {event && !event.main && !past && canBeMain && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'main'}
           onClick={() => void run('main', () => makeMainEvent(event.id))}>
           <Star className="size-4" /> Make this my main event

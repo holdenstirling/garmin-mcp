@@ -26,7 +26,8 @@ export type BuiltPlan = {
   garmin: { window?: number; synced_at?: number | null; last?: { uploaded: number; unchanged: number; removed: number }; errors?: number }
   pending_removals: number
   kinds: Record<string, string[]>
-  events: { id: string; name: string; date: string; priority: 'B' | 'C' }[]
+  events: { id: string; name: string; date: string; priority: 'B' | 'C' | null
+    kind?: 'race' | 'group_activity' | 'trip' | 'challenge' | 'milestone' | 'other'; end_date?: string; occurrences?: number }[]
   events_changed: boolean
   race_changed: boolean
   /** set when a coach (or the athlete) loaded the plan from outside the builder */
@@ -173,3 +174,11 @@ export function fmtMin(m: number): string {
   return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${Math.round(m)}m`
 }
 export const ZONE_LABEL: Record<number, string> = { 1: 'Easy', 2: 'Aerobic', 3: 'Tempo', 4: 'Threshold', 5: 'Hard' }
+
+/** "B race" / "training race" / "challenge" / "group activity ×8" / "trip" for a placed plan event. */
+export function placedEventLabel(e: BuiltPlan['events'][number]): string {
+  const k = e.kind ?? 'race'
+  if (k === 'race') return e.priority === 'C' ? 'training race' : 'B race'
+  if (k === 'group_activity' || k === 'other') return `${k === 'other' ? 'session' : 'group activity'}${e.occurrences && e.occurrences > 1 ? ` ×${e.occurrences}` : ''}`
+  return k === 'milestone' ? 'life event' : k
+}

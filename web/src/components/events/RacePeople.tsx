@@ -1,7 +1,7 @@
 // Race people (racepeople.py): the "People" row on race cards and Race readiness, the invite
 // sheet (Friends / Share link / Pending), "Racing together" (teammates, opt-in grade and
-// finish, group chat, cheers), the invites inbox and "Races you're following" on the Races tab,
-// and "Invite to a race" from a friend's card.
+// finish, group chat, cheers), the invites inbox and "Events you're following" on the Events tab,
+// and "Invite to an event" from a friend's card.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, Flag, Link2, Megaphone, Send, UserPlus, Users, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -41,7 +41,7 @@ function AvatarStack({ people, size = 24 }: { people: SocialUser[]; size?: numbe
 /** The "People" row under a race card / on Race readiness. */
 export function PeopleRow({ s, onOpen, className }: { s?: PeopleSummary; onOpen: () => void; className?: string }) {
   const n = s?.count ?? 0
-  const text = !s || (n === 0 && !s.pending) ? (s?.link ? 'Crew link on · invite friends' : 'Invite crew, pacers or friends')
+  const text = !s || (n === 0 && !s.pending) ? (s?.link ? 'Crew link on · invite friends' : 'Invite to this event')
     : `${s.racing ? `${s.racing} racing with you` : `${n} ${n === 1 ? 'person' : 'people'}`}${s.pending ? ` · ${s.pending} invited` : ''}`
   return (
     <button type="button" onClick={onOpen}
@@ -392,8 +392,8 @@ export function RacingTogether({ eventId }: { eventId: string }) {
           </div>
         </div>
         <div className="border-t border-(--border) pt-1">
-          <ToggleRow title="Share my readiness grade" sub="With teammates on this race" checked={t.me.team_grade} onChange={(v) => void share('team_grade', v)} />
-          <ToggleRow title="Share my estimated finish" sub="With teammates on this race" checked={t.me.team_finish} onChange={(v) => void share('team_finish', v)} />
+          <ToggleRow title="Share my readiness grade" sub="With teammates on this event" checked={t.me.team_grade} onChange={(v) => void share('team_grade', v)} />
+          <ToggleRow title="Share my estimated finish" sub="With teammates on this event" checked={t.me.team_finish} onChange={(v) => void share('team_finish', v)} />
         </div>
         {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
       </Field>
@@ -417,7 +417,7 @@ export function RaceInvitesInbox({ onChanged }: { onChanged?: () => void }) {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
   return (
-    <section className="flex flex-col gap-2" aria-label="Race invites">
+    <section className="flex flex-col gap-2" aria-label="Event invites">
       {inv.map((i) => (
         <div key={i.id} className="flex flex-col gap-2 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3.5 py-3">
           <div className="flex items-center gap-2.5">
@@ -427,7 +427,7 @@ export function RaceInvitesInbox({ onChanged }: { onChanged?: () => void }) {
               <span className="block text-[0.7059rem] text-(--text-muted)">{shortDate(i.event.date)}{i.event.location ? ` · ${i.event.location}` : ''}</span>
             </p>
           </div>
-          {i.role === 'racing' && <p className="text-[0.7059rem] text-(--text-secondary)">Accepting adds it to your races as a B race.</p>}
+          {i.role === 'racing' && <p className="text-[0.7059rem] text-(--text-secondary)">Accepting adds it to your events.</p>}
           <div className="flex gap-2">
             <Button variant="primary" className="press h-11 flex-1 text-[0.7647rem]" loading={busy === i.id}
               onClick={(e) => { const el = e.currentTarget; void answer(i, true, el) }}>Accept</Button>
@@ -448,7 +448,7 @@ export function FollowingRaces({ refreshKey = 0 }: { refreshKey?: number }) {
   if (races.length === 0) return null
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Races you're following</h2>
+      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Events you're following</h2>
       {races.map((r) => <FollowedCard key={r.id} r={r} onLeave={() => setRaces((x) => x.filter((y) => y.id !== r.id))} />)}
     </section>
   )
@@ -496,7 +496,7 @@ function FollowedCard({ r, onLeave }: { r: FollowedRace; onLeave: () => void }) 
           )}
           {confirm ? (
             <div className="flex items-center gap-2">
-              <span className="flex-1 text-(--text-secondary)">Stop following this race?</span>
+              <span className="flex-1 text-(--text-secondary)">Stop following this event?</span>
               <Button variant="default" className="h-11 px-3 text-[0.7059rem]" onClick={() => setConfirm(false)}>Keep</Button>
               <Button variant="destructive" className="h-11 px-3 text-[0.7059rem]"
                 onClick={() => { void leaveRace(r.id).then(onLeave, () => setConfirm(false)) }}>Stop</Button>
@@ -526,11 +526,11 @@ export function InviteToRaceSheet({ friend, onClose }: { friend: SocialUser; onC
     catch (x) { setDone((d) => ({ ...d, [e.id]: (x as Error).message })) } finally { setBusy(null) }
   }
   return (
-    <Sheet title={`Invite ${friend.name} to a race`} onClose={onClose}>
+    <Sheet title={`Invite ${friend.name} to an event`} onClose={onClose}>
       <RoleChips value={role} onChange={setRole} />
       {error && <ErrorState compact message={error} />}
       {!events && !error && <div className="skeleton h-14" aria-hidden />}
-      {events && events.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Add a race on the Races tab first.</p>}
+      {events && events.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Add an event on the Events tab first.</p>}
       {events?.map((e) => (
         <div key={e.id} className="flex min-h-11 items-center gap-2.5">
           <span className="min-w-0 flex-1">

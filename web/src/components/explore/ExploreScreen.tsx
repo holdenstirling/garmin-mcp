@@ -1,6 +1,6 @@
 // Explore races: upcoming races near you from RunSignup, grouped by month, with quick fit
 // hints against your main race. "Find more with Rabbit" searches the web for big races that
-// aren't on RunSignup. Tap a race for details, "Add to my races", or to ask Rabbit about it.
+// aren't on RunSignup. Tap a race for details, "Add to my events", or to ask Rabbit about it.
 // "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx), or ones
 // inferred from training, then Near you; "Let Rabbit explore" (one tap) is a small card under
 // the first row. Search with no filters uses your location, 50 mi, all types; with no location
@@ -192,7 +192,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
 
   return (
     <>
-      <Screen title="Explore" subtitle="Find your next start line" closing={closing} onClose={close}
+      <Screen title="Explore events" subtitle="Find your next start line" closing={closing} onClose={close}
         headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
         {mode === 'foryou' ? (
           <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')}
