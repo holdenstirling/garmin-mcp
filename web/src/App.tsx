@@ -6,6 +6,9 @@ import { Chat } from './screens/Chat'
 import { InstallPrompt } from './screens/InstallPrompt'
 import { SignIn } from './screens/SignIn'
 import { RabbitLogo } from './components/RabbitLogo'
+import { RabbitLoader } from './components/RabbitLoader'
+
+const BOOT_MESSAGES = ['Lacing up…', 'Warming up…', 'Checking your watch…', 'Crunching the numbers…']
 
 type State =
   | { kind: 'loading' }
@@ -50,7 +53,7 @@ export function App() {
   return (
     <div className="app-shell">
       {state.kind === 'loading' && (
-        <div className="flex flex-1 items-center justify-center"><RabbitLogo size={48} thinking /></div>
+        <div className="flex flex-1 items-center justify-center"><RabbitLoader size={64} cycle={BOOT_MESSAGES} /></div>
       )}
       {state.kind === 'install' && <InstallPrompt onSkip={() => setSkipInstall(true)} />}
       {state.kind === 'signin' && <SignIn error={state.error} />}

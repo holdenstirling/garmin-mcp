@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, Plus, RefreshCw, Trash2, Watch, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Choice, Field, MultiChoice, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
@@ -70,9 +70,7 @@ export function GearScreen({ onClose, imperial }: { onClose: () => void; imperia
           </Button>
         </>}>
         {items === null && !error ? (
-          <div className="flex justify-center py-16" role="status" aria-label="Loading gear">
-            <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
-          </div>
+          <RabbitLoader className="py-16" label="Loading gear" cycle={['Checking the gear closet…', 'Counting miles on your shoes…']} />
         ) : items === null ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)">
             {error} <button type="button" className="underline" onClick={load}>Retry</button>

@@ -1,7 +1,7 @@
 // Everything for race week on one page. Gear checkboxes are remembered on this device.
 import { useEffect, useState } from 'react'
 import { CheckSquare, CloudSun, Gauge, ListChecks, Square, Utensils } from 'lucide-react'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { fmtMin } from '@/lib/plan'
 import { KIND_LABEL, fmtDist } from '@/lib/gear'
@@ -52,7 +52,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
           </button>
         </div>
       ) : undefined}>
-      {!p && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
+      {!p && !error && <RabbitLoader className="py-16" label="Building your race pack" cycle={['Packing your race bag…', 'Checking the course…', 'Planning race-day fuel…']} />}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {p && (
         <>

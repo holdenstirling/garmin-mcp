@@ -982,3 +982,212 @@
 }
 .celebrate { animation: celebrate-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 @media (prefers-reduced-motion: reduce) { .celebrate { animation: none; } }
+
+/* ── RabbitLoader: the mark running in place ──
+   One stride = one --rl-stride: the runner squashes on landing, stretches on push-off and
+   leans into the hop; dust pops behind its feet on each landing while the dashed ground
+   scrolls left. Sized from --rl-size (set inline by the component). */
+.rabbit-loader {
+  --rl-stride: 0.6s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  /* Fast loads never flash the loader. */
+  animation: rl-appear 0.3s ease-out 0.12s both;
+}
+
+.rabbit-loader__stage {
+  position: relative;
+  width: calc(var(--rl-size) * 2);
+  height: calc(var(--rl-size) * 1.2);
+}
+
+.rabbit-loader__runner {
+  position: absolute;
+  left: 50%;
+  /* The mark's feet sit ~20% up from its box; drop it so they touch the ground. */
+  bottom: calc(5px - var(--rl-size) * 0.18);
+  width: var(--rl-size);
+  height: var(--rl-size);
+  margin-left: calc(var(--rl-size) / -2);
+  transform-origin: 30% 85%;
+  animation: rl-bound var(--rl-stride) cubic-bezier(0.33, 0, 0.3, 1) infinite;
+  will-change: transform;
+}
+
+.rabbit-loader__runner .rabbit-logo {
+  display: block;
+  color: var(--brand);
+}
+
+.rabbit-loader__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--border-strong) 0 10px, transparent 10px 18px);
+  background-size: 18px 2px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  animation: rl-ground calc(var(--rl-stride) / 2) linear infinite;
+}
+
+.rabbit-loader__dust {
+  position: absolute;
+  left: calc(50% - var(--rl-size) * 0.42);
+  bottom: 5px;
+  width: 0;
+  height: 0;
+}
+
+.rabbit-loader__dust i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--rl-size) * 0.13);
+  height: calc(var(--rl-size) * 0.13);
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  animation: rl-dust var(--rl-stride) ease-out infinite;
+}
+
+.rabbit-loader__dust i:nth-child(2) {
+  --dx: -0.5;
+  --dy: -0.22;
+  width: calc(var(--rl-size) * 0.09);
+  height: calc(var(--rl-size) * 0.09);
+  animation-delay: 0.02s;
+}
+
+.rabbit-loader__dust i:nth-child(3) {
+  --dx: -0.22;
+  --dy: -0.3;
+  width: calc(var(--rl-size) * 0.07);
+  height: calc(var(--rl-size) * 0.07);
+  animation-delay: 0.04s;
+}
+
+.rabbit-loader__label {
+  font-size: 0.7647rem;
+  color: var(--text-muted);
+}
+
+.rabbit-loader__msg {
+  font-size: 0.7647rem;
+  color: var(--text-secondary);
+  animation: rl-msg-in 0.35s ease-out both;
+}
+
+/* Compact row: a small hopping mark beside the text, no ground. */
+.rabbit-loader--inline {
+  --rl-stride: 0.5s;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  animation: none;
+}
+
+.rabbit-loader--inline .rabbit-loader__runner {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  margin-left: 0;
+  flex-shrink: 0;
+  animation-name: rl-bound-sm;
+}
+
+.rabbit-loader--inline .rabbit-loader__msg {
+  font-size: inherit;
+  color: inherit;
+}
+
+.rabbit-loader--gentle {
+  --rl-stride: 0.85s;
+}
+
+.rabbit-loader.rabbit-loader--gentle {
+  animation: none;
+}
+
+@keyframes rl-appear {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rl-bound {
+  0%   { transform: translateY(0) rotate(7deg) scale(1.1, 0.88); }
+  14%  { transform: translateY(-6%) rotate(1deg) scale(0.94, 1.08); }
+  48%  { transform: translateY(-30%) rotate(-6deg) scale(1, 1); }
+  84%  { transform: translateY(-5%) rotate(4deg) scale(0.98, 1.04); }
+  100% { transform: translateY(0) rotate(7deg) scale(1.1, 0.88); }
+}
+
+@keyframes rl-bound-sm {
+  0%, 100% { transform: translateY(0) rotate(5deg) scale(1.08, 0.9); }
+  45% { transform: translateY(-22%) rotate(-5deg) scale(0.97, 1.04); }
+}
+
+@keyframes rl-ground {
+  from { background-position: 0 0; }
+  to { background-position: -18px 0; }
+}
+
+@keyframes rl-dust {
+  0%   { opacity: 0.45; transform: translate(0, 0) scale(0.3); }
+  60%  { opacity: 0; transform: translate(calc(var(--rl-size) * var(--dx, -0.34)), calc(var(--rl-size) * var(--dy, -0.1))) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--rl-size) * var(--dx, -0.34)), calc(var(--rl-size) * var(--dy, -0.1))) scale(1); }
+}
+
+@keyframes rl-msg-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rl-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rabbit-loader,
+  .rabbit-loader__msg { animation: none; }
+  .rabbit-loader__runner,
+  .rabbit-loader--inline .rabbit-loader__runner { animation: rl-pulse 1.8s ease-in-out infinite; transform: none; }
+  .rabbit-loader__ground { animation: none; }
+  .rabbit-loader__dust { display: none; }
+}
+
+/* Skeleton placeholder for list loads: a quiet block with a soft sheen passing over. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-inset);
+  border-radius: var(--radius-lg);
+  opacity: 0.6;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--bg-surface), transparent);
+  opacity: 0.7;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { display: none; }
+  .skeleton { animation: rl-pulse 1.8s ease-in-out infinite; }
+}

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
@@ -45,8 +45,10 @@ export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void
           </button>
         </div>) : undefined}>
       {!s && !error && (
-        <div className="flex justify-center py-16" role="status" aria-label="Loading stats">
-          <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
+        <div className="flex flex-col gap-3">
+          <RabbitLoader className="py-8" label="Loading stats" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
+          <div className="skeleton h-28" aria-hidden="true" />
+          <div className="skeleton h-40" aria-hidden="true" />
         </div>
       )}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">{error}</p>}

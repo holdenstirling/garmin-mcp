@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Switch } from '@/components/settings/Grouped'
 import { Card, Choice, Field, Screen, areaCls } from '@/components/plan/ui'
 import { PlanEditor } from '@/components/plan/PlanEditor'
@@ -38,7 +39,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
 
   const body = (
     <>
-      {athletes === null && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
+      {athletes === null && !error && <RabbitLoader className="py-16" label="Finding your athletes…" />}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {athletes?.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-12 text-center">
@@ -129,7 +130,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
             ))}
           </div>}>
         {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
-        {!o && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
+        {!o && !error && <RabbitLoader className="py-16" label="Reading their training…" />}
         {o && tab === 'overview' && <Overview o={o} onOpenPlan={() => setPlanOpen(true)} onMessage={() => void messageAbout()} />}
         {o && tab === 'stats' && <AthleteStats aid={aid} />}
         {o && tab === 'messages' && (thread

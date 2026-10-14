@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, Check, HeartPulse, Sparkles, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import type { Me } from '@/lib/api'
@@ -390,7 +391,15 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
         </>
       )}
 
-      {step === 'review' && (
+      {step === 'review' && busy && (
+        <div className="flex flex-col items-center px-2 pt-6 text-center">
+          <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Building your plan</h3>
+          <RabbitLoader size={72} className="pt-4" label="Building your plan"
+            cycle={['Mapping your weeks…', 'Placing long sessions…', 'Balancing hard and easy days…', 'Tapering into race day…']} />
+        </div>
+      )}
+
+      {step === 'review' && !busy && (
         <>
           <StepIntro eyebrow="Review" title="Ready to build">
             Check your answers. You can change anything later and rebuild.
@@ -446,6 +455,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
                   <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={sync.busy} onClick={() => void doSync()}>
                     <Watch className="size-4" /> {sync.result ? 'Sync again' : 'Sync to Garmin'}
                   </Button>
+                  {sync.busy && <RabbitLoader inline className="text-[0.7647rem]" label="Sending to your watch…" />}
                   {sync.result && <SyncSummary result={sync.result} />}
                   {sync.error && <p className="text-[0.7647rem] text-(--danger)">{sync.error}</p>}
                 </div>

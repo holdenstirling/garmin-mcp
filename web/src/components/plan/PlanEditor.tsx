@@ -5,7 +5,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plane, Plus, Re
 import { Button } from '@/components/ui/button'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import type { Me, Sport } from '@/lib/api'
 import {
@@ -91,9 +91,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     return (
       <Screen title="Your plan" closing={closing} onClose={close}>
         {plan === undefined && !loadError ? (
-          <div className="flex justify-center py-16" role="status" aria-label="Loading plan">
-            <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
-          </div>
+          <RabbitLoader className="py-16" label="Loading plan" cycle={['Opening your plan…', 'Lining up your weeks…', 'Checking your watch…']} />
         ) : (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in Rabbit yet." : "There's no plan built in Rabbit for this goal yet.")}</p>
@@ -283,6 +281,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                     disabled={sync.busy != null} onClick={() => void doRemove()}>Remove</Button>
                 )}
               </div>
+              {sync.busy === 'sync' && <RabbitLoader inline className="text-[0.7647rem]" label="Sending to your watch…" />}
               {plan.pending_removals > 0 && !sync.result && (
                 <p className="text-[0.7059rem] text-(--text-muted)">{plan.pending_removals} old workout{plan.pending_removals === 1 ? '' : 's'} will be cleared from Garmin on the next sync.</p>
               )}

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronRight, Dumbbell, MessageSquare, Pin, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { athleteChat, getCoachNotes, timeAgo, type CoachLink, type Note, type ThreadSummary } from '@/lib/coach'
@@ -42,7 +42,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
 
   return (
     <Screen title="Your coach" subtitle={coaches.map((c) => c.email).join(', ')} closing={closing} onClose={close}>
-      {threads === null && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
+      {threads === null && !error && <RabbitLoader className="py-16" label="Loading messages…" />}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {coaches.length === 0 && threads !== null && (
         <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">No coach yet. Invite one from Settings › Coaches.</p>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, ChevronRight, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import { countdown, daysUntil, listEvents, updateEvent, type RaceEvent } from '@/lib/events'
 import { Card, Choice, Field, inputCls } from './ui'
@@ -35,7 +35,7 @@ export function GoalsTab({ seasonGoal, onSeasonGoal, onOpenEvents }: {
             onChange={(e) => onSeasonGoal(e.target.value)} />
         </Field>
       </Card>
-      {events === null && !error && <div className="flex justify-center py-8"><RabbitLogo size={40} thinking className="text-(--brand) opacity-60" /></div>}
+      {events === null && !error && <RabbitLoader size={40} className="py-8" label="Loading events…" />}
       {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error} <button type="button" className="underline" onClick={load}>Retry</button></p>}
       {events !== null && upcoming.length === 0 && (
         <p className="px-1 text-[0.8235rem] text-(--text-muted)">No upcoming events. Add your races in Events.</p>
