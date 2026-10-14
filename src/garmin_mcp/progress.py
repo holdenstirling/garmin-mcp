@@ -25,6 +25,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from .appstore import AppStore
+from .intent import quest_layout
 from .stats import ACTIVE_WEEK, HISTORY_DAYS, _rows
 
 PLAN_SESSION_XP = 15
@@ -92,10 +93,11 @@ def level_view(xp: int) -> dict[str, Any]:
             "to_next": hi - xp, "next_name": tier_name(lv + 1) if tier_name(lv + 1) != tier_name(lv) else None}
 
 
-def quests_view(state: dict[str, bool], available: dict[str, bool]) -> list[dict[str, Any]]:
-    """Quests the athlete can do here (optional ones only when the integration exists)."""
-    return [{"id": qid, "title": t, "hint": h, "xp": xp, "optional": opt, "done": bool(state.get(qid))}
-            for qid, t, h, xp, opt in QUESTS if available.get(qid, True)]
+def quests_view(state: dict[str, bool], available: dict[str, bool], intents: Any = None) -> list[dict[str, Any]]:
+    """Quests the athlete can do here (optional ones only when the integration exists),
+    ordered and flagged core/optional for the athlete's ``intents`` (intent.quest_layout)."""
+    return quest_layout([{"id": qid, "title": t, "hint": h, "xp": xp, "optional": opt, "done": bool(state.get(qid))}
+                         for qid, t, h, xp, opt in QUESTS if available.get(qid, True)], intents)
 
 
 def week_goal(stats: dict[str, Any]) -> dict[str, Any]:

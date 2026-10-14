@@ -69,6 +69,9 @@ import { ThreadPeek } from '@/components/chat/ThreadPeek'
 import { EmptyHero } from '@/components/chat/EmptyHero'
 import { useLongPress } from '@/hooks/useLongPress'
 import { hapticTap } from '@/lib/haptics'
+import { WelcomeGate } from '@/components/onboarding/WelcomeFlow'
+import { IntentStrip, stripFirst } from '@/components/onboarding/IntentHome'
+import { composerPrompts, intentSuggestions, intentsOf, wantsPlan } from '@/lib/intent'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -518,7 +521,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       setBusy(false)
     }
   }
-  const suggestions = isCoach ? COACH_SUGGESTIONS : TOPIC_SUGGESTIONS
+  const intents = intentsOf(me) // lib/intent.ts: what they came for leads Rabbit home
+  const suggestions = isCoach ? intentSuggestions(intents, COACH_SUGGESTIONS) : TOPIC_SUGGESTIONS
   // A moment's action chip, routed to the screens that already exist.
   const momentAction = (a: MomentAction) => {
     if (a.id === 'checkin') setVoice({ activityId: a.activity_id, title: a.title })
@@ -534,7 +538,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const lastRow = shownRows[shownRows.length - 1]
   const chips = status === 'idle' && me.chat.available && lastRow?.kind === 'message' && lastRow.item.role === 'agent' && !lastRow.item.error
     ? replyChips(lastRow.item.text) : []
-  const idlePrompt = useRotatingPrompt(tab === 'rabbit' && status === 'idle' && !composerFocus)
+  const idlePrompt = useRotatingPrompt(tab === 'rabbit' && status === 'idle' && !composerFocus, composerPrompts(intents))
   const countdown = goalCountdown(goal)
   const coachThread = coachId ? byId[coachId] : undefined
 
@@ -543,7 +547,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
     : !me.garmin.connected ? { kind: 'garmin' }
-    : isCoach && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
+    : isCoach && wantsPlan(intents) && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
     : isCoach && quest && progress ? { kind: 'quest', title: quest.title, done: progress.setup.done, total: progress.setup.total }
     : isCoach && recapReady ? { kind: 'recap' }
     : null
@@ -756,9 +760,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <StatusBanner banner={banner} onTap={tapBanner}
           onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
       )}
+      {isCoach && !typing && stripFirst(intents) && (
+        <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
+          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : showScreen(t)} />
+      )}
       {isCoach && today && (today.garmin || !!goal) && !typing && (
         <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
           onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={() => goTab('progress')} />
+      )}
+      {isCoach && !typing && !stripFirst(intents) && intents.length > 1 && (
+        <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
+          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : showScreen(t)} />
       )}
 
       {pending ? (
@@ -795,7 +807,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <p>Couldn't load this chat.</p>
           <button type="button" className="min-h-11 underline" onClick={() => void retry()}>Retry</button>
         </div>
-      ) : items.length === 0 && settled && isCoach && !goal ? (
+      ) : items.length === 0 && settled && isCoach && !goal && wantsPlan(intents) ? (
         <div className="flex flex-1 flex-col justify-center overflow-y-auto px-4 py-6">
           <div className="mx-auto flex w-full max-w-md flex-col gap-4">
             <div className="flex flex-col items-center text-center">
@@ -927,6 +939,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onSaved={(msg) => { setSourcesAsk(false); showToast(msg); onChange() }} />
       )}
       {toast && <div key={toast.n} className="rabbit-toast" role="status">{toast.msg}</div>}
+      <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
       {sheet === 'threads' && (
         <ThreadsSheet goal={goal} threads={threads} activeId={threadId} closing={closing} onDismissed={dismissNow}
