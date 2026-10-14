@@ -120,9 +120,9 @@ def test_plan_flags_new_events(env) -> None:
 def test_events_api(env, tmp_path) -> None:
     agent, _ = env.agent([])
 
-    async def fake_research(system: str, prompt: str, **kw) -> str:
-        assert "Leadville" in prompt
-        return '{"summary": "100 miles at altitude.", "location": "Leadville, CO", "suggested_type": "trail"}'
+    async def fake_research(system: str, prompt: str, **kw):
+        assert "Leadville" in prompt and kw["report_tool"]["name"] == "report_event"
+        return {"summary": "100 miles at altitude.", "location": "Leadville, CO", "suggested_type": "trail"}
     agent._backend.research = fake_research  # type: ignore[attr-defined]
     settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False)
     auth = WebAuth(settings, env.store, "", dev_user="friend")

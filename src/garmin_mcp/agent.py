@@ -41,7 +41,7 @@ from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
-from .events import LOOKUP_SYSTEM, EventStore, lookup_prompt, parse_lookup
+from .events import LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -143,19 +143,31 @@ class AnthropicBackend:
                     await on_text(event.text)
             return await stream.get_final_message()
 
-    async def research(self, system: str, prompt: str, *, max_searches: int = 4) -> str:
+    async def research(self, system: str, prompt: str, *, max_searches: int = 4,
+                       report_tool: dict[str, Any] | None = None) -> Any:
         """One-shot answer with Anthropic's server-side web search (event lookups).
-        Returns the answer's text; continues a paused turn a couple of times."""
+        With ``report_tool``, returns that tool's input (a dict) when the model calls it,
+        else the answer's text. Continues a paused turn a couple of times."""
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
-        tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": max_searches}]
+        tools: list[dict[str, Any]] = [{"type": "web_search_20250305", "name": "web_search",
+                                        "max_uses": max_searches}]
+        if report_tool:
+            tools.append(report_tool)
         text: list[str] = []
+        stop = None
         for _ in range(3):
             msg = await self._client.messages.create(
-                model=self.model, max_tokens=2000, system=system, tools=tools, messages=messages)
+                model=self.model, max_tokens=3000, system=system, tools=tools, messages=messages)
+            stop = msg.stop_reason
+            for b in msg.content:
+                if report_tool and getattr(b, "type", None) == "tool_use" \
+                        and getattr(b, "name", None) == report_tool["name"]:
+                    return dict(b.input) if isinstance(b.input, dict) else {}
             text = [b.text for b in msg.content if getattr(b, "type", None) == "text"]
-            if msg.stop_reason != "pause_turn":
+            if stop != "pause_turn":
                 break
             messages = [messages[0], {"role": "assistant", "content": msg.content}]
+        self.last_research_stop = stop
         return "".join(text)
 
 
@@ -331,9 +343,13 @@ class Agent:
         if len(name) < 3:
             raise CoachError("Type the event's name first.")
         self.events.take_lookup(user_id, self._now(user_id).date())
-        text = await research(LOOKUP_SYSTEM, lookup_prompt(name, etype, when, location))
-        info = parse_lookup(text)
-        log_event(logger, logging.INFO, "event_lookup", user_id=user_id, found=bool(info))
+        out = await research(LOOKUP_SYSTEM, lookup_prompt(name, etype, when, location),
+                             report_tool=REPORT_TOOL)
+        info = clean_info(out) if isinstance(out, dict) else parse_lookup(str(out or ""))
+        log_event(logger, logging.INFO, "event_lookup", user_id=user_id, found=bool(info),
+                  via="tool" if isinstance(out, dict) else "text",
+                  chars=len(out) if isinstance(out, str) else None,
+                  stop=getattr(self._backend, "last_research_stop", None))
         if not info:
             raise CoachError("Couldn't find reliable details for that event. Check the name, "
                              "or add the details yourself.")
