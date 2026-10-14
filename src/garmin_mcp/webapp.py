@@ -877,6 +877,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "oura": bool(auth.oura and auth.oura.connected(user_id)),
             "coach": bool(auth.coach_links.coaches_of(user_id)),
             "gear": bool(gear_store and gear_store.list(user_id)),
+            "friend": bool(soc and soc.is_athlete(user_id) and soc.ever_followed(user_id)),
         }
         available = {"notify": push is not None, "calendar": auth.calendar is not None, "oura": auth.oura is not None}
         return state, available
@@ -896,6 +897,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         today = date.fromisoformat(stats["today"])
         bonus = {f"gear:{g['id']}": GEAR_XP for g in (gear_store.list(user_id) if gear_store else [])}
         bonus |= checkin_xp_bonus(agent.checkins.list(user_id))
+        bonus.update(_social_bonus(user_id))
         out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
             user_id, acts=acts, today=today, stats=stats,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
@@ -1723,6 +1725,190 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         ev, already = await _plan_call(run)
         return _events_resp(user_id, 200 if already else 201, event=ev, already=already)
 
+    # ------------------------------------------------------------- social --
+    # Following friends (social.py): follow by email or invite code, a feed of followees'
+    # recent workouts (their visibility settings, never HR/health/location), kudos + short
+    # cheers, friend cards, follower-only photos. Athletes only; coach accounts get 403.
+    from . import social as _social
+    from .progress import level_of as _level_of
+
+    soc = (_social.Social(store, athletes=lambda: {k.lower(): v for k, v in settings.allowed_google_users.items()})
+           if store is not None else None)
+
+    def _soc_name(uid: str) -> str:
+        name = (auth.profile(uid).get("name") or "").strip()
+        return name.split()[0][:40] if name else "Friend"
+
+    def _soc_meta(uid: str) -> dict[str, Any]:
+        assert chat is not None
+        try:
+            streak = chat.agent.stats.get(uid)["streak"]["current"]
+        except Exception:
+            streak = None
+        return {"name": _soc_name(uid), "photo": _photo_version(uid), "picture": auth.profile(uid).get("picture") or "",
+                "level": _level_of(chat.agent.progress.ledger(uid)["xp"]), "streak": streak}
+
+    soc_feed = (_social.SocialFeed(soc, activities=lambda uid: chat.agent.stats.activities(uid), meta=_soc_meta)
+                if soc is not None and chat is not None else None)
+
+    def _soc_person(uid: str | None) -> dict[str, Any] | None:
+        if not uid:
+            return None
+        p = auth.profile(uid)
+        return {"id": uid, "name": _soc_name(uid), "photo": _photo_version(uid), "picture": p.get("picture") or ""}
+
+    def _social_api(handler: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
+        async def inner(request: Request, user_id: str) -> Response:
+            if soc is None or soc_feed is None:
+                return _err(503, "Friends aren't configured on this server.")
+            try:
+                soc.require(user_id)
+                return await handler(request, user_id)
+            except _social.SocialError as e:
+                return _err(e.status, e.message)
+        return _api(inner, mutating=mutating)
+
+    def _social_bonus(uid: str) -> dict[str, int]:
+        """Progress bonus keys: +5 XP per kudos received (10 a day at most)."""
+        if soc is None or chat is None or not soc.is_athlete(uid):
+            return {}
+        return soc.kudos_bonus(uid, chat.agent._now(uid).date())
+
+    def _social_push(to: str, key: str, window: float, title: str, body: str) -> None:
+        if push is None or not push_allowed(key, 1, window):
+            return
+        try:
+            push.send(to, title, body[:140], url="/app/")
+        except Exception as e:  # best effort
+            log_event(logger, logging.WARNING, "social_push_failed", error=type(e).__name__)
+
+    async def social_get(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        raw = await anyio.to_thread.run_sync(soc.people, user_id)
+
+        def person(x: dict[str, Any]) -> dict[str, Any]:
+            return {**x, "user": _soc_person(x.get("user_id"))}
+        out = {k: [person(x) for x in raw[k]] for k in ("following", "followers", "pending_in", "pending_out")}
+        out["blocked"] = [_soc_person(b) for b in raw["blocked"]]
+        return JSONResponse({**out, "invite_code": raw["invite_code"], "settings": raw["settings"]})
+
+    async def social_follow(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        res = await anyio.to_thread.run_sync(lambda: soc.follow(user_id, email=body.get("email"), code=body.get("code")))
+        me_name = _soc_name(user_id)
+        if res["notify"]:
+            if res["status"] == "active":
+                _social_push(res["notify"], f"social-follow:{res['notify']}:{user_id}", 86400,
+                             "New follower", f"{me_name} is now following your training on Rabbit.")
+            else:
+                _social_push(res["notify"], f"social-follow:{res['notify']}:{user_id}", 86400,
+                             "Follow request", f"{me_name} wants to follow your training on Rabbit.")
+        if res["by_email"]:  # same answer whether or not the email has an account
+            return JSONResponse({"ok": True, "message": _social.GENERIC_SENT})
+        name = _soc_name(res["target"])
+        msg = f"You're following {name}." if res["status"] == "active" else f"Request sent to {name}."
+        return JSONResponse({"ok": True, "message": msg})
+
+    def _edge_route(fn: Callable[[str, Any], Any]) -> Handler:
+        async def h(request: Request, user_id: str) -> Response:
+            await anyio.to_thread.run_sync(lambda: fn(user_id, request.path_params["edge_id"]))
+            return JSONResponse({"ok": True})
+        return h
+
+    async def social_block(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        body = await read_json(request)
+        other = body.get("user_id") if isinstance(body, dict) else None
+        await anyio.to_thread.run_sync(lambda: soc.block(user_id, other))
+        return JSONResponse({"ok": True})
+
+    async def social_unblock(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        await anyio.to_thread.run_sync(lambda: soc.unblock(user_id, request.path_params["other_id"]))
+        return JSONResponse({"ok": True})
+
+    async def social_settings(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        body = await read_json(request)
+        return JSONResponse({"settings": await anyio.to_thread.run_sync(lambda: soc.put_settings(user_id, body))})
+
+    async def social_code(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        return JSONResponse({"invite_code": await anyio.to_thread.run_sync(soc.regenerate_code, user_id)})
+
+    async def social_feed(request: Request, user_id: str) -> Response:
+        assert soc_feed is not None
+        items = await anyio.to_thread.run_sync(lambda: soc_feed.feed(user_id, _soc_name))
+        return JSONResponse({"items": items, "following": len(soc.following_ids(user_id)) if soc else 0})
+
+    async def social_badge(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        return JSONResponse(await anyio.to_thread.run_sync(soc.badge, user_id))
+
+    async def social_seen(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        await anyio.to_thread.run_sync(soc.mark_seen, user_id)
+        return JSONResponse({"ok": True})
+
+    def _soc_target(request: Request, user_id: str) -> tuple[str, str]:
+        """The owner and activity from the URL; the viewer must see that workout."""
+        assert soc is not None and soc_feed is not None
+        owner = request.path_params["owner_id"]
+        aid = _social.valid_activity_id(request.path_params["activity_id"])
+        if owner == user_id or not soc.follows(user_id, owner) or not soc_feed.has_item(user_id, owner, aid):
+            raise _social.SocialError("workout not found", 404)
+        return owner, aid
+
+    def _title_of(owner: str, aid: str) -> str:
+        assert soc_feed is not None
+        return next((it["title"] for it in soc_feed.entry(owner)["items"] if it["id"] == aid), "workout")
+
+    async def social_kudos(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        owner, aid = await anyio.to_thread.run_sync(_soc_target, request, user_id)
+        if request.method == "DELETE":
+            return JSONResponse(await anyio.to_thread.run_sync(lambda: soc.remove_kudos(user_id, owner, aid)))
+        res = await anyio.to_thread.run_sync(lambda: soc.give_kudos(user_id, owner, aid))
+        if res.pop("new"):  # coalesced: at most one push per workout per hour
+            _social_push(owner, f"social-kudos:{owner}:{aid}", 3600, "Kudos!",
+                         f"{_soc_name(user_id)} gave kudos on your {_title_of(owner, aid)}.")
+        return JSONResponse(res)
+
+    async def social_cheer(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        owner, aid = await anyio.to_thread.run_sync(_soc_target, request, user_id)
+        body = await read_json(request)
+        text = body.get("text") if isinstance(body, dict) else None
+        c = await anyio.to_thread.run_sync(lambda: soc.cheer(user_id, owner, aid, text))
+        _social_push(owner, f"social-kudos:{owner}:{aid}", 3600, f"{_soc_name(user_id)} cheered you on",
+                     c["text"])
+        return JSONResponse({"cheer": {**c, "by": {"id": user_id, "name": _soc_name(user_id)}, "mine": True,
+                                       "can_delete": True}}, status_code=201)
+
+    async def social_cheer_delete(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        owner = request.path_params["owner_id"]
+        if owner != user_id and not soc.follows(user_id, owner):
+            raise _social.SocialError("workout not found", 404)
+        await anyio.to_thread.run_sync(lambda: soc.delete_cheer(
+            user_id, owner, request.path_params["activity_id"], request.path_params["cheer_id"]))
+        return JSONResponse({"ok": True})
+
+    async def social_person(request: Request, user_id: str) -> Response:
+        assert soc_feed is not None
+        pid = request.path_params["person_id"]
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: soc_feed.card(user_id, pid, _soc_name)))
+
+    async def social_photo(request: Request, user_id: str) -> Response:
+        assert soc is not None
+        pid = request.path_params["person_id"]
+        if pid != user_id and not soc.follows(user_id, pid):
+            return _err(404, "no photo")
+        return await _photo_resp(pid)
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -1806,6 +1992,24 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/explore/defaults", _plan_api(explore_defaults, mutating=False), methods=["GET"]),
         Route("/app/api/explore/ai", _plan_api(explore_ai, mutating=True), methods=["POST"]),
         Route("/app/api/explore/add", _plan_api(explore_add, mutating=True), methods=["POST"]),
+        Route("/app/api/social", _social_api(social_get, mutating=False), methods=["GET"]),
+        Route("/app/api/social/follow", _social_api(social_follow, mutating=True), methods=["POST"]),
+        Route("/app/api/social/requests/{edge_id}/accept", _social_api(_edge_route(lambda u, e: soc.accept(u, e)), mutating=True), methods=["POST"]),
+        Route("/app/api/social/requests/{edge_id}/decline", _social_api(_edge_route(lambda u, e: soc.decline(u, e)), mutating=True), methods=["POST"]),
+        Route("/app/api/social/following/{edge_id}", _social_api(_edge_route(lambda u, e: soc.unfollow(u, e)), mutating=True), methods=["DELETE"]),
+        Route("/app/api/social/followers/{edge_id}", _social_api(_edge_route(lambda u, e: soc.remove_follower(u, e)), mutating=True), methods=["DELETE"]),
+        Route("/app/api/social/block", _social_api(social_block, mutating=True), methods=["POST"]),
+        Route("/app/api/social/block/{other_id}", _social_api(social_unblock, mutating=True), methods=["DELETE"]),
+        Route("/app/api/social/settings", _social_api(social_settings, mutating=True), methods=["PUT"]),
+        Route("/app/api/social/code", _social_api(social_code, mutating=True), methods=["POST"]),
+        Route("/app/api/social/feed", _social_api(social_feed, mutating=False), methods=["GET"]),
+        Route("/app/api/social/badge", _social_api(social_badge, mutating=False), methods=["GET"]),
+        Route("/app/api/social/seen", _social_api(social_seen, mutating=True), methods=["POST"]),
+        Route("/app/api/social/kudos/{owner_id}/{activity_id}", _social_api(social_kudos, mutating=True), methods=["POST", "DELETE"]),
+        Route("/app/api/social/cheers/{owner_id}/{activity_id}", _social_api(social_cheer, mutating=True), methods=["POST"]),
+        Route("/app/api/social/cheers/{owner_id}/{activity_id}/{cheer_id}", _social_api(social_cheer_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/social/people/{person_id}", _social_api(social_person, mutating=False), methods=["GET"]),
+        Route("/app/api/social/people/{person_id}/photo", _photo_cache(_social_api(social_photo, mutating=False)), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
         Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),

@@ -15,6 +15,7 @@ import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
 import { GearScreen } from '@/components/gear/GearScreen'
 import { ExploreIcon, ExploreScreen } from '@/components/explore/ExploreScreen'
+import { FriendsDot, FriendsScreen } from '@/components/social/FriendsScreen'
 import { Celebration, HomeProgress, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
@@ -93,7 +94,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'explore'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'explore' | 'friends'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -291,6 +292,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'sports') { showScreen('profile'); return }
     if (q === 'coach') { showScreen('coaches'); return }
     if (q === 'gear') { showScreen('gear'); return }
+    if (q === 'friend') { showScreen('friends'); return }
     if (q === 'sync') { showScreen(builtPlan ? 'planner' : 'setup'); return }
     showScreen('setup')
   }
@@ -570,6 +572,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <HomeButton icon={Flame} onClick={() => showScreen('stats')}>Stats</HomeButton>
           <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
           <HomeButton icon={ExploreIcon} onClick={() => showScreen('explore')}>Explore</HomeButton>
+          <HomeButton icon={Users} onClick={() => showScreen('friends')}>Friends<FriendsDot /></HomeButton>
           {me.coaches > 0 && (
             <HomeButton icon={Megaphone} onClick={() => { setCoachMsgThread(null); showScreen('coach') }}>
               Coach{me.coach_unread ? ` (${me.coach_unread})` : ''}
@@ -791,6 +794,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {recap && <RecapSheet week={recap.week} onClose={() => setRecap(null)} onAsk={(t) => { setRecap(null); tellRabbit(t) }} />}
       {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}
       {planScreen === 'explore' && <ExploreScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} onChanged={onChange} />}
+      {planScreen === 'friends' && <FriendsScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} onChanged={onChange} />}
       {planScreen === 'quests' && progress && (
         <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
       )}
