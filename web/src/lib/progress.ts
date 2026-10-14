@@ -1,7 +1,7 @@
 // Gamification: level and XP, setup quests, this week's goal, streak and celebrations.
 import { getJSON, sendJSON } from '@/lib/api'
 
-export type QuestId = 'garmin' | 'sports' | 'goal' | 'plan' | 'sync' | 'notify' | 'calendar' | 'oura' | 'coach' | 'gear' | 'friend'
+export type QuestId = 'garmin' | 'sports' | 'goal' | 'plan' | 'sync' | 'notify' | 'calendar' | 'oura' | 'coach' | 'gear' | 'friend' | 'interests'
 export type Quest = { id: QuestId; title: string; hint: string; xp: number; optional: boolean; done: boolean }
 export type Progress = {
   level: number; name: string; xp: number; level_xp: number; level_span: number; to_next: number

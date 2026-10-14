@@ -1,6 +1,8 @@
 // Explore races: upcoming races near you from RunSignup, grouped by month, with quick fit
 // hints against your main race. "Find more with Rabbit" searches the web for big races that
 // aren't on RunSignup. Tap a race for details, "Add to my races", or to ask Rabbit about it.
+// "For you" (default) shows personal picks from the athlete's interests (ForYou.tsx); the
+// first visit with no interests opens "What are you into?" (InterestsSheet.tsx).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,9 +17,17 @@ import {
 } from '@/lib/explore'
 import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { RaceDetail } from './RaceDetail'
+import { ForYouFeedView, InterestsStrip, useForYou } from './ForYou'
+import { InterestsSheet } from './InterestsSheet'
 
 /** The nav icon for Explore (exported so the home nav needs no extra icon import). */
 export const ExploreIcon = Search
+
+type Mode = 'foryou' | 'search'
+const MODE_KEY = 'rabbit.explore.mode'
+function readMode(): Mode {
+  try { return localStorage.getItem(MODE_KEY) === 'search' ? 'search' : 'foryou' } catch { return 'foryou' }
+}
 
 const EMPTY: ExploreFilters = { near: '', radius: 50, months: 6, types: [], distance: null, q: '' }
 const nearOk = (s: string) => s.trim() === '' || /^\d{5}$/.test(s.trim()) || /^[A-Za-z]{2}$/.test(s.trim())
@@ -56,6 +66,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   const [webError, setWebError] = useState<string | null>(null)
   const [detail, setDetail] = useState<ExploreRace | null>(null)
   const seq = useRef(0)
+  const [mode, setModeState] = useState<Mode>(readMode)
+  const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* private mode */ } }
+  const fy = useForYou(mode === 'foryou')
+  const [editing, setEditing] = useState(false)
+  useEffect(() => { if (fy.askNow) { setEditing(true); fy.clearAsk() } }, [fy.askNow]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Defaults (home zip, favorite sports) fill in the filters the first time.
   useEffect(() => {
@@ -81,10 +96,10 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   useEffect(() => {
     if (!filters) return
     saveFilters(filters)
-    if (!nearOk(filters.near)) return
+    if (mode !== 'search' || !nearOk(filters.near)) return
     const t = setTimeout(() => run(filters, 1), 350)
     return () => clearTimeout(t)
-  }, [filters, run])
+  }, [filters, run, mode])
 
   const set = (p: Partial<ExploreFilters>) => setFilters((f) => ({ ...(f ?? EMPTY), ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
@@ -106,6 +121,16 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     if (g && g.month === m) g.races.push(r)
     else groups.push({ month: m, races: [r] })
   }
+
+  const modes = (
+    <div role="tablist" aria-label="Explore view" className="mx-auto mt-1.5 flex w-full max-w-xl gap-4 px-1">
+      {([['foryou', 'For you'], ['search', 'Search']] as const).map(([m, l]) => (
+        <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+          className={cn('min-h-11 border-b-2 text-[0.8235rem] font-medium transition-colors',
+            mode === m ? 'border-(--accent) text-(--text)' : 'border-transparent text-(--text-muted)')}>{l}</button>
+      ))}
+    </div>
+  )
 
   const bar = (
     <div className="mx-auto mt-2.5 flex w-full max-w-xl flex-col gap-2">
@@ -160,7 +185,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
 
   return (
     <>
-      <Screen title="Explore races" subtitle="Find your next start line" closing={closing} onClose={close} headerExtra={bar}>
+      <Screen title="Explore races" subtitle="Find your next start line" closing={closing} onClose={close}
+        headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
+        {mode === 'foryou' ? (
+          <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')} />
+        ) : <>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
           <input className={cn(inputCls, 'pl-9')} value={f.q} maxLength={60} placeholder="Search by race name"
@@ -208,9 +237,13 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
           </section>
         )}
         {filters !== null && askCta}
+        </>}
       </Screen>
       {detail && (
         <RaceDetail race={detail} imperial={imperial} onClose={() => setDetail(null)} onAsk={onAsk} onAdded={onChanged} />
+      )}
+      {editing && (
+        <InterestsSheet initial={fy.feed?.interests} onClose={() => setEditing(false)} onSaved={fy.saved} />
       )}
     </>
   )

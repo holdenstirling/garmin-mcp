@@ -439,7 +439,8 @@ class RaceSearch:
         hit = self.cache.get(key)
         if hit is not None:
             return hit
-        types, capped = rsu_types(f["types"])
+        # ``rsu`` (For you): explicit RunSignup event types, already capped by the caller.
+        types, capped = (list(f["rsu"]), False) if f.get("rsu") else rsu_types(f["types"])
         params = [rsu_params(f, t) for t in (types or [None])]
         client = httpx2.AsyncClient(timeout=self._timeout, transport=self._transport) \
             if self._transport is not None else httpx2.AsyncClient(timeout=self._timeout)

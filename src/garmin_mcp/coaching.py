@@ -116,6 +116,69 @@ def _race_history(v: Any) -> list[dict[str, str]]:
     return out
 
 
+# Race interests ("What are you into?"): what Explore's "For you" ranks races by.
+INTEREST_LISTS: dict[str, tuple[str, ...]] = {
+    "race_types": ("road", "trail", "ultra", "triathlon", "duathlon", "gravel", "road_cycling", "mtb", "swim",
+                   "hike", "obstacle", "adventure"),
+    "distances": ("5k", "10k", "half", "marathon", "ultra_50k", "ultra_100k_plus", "sprint", "olympic", "70.3",
+                  "140.6", "century"),
+    "race_vibe": ("competitive", "scenic", "fun_social", "charity", "bucket_list", "low_key"),
+    "goals_next_12mo": ("first_race", "pr", "first_ultra", "qualify", "stay_fit", "try_new_sport", "travel_race"),
+}
+INTEREST_TRAVEL = ("local", "regional", "anywhere")
+_MONTH = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def validate_interests(v: Any) -> dict[str, Any]:
+    """Athlete-entered race interests -> a bounded dict (lists keep the canonical order)."""
+    if v is None:
+        return {}
+    if not isinstance(v, dict):
+        raise CoachError("interests must be an object")
+    out: dict[str, Any] = {}
+    for k, x in v.items():
+        if k in INTEREST_LISTS:
+            allowed = INTEREST_LISTS[k]
+            if not isinstance(x, list) or any(not isinstance(i, str) or i not in allowed for i in x):
+                raise CoachError(f"{k.replace('_', ' ')} must be a list from {', '.join(allowed)}")
+            out[k] = [i for i in allowed if i in x]
+        elif k == "travel":
+            if x in (None, ""):
+                continue
+            if x not in INTEREST_TRAVEL:
+                raise CoachError(f"travel must be one of {', '.join(INTEREST_TRAVEL)}")
+            out[k] = x
+        elif k == "months_avoid":
+            if not isinstance(x, list) or len(x) > 12 or any(
+                    not isinstance(m, int) or isinstance(m, bool) or not 1 <= m <= 12 for m in x):
+                raise CoachError("months to avoid must be month numbers 1 to 12")
+            out[k] = sorted(set(x))
+        elif k == "home_zip":
+            z = "" if x is None else x
+            if not isinstance(z, str) or (z.strip() and not re.fullmatch(r"\d{5}", z.strip())):
+                raise CoachError("home zip must be 5 digits")
+            out[k] = z.strip()
+        else:
+            raise CoachError(f"unknown interest {k!r}")
+    return {k: x for k, x in out.items() if x not in ("", [])}
+
+
+def interests_line(i: Any) -> str:
+    """One compact line for Rabbit's context (athlete-entered; never the zip)."""
+    if not isinstance(i, dict) or not i:
+        return ""
+    bits = []
+    for k, label in (("race_types", "types"), ("distances", "distances"), ("race_vibe", "vibe"),
+                     ("goals_next_12mo", "next 12 months")):
+        if i.get(k):
+            bits.append(f"{label} " + ", ".join(str(x).replace("_", " ") for x in i[k]))
+    if i.get("travel"):
+        bits.append(f"travel {i['travel']}")
+    if i.get("months_avoid"):
+        bits.append("avoids " + ", ".join(_MONTH[m - 1] for m in i["months_avoid"] if 1 <= m <= 12))
+    return ("Race interests (athlete-entered): " + "; ".join(bits) + ".") if bits else ""
+
+
 def _note_line(n: dict[str, Any], events: dict[str, Any]) -> str:
     """A shared coach note for the context; race notes name their race."""
     ev = events.get(n.get("event_id") or "")
@@ -238,6 +301,8 @@ class CoachStore:
                 upd[k] = v
             elif k == "race_history":
                 upd[k] = _race_history(v)
+            elif k == "interests":
+                upd[k] = validate_interests(v)
             elif k == "long_day":
                 if v in (None, ""):
                     upd[k] = None
@@ -590,10 +655,13 @@ class CoachStore:
                       plan_days: list[str] | None = None) -> str:
         """``plan_days``: lines about today's (and tomorrow's) planned sessions."""
         lines = [f"Today: {now:%A %Y-%m-%d}, {now:%H:%M} local time ({now.tzname()})."]
-        a = {k: v for k, v in self.athlete(user_id).items() if v not in (None, "", [])}
+        a = {k: v for k, v in self.athlete(user_id).items() if v not in (None, "", [], {})}
+        interests = a.pop("interests", None)
         lines.append("Athlete profile: " + (
             "; ".join(f"{_ATHLETE_LABEL.get(k, k.replace('_', ' '))}: {_fmt_athlete(k, v)}" for k, v in a.items()) if a
             else "not set up yet (ask about experience, weekly hours and injuries when it's useful)."))
+        if interests_line(interests):
+            lines.append(interests_line(interests))
         g = self.active_goal(user_id)
         if g:
             when = ""

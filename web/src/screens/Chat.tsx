@@ -333,6 +333,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'coach') { showScreen('coaches'); return }
     if (q === 'gear') { showScreen('gear'); return }
     if (q === 'friend') { showScreen('friends'); return }
+    if (q === 'interests') { setRacesView('explore'); goTab('races'); return }
     if (q === 'sync' && builtPlan) { openPlan(); return }
     showScreen('setup')
   }

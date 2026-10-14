@@ -895,6 +895,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "coach": bool(auth.coach_links.coaches_of(user_id)),
             "gear": bool(gear_store and gear_store.list(user_id)),
             "friend": bool(soc and soc.is_athlete(user_id) and soc.ever_followed(user_id)),
+            "interests": bool(a.get("interests")),
         }
         available = {"notify": push is not None, "calendar": auth.calendar is not None, "oura": auth.oura is not None}
         return state, available
@@ -1965,6 +1966,100 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(404, "no photo")
         return await _photo_resp(pid)
 
+    # ------------------------------------------------------ explore: for you --
+    # Personal race picks (foryou.py) from the athlete's interests, goal, readiness status and
+    # calendar; friends' races only when they share races; bucket list = web research at most
+    # once a week per user (stored in the "foryou" doc). Athletes only (coach accounts: 403).
+    from . import foryou as _foryou
+
+    def _fy_bucket_doc(uid: str):
+        assert store is not None
+        return store.user_doc(uid, "foryou")
+
+    def _fy_bucket_stored(uid: str) -> dict[str, Any] | None:
+        if store is None:
+            return None
+        b = _fy_bucket_doc(uid).load().get("bucket")
+        return b if isinstance(b, dict) else None
+
+    def _fy_friends(uid: str, today: date) -> list[dict[str, Any]]:
+        if soc is None or not soc.is_athlete(uid):
+            return []
+        friends = [(_soc_name(f), _events().list(f)) for f in soc.following_ids(uid)
+                   if soc.settings(f).get("races")]
+        return _foryou.friend_races(friends, today)
+
+    def _fy_readiness(uid: str, events: list[dict[str, Any]], today: date) -> str | None:
+        main = _foryou.main_race(events, today)
+        if main is None or _readiness is None:
+            return None
+        try:
+            return _readiness.get(uid, main["id"]).get("status")
+        except Exception:  # Garmin down or no data: no readiness note
+            return None
+
+    async def foryou_get(request: Request, user_id: str) -> Response:
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        interests = athlete.get("interests") or {}
+        events = await _plan_call(lambda: _events().list(user_id))
+        today = _explore_today(user_id)
+        status = await anyio.to_thread.run_sync(lambda: _fy_readiness(user_id, events, today))
+        res = await _foryou.default_foryou().sections(
+            user_id, interests=interests, athlete=athlete, events=events, today=today,
+            readiness_status=status, fresh=request.query_params.get("fresh") == "1")
+        sections = [dict(sec, races=await _plan_call(lambda sec=sec: _explore_hinted(user_id, sec["races"])))
+                    for sec in res["sections"]]
+        friends = await _plan_call(lambda: _fy_friends(user_id, today))
+        if friends:
+            sections.append({"id": "friends", "title": "Your friends are racing",
+                             "races": await _plan_call(lambda: _explore_hinted(user_id, friends))})
+        wants = _foryou.wants_bucket(interests)
+        stored = await anyio.to_thread.run_sync(lambda: _fy_bucket_stored(user_id)) if wants else None
+        fresh_bucket = bool(stored) and time.time() - float(stored.get("ts", 0)) < _foryou.BUCKET_EVERY_S
+        if wants and stored and stored.get("races"):
+            sections.append({"id": "bucket", "title": "Bucket list", "source": "web",
+                             "races": await _plan_call(lambda: _explore_hinted(user_id, stored["races"]))})
+        eligible = wants and store is not None
+        can_web = chat is not None and getattr(chat.agent._backend, "research", None) is not None
+        return JSONResponse({
+            "interests": interests, "has_interests": bool(interests), "sections": sections,
+            "partial": res["partial"], "failed": res["failed"], "zip": res["zip"], "radius": res["radius"],
+            "bucket": {"eligible": eligible, "due": eligible and can_web and not fresh_bucket}})
+
+    async def foryou_bucket(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        interests = athlete.get("interests") or {}
+        if not _foryou.wants_bucket(interests) or store is None:
+            raise _UserError("Pick the bucket-list vibe or a travel-race goal first.")
+        stored = await anyio.to_thread.run_sync(lambda: _fy_bucket_stored(user_id))
+        if stored and time.time() - float(stored.get("ts", 0)) < _foryou.BUCKET_EVERY_S:
+            races = stored.get("races") or []
+        else:
+            research = getattr(chat.agent._backend, "research", None)
+            if research is None:
+                raise _UserError("Web search isn't available on this server.", 503)
+            today = _explore_today(user_id)
+            await _plan_call(lambda: _events().take_allowance(
+                user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                message="That's today's Rabbit race searches used up. Try again tomorrow."))
+            try:
+                raw = await research(_explore.WEB_SYSTEM, _foryou.bucket_prompt(interests, today),
+                                     max_searches=5, report_tool=_explore.WEB_TOOL)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "foryou_bucket_failed", user_id=user_id, error=type(e).__name__)
+                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
+            races = _foryou.clean_bucket(raw, interests, today)
+            entry = {"ts": time.time(), "races": races}
+
+            def put(d: dict[str, Any]) -> None:
+                d["bucket"] = entry
+            await anyio.to_thread.run_sync(lambda: _fy_bucket_doc(user_id).update(put))
+            log_event(logger, logging.INFO, "foryou_bucket", user_id=user_id, found=len(races))
+        found = races
+        return JSONResponse({"section": {"id": "bucket", "title": "Bucket list", "source": "web",
+                                         "races": await _plan_call(lambda: _explore_hinted(user_id, found))}})
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -2048,6 +2143,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/explore/defaults", _plan_api(explore_defaults, mutating=False), methods=["GET"]),
         Route("/app/api/explore/ai", _plan_api(explore_ai, mutating=True), methods=["POST"]),
         Route("/app/api/explore/add", _plan_api(explore_add, mutating=True), methods=["POST"]),
+        Route("/app/api/explore/foryou", _plan_api(foryou_get, mutating=False), methods=["GET"]),
+        Route("/app/api/explore/foryou/bucket", _plan_api(foryou_bucket, mutating=True), methods=["POST"]),
         Route("/app/api/social", _social_api(social_get, mutating=False), methods=["GET"]),
         Route("/app/api/social/follow", _social_api(social_follow, mutating=True), methods=["POST"]),
         Route("/app/api/social/requests/{edge_id}/accept", _social_api(_edge_route(lambda u, e: soc.accept(u, e)), mutating=True), methods=["POST"]),

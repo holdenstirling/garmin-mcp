@@ -1,7 +1,7 @@
 // Settings > Training profile: everything the plan builder and coach use about you,
 // editable any time. Saving doesn't touch the plan; rebuild it to apply the changes.
 import { useMemo, useState } from 'react'
-import { ChevronRight, Footprints } from 'lucide-react'
+import { ChevronRight, Footprints, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { putAthlete, type Me, type Sport } from '@/lib/api'
 import { getGarminNumbers, sportsFor, type AthleteFull } from '@/lib/plan'
@@ -9,6 +9,8 @@ import { Card, Field, Screen, StepIntro, areaCls } from './ui'
 import { GarminFill, NumbersFields, TraitsFields, WeekFields, YouFields } from './ProfileFields'
 import { GoalsTab } from './GoalsTab'
 import { PhotoField } from './PhotoField'
+import { InterestsSheet } from '@/components/explore/InterestsSheet'
+import { interestsSummary, type Interests } from '@/lib/foryou'
 
 type Tab = 'you' | 'goals' | 'numbers' | 'week'
 
@@ -27,6 +29,8 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   const [busy, setBusy] = useState<'save' | 'garmin' | null>(null)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [saved, setSaved] = useState(false)
+  const [interests, setInterests] = useState<Interests | undefined>((me.athlete as { interests?: Interests }).interests)
+  const [editInterests, setEditInterests] = useState(false)
   const setA = (p: Partial<AthleteFull>) => { setAState((x) => ({ ...x, ...p })); setMsg(null); setSaved(false) }
   const sports: Sport[] = useMemo(() => {
     const s = sportsFor(me.goal?.distance)
@@ -69,7 +73,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   }
 
   const dirty = Object.keys(changed).length > 0 && !saved
-  return (
+  return (<>
     <Screen title="Training profile" subtitle="Used for your plan, zones and coaching" closing={closing} onClose={close}
       headerExtra={
         <div className="mx-auto mt-2.5 flex max-w-xl gap-1 rounded-lg bg-(--bg-elevated) p-1">
@@ -102,6 +106,15 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
           </Card>
           <StepIntro eyebrow="Race fit" title="Strengths and where you train">Race fit compares these with each race.</StepIntro>
           <TraitsFields a={a} setA={setA} sports={sports} />
+          <button type="button" onClick={() => setEditInterests(true)}
+            className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+            <Sparkles className="size-5 shrink-0 text-(--accent)" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[0.8824rem] font-medium text-(--text)">Race interests</span>
+              <span className="block truncate text-[0.6471rem] text-(--text-muted)">{interestsSummary(interests).join(' · ') || 'What you like to race: powers your picks in Explore'}</span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />
+          </button>
           {onOpenGear && (
             <button type="button" onClick={onOpenGear}
               className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
@@ -138,5 +151,6 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         <p className="px-1 text-[0.7647rem] text-(--text-muted)">Your plan was built with your old answers. Rebuild it to use these (edited sessions are replaced).</p>
       )}
     </Screen>
-  )
+    {editInterests && <InterestsSheet initial={interests} onClose={() => setEditInterests(false)} onSaved={(i) => { setInterests(i); onSaved() }} />}
+  </>)
 }
