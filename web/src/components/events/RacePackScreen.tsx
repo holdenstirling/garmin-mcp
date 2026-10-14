@@ -4,6 +4,7 @@ import { CheckSquare, CloudSun, Gauge, ListChecks, Square, Utensils } from 'luci
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { fmtMin } from '@/lib/plan'
+import { KIND_LABEL, fmtDist } from '@/lib/gear'
 import { getRacePack, type RacePack } from '@/lib/racepack'
 import { InfoBlock } from './EventForm'
 
@@ -78,6 +79,24 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
               {p.weather_tips.map((t) => <p key={t} className="text-[0.7647rem] text-(--warning)">{t}</p>)}
             </Field>
           </Card>
+          {(p.your_gear ?? []).length > 0 && (
+            <Card>
+              <Field label="Your gear" hint="From your gear garage. Distances include everything logged so far.">
+                <div className="flex flex-col gap-2.5">
+                  {(p.your_gear ?? []).map((g) => (
+                    <div key={g.id}>
+                      <p className="flex items-baseline gap-2 text-[0.8235rem]">
+                        <span className="w-16 shrink-0 font-mono text-[0.5882rem] font-semibold uppercase tracking-wider text-(--text-muted)">{KIND_LABEL[g.kind]}</span>
+                        <span className="min-w-0 flex-1 truncate text-(--text)">{g.name}{g.nickname && g.nickname !== g.name ? <span className="text-(--text-muted)"> ({g.nickname})</span> : null}</span>
+                        <span className={g.status === 'ok' ? 'shrink-0 text-(--text-secondary)' : 'shrink-0 font-semibold text-(--warning)'}>{fmtDist(g.total_km, imperial)}</span>
+                      </p>
+                      {g.warning && <p className="pl-18 text-[0.7059rem] leading-snug text-(--warning)">{g.warning}</p>}
+                    </div>
+                  ))}
+                </div>
+              </Field>
+            </Card>
+          )}
           <Card>
             <Field label={`Gear checklist · ${done.filter((c) => p.gear.includes(c)).length}/${p.gear.length}`}>
               <div className="flex flex-col">

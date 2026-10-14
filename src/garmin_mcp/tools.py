@@ -254,6 +254,38 @@ class GarminService:
                 out["ftp_w"] = int(v)
         return out
 
+    # ------------------------------------------------- Rabbit gear (read only) --
+    def gear_list(self, user_id: str) -> dict[str, Any]:
+        """The athlete's Garmin gear and per-activity-type defaults (fixed read methods).
+
+        ``get_gear`` needs the numeric user profile id: the client keeps it from the social
+        profile it loads at login, else it's the ``id`` of the user settings."""
+        from garminconnect import Garmin
+
+        def read(client: Any) -> dict[str, Any]:
+            pid = getattr(client, "profile_id", None)
+            if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+                prof = Garmin.get_user_profile(client)
+                pid = prof.get("id") if isinstance(prof, dict) else None
+            if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+                raise GarminError("Garmin didn't return your profile id, so your gear can't be read.")
+            gear = Garmin.get_gear(client, str(pid))
+            try:
+                defaults = Garmin.get_gear_defaults(client, str(pid))
+            except Exception:  # optional: the gear list alone is enough
+                defaults = None
+            return {"gear": gear, "defaults": defaults}
+
+        log_event(logger, logging.INFO, "garmin_gear_list", user_id=user_id)
+        return self._upstream(user_id, read, {}, read=True)
+
+    def gear_stats(self, user_id: str, gear_uuid: str) -> dict[str, Any]:
+        """Garmin's totals for one gear item (``totalDistance`` in meters); cached."""
+        from garminconnect import Garmin
+
+        out = self._cached_call(user_id, "get_gear_stats", Garmin.get_gear_stats, {"gearUUID": str(gear_uuid)})
+        return out if isinstance(out, dict) else {}
+
     def activities_between(self, user_id: str, start: date, end: date,
                            activitytype: str | None = None) -> list[dict[str, Any]]:
         """Compact activities from ``start`` to ``end`` inclusive (cached like any read)."""
