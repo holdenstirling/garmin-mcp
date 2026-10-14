@@ -61,7 +61,7 @@ export function ThreadView({ api, threadId, me, otherName }: {
                 mine ? 'rounded-br-sm bg-(--accent) text-white dark:bg-(--accent-subtle) dark:text-(--text)' : 'rounded-bl-sm border border-(--border) bg-(--bg-surface) text-(--text)')}>
                 {m.text}
               </div>
-              <span className="mt-0.5 px-1 text-[0.5882rem] text-(--text-muted)">{mine ? 'You' : otherName} · {timeAgo(m.ts)}</span>
+              <span className="mt-0.5 px-1 text-[0.6471rem] text-(--text-muted)">{mine ? 'You' : otherName} · {timeAgo(m.ts)}</span>
             </div>
           )
         })}

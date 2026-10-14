@@ -15,6 +15,7 @@ import { StatsBody } from '@/components/stats/StatsScreen'
 import { cn } from '@/lib/utils'
 import type { Me } from '@/lib/api'
 import { fmtPace, KM_PER_MI, kgToLb, planApi } from '@/lib/plan'
+import { fmtClimb } from '@/lib/format'
 import { DISTANCE_LABEL, TYPE_LABEL, countdown, daysUntil } from '@/lib/events'
 import {
   addNote, chatApi, coachBase, deleteNote, getAthlete, getAthleteStats, getAthletes, getRabbitThread, getRabbitThreads,
@@ -166,7 +167,7 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
     ['Favorite sports', Array.isArray(a.favorite_sports) && (a.favorite_sports as string[]).length ? (a.favorite_sports as string[]).join(', ').replace(/_/g, ' ') : null],
   ]
   const upcoming = o.events.filter((e) => daysUntil(e.date) >= 0)
-  const elev = typeof a.home_elevation_m === 'number' ? (imperial ? `${Math.round(a.home_elevation_m / 0.3048).toLocaleString()} ft` : `${a.home_elevation_m.toLocaleString()} m`) : null
+  const elev = typeof a.home_elevation_m === 'number' ? fmtClimb(a.home_elevation_m, imperial) : null
   const list = (v: unknown) => Array.isArray(v) && v.length ? (v as string[]).join(', ').replace(/_/g, ' ') : null
   facts.push(
     ['Home', [typeof a.home_location === 'string' && a.home_location ? a.home_location : null, elev].filter(Boolean).join(' · ') || null],
@@ -211,7 +212,7 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
               {o.checkins!.map((c, i) => (
                 <li key={`${c.date}-${i}`} className="flex gap-2 text-[0.7647rem]">
                   <span className="w-16 shrink-0 text-(--text-muted)">{c.date.slice(5)}</span>
-                  <span className={cn('min-w-0 flex-1', c.pain_flag ? 'text-(--warning)' : 'text-(--text)')}>
+                  <span className={cn('min-w-0 flex-1', c.pain_flag ? 'text-(--warning-text)' : 'text-(--text)')}>
                     {c.summary}{c.feel != null ? ` (feel ${c.feel}/5)` : ''}{c.pain_flag ? ' · pain flagged' : ''}
                   </span>
                 </li>
@@ -303,11 +304,11 @@ function Notes({ aid, notes, events, onChanged, myEmail }: { aid: string; notes:
             <span className="flex-1">{n.shared ? 'Shared' : 'Private'} · {n.coach === myEmail ? 'You' : n.coach.split('@')[0]} · {timeAgo(n.ts)}{evName(n.event_id) ? ` · ${evName(n.event_id)}` : ''}</span>
             {n.coach === myEmail && <>
             <button type="button" aria-label={n.pinned ? 'Unpin' : 'Pin'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { pinned: !n.pinned }))}
-              className={cn('rounded p-1', n.pinned ? 'text-(--accent)' : 'text-(--text-muted)')}><Pin className="size-3.5" /></button>
+              className={cn('hit-44 rounded p-1', n.pinned ? 'text-(--accent)' : 'text-(--text-muted)')}><Pin className="size-3.5" /></button>
             <button type="button" aria-label={n.shared ? 'Make private' : 'Share'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { shared: !n.shared }))}
-              className="rounded p-1 text-(--text-muted)"><StickyNote className="size-3.5" /></button>
+              className="hit-44 rounded p-1 text-(--text-muted)"><StickyNote className="size-3.5" /></button>
             <button type="button" aria-label="Delete note" onClick={() => void run(n.id, () => deleteNote(aid, n.id))}
-              className="rounded p-1 text-(--danger)"><Trash2 className="size-3.5" /></button>
+              className="hit-44 rounded p-1 text-(--danger)"><Trash2 className="size-3.5" /></button>
             </>}
           </div>
         </Card>
@@ -339,7 +340,7 @@ function RabbitChats({ aid }: { aid: string }) {
             <div key={t.id} className="flex flex-col gap-1.5">
               {t.user && <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-(--bg-elevated) px-3.5 py-2 text-[0.8235rem]">{t.user}</div>}
               {reply && <div className="chat-text prose prose-sm max-w-[92%] rounded-2xl rounded-bl-sm border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-[0.8235rem] text-foreground"><Markdown remarkPlugins={[remarkGfm]}>{reply}</Markdown></div>}
-              <span className="px-1 text-[0.5882rem] text-(--text-muted)">{t.label ? `${t.label} · ` : ''}{timeAgo(t.ts)}</span>
+              <span className="px-1 text-[0.6471rem] text-(--text-muted)">{t.label ? `${t.label} · ` : ''}{timeAgo(t.ts)}</span>
             </div>
           )
         })}
@@ -352,7 +353,7 @@ function RabbitChats({ aid }: { aid: string }) {
         {(threads ?? []).map((t) => (
           <button key={t.id} type="button" onClick={() => setOpen(t.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'Coach log (briefs and notes)' : t.title || 'Chat'}</span>
+              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'Rabbit (briefs and notes)' : t.title || 'Chat'}</span>
               <span className="block text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
             </span>
             <ChevronRight className="size-4 text-(--text-muted)" />

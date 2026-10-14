@@ -160,7 +160,12 @@ class RecapService:
                               plan_key=goal["id"] if goal and plan else None, quests={})
         except Exception:
             pass
-        return build(start=start, today=today, acts=acts, plan=plan, ledger=a.progress.ledger(user_id))
+        out = build(start=start, today=today, acts=acts, plan=plan, ledger=a.progress.ledger(user_id))
+        try:
+            out["units"] = "imperial" if a.coach.athlete(user_id).get("units") == "imperial" else "metric"
+        except Exception:
+            out["units"] = "metric"
+        return out
 
 
 __all__ = ["build", "push_text", "parse_week", "default_week", "RecapService", "RecapError"]

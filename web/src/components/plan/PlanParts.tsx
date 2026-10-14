@@ -86,7 +86,7 @@ export function SessionLine({ s, onClick, unread }: { s: PlanSession; onClick?: 
         )}
       </span>
       {unread && <span className="size-2 shrink-0 rounded-full bg-(--accent)" aria-label="New coach message" />}
-      {s.synced && <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-[0.5882rem] uppercase tracking-wider text-(--accent)">Garmin</span>}
+      {s.synced && <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-[0.6471rem] uppercase tracking-wider text-(--accent)">Garmin</span>}
     </button>
   )
 }

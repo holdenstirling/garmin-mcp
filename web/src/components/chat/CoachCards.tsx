@@ -43,7 +43,7 @@ export function ThreadLinkCard({ thread, onOpen, pressProps }: {
       className="msg-press flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-dashed border-(--accent)/40 bg-(--accent-subtle) px-3 py-2 text-left transition-colors hover:bg-(--accent)/10 aria-disabled:opacity-50">
       <MessageSquareText className="size-4 shrink-0 text-(--accent)" />
       <span className="min-w-0">
-        <span className="block text-[0.5882rem] font-semibold uppercase tracking-widest text-(--accent)">Chat started</span>
+        <span className="block text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Chat started</span>
         <span className="block truncate text-[0.7647rem] text-foreground">{title}</span>
       </span>
     </div>

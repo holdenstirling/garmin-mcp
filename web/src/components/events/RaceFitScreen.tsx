@@ -12,7 +12,7 @@ import { IMPACT_LABEL, getRaceView, makeStrategy, type FitFactor, type Impact, t
 
 const CHIP: Record<Impact, string> = {
   helps: 'bg-(--accent-subtle) text-(--accent)',
-  watch: 'bg-(--warning-subtle) text-(--warning)',
+  watch: 'bg-(--warning-subtle) text-(--warning-text)',
   risk: 'bg-(--danger-subtle) text-(--danger)',
   neutral: 'bg-(--bg-elevated) text-(--text-muted)',
 }
@@ -71,7 +71,7 @@ function FactorRow({ f }: { f: FitFactor }) {
     <div>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex w-full items-center gap-2.5 px-4 py-3 text-left active:bg-(--bg-inset)">
-        <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[0.5882rem] font-semibold uppercase tracking-wider', CHIP[f.impact])}>
+        <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[0.6471rem] font-semibold uppercase tracking-wider', CHIP[f.impact])}>
           {IMPACT_LABEL[f.impact]}
         </span>
         <span className="shrink-0 text-[0.8824rem] font-medium text-(--text)">{f.title}</span>

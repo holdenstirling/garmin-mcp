@@ -11,6 +11,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { fmtDay } from '@/components/plan/PlanParts'
 import { KIND_LABEL, fmtMin, syncGarmin } from '@/lib/plan'
+import { fmtDist, fmtDuration, fmtMeters, fmtSpeed } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import {
   CHECKLIST, fmtTemp, getWorkoutToday, readChecklist, writeChecklist,
@@ -125,7 +126,7 @@ function Hero({ icon: Icon, title, meta, line, done }: { icon: typeof Bike; titl
 }
 
 function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: WorkoutSession; imperial: boolean; onSynced: () => void }) {
-  const meta = [s.minutes ? fmtMin(s.minutes) : null, s.meters ? `${s.meters} m` : null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null]
+  const meta = [s.minutes ? fmtDuration(s.minutes) : null, s.meters ? (s.sport === 'swim' ? fmtMeters(s.meters, imperial) : fmtDist(s.meters / 1000, imperial)) : null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null]
     .filter(Boolean).join(' · ')
   return (
     <>
@@ -133,7 +134,7 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
       {d.readiness && (
         <p className={cn('rounded-xl border px-3 py-2 text-[0.7647rem] leading-snug',
           d.readiness.tone === 'easy' || d.readiness.tone === 'rest'
-            ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning)'
+            ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)'
             : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)')}>
           {d.readiness.line}
         </p>
@@ -162,7 +163,7 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
               {g.kind === 'bike' ? <Bike className="size-4 shrink-0 text-(--accent)" /> : <Footprints className="size-4 shrink-0 text-(--accent)" />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{g.name}</span>
-                <span className={cn('block text-[0.6471rem]', g.warning ? 'text-(--warning)' : 'text-(--text-muted)')}>
+                <span className={cn('block text-[0.6471rem]', g.warning ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
                   {g.warning ?? `${g.total_label} so far`}
                 </span>
               </span>
@@ -211,7 +212,7 @@ function Timeline({ sections }: { sections: WSection[] }) {
           <div className="min-w-0 flex-1 pb-1">
             <p className="flex items-baseline justify-between gap-2">
               <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{sec.name}</span>
-              <span className="text-[0.6471rem] text-(--text-muted)">{fmtMin(sec.minutes)}</span>
+              <span className="text-[0.7059rem] text-(--text-muted)">{Number.isInteger(sec.minutes) ? fmtDuration(sec.minutes) : fmtMin(sec.minutes)}</span>
             </p>
             <div className="mt-1.5 flex flex-col gap-2">{sec.steps.map((st, j) => <StepRow key={j} s={st} />)}</div>
           </div>
@@ -277,7 +278,7 @@ function FuelCard({ s }: { s: WorkoutSession }) {
 }
 
 function WeatherChip({ w, imperial }: { w: Weather; imperial: boolean }) {
-  const wind = w.wind_kmh != null ? (imperial ? `${Math.round(w.wind_kmh / 1.609344)} mph` : `${Math.round(w.wind_kmh)} km/h`) : null
+  const wind = w.wind_kmh != null ? fmtSpeed(w.wind_kmh, imperial) : null
   return (
     <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
       <CloudSun className="size-4 shrink-0 text-(--accent)" />

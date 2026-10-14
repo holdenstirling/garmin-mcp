@@ -8,6 +8,7 @@ import {
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
 import { LevelBadge } from '@/components/progress/Progress'
@@ -73,11 +74,11 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
     <div role="tablist" aria-label="Friends" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
       {(['feed', 'people'] as const).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-          className={cn('relative flex-1 rounded-full py-1 text-[0.7059rem] font-medium transition-colors',
+          className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
             tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
           {t === 'feed' ? 'Feed' : 'People'}
           {t === 'people' && pending > 0 && (
-            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.5882rem] font-semibold text-white">{pending}</span>
+            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-white">{pending}</span>
           )}
         </button>
       ))}
@@ -86,14 +87,14 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
 
   return (
     <Screen title="Friends" subtitle="Train together, cheer each other on" closing={closing} onClose={close} headerExtra={tabs}>
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <ErrorState compact message={error} onRetry={() => { loadFeed(); loadPeople() }} />}
       {tab === 'feed' ? (
-        feed == null ? <RabbitLoader className="py-10" label="Loading your friends' workouts" cycle={LOADING} /> : (
+        feed == null ? (error ? null : <RabbitLoader className="py-10" label="Loading your friends' workouts" cycle={LOADING} />) : (
           <FeedList items={feed} following={following} imperial={imperial} onOpen={setFriend}
             onInvite={() => setTab('people')} onChange={setFeed} />
         )
       ) : (
-        people == null ? <RabbitLoader className="py-10" label="Loading people" cycle={LOADING} /> : (
+        people == null ? (error ? null : <RabbitLoader className="py-10" label="Loading people" cycle={LOADING} />) : (
           <PeopleTab people={people} onOpen={setFriend}
             onChanged={() => { loadPeople(); loadFeed(); onChanged?.() }} setPeople={setPeople} />
         )
@@ -191,7 +192,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
           <span className="block text-[0.7059rem] text-(--text-secondary)">
             {line || (compact ? relativeDay(it.date, it.time) : 'Workout')}
             {compact && line ? ` · ${relativeDay(it.date, it.time)}` : ''}
-            {it.race && <span className="ml-1.5 rounded-full bg-(--accent-subtle) px-1.5 py-0.5 text-[0.5882rem] font-semibold text-(--accent)">Race</span>}
+            {it.race && <span className="ml-1.5 rounded-full bg-(--accent-subtle) px-1.5 py-0.5 text-[0.6471rem] font-semibold text-(--accent)">Race</span>}
           </span>
         </span>
         {it.xp != null && <span className="shrink-0 text-[0.6471rem] font-semibold text-(--accent)">+{it.xp} XP</span>}
@@ -199,7 +200,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
       <div className="mt-2.5 flex items-center gap-1">
         <button type="button" onClick={() => void toggleKudos()} disabled={it.mine} aria-pressed={it.you_kudoed}
           aria-label={it.mine ? `${it.kudos} kudos` : it.you_kudoed ? 'Take back kudos' : 'Give kudos'}
-          className={cn('inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium transition-colors',
+          className={cn('hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium transition-colors',
             it.you_kudoed ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary) active:bg-(--bg-inset)',
             it.mine && 'opacity-80')}>
           <Heart key={it.you_kudoed ? `on${it.kudos}` : 'off'} className={cn('size-4', it.you_kudoed && 'celebrate fill-current')} />
@@ -207,7 +208,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
         </button>
         {!it.mine && (
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+            className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
             <MessageCircle className="size-4" /> Cheer
           </button>
         )}
@@ -219,7 +220,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
               <span className="min-w-0 flex-1"><span className="font-medium text-(--text)">{c.mine ? 'You' : c.by.name}</span>{' '}
                 <span className="text-(--text-secondary)">{c.text}</span></span>
               {c.can_delete && (
-                <button type="button" aria-label="Delete cheer" onClick={() => void remove(c.id)} className="shrink-0 p-0.5 text-(--text-muted)">
+                <button type="button" aria-label="Delete cheer" onClick={() => void remove(c.id)} className="hit-44 shrink-0 p-0.5 text-(--text-muted)">
                   <X className="size-3.5" />
                 </button>
               )}
@@ -244,7 +245,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
 // ---------------------------------------------------------------- people ---
 const PRIVACY: [keyof SocialSettings, string, string][] = [
   ['workouts', 'Workouts', 'Your recent workouts in their feed'],
-  ['distance', 'Distance & climbing', 'Kilometers and meters climbed'],
+  ['distance', 'Distance & climbing', 'How far you went and how much you climbed'],
   ['times', 'Times', 'How long you trained and when'],
   ['streak', 'Streak & level', 'Your day streak and Rabbit level'],
   ['races', 'Races', 'Workouts you tagged as races'],
@@ -414,7 +415,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
           <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
         </div>
         <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-          {error && <p className="text-[0.7647rem] text-(--danger)">{error}</p>}
+          {error && <ErrorState compact message={error} onRetry={() => { setError(null); getFriend(id).then(setCard, (e) => setError((e as Error).message)) }} />}
           {!card && !error && <RabbitLoader className="py-6" label="Loading" cycle={LOADING} />}
           {card && u && (
             <>
@@ -454,7 +455,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
       <span className="font-display text-[1.3rem] leading-none text-(--text)">{value}</span>
-      <span className="text-[0.5882rem] leading-tight text-(--text-muted)">{label}</span>
+      <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{label}</span>
     </div>
   )
 }

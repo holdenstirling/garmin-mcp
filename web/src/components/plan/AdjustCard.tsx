@@ -14,7 +14,7 @@ export function AdjustCard({ p, onDone }: { p: Proposal; onDone: (plan: BuiltPla
   if (p.status === 'watch' && p.reasons?.length) {
     return (
       <div className="flex items-start gap-3 rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5">
-        <HeartPulse className="mt-0.5 size-4 shrink-0 text-(--warning)" />
+        <HeartPulse className="mt-0.5 size-4 shrink-0 text-(--warning-text)" />
         <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">{p.reasons.join(' ')} Nothing hard is coming up, so keep today easy and sleep well.</p>
       </div>
     )

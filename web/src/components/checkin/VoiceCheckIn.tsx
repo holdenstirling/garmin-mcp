@@ -198,7 +198,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
                 <MicStage listening={phase === 'listening'} transcript={text} interim={interim}
                   onTap={() => (phase === 'listening' ? stop() : listen())} />
               )}
-              {notice && <p className="px-1 text-center text-[0.7059rem] text-(--warning)" role="status">{notice}</p>}
+              {notice && <p className="px-1 text-center text-[0.7059rem] text-(--warning-text)" role="status">{notice}</p>}
 
               {(typing || phase === 'review') && (
                 <div className="flex flex-col gap-1.5">
@@ -290,7 +290,7 @@ function QuickChips({ feel, onFeel, onPhrase }: {
             className={cn('flex flex-1 flex-col items-center gap-0.5 rounded-xl border py-1.5 transition-colors',
               feel === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
             <span className="text-[1.35rem] leading-none" aria-hidden="true">{face}</span>
-            <span className="text-[0.5882rem] text-(--text-muted)">{label}</span>
+            <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
           </button>
         ))}
       </div>
@@ -343,7 +343,7 @@ function Result({ saved, onDone, onEdited }: {
         <div className="flex flex-wrap gap-1.5">
           {chips.map((ch) => (
             <span key={ch.label} className={cn('rounded-full border px-2.5 py-1 text-[0.7059rem] font-medium',
-              ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
+              ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
               {ch.label}
             </span>
           ))}
@@ -431,7 +431,7 @@ export function CheckinChips({ c, className }: { c: Checkin; className?: string 
     <div className={cn('flex flex-wrap gap-1.5', className)}>
       {chips.map((ch) => (
         <span key={ch.label} className={cn('rounded-full border px-2 py-0.5 text-[0.6471rem] font-medium',
-          ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
+          ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
           {ch.label}
         </span>
       ))}

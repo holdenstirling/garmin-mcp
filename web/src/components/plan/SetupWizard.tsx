@@ -427,7 +427,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
             </Field>
           </Card>
           {me.goal?.plan && !draft.newGoal && (
-            <p className="px-1 text-[0.7647rem] text-(--warning)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
+            <p className="px-1 text-[0.7647rem] text-(--warning-text)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
           )}
         </>
       )}

@@ -21,9 +21,9 @@ const buttonVariants = cva(
             },
             size: {
                 default: "h-8 px-3.5 py-1.5",
-                sm: "h-6 px-2 text-[0.5882rem]",
+                sm: "h-6 px-2 text-[0.6471rem]",
                 lg: "h-10 rounded-md px-8",
-                icon: "h-8 w-8 rounded-full border-none shadow-none shrink-0 flex items-center justify-center auto-cols-auto p-0 hover:bg-secondary hover:text-foreground",
+                icon: "relative h-8 w-8 after:absolute after:-inset-1.5 rounded-full border-none shadow-none shrink-0 flex items-center justify-center auto-cols-auto p-0 hover:bg-secondary hover:text-foreground",
             },
         },
         defaultVariants: {

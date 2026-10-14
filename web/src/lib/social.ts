@@ -1,5 +1,6 @@
 // Following friends: people you follow, their recent workouts, kudos and short cheers.
 import { getJSON, postJSON, sendJSON } from '@/lib/api'
+import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
 
 export type SocialUser = { id: string; name: string; photo: number | null; picture: string }
 export type FeedUser = SocialUser & { level: number | null; streak: number | null }
@@ -58,9 +59,9 @@ export function friendPhotoUrl(u: SocialUser): string | null {
 /** "45 min · 8.2 km" from whatever the person shares. */
 export function workoutLine(it: Pick<FeedItem, 'minutes' | 'km' | 'climb_m'>, imperial = false): string {
   const parts: string[] = []
-  if (it.minutes != null) parts.push(it.minutes >= 60 ? `${Math.floor(it.minutes / 60)} h ${it.minutes % 60} min` : `${it.minutes} min`)
-  if (it.km) parts.push(imperial ? `${(it.km * 0.621371).toFixed(1)} mi` : `${it.km} km`)
-  if (it.climb_m && it.climb_m >= 100) parts.push(imperial ? `${Math.round(it.climb_m * 3.28084).toLocaleString()} ft up` : `${it.climb_m.toLocaleString()} m up`)
+  if (it.minutes != null) parts.push(fmtDuration(it.minutes))
+  if (it.km) parts.push(fmtDist(it.km, imperial))
+  if (it.climb_m && it.climb_m >= 100) parts.push(`${fmtClimb(it.climb_m, imperial)} up`)
   return parts.join(' · ')
 }
 

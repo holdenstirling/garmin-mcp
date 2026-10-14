@@ -30,6 +30,7 @@ export type Recap = {
   level: { level: number; name: string; xp: number; level_xp: number; level_span: number; to_next: number; next_name: string | null }
   browse: { oldest: string; newest: string }
   summary: string
+  units?: 'metric' | 'imperial'
 }
 export const getRecap = (week?: string) => getJSON<Recap>(`/api/recap${week ? `?week=${encodeURIComponent(week)}` : ''}`)
 

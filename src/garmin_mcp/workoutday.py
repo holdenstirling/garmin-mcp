@@ -363,12 +363,12 @@ def readiness_line(card: dict[str, Any] | None) -> dict[str, Any] | None:
     if not card:
         return None
     sig = card.get("signals") or []
-    bits = [f"{s['label']} {s['value']}" for s in sig if s.get("label") in ("Form", "Readiness")]
+    bits = [f"{s['label']} {s['value']}" for s in sig if s.get("label") in ("Form", "Readiness", "Oura readiness")]
     tone = card.get("tone")
     if tone in ("easy", "rest"):
         line = card.get("detail") or "Take it easy today."
     elif bits:
-        good = all(s.get("good") for s in sig if s.get("label") in ("Form", "Readiness"))
+        good = all(s.get("good") for s in sig if s.get("label") in ("Form", "Readiness", "Oura readiness"))
         line = " · ".join(bits) + (": good to go." if good else ": keep the easy parts easy.")
     else:
         return None

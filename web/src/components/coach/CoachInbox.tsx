@@ -91,7 +91,7 @@ export function ThreadList({ threads, onOpen, me }: { threads: ThreadSummary[]; 
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-[0.5882rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
+                <span className="text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
                 <ChevronRight className="size-4 text-(--text-muted)" />
               </span>
             </button>
