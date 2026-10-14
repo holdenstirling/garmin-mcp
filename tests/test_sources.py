@@ -101,12 +101,19 @@ def test_garmin_day_parsing() -> None:
     assert garmin_day(None, None, "2026-10-14") == {"date": "2026-10-14"}
 
 
-def test_garmin_recovery_from_service(env) -> None:  # noqa: F811
+def test_garmin_recovery_from_service() -> None:
+    class Svc:
+        def execute(self, user_id: str, method: str, args: dict) -> dict:
+            if user_id != "friend":
+                raise RuntimeError("Garmin not connected")
+            if method == "get_training_readiness":
+                return {"result": [{"calendarDate": args["cdate"], "score": 80}]}
+            return {"result": {"dailySleepDTO": {"sleepTimeSeconds": 27000}, "restingHeartRate": 50}}
     today = date(2026, 10, 14)
-    rec = garmin_recovery(env.service, "friend", today)
+    rec = garmin_recovery(Svc(), "friend", today)
     assert rec and rec["source"] == "garmin" and len(rec["days"]) == 3
-    assert rec["latest"]["date"] == "2026-10-14" and isinstance(rec["latest"]["readiness"], int)
-    assert garmin_recovery(env.service, "andrew", today) is None  # Garmin not connected
+    assert rec["latest"]["date"] == "2026-10-14" and rec["latest"]["readiness"] == 80
+    assert garmin_recovery(Svc(), "andrew", today) is None  # Garmin not connected
 
 
 # ------------------------------------------------------------ selection ----

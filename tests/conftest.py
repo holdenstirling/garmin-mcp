@@ -26,6 +26,10 @@ class FakeGarmin:
         """Return sleep data."""
         return {"dailySleepDTO": {"sleepTimeSeconds": 27000}}
 
+    def get_training_readiness(self, cdate: str) -> list[dict[str, Any]]:
+        """Return training readiness data for a date."""
+        return [{"calendarDate": cdate, "score": 80}]
+
     def get_activities_by_date(self, startdate: str, enddate: str | None = None,
                                activitytype: str | None = None,
                                sortorder: str | None = None) -> list[dict[str, Any]]:
