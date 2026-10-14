@@ -303,13 +303,18 @@ class EventStore:
     # ------------------------------------------------------------ lookup --
     def take_lookup(self, user_id: str, today: date) -> None:
         """Count one web lookup against the daily allowance."""
+        self.take_allowance(user_id, "lookups", today, limit=LOOKUPS_PER_DAY,
+                            message="That's today's lookups used up. Try again tomorrow.")
+
+    def take_allowance(self, user_id: str, key: str, today: date, *, limit: int, message: str) -> None:
+        """Count one model call of kind ``key`` against a small daily allowance."""
         def apply(d: dict[str, Any]) -> None:
-            lk = d.setdefault("lookups", {})
+            lk = d.setdefault(key, {})
             if lk.get("day") != today.isoformat():
                 lk.clear()
                 lk["day"], lk["n"] = today.isoformat(), 0
-            if lk["n"] >= LOOKUPS_PER_DAY:
-                raise CoachError("That's today's lookups used up. Try again tomorrow.")
+            if lk["n"] >= limit:
+                raise CoachError(message)
             lk["n"] += 1
         self._doc(user_id).update(apply)
 

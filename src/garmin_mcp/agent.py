@@ -42,9 +42,10 @@ from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
 from .stats import StatsService
-from .events import DEBRIEF_SYSTEM, DEBRIEF_TOOL, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
+from .events import DEBRIEF_SYSTEM, DEBRIEF_TOOL, TYPE_SPORT, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
+DEBRIEFS_PER_DAY = 5
 
 MAX_ITERATIONS = 8
 CONTEXT_TURNS = 30
@@ -380,12 +381,17 @@ class Agent:
             patch["notes"] = notes
         if patch:
             ev = self.events.update(user_id, event_id, patch)
+        self.events.take_allowance(user_id, "debriefs", today, limit=DEBRIEFS_PER_DAY,
+                                   message="That's today's debriefs used up. Try again tomorrow.")
         d = date.fromisoformat(ev["date"])
         try:
-            acts = await anyio.to_thread.run_sync(self._service.activities_between, user_id, d, d + timedelta(days=1))
+            acts = await anyio.to_thread.run_sync(self._service.activities_between, user_id, d, d)
         except GarminError:
             acts = []
-        race_act = max(acts, key=lambda a: _hms(a.get("duration")), default=None) if acts else None
+        sport = TYPE_SPORT.get(ev.get("type") or "other", "run")
+        acts = [a for a in acts if str(a.get("date") or "")[:10] == ev["date"]]
+        race_act = max(acts, key=lambda a: (a.get("event") == "race", (sport in str(a.get("sport") or "")),
+                                            _hms(a.get("duration"))), default=None) if acts else None
         try:
             load = await anyio.to_thread.run_sync(self.stats.load, user_id)
         except GarminError:

@@ -47,6 +47,8 @@ from .webchat import ChatRunner, Turn, TurnBusy
 from .webpush import WebPush, parse_subscription
 
 logger = logging.getLogger(__name__)
+# The only API paths a coach-only account (not an allowlisted athlete) may call.
+COACH_PATHS = ("/app/api/me", "/app/api/coach/", "/app/api/push/")
 
 WEB_DIST = Path(__file__).parent / "web_dist"
 MAX_BODY = 16 * 1024
@@ -126,6 +128,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 return _err(401, "not signed in")
             if mutating and not auth.check_origin(request):
                 return _err(403, "bad origin")
+            if user_id.startswith("coach_") and not request.url.path.startswith(COACH_PATHS):
+                return _err(403, "Coach accounts can only use the coach view.")
             try:
                 resp = await handler(request, user_id)
             except (ValueError, json.JSONDecodeError):
@@ -890,7 +894,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return JSONResponse({"message": msg}, status_code=201)
 
     async def athlete_notes(request: Request, user_id: str) -> Response:
-        return JSONResponse({"notes": coach_notes.list(user_id, shared_only=True)})
+        current = links.coach_emails(user_id)
+        return JSONResponse({"notes": [n for n in coach_notes.list(user_id, shared_only=True) if n["coach"] in current]})
 
     # Coach side: everything goes through links.require(coach, athlete).
     def _aid(request: Request) -> str:
@@ -1068,6 +1073,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return JSONResponse({"connected": False, "available": True, "error": str(e)})
         except CalendarError as e:
             return _err(502, str(e))
+        except Exception as e:
+            log_event(logger, logging.WARNING, "gcal_read_failed", error=type(e).__name__)
+            return _err(502, "Google Calendar didn't answer just now. Try again later.")
 
     async def calendar_delete(request: Request, user_id: str) -> Response:
         if auth.calendar is not None:
@@ -1094,6 +1102,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return JSONResponse({"connected": False, "available": True, "error": str(e)})
         except OuraError as e:
             return _err(502, str(e))
+        except Exception as e:
+            log_event(logger, logging.WARNING, "oura_read_failed", error=type(e).__name__)
+            return _err(502, "Oura didn't answer just now. Try again later.")
 
     async def oura_delete(request: Request, user_id: str) -> Response:
         if auth.oura is not None:
@@ -1120,7 +1131,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if auth.oura is not None and auth.oura.connected(user_id):
             try:
                 recovery = await auth.oura.recovery(user_id, today, 28)
-            except OuraError:
+            except Exception:  # Oura down or rate-limited: suggest from the rest
                 recovery = None
         load_now = (await _plan_call(lambda: chat.agent.stats.load(user_id))).get("now") or {}
         return propose_adjustment(plan, acts, today, recovery=recovery, tsb=load_now.get("tsb"),

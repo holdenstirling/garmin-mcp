@@ -134,7 +134,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
           ? <><Button variant="ghost" className="h-8 w-fit px-2 text-[0.7059rem]" onClick={() => setThread(null)}>‹ All conversations</Button>
               <ThreadView api={chat} threadId={thread} me="coach" otherName={name.split(' ')[0]!} /></>
           : <Messages chat={chat} onOpen={setThread} onNew={() => void messageAbout()} name={name} />)}
-        {o && tab === 'notes' && <Notes aid={aid} notes={o.notes} onChanged={load} />}
+        {o && tab === 'notes' && <Notes aid={aid} notes={o.notes} onChanged={load} myEmail={o.link.email} />}
         {o && tab === 'rabbit' && <RabbitChats aid={aid} />}
       </Screen>
       {planOpen && o && (
@@ -226,7 +226,7 @@ function Messages({ chat, onOpen, onNew, name }: {
   )
 }
 
-function Notes({ aid, notes, onChanged }: { aid: string; notes: Note[]; onChanged: () => void }) {
+function Notes({ aid, notes, onChanged, myEmail }: { aid: string; notes: Note[]; onChanged: () => void; myEmail: string }) {
   const [text, setText] = useState('')
   const [shared, setShared] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -258,13 +258,15 @@ function Notes({ aid, notes, onChanged }: { aid: string; notes: Note[]; onChange
           <p className="whitespace-pre-wrap text-[0.8235rem] leading-snug text-(--text)">{n.text}</p>
           <div className="mt-2 flex items-center gap-2 text-[0.6471rem] text-(--text-muted)">
             {n.shared ? <Eye className="size-3.5" /> : <Lock className="size-3.5" />}
-            <span className="flex-1">{n.shared ? 'Shared' : 'Private'} · {n.coach.split('@')[0]} · {timeAgo(n.ts)}</span>
+            <span className="flex-1">{n.shared ? 'Shared' : 'Private'} · {n.coach === myEmail ? 'You' : n.coach.split('@')[0]} · {timeAgo(n.ts)}</span>
+            {n.coach === myEmail && <>
             <button type="button" aria-label={n.pinned ? 'Unpin' : 'Pin'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { pinned: !n.pinned }))}
               className={cn('rounded p-1', n.pinned ? 'text-(--accent)' : 'text-(--text-muted)')}><Pin className="size-3.5" /></button>
             <button type="button" aria-label={n.shared ? 'Make private' : 'Share'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { shared: !n.shared }))}
               className="rounded p-1 text-(--text-muted)"><StickyNote className="size-3.5" /></button>
             <button type="button" aria-label="Delete note" onClick={() => void run(n.id, () => deleteNote(aid, n.id))}
               className="rounded p-1 text-(--danger)"><Trash2 className="size-3.5" /></button>
+            </>}
           </div>
         </Card>
       ))}

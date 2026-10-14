@@ -67,18 +67,26 @@ class CoachLinks:
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------ identity --
+    def _athletes(self) -> set[str]:
+        """User ids of allowlisted athletes: only their links count."""
+        return set(self._allow().values())
+
+    def _live(self, links: dict[str, Any]) -> dict[str, Any]:
+        ok = self._athletes()
+        return {aid: link for aid, link in links.items() if aid in ok}
+
     def user_id_for_email(self, email: str) -> str | None:
-        """Sign-in: the user id for a coach email with at least one invite, else None."""
+        """Sign-in: the user id for a coach email with at least one live invite, else None."""
         e = email.strip().lower()
-        if not (self._doc.load().get("by_email", {}).get(e)):
+        if not self._live(self._doc.load().get("by_email", {}).get(e, {})):
             return None
         return self._allow().get(e) or coach_user_id(e)
 
     def is_coach_user(self, user_id: str) -> bool:
-        """True while some athlete still links this coach-only user id."""
+        """True while some allowlisted athlete still links this coach-only user id."""
         if not user_id.startswith("coach_"):
             return False
-        return any(coach_user_id(e) == user_id and links
+        return any(coach_user_id(e) == user_id and self._live(links)
                    for e, links in self._doc.load().get("by_email", {}).items())
 
     def _emails_for(self, user_id: str) -> list[str]:
@@ -90,6 +98,9 @@ class CoachLinks:
         return out
 
     # ------------------------------------------------------- athlete side --
+    def coach_emails(self, athlete_id: str) -> set[str]:
+        return {e for e, links in self._doc.load().get("by_email", {}).items() if athlete_id in links}
+
     def coaches_of(self, athlete_id: str) -> list[dict[str, Any]]:
         out = []
         for e, links in self._doc.load().get("by_email", {}).items():
@@ -101,6 +112,8 @@ class CoachLinks:
     def invite(self, athlete_id: str, email: str, *, can_edit_plan: bool = True,
                can_see_rabbit_chats: bool = False) -> dict[str, Any]:
         e = email.strip().lower() if isinstance(email, str) else ""
+        if athlete_id not in self._athletes():
+            raise CoachError("Only athletes can invite coaches.")
         if not _EMAIL.match(e):
             raise CoachError("Enter your coach's email address.")
         if self._allow().get(e) == athlete_id:
@@ -157,10 +170,14 @@ class CoachLinks:
             return []
         now = int(self._clock())
 
+        live = self._athletes()
+
         def apply(d: dict[str, Any]) -> list[dict[str, Any]]:
             out = []
             for e in emails:
                 for aid, link in d.get("by_email", {}).get(e, {}).items():
+                    if aid not in live:
+                        continue
                     if link.get("status") != "active":
                         link["status"], link["accepted_at"] = "active", now
                     link["coach_user_id"] = coach_id
@@ -172,7 +189,8 @@ class CoachLinks:
     def require(self, coach_id: str, athlete_id: str, *, perm: str | None = None) -> dict[str, Any]:
         """The coach's link to this athlete, or CoachError. ``perm``: a permission flag
         that must be on."""
-        if not isinstance(athlete_id, str) or not athlete_id or athlete_id == coach_id:
+        if not isinstance(athlete_id, str) or not athlete_id or athlete_id == coach_id \
+                or athlete_id not in self._athletes():
             raise CoachError("athlete not found")
         by = self._doc.load().get("by_email", {})
         for e in self._emails_for(coach_id):

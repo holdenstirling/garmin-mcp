@@ -88,7 +88,10 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
     missed = [s for s in past if s["status"] == "missed"]
 
     rec_reasons, very_low = _recovery_flags(recovery, tsb)
-    upcoming = [(w, d, s) for w, d, s in iter_sessions(plan) if t <= d and s["sport"] != "rest" and s.get("kind") != "race"]
+    # Sessions already adjusted once are left alone, so suggestions never compound.
+    upcoming = [(w, d, s) for w, d, s in iter_sessions(plan)
+                if t <= d and s["sport"] != "rest" and s.get("kind") != "race" and not s.get("adjusted")]
+    made_up = set(plan.get("made_up", []))
     taken: set[str] = set()
 
     if rec_reasons:
@@ -118,7 +121,7 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
 
     # A missed long session this week comes back (shortened) on a free home day.
     this_week = week_for(plan, today)
-    missed_long = [s for s in missed if s.get("kind") in ("long", "brick")
+    missed_long = [s for s in missed if s.get("kind") in ("long", "brick") and s.get("id") not in made_up
                    and this_week and s.get("id") and any(x["id"] == s["id"] for ss in this_week["days"].values() for x in ss)]
     if missed_long and this_week and not rec_reasons:
         s = missed_long[0]
@@ -136,12 +139,16 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
             reasons.append(f"You missed {len(missed)} of {len(past)} sessions in the last week; ease back in rather than catch up.")
             for d, ss in sorted(nxt["days"].items()):
                 for s in ss:
-                    if s["sport"] == "rest" or s.get("kind") == "race" or s["id"] in taken or not s.get("minutes"):
+                    if s["sport"] == "rest" or s.get("kind") == "race" or s["id"] in taken or not s.get("minutes") \
+                            or s.get("adjusted"):
                         continue
                     changes.append({"session_id": s["id"], "date": d, "action": "shorten", "from": _session_view(s),
                                     "to": {"sport": s["sport"], "kind": s.get("kind"), "minutes": _r5(s["minutes"] * 0.85)},
                                     "why": "Next week 15% lighter to rebuild momentum."})
 
+    # Drop no-ops (a change that wouldn't change anything).
+    changes = [c for c in changes if c["action"] in ("rest", "move")
+               or c["to"].get("minutes") != c["from"].get("minutes") or c["to"].get("kind") != c["from"].get("kind")]
     if not changes:
         # Low recovery but nothing hard coming up: just say so.
         return {"status": "watch" if rec_reasons else "ok", "reasons": reasons}

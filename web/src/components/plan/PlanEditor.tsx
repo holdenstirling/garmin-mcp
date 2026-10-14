@@ -87,8 +87,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? "There's no plan built in Rabbit for this goal yet."}</p>
-            {!loadError && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
+            <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in Rabbit yet." : "There's no plan built in Rabbit for this goal yet.")}</p>
+            {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
           </div>
         )}
       </Screen>

@@ -42,6 +42,14 @@ TRAVEL_WORDS = re.compile(
     r"offsite|off-site|hotel|airbnb|ooo|out of office|pto|away|camp)\b|✈", re.I)
 
 
+def _zone(tz: str | None):
+    from zoneinfo import ZoneInfo
+    try:
+        return ZoneInfo(tz or "UTC")
+    except Exception:
+        return ZoneInfo("UTC")
+
+
 class CalendarError(GarminError):
     """Message safe to show the athlete (subclasses GarminError so routes report it)."""
 
@@ -178,7 +186,10 @@ class GoogleCalendar:
             return hit[1]
         token = await self._access(user_id)
         start, end = today, today + timedelta(days=days - 1)
-        params = {"timeMin": f"{start.isoformat()}T00:00:00Z", "timeMax": f"{(end + timedelta(days=1)).isoformat()}T00:00:00Z",
+        zone = _zone(tz)
+        t0 = datetime.combine(start, datetime.min.time(), tzinfo=zone)
+        t1 = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=zone)
+        params = {"timeMin": t0.isoformat(), "timeMax": t1.isoformat(),
                   "singleEvents": "true", "orderBy": "startTime", "maxResults": "250",
                   "fields": "items(summary,start,end,location,transparency,eventType,status)"}
         if tz:

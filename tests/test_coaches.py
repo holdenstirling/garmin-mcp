@@ -81,10 +81,45 @@ def test_notes_shared_and_private(env) -> None:
 
 def test_shared_notes_reach_rabbit(env) -> None:
     agent, _ = env.agent([])
+    links = _links(env, {"friend@example.com": "friend"})
+    links.invite("friend", COACH)
     CoachNotes(env.store).add("friend", COACH, "No running on Mondays.", shared=True)
     CoachNotes(env.store).add("friend", COACH, "Private thought.", shared=False)
     ctx = agent.coach.context_block("friend", agent._now("friend"), None)
     assert "No running on Mondays." in ctx and "Private thought." not in ctx
+    # A removed coach's notes stop steering Rabbit.
+    links.remove("friend", COACH)
+    assert "No running on Mondays." not in agent.coach.context_block("friend", agent._now("friend"), None)
+
+
+def test_coach_chains_and_dropped_athletes_lose_access(env) -> None:
+    allow = {"a@x.com": "a"}
+    links = _links(env, allow)
+    links.invite("a", "x@x.com")
+    cx = links.user_id_for_email("x@x.com")
+    with pytest.raises(CoachError, match="Only athletes"):
+        links.invite(cx, "z@x.com")
+    allow.pop("a@x.com")  # athlete removed from the allowlist
+    assert links.user_id_for_email("x@x.com") is None and not links.is_coach_user(cx)
+
+
+def test_coach_accounts_are_limited_to_the_coach_api(env, tmp_path) -> None:
+    agent, _ = env.agent([])
+    settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,
+                        allowed_google_users={"friend@example.com": "friend"})
+    auth = WebAuth(settings, env.store, "", dev_user=coach_user_id(COACH))
+    app = Starlette(routes=build_app_routes(settings, auth, env.tokens, None, None, ChatRunner(agent)))
+
+    async def go_() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=BASE) as c:
+            assert (await c.get("/app/api/me")).status_code == 200
+            assert (await c.get("/app/api/coach/athletes")).status_code == 200
+            for path in ("/app/api/threads", "/app/api/events", "/app/api/stats", "/app/api/plan"):
+                r = await c.get(path)
+                assert r.status_code == 403, path
+            r = await c.post("/app/api/coaches", headers={"origin": BASE}, json={"email": "z@x.com"})
+            assert r.status_code == 403
+    asyncio.run(go_())
 
 
 def test_coach_api_end_to_end(env, tmp_path) -> None:

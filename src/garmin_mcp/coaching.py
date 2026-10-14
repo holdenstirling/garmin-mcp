@@ -594,8 +594,10 @@ class CoachStore:
                 ev_lines.append(bit)
             lines.append("Upcoming events on their calendar (they manage these in the app's "
                          "Events screen):\n" + "\n".join(ev_lines))
+        current = {e for e, links in self._s.global_doc("coach_links").load().get("by_email", {}).items()
+                   if user_id in links}
         shared = [n for n in self._s.user_doc(user_id, "coach_notes").load().get("notes", [])
-                  if n.get("shared")]
+                  if n.get("shared") and n.get("coach") in current]
         if shared:
             shared.sort(key=lambda n: (not n.get("pinned"), -n["ts"]))
             lines.append("Notes from their human coach (follow these; the coach outranks your "

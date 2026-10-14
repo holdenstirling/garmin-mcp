@@ -353,8 +353,9 @@ class PlanService:
                         continue
                     new = make_session(to["sport"], to.get("kind") or "easy", int(to.get("minutes") or 45),
                                        swim_pace=swim_pace, phase=w["phase"])
-                    new["edited"] = True
+                    new["edited"], new["adjusted"] = True, True
                     new["detail"] = f"Moved from a missed day, shortened. {new.get('detail', '')}".strip()[:400]
+                    plan["made_up"] = (plan.get("made_up", []) + [c["session_id"]])[-50:]
                     w["days"][c["date"]] = [x for x in w["days"].get(c["date"], []) if x["sport"] != "rest"] + [new]
                     recompute_week(w)
                     continue
@@ -368,7 +369,7 @@ class PlanService:
                 if c["action"] == "rest":
                     self._orphan(plan, cur)
                     rest = make_session("rest", "rest", 0)
-                    rest["detail"] = "Recovery day (plan adjusted for low recovery)."
+                    rest["detail"] = "Rest day (plan adjusted)."
                     w["days"][day][i] = rest
                     w["days"][day] = [x for x in w["days"][day] if x["sport"] != "rest"] or [rest]
                 else:
@@ -469,22 +470,50 @@ class PlanService:
         return min(options)[1] if options else None
 
     def remove_travel(self, user_id: str, trip_id: str) -> dict[str, Any]:
+        """Undo travel mode for the days still ahead. Days already past stay as they were
+        (they happened); a session is never restored twice."""
         def fn(plan: dict[str, Any], today: date) -> None:
             trips = plan.get("trips", [])
             trip = next((t for t in trips if t["id"] == trip_id), None)
             if trip is None:
                 raise PlanError("That trip isn't in your plan.")
-            for day, sessions in trip["original"].items():
-                if day < today.isoformat():
+            t = today.isoformat()
+            orig = trip["original"]
+            restore_ids = {x["id"] for d, ss in orig.items() if d >= t for x in ss}
+            # Ids that now live on days already past (a moved copy that has happened).
+            past_ids = {x["id"] for _, d, x in iter_sessions(plan) if d < t}
+            touched = set()
+            # Moved copies on future days go away when their original comes back.
+            for w in plan["weeks"]:
+                for d, ss in w["days"].items():
+                    if d < t or d in orig:
+                        continue
+                    keep = [x for x in ss if not (x.get("travel") == trip_id and x["id"] in restore_ids)]
+                    if len(keep) != len(ss):
+                        for x in ss:
+                            if x not in keep:
+                                self._orphan(plan, x)
+                        w["days"][d] = keep or [make_session("rest", "rest", 0)]
+                        touched.add(w["start"])
+            for day, sessions in orig.items():
+                if day < t:
                     continue
                 w = week_for(plan, date.fromisoformat(day))
                 if w is None:
                     continue
                 for x in w["days"].get(day, []):
                     self._orphan(plan, x)
-                w["days"][day] = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions]
-                recompute_week(w)
-            plan["trips"] = [t for t in trips if t["id"] != trip_id]
+                back = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions if x["id"] not in past_ids]
+                w["days"][day] = back or [make_session("rest", "rest", 0)]
+                touched.add(w["start"])
+            # Moved copies whose original day has passed simply stop being "travel".
+            for _, d, x in iter_sessions(plan):
+                if x.get("travel") == trip_id and d >= t:
+                    x.pop("travel", None)
+            for w in plan["weeks"]:
+                if w["start"] in touched:
+                    recompute_week(w)
+            plan["trips"] = [x for x in trips if x["id"] != trip_id]
         return self._edit(user_id, fn)
 
     # -------------------------------------------------------------- sync --

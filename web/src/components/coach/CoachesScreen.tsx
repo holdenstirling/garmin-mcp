@@ -21,10 +21,10 @@ export function CoachesScreen({ onClose, onChanged }: { onClose: () => void; onC
   useEffect(() => { getCoaches().then((r) => setCoaches(r.coaches), (e) => setMsg({ text: (e as Error).message, ok: false })) }, [])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
-  async function run(key: string, fn: () => Promise<{ coaches: CoachLink[] }>, ok?: string) {
+  async function run(key: string, fn: () => Promise<{ coaches: CoachLink[] }>, ok?: string): Promise<boolean> {
     setBusy(key); setMsg(null)
-    try { const r = await fn(); setCoaches(r.coaches); onChanged(); if (ok) setMsg({ text: ok, ok: true }) }
-    catch (e) { setMsg({ text: (e as Error).message, ok: false }) }
+    try { const r = await fn(); setCoaches(r.coaches); onChanged(); if (ok) setMsg({ text: ok, ok: true }); return true }
+    catch (e) { setMsg({ text: (e as Error).message, ok: false }); return false }
     finally { setBusy(null) }
   }
 
@@ -47,7 +47,7 @@ export function CoachesScreen({ onClose, onChanged }: { onClose: () => void; onC
                   <span className="min-w-0 flex-1 text-[0.8235rem]">Remove {c.email}? They lose access right away.</span>
                   <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setConfirm(null)}>Keep</Button>
                   <Button variant="destructive" className="h-9 px-3 text-[0.7647rem]" loading={busy === c.email}
-                    onClick={() => void run(c.email, () => removeCoach(c.email), 'Coach removed.').then(() => setConfirm(null))}>Remove</Button>
+                    onClick={() => void run(c.email, () => removeCoach(c.email), 'Coach removed.').then((ok) => { if (ok) setConfirm(null) })}>Remove</Button>
                 </div>
               ) : (
                 <Row title={<span className="inline-flex items-center gap-1.5"><Trash2 className="size-4" /> Remove coach</span>} danger center
@@ -68,7 +68,7 @@ export function CoachesScreen({ onClose, onChanged }: { onClose: () => void; onC
         <div className="px-4 pb-4 pt-1">
           <Button variant="primary" className="h-11 w-full gap-1.5 text-[0.8235rem]" loading={busy === 'invite'} disabled={!email.trim()}
             onClick={() => void run('invite', () => inviteCoach({ email: email.trim(), can_edit_plan: canEdit, can_see_rabbit_chats: canSee }),
-              'Invited. Send them the link below.').then(() => setEmail(''))}>
+              'Invited. Send them the link below.').then((ok) => { if (ok) setEmail('') })}>
             <UserPlus className="size-4" /> Invite coach
           </Button>
         </div>
