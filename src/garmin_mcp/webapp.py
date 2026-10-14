@@ -32,6 +32,8 @@ from .garminlogin import Busy, Cooldown, LoginManager
 from .logs import log_event
 from .planbuilder import PlanError, build_plan
 from .plans import public_plan
+from . import planimport_web
+from .planimport import ImportService
 from .events import TYPE_DISTANCES, TYPES
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
@@ -1293,6 +1295,17 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return plans.delete_session(aid, sid)
         return JSONResponse({"plan": public_plan(await _plan_call(run), plans.today(aid))})
 
+    # Plan imports (planimport.py, routes in planimport_web.py): coach with can_edit_plan,
+    # or the athlete themself; grid, CSV/XLSX/ICS (TrainingPeaks exports) or AI file reads.
+    import_routes: list[BaseRoute] = []
+    if plans is not None and store is not None and chat is not None:
+        import_routes = planimport_web.make_routes(
+            importer=ImportService(store, plans, chat.agent.coach), plans=plans, coach=chat.agent.coach,
+            links=links, auth=auth, settings=settings, host_ok=host_ok, plan_api=_plan_api,
+            plan_call=_plan_call, user_error=_UserError, public_plan=public_plan, notify=_notify,
+            coach_chat=coach_chat, structured=getattr(chat.agent._backend, "structured", None),
+            now=chat.agent._now)
+
     async def coach_threads(request: Request, user_id: str) -> Response:
         aid = _aid(request)
         link = await _plan_call(lambda: links.require(user_id, aid))
@@ -2137,6 +2150,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/coach/athletes/{athlete_id}", _plan_api(coach_athlete, mutating=False), methods=["GET"]),
         Route("/app/api/coach/athletes/{athlete_id}/stats", _plan_api(coach_athlete_stats, mutating=False), methods=["GET"]),
         Route("/app/api/coach/athletes/{athlete_id}/plan", _plan_api(coach_plan_get, mutating=False), methods=["GET"]),
+        *import_routes,
         Route("/app/api/coach/athletes/{athlete_id}/plan/sessions", _plan_api(coach_session_add, mutating=True), methods=["POST"]),
         Route("/app/api/coach/athletes/{athlete_id}/plan/sessions/{session_id}", _plan_api(coach_session_update, mutating=True),
               methods=["PATCH"]),

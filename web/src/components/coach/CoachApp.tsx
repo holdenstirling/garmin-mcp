@@ -28,6 +28,8 @@ import { ThreadView } from './ThreadView'
 import { RaceGradeLine } from '@/components/events/Readiness'
 import { getAthleteReadiness, mainRace, type RaceGrade } from '@/lib/readiness'
 import { ThreadList } from './CoachInbox'
+import { PlanImportHub } from '@/components/plan/PlanImport'
+import { importApi } from '@/lib/planimport'
 
 /** Coach home: the athlete list. ``onClose`` when shown over an athlete's own app. */
 export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => void; onSignOut?: () => void }) {
@@ -92,7 +94,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
   )
 }
 
-type Tab = 'overview' | 'stats' | 'messages' | 'notes' | 'rabbit'
+type Tab = 'overview' | 'plan' | 'stats' | 'messages' | 'notes' | 'rabbit'
 
 function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
   const [o, setO] = useState<AthleteOverview | null>(null)
@@ -103,6 +105,8 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
   const [thread, setThread] = useState<string | null>(null)
   const api = useMemo(() => planApi(coachBase(aid)), [aid])
   const chat = useMemo(() => chatApi(`${coachBase(aid)}/chat`), [aid])
+  const imports = useMemo(() => importApi(coachBase(aid)), [aid])
+  const [planKey, setPlanKey] = useState(0)
   const load = useCallback(() => {
     getAthlete(aid).then(setO, (e) => setError((e as Error).message))
   }, [aid])
@@ -117,7 +121,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
     } catch (e) { setError((e as Error).message) }
   }
 
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['stats', 'Stats'], ['messages', 'Messages'], ['notes', 'Notes'],
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['plan', 'Plan'], ['stats', 'Stats'], ['messages', 'Messages'], ['notes', 'Notes'],
     ...(o?.link.can_see_rabbit_chats ? [['rabbit', 'Rabbit'] as [Tab, string]] : [])]
 
   return (
@@ -134,7 +138,8 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
           </div>}>
         {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
         {!o && !error && <RabbitLoader className="py-16" label="Reading their training…" />}
-        {o && tab === 'overview' && <Overview o={o} onOpenPlan={() => setPlanOpen(true)} onMessage={() => void messageAbout()} />}
+        {o && tab === 'overview' && <Overview o={o} onOpenPlan={() => setTab('plan')} onMessage={() => void messageAbout()} />}
+        {o && tab === 'plan' && <PlanImportHub key={planKey} api={imports} plans={api} who="coach" athleteName={name} onOpenPlan={() => setPlanOpen(true)} onChanged={load} />}
         {o && tab === 'stats' && <AthleteStats aid={aid} />}
         {o && tab === 'messages' && (thread
           ? <><Button variant="ghost" className="h-8 w-fit px-2 text-[0.7059rem]" onClick={() => setThread(null)}>‹ All conversations</Button>
@@ -145,7 +150,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
       </Screen>
       {planOpen && o && (
         <PlanEditor me={{} as Me} goalTitle={o.goal?.title ?? 'Race'} api={api} coachMode readOnly={!o.link.can_edit_plan}
-          onClose={() => setPlanOpen(false)} onRebuild={() => {}} onAsk={() => {}} onChanged={() => {}} onMeChanged={() => {}}
+          onClose={() => { setPlanOpen(false); setPlanKey((k) => k + 1) }} onRebuild={() => {}} onAsk={() => {}} onChanged={() => {}} onMeChanged={() => {}}
           onOpenEvents={() => {}} onMessage={(s) => void messageAbout(s)} messageLabel={`Message ${name.split(' ')[0]}`} />
       )}
     </>
