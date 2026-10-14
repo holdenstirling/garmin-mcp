@@ -288,7 +288,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(403, "bad origin")
         if atts is None:
             return _err(503, "Chat isn't configured on this server.")
-        declared = int(request.headers.get("content-length") or 0)
+        try:
+            declared = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            return _err(400, "bad request")
         if declared > MAX_UPLOAD:
             return _err(413, "File too large.")
         buf = bytearray()
@@ -543,7 +546,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if not isinstance(body, dict):
             raise ValueError("body")
         try:
-            return JSONResponse(_coach().create_goal(user_id, body), status_code=201)
+            return JSONResponse(chat.agent.plans.switch_goal(user_id, lambda: _coach().create_goal(user_id, body)),
+                                status_code=201)
         except CoachError as e:
             return _err(400, str(e))
 
@@ -562,7 +566,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if chat is None:
             return _err(503, "Chat isn't configured on this server.")
         try:
-            _coach().archive_goal(user_id, request.path_params["goal_id"])
+            chat.agent.plans.switch_goal(user_id, lambda: _coach().archive_goal(user_id, request.path_params["goal_id"]))
         except CoachError as e:
             return _err(404, str(e))
         return JSONResponse({"ok": True})
@@ -637,6 +641,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             # answer saves nothing (no half-saved profile, no orphaned new goal).
             a_upd = coach.validate_athlete(athlete)
             g_upd = coach._validate_goal(goal_in, partial=not new_goal)
+            ev = body.get("event")
+            ev = ev if isinstance(ev, dict) else None
+            chat.agent.events.validate_extra(ev)
             try:
                 first = date.fromisoformat(start) if start else None
             except ValueError:
@@ -645,17 +652,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                        today=plans.today(user_id), start=first)
             if athlete:
                 coach.update_athlete(user_id, athlete)
-            carried: list[int] = []
             if new_goal:
-                if cur is not None:
-                    carried = plans.release_garmin(user_id, cur["id"])
-                coach.create_goal(user_id, goal_in)
+                # The old plan's Garmin workouts are handed over (or parked until the
+                # build) right away, so a later failure can't strand them.
+                plans.switch_goal(user_id, lambda: coach.create_goal(user_id, goal_in))
             elif goal_in:
                 coach.update_goal(user_id, cur["id"], goal_in)
-            ev = body.get("event")
-            chat.agent.events.upsert_from_goal(user_id, ev if isinstance(ev, dict) else None)
+            chat.agent.events.upsert_from_goal(user_id, ev)
             plan = plans.build(user_id, start or None)
-            plans.adopt_orphans(user_id, carried)
             return plans.get(user_id) or plan, coach.active_goal(user_id) or {}
         plan, goal = await _plan_call(run)
         return _plan_resp(user_id, plan, 201, goal=goal, athlete=coach.athlete(user_id))

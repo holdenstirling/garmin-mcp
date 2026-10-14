@@ -665,6 +665,7 @@ def apply_events(weeks: list[dict[str, Any]], events: list[dict[str, Any]], inp:
         sport = EVENT_SPORT.get(ev.get("type") or "other", "other")
         race = make_session("other", "race", 0, title=f"Race: {ev.get('name') or 'Event'}"[:60])
         race["sport"], race["kind"], race["event_id"] = sport, "race", ev.get("id")
+        race["race_distance"] = (ev.get("distance") or "").lower()  # not the main race's
         race["detail"] = (f"{prio} race. Race it with intent, but it's a step toward {inp.title}: "
                           "start controlled and recover well after." if prio == "B" else
                           f"Training race: treat it as a hard workout on the way to {inp.title}. "

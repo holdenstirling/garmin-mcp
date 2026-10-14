@@ -560,7 +560,7 @@ class Agent:
             try:
                 g = self.coach.active_goal(user_id)
                 goal = (self.coach.update_goal(user_id, g["id"], fields) if g and not replace
-                        else self.coach.create_goal(user_id, fields))
+                        else self.plans.switch_goal(user_id, lambda: self.coach.create_goal(user_id, fields)))
             except CoachError as e:
                 raise GarminError(str(e)) from None
             return {"ok": True, "replaced_previous": bool(g and replace),

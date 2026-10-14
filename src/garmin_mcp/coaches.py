@@ -243,8 +243,11 @@ class CoachChat:
                 if t["coach"] == coach and t.get("session_id") == (session or {}).get("id"):
                     return t
             if len(ts) >= MAX_THREADS:
-                oldest = min(ts.values(), key=lambda t: t["updated"])
-                ts.pop(oldest["id"])
+                # Only an empty thread may make room; conversations are never dropped.
+                empty = [t for t in ts.values() if not t["messages"]]
+                if not empty:
+                    raise CoachError("Too many conversations. Delete an old one first.")
+                ts.pop(min(empty, key=lambda t: t["updated"])["id"])
             tid = "c" + secrets.token_hex(6)
             t = {"id": tid, "coach": coach, "created": now, "updated": now, "messages": [],
                  "read": {"athlete": None, "coach": None},  # last message id each side has seen

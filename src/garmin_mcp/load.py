@@ -46,6 +46,7 @@ def session_load(s: dict[str, Any], distance: str | None = None) -> float:
     if s.get("sport") == "rest":
         return 0.0
     if s.get("kind") == "race":
+        distance = s.get("race_distance", distance)  # B/C races carry their own
         hours = RACE_HOURS.get((distance or "").lower(), 2.0)
         return round(min(hours, 6) * 0.85 ** 2 * 100 + max(0, hours - 6) * 0.6 ** 2 * 100, 1)
     minutes = s.get("minutes") or sum(lg.get("minutes", 0) for lg in s.get("legs") or [])

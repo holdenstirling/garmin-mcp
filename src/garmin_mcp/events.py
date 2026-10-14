@@ -124,6 +124,11 @@ class EventStore:
                 raise CoachError("Add the event date.")
         return out
 
+    def validate_extra(self, extra: dict[str, Any] | None) -> dict[str, Any]:
+        """The setup wizard's event-only fields (type, location, url, info), checked."""
+        return self._validate({k: extra[k] for k in ("type", "location", "url", "info")
+                               if extra and extra.get(k) not in (None, "")}, partial=True)
+
     # --------------------------------------------------------------- read --
     def list(self, user_id: str) -> list[dict[str, Any]]:
         self._adopt_goal(user_id)
@@ -268,9 +273,7 @@ class EventStore:
                   "distance": (g.get("distance") or "")[:40], "priority": "A",
                   "goal_type": g.get("goal_type"), "target_time": g.get("target_time"),
                   "course": (g.get("course") or "")[:300]}
-        for k in ("type", "location", "url", "info"):
-            if extra and extra.get(k) not in (None, ""):
-                fields[k] = extra[k]
+        fields.update(self.validate_extra(extra))
         eid = g.get("event_id")
         if eid and eid in self._doc(user_id).load().get("events", {}):
             return self.update(user_id, eid, fields)

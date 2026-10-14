@@ -294,7 +294,9 @@ class WeekPlanner:
             try:
                 week = await self._ask_model(user_id, goal, start, pw, day)
             except Exception as e:  # model or validation failure: show done-only for now
-                self._failed[key] = self._clock()
+                now = self._clock()
+                self._failed = {k: t for k, t in self._failed.items() if now - t < RETRY_AFTER_FAILURE_S}
+                self._failed[key] = now
                 log_event(logger, logging.WARNING, "weekplan_failed", user_id=user_id,
                           error=type(e).__name__)
                 return None, "error"

@@ -499,18 +499,29 @@ class CoachStore:
     def migrate_legacy(self, user_id: str) -> None:
         """Phase-3 single conversation -> coach thread (proactive) + one topic thread."""
         legacy = self._s.user_doc(user_id, "conversation")
-        turns = legacy.load().get("turns", [])
+
+        def claim(d: dict[str, Any]) -> list[dict[str, Any]]:
+            # Claimed under the doc's lock, so concurrent calls don't migrate twice.
+            if d.get("migrating") or not d.get("turns"):
+                return []
+            d["migrating"] = True
+            return list(d["turns"])
+        turns = legacy.update(claim)
         if not turns:
             return
-        coach = self.coach_thread(user_id)
-        chat = [t for t in turns if t.get("kind") != "proactive"]
-        for t in turns:
-            if t.get("kind") == "proactive":
-                self.append_turn(user_id, coach["id"], t, touch=False)
-        if chat:
-            topic = self.create_thread(user_id, title="Earlier chat")
-            for t in chat:
-                self.append_turn(user_id, topic["id"], t, touch=False)
+        try:
+            coach = self.coach_thread(user_id)
+            chat = [t for t in turns if t.get("kind") != "proactive"]
+            for t in turns:
+                if t.get("kind") == "proactive":
+                    self.append_turn(user_id, coach["id"], t, touch=False)
+            if chat:
+                topic = self.create_thread(user_id, title="Earlier chat")
+                for t in chat:
+                    self.append_turn(user_id, topic["id"], t, touch=False)
+        except BaseException:
+            legacy.update(lambda d: d.pop("migrating", None))  # try again next time
+            raise
         legacy.delete()
 
     # --------------------------------------------------------- context -----

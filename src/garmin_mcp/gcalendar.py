@@ -37,6 +37,7 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
 MAX_DAYS = 70
 CACHE_S = 600
+MAX_PAGES = 4  # of 250 events each
 TRAVEL_WORDS = re.compile(
     r"\b(flight|fly|flying|trip|travel|traveling|travelling|vacation|holiday|conference|summit|"
     r"offsite|off-site|hotel|airbnb|ooo|out of office|pto|away|camp)\b|✈", re.I)
@@ -147,10 +148,14 @@ class GoogleCalendar:
         self._doc(user_id).delete()
         self._cache.pop(user_id, None)
         if d.get("refresh_token"):
+            client = self._client()
             try:
-                await self._client().post(REVOKE_URL, data={"token": d["refresh_token"]})
+                await client.post(REVOKE_URL, data={"token": d["refresh_token"]})
             except Exception:  # best effort; the token is gone from our side either way
                 pass
+            finally:
+                if self._http is None:
+                    await client.aclose()
 
     def _client(self) -> httpx2.AsyncClient:
         return self._http or httpx2.AsyncClient(timeout=15)
@@ -191,24 +196,31 @@ class GoogleCalendar:
         t1 = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=zone)
         params = {"timeMin": t0.isoformat(), "timeMax": t1.isoformat(),
                   "singleEvents": "true", "orderBy": "startTime", "maxResults": "250",
-                  "fields": "items(summary,start,end,location,transparency,eventType,status)"}
+                  "fields": "nextPageToken,items(summary,start,end,location,transparency,eventType,status)"}
         if tz:
             params["timeZone"] = tz
+        items: list[dict[str, Any]] = []
         client = self._client()
         try:
-            r = await client.get(EVENTS_URL, params=params, headers={"Authorization": f"Bearer {token}"})
+            for _ in range(MAX_PAGES):
+                r = await client.get(EVENTS_URL, params=params, headers={"Authorization": f"Bearer {token}"})
+                if r.status_code == 403:
+                    log_event(logger, logging.WARNING, "gcal_forbidden", user_id=user_id)
+                    raise CalendarError("Google Calendar refused the request. The Calendar API may need "
+                                        "to be enabled for this project.")
+                if r.status_code == 401:
+                    self._doc(user_id).delete()
+                    raise CalendarNotConnected("Google Calendar access expired. Connect it again in settings.")
+                r.raise_for_status()
+                body = r.json()
+                items += body.get("items", [])
+                if not body.get("nextPageToken"):
+                    break
+                params = params | {"pageToken": body["nextPageToken"]}
         finally:
             if self._http is None:
                 await client.aclose()
-        if r.status_code == 403:
-            log_event(logger, logging.WARNING, "gcal_forbidden", user_id=user_id)
-            raise CalendarError("Google Calendar refused the request. The Calendar API may need to be "
-                                "enabled for this project.")
-        if r.status_code == 401:
-            self._doc(user_id).delete()
-            raise CalendarNotConnected("Google Calendar access expired. Connect it again in settings.")
-        r.raise_for_status()
-        events = [e for e in (compact_event(x) for x in r.json().get("items", [])) if e]
+        events = [e for e in (compact_event(x) for x in items) if e]
         out = {"connected": True, "days": days, "start": start.isoformat(), "end": end.isoformat()}
         out |= summarize(events, start, end)
         self._cache[user_id] = (self._clock(), out)

@@ -18,7 +18,7 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from .appstore import AppStore
 from .coaching import CoachError, CoachStore
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from .tools import GarminService
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 SYNC_WINDOWS = (7, 14, 28)
 SYNC_PAUSE_S = 0.4  # between Garmin calls, to stay polite
@@ -111,10 +112,30 @@ class PlanService:
         return ids
 
     def adopt_orphans(self, user_id: str, ids: list[int]) -> None:
+        """Hand Garmin workout ids to the active goal's plan, or (no goal or no plan yet)
+        park them until the next build, so they're never forgotten."""
         if not ids:
             return
-        goal = self._goal(user_id)
-        self._update_plan(user_id, goal, lambda p: p.setdefault("garmin_orphans", []).extend(ids))
+        goal = self._coach.active_goal(user_id)
+        done: list[bool] = []
+        if goal is not None:
+            def fn(p: dict[str, Any]) -> None:
+                p.setdefault("garmin_orphans", []).extend(ids)
+                done.append(True)
+            self._update_plan(user_id, goal, fn)
+        if not done:
+            self._s.user_doc(user_id, "garmin-pending").update(
+                lambda d: d.setdefault("ids", []).extend(ids))
+
+    def switch_goal(self, user_id: str, change: Callable[[], T]) -> T:
+        """Run ``change`` (create or archive a goal). If the active goal changed, the old
+        plan's Garmin workouts move to the new one, to be removed on its next sync."""
+        old = self._coach.active_goal(user_id)
+        out = change()
+        new = self._coach.active_goal(user_id)
+        if old is not None and (new is None or new["id"] != old["id"]):
+            self.adopt_orphans(user_id, self.release_garmin(user_id, old["id"]))
+        return out
 
     def today(self, user_id: str) -> date:
         return self._now(user_id).date()
@@ -146,10 +167,13 @@ class PlanService:
             plan["events_sig"] = self._events.signature(events)
         plan["created"] = plan["updated"] = int(self._clock())
         plan["goal_id"] = goal["id"]
+        # Workouts parked by a goal switch before this goal had a plan.
+        parked: list[int] = []
+        self._s.user_doc(user_id, "garmin-pending").update(lambda d: parked.extend(d.pop("ids", [])))
 
         def put(d: dict[str, Any]) -> None:
             # Anything synced from an earlier version gets cleaned up on the next sync.
-            orphans = list(d.get("garmin_orphans", []))
+            orphans = list(d.get("garmin_orphans", [])) + parked
             for _, day, s in iter_sessions(d) if d else []:
                 if day >= today.isoformat():
                     orphans += (s.get("garmin") or {}).get("workout_ids", [])
@@ -179,6 +203,10 @@ class PlanService:
                                 "workouts it added, then delete the plan.") from None
             except (GarminError, PlanError):
                 pass  # Garmin not connected at all: nothing we can clean up remotely
+            else:
+                if (self.get(user_id) or {}).get("garmin_orphans"):
+                    raise PlanError("Some workouts couldn't be removed from Garmin. Try again "
+                                    "before deleting the plan.")
         self._doc(user_id, goal["id"]).delete()
 
         def apply(d: dict[str, Any]) -> None:
@@ -351,6 +379,8 @@ class PlanService:
                     w = week_for(plan, date.fromisoformat(c["date"]))
                     if w is None or c["date"] < today.isoformat():
                         continue
+                    if len([x for x in w["days"].get(c["date"], []) if x["sport"] != "rest"]) >= MAX_SESSIONS_PER_DAY:
+                        continue  # that day is full
                     new = make_session(to["sport"], to.get("kind") or "easy", int(to.get("minutes") or 45),
                                        swim_pace=swim_pace, phase=w["phase"])
                     new["edited"], new["adjusted"] = True, True
@@ -501,9 +531,20 @@ class PlanService:
                 w = week_for(plan, date.fromisoformat(day))
                 if w is None:
                     continue
+                # Only undo what the trip changed: its swapped/moved sessions go, the
+                # originals it reworked on days away come back; anything else (added or
+                # edited since) stays.
+                keep = []
                 for x in w["days"].get(day, []):
-                    self._orphan(plan, x)
-                back = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions if x["id"] not in past_ids]
+                    if x.get("travel") == trip_id:
+                        self._orphan(plan, x)
+                    else:
+                        keep.append(x)
+                kept_ids = {x["id"] for x in keep}
+                back = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions
+                        if trip["start"] <= day <= trip["end"] and x["sport"] != "rest"
+                        and x.get("kind") != "race" and x["id"] not in past_ids | kept_ids]
+                back += [x for x in keep if x["sport"] != "rest"]
                 w["days"][day] = back or [make_session("rest", "rest", 0)]
                 touched.add(w["start"])
             # Moved copies whose original day has passed simply stop being "travel".
@@ -649,22 +690,30 @@ class PlanService:
                     ids += g["workout_ids"]
                     owners.append(s["id"])
             removed, errors = 0, []
+            gone: set[int] = set()
             for wid in ids:
                 try:
                     svc.workout_delete(user_id, wid)
                     removed += 1
+                    gone.add(wid)
                 except ReauthRequired:
                     raise
                 except GarminError as e:
-                    if "does not exist" not in str(e):
+                    if "does not exist" in str(e):
+                        gone.add(wid)
+                    else:
                         errors.append({"title": "Workout", "error": str(e)[:160]})
                 self._sleep()
 
             def clear(p: dict[str, Any]) -> None:
-                p["garmin_orphans"] = []
+                # Only forget what's really off Garmin: failed deletes (and orphans added
+                # meanwhile) stay as orphans for the next sync.
+                left = [w for w in p.get("garmin_orphans", []) if w not in gone]
                 for _, _, s in iter_sessions(p):
-                    if s["id"] in owners:
+                    if s["id"] in owners and s.get("garmin"):
+                        left += [w for w in s["garmin"].get("workout_ids", []) if w not in gone]
                         s.pop("garmin", None)
+                p["garmin_orphans"] = list(dict.fromkeys(left))
                 p["garmin"] = {"window": (p.get("garmin") or {}).get("window", 14), "synced_at": None}
             self._update_plan(user_id, goal, clear)
             return {"removed": removed, "errors": errors}
