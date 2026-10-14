@@ -53,6 +53,7 @@ from . import legal
 from .planbuilder import iter_sessions
 from .checkins import XP as CHECKIN_XP, CheckinError, xp_bonus as checkin_xp_bonus
 from .gear import GearStore, catalog as gear_catalog, usage as gear_usage
+from . import intent as intent_mod
 from .progress import GEAR_XP, quests_view, week_goal
 from .stats import compute as stats_compute
 from .recap import RecapError, RecapService
@@ -221,6 +222,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "dev": {"fake_garmin": fake_garmin, "tools": sorted(dev) if dev else []},
             "athlete": chat.agent.coach.athlete(user_id) if chat else {},
             "goal": chat.agent.coach.active_goal(user_id) if chat else None,
+            "welcome": _welcome(user_id, connected),  # intent.py: "full" | "lite" | None
             "chat": {"available": chat is not None,
                      "active_turn": active.id if active else None,
                      "active_thread": (active.thread_id or None) if active else None},
@@ -659,6 +661,49 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except CoachError as e:
             return _err(400, str(e))
 
+    # ------------------------------------------- intent ("What brings you to Rabbit?") --
+    # intent.py: athlete.intents (priority order) + welcomed_at (shown once; skip counts).
+    def _welcome(uid: str, garmin_connected: bool) -> str | None:
+        if chat is None or _is_coach_account(uid):
+            return None
+        a = chat.agent.coach.athlete(uid)
+        return intent_mod.welcome_mode(a, existing=intent_mod.is_existing(
+            a, garmin_connected=garmin_connected, has_goal=chat.agent.coach.active_goal(uid) is not None))
+
+    def _intent_view(uid: str, a: dict[str, Any]) -> dict[str, Any]:
+        try:
+            connected = token_store.load(uid) is not None
+        except TokenStoreError:
+            connected = False
+        return {"intents": intent_mod.clean(a.get("intents")), "welcomed_at": a.get("welcomed_at"),
+                "welcome": _welcome(uid, connected), "options": intent_mod.options()}
+
+    async def intent_get(request: Request, user_id: str) -> Response:
+        if chat is None:
+            return _err(503, "Chat isn't configured on this server.")
+        return JSONResponse(_intent_view(user_id, chat.agent.coach.athlete(user_id)))
+
+    async def intent_post(request: Request, user_id: str) -> Response:
+        """{intents: [...]} saves the answer; {skip: true} only marks the welcome as seen."""
+        if chat is None or store is None:
+            return _err(503, "Chat isn't configured on this server.")
+        body = await read_json(request)
+        if not isinstance(body, dict) or set(body) - {"intents", "skip"}:
+            raise ValueError("body")
+        skip = body.get("skip") is True
+        if not skip and "intents" not in body:
+            return _err(400, "Pick at least one, or skip for now.")
+        try:
+            a = await anyio.to_thread.run_sync(lambda: intent_mod.save(store, user_id, body.get("intents"), skip=skip))
+        except CoachError as e:
+            return _err(400, str(e))
+        return JSONResponse(_intent_view(user_id, a))
+
+    intent_routes = [
+        Route("/app/api/intent", _api(intent_get, mutating=False), methods=["GET"]),
+        Route("/app/api/intent", _api(intent_post, mutating=True), methods=["POST"]),
+    ]
+
     # ------------------------------------------------------- plan builder --
     plans = chat.agent.plans if chat is not None else None
     coach_chat = CoachChat(store) if store is not None else None
@@ -934,7 +979,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
             bonus=bonus))
         await anyio.to_thread.run_sync(lambda: _progress_moments(user_id, out))
-        quests = quests_view(state, available)
+        quests = quests_view(state, available, agent.coach.athlete(user_id).get("intents"))
         core = [q for q in quests if not q["optional"]]
         return JSONResponse({**out, "quests": quests,
                              "setup": {"done": sum(q["done"] for q in core), "total": len(core)},
@@ -2992,6 +3037,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["POST"]),
         Route("/app/api/plan/week", _api(plan_week_get, mutating=False), methods=["GET"]),
         Route("/app/api/athlete", _api(athlete_put, mutating=True), methods=["PUT"]),
+        *intent_routes,
         Route("/app/api/plan", _plan_api(plan_get, mutating=False), methods=["GET"]),
         Route("/app/api/plan", _plan_api(plan_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/plan/setup", _plan_api(plan_setup, mutating=True), methods=["POST"]),

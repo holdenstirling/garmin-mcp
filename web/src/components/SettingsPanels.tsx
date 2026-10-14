@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarClock, CircleDot, Layers, LogOut, Watch } from 'lucide-react'
+import { Bell, CalendarClock, CircleDot, Compass, Layers, LogOut, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
@@ -7,6 +7,7 @@ import { ShareRow } from '@/components/settings/ShareRow'
 import { LocationRow } from '@/components/settings/LocationRow'
 import { DataSourcesSheet } from '@/components/settings/DataSourcesSheet'
 import { defaultSources, sourcesSummary } from '@/lib/sources'
+import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { postJSON, signOut, type Me } from '@/lib/api'
@@ -144,6 +145,12 @@ export function SettingsPanels({ me, onChange, onDevDone, onToast }: {
           <Row icon={<Icon tone="muted"><CircleDot /></Icon>} title="Oura Ring" subtitle="Not set up on this server yet" />
         )}
       </Group>
+
+      {me.role === 'athlete' && (
+        <Group label="Rabbit" footer="What you came for shows up first on Rabbit's home.">
+          <Row icon={<Icon><Compass /></Icon>} title="How you use Rabbit" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
+        </Group>
+      )}
 
       <Group label="Data sources" footer="Workouts come from Garmin only, so nothing is counted twice.">
         <Row icon={<Icon><Layers /></Icon>} title="Data sources"

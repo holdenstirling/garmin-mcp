@@ -304,6 +304,9 @@ class CoachStore:
                 upd[k] = _race_history(v)
             elif k == "interests":
                 upd[k] = validate_interests(v)
+            elif k == "intents":
+                from .intent import validate_intents  # local: intent imports this module
+                upd[k] = validate_intents(v)
             elif k == "long_day":
                 if v in (None, ""):
                     upd[k] = None
@@ -656,13 +659,18 @@ class CoachStore:
                       plan_days: list[str] | None = None) -> str:
         """``plan_days``: lines about today's (and tomorrow's) planned sessions."""
         lines = [f"Today: {now:%A %Y-%m-%d}, {now:%H:%M} local time ({now.tzname()})."]
-        a = {k: v for k, v in self.athlete(user_id).items() if v not in (None, "", [], {}) and k != "coach_status"}
+        a = {k: v for k, v in self.athlete(user_id).items()
+             if v not in (None, "", [], {}) and k not in ("coach_status", "welcomed_at")}
         interests = a.pop("interests", None)
+        intents = a.pop("intents", None)
         lines.append("Athlete profile: " + (
             "; ".join(f"{_ATHLETE_LABEL.get(k, k.replace('_', ' '))}: {_fmt_athlete(k, v)}" for k, v in a.items()) if a
             else "not set up yet (ask about experience, weekly hours and injuries when it's useful)."))
         if interests_line(interests):
             lines.append(interests_line(interests))
+        from .intent import context_line as _intent_line  # "Uses Rabbit mainly for: ..."
+        if _intent_line(intents):
+            lines.append(_intent_line(intents))
         g = self.active_goal(user_id)
         if g:
             when = ""
