@@ -7,8 +7,8 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
-  DISTANCE_LABEL, TYPE_LABEL, countdown, createEvent, deleteEvent, daysUntil, listEvents, makeMainEvent, updateEvent,
-  type EventFields, type EventType, type RaceEvent,
+  DISTANCE_LABEL, TYPE_LABEL, countdown, createEvent, deleteEvent, daysUntil, listEvents, makeMainEvent, updateEvent, writeDebrief,
+  type Debrief, type EventFields, type EventType, type RaceEvent,
 } from '@/lib/events'
 import { EventBasics, EventGoal, InfoBlock } from './EventForm'
 import { RacePackScreen } from './RacePackScreen'
@@ -191,6 +191,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
           </Field>
         )}
       </Card>
+      {event && past && <DebriefCard event={event} result={v.result ?? ''} notes={v.notes ?? ''} onSaved={(list) => onSaved(list)} />}
       {!event && !isFirst && (
         <label className="flex items-center gap-3 px-1 text-[0.8235rem] text-(--text)">
           <input type="checkbox" className="size-4 accent-(--accent)" checked={main} onChange={(e) => setMain(e.target.checked)} />
@@ -223,5 +224,46 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
       ))}
       {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
     </Screen>
+  )
+}
+
+function DebriefCard({ event, result, notes, onSaved }: {
+  event: RaceEvent; result: string; notes: string; onSaved: (list: RaceEvent[]) => void
+}) {
+  const [feel, setFeel] = useState<number | null>(event.debrief?.feel ?? null)
+  const [d, setD] = useState<Debrief | null>(event.debrief ?? null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function write() {
+    setBusy(true); setError(null)
+    try {
+      const r = await writeDebrief(event.id, { result, notes, ...(feel ? { feel } : {}) })
+      setD(r.debrief); onSaved(r.events)
+    } catch (e) { setError((e as Error).message) }
+    finally { setBusy(false) }
+  }
+  return (
+    <Card>
+      <Field label="Race debrief" hint="Rabbit reads your race from Garmin plus your notes, then saves learnings it carries into your next plan.">
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" onClick={() => setFeel(n)} aria-pressed={feel === n}
+              className={cn('plan-chip', feel === n && 'plan-chip--on')}>{['Rough', 'Hard', 'OK', 'Good', 'Great'][n - 1]}</button>
+          ))}
+        </div>
+        <Button variant="primary" className="h-10 text-[0.7647rem]" loading={busy} onClick={() => void write()}>
+          {d ? 'Rewrite my debrief' : 'Write my debrief'}
+        </Button>
+        {error && <p className="text-[0.7059rem] text-(--danger)">{error}</p>}
+        {d && (
+          <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3 text-[0.7647rem] leading-snug">
+            <p className="text-(--text)">{d.summary}</p>
+            {d.went_well.length > 0 && <p><b className="text-(--accent)">Went well:</b> <span className="text-(--text-secondary)">{d.went_well.join('; ')}</span></p>}
+            {d.work_on.length > 0 && <p><b className="text-(--warning)">Work on:</b> <span className="text-(--text-secondary)">{d.work_on.join('; ')}</span></p>}
+            {d.learnings.length > 0 && <p><b className="text-(--text)">For your next plan:</b> <span className="text-(--text-secondary)">{d.learnings.join('; ')}</span></p>}
+          </div>
+        )}
+      </Field>
+    </Card>
   )
 }

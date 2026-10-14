@@ -15,9 +15,11 @@ export type RaceEvent = {
   location: string; url: string; priority: 'A' | 'B' | 'C'
   goal_type: 'finish' | 'time' | 'compete' | null; target_time: string | null
   course: string; notes: string; result: string; info: EventInfo | null
+  debrief?: Debrief | null
   created: number; updated: number; main: boolean
 }
-export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' | 'main'>>
+export type Debrief = { summary: string; went_well: string[]; work_on: string[]; learnings: string[]; feel: number | null; created: number }
+export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' | 'main' | 'debrief'>>
 type ListResp = { events: RaceEvent[]; types: Record<EventType, string[]> }
 
 export const listEvents = () => getJSON<ListResp>('/api/events')
@@ -27,6 +29,8 @@ export const updateEvent = (id: string, e: EventFields) =>
   sendJSON<ListResp & { event: RaceEvent }>('PATCH', `/api/events/${id}`, e)
 export const deleteEvent = (id: string) => sendJSON<ListResp>('DELETE', `/api/events/${id}`)
 export const makeMainEvent = (id: string) => sendJSON<ListResp & { event: RaceEvent }>('POST', `/api/events/${id}/main`)
+export const writeDebrief = (id: string, b: { result?: string; feel?: number; notes?: string }) =>
+  sendJSON<ListResp & { debrief: Debrief }>('POST', `/api/events/${id}/debrief`, b)
 export const lookupEvent = (q: { name: string; type?: string; date?: string; location?: string; event_id?: string }) =>
   sendJSON<{ info: EventInfo }>('POST', '/api/events/lookup', q)
 

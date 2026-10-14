@@ -568,6 +568,14 @@ class CoachStore:
                          "Once they name a goal, call training_history before asking about their "
                          "background. Save what you learn as you go.")
         main_ev = (g or {}).get("event_id")
+        past = sorted((e for e in self._s.user_doc(user_id, "events").load().get("events", {}).values()
+                       if e.get("debrief") and (e.get("date") or "") < now.date().isoformat()),
+                      key=lambda e: e.get("date") or "", reverse=True)[:2]
+        for e in past:
+            learn = "; ".join((e["debrief"].get("learnings") or [])[:4])
+            if learn:
+                lines.append(f"Learnings from their {e.get('name')} ({e.get('date')}) debrief, carry these "
+                             f"forward: {learn}")
         evs = sorted((e for e in self._s.user_doc(user_id, "events").load().get("events", {}).values()
                       if (e.get("date") or "") >= now.date().isoformat()),
                      key=lambda e: e.get("date") or "")[:8]

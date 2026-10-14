@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, CalendarClock, CircleDot, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
+import { ShareRow } from '@/components/settings/ShareRow'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
@@ -95,6 +96,7 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
       <Group label="Coaching" footer="Your coach sees your plan, events and stats. Your Rabbit chats stay private unless you share them.">
         <Row icon={<Icon><Megaphone /></Icon>} title="Coaches"
           subtitle={me.coaches ? `${me.coaches} coach${me.coaches === 1 ? '' : 'es'}` : 'Invite a coach by email'} onClick={onOpenCoaches} />
+        <ShareRow />
         {me.coaching > 0 && (
           <Row icon={<Icon><Users /></Icon>} title="Athletes you coach" subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`}
             onClick={onOpenAthletes} />

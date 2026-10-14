@@ -25,7 +25,7 @@ import secrets
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
@@ -42,7 +42,7 @@ from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
 from .stats import StatsService
-from .events import LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
+from .events import DEBRIEF_SYSTEM, DEBRIEF_TOOL, LOOKUP_SYSTEM, REPORT_TOOL, EventStore, clean_info, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +144,17 @@ class AnthropicBackend:
                     await on_text(event.text)
             return await stream.get_final_message()
 
+    async def structured(self, system: str, prompt: str, tool: dict[str, Any]) -> dict[str, Any]:
+        """One forced tool call: returns the tool input (structured output)."""
+        msg = await self._client.messages.create(
+            model=self.model, max_tokens=2000, system=system, tools=[tool],
+            tool_choice={"type": "tool", "name": tool["name"]},
+            messages=[{"role": "user", "content": prompt}])
+        for b in msg.content:
+            if getattr(b, "type", None) == "tool_use" and isinstance(getattr(b, "input", None), dict):
+                return dict(b.input)
+        return {}
+
     async def research(self, system: str, prompt: str, *, max_searches: int = 4,
                        report_tool: dict[str, Any] | None = None) -> Any:
         """One-shot answer with Anthropic's server-side web search (event lookups).
@@ -184,6 +195,17 @@ Approver = Callable[[dict[str, Any]], Awaitable[tuple[bool, str | None]]]
 _GOAL_FIELDS = ("title", "event", "date", "distance", "target", "priorities")
 _FIELD_LABELS = {"title": "Goal", "event": "Event", "date": "Date", "distance": "Distance",
                  "target": "Target", "priorities": "Priorities"}
+
+
+def _hms(v: Any) -> int:
+    try:
+        parts = [int(p) for p in str(v or "0").split(":")]
+    except ValueError:
+        return 0
+    t = 0
+    for p in parts:
+        t = t * 60 + p
+    return t
 
 
 def _snip(v: Any, n: int = 160) -> str:
@@ -339,6 +361,52 @@ class Agent:
                                  events=self.events)
         self.stats = StatsService(service, now=self._now, athlete=self.coach.athlete,
                                   plan=self.plans.get, clock=clock)
+
+    async def debrief(self, user_id: str, event_id: str, *, result: str | None = None,
+                      feel: int | None = None, notes: str | None = None) -> dict[str, Any]:
+        """After-race review: the race activity from Garmin, the plan and the athlete's own
+        words, turned into a short debrief with learnings for the next plan."""
+        structured = getattr(self._backend, "structured", None)
+        if structured is None:
+            raise CoachError("Debriefs aren't available on this server.")
+        ev = self.events.get(user_id, event_id)
+        today = self._now(user_id).date()
+        if ev["date"] > today.isoformat():
+            raise CoachError("You can write the debrief once the race is done.")
+        patch: dict[str, Any] = {}
+        if isinstance(result, str):
+            patch["result"] = result
+        if notes is not None:
+            patch["notes"] = notes
+        if patch:
+            ev = self.events.update(user_id, event_id, patch)
+        d = date.fromisoformat(ev["date"])
+        try:
+            acts = await anyio.to_thread.run_sync(self._service.activities_between, user_id, d, d + timedelta(days=1))
+        except GarminError:
+            acts = []
+        race_act = max(acts, key=lambda a: _hms(a.get("duration")), default=None) if acts else None
+        try:
+            load = await anyio.to_thread.run_sync(self.stats.load, user_id)
+        except GarminError:
+            load = {}
+        before = next((p for p in load.get("series", []) if p["date"] == ev["date"]), None)
+        facts = {"event": {k: ev.get(k) for k in ("name", "type", "distance", "date", "location", "goal_type",
+                                                    "target_time", "result", "course")},
+                 "athlete_feel_1_to_5": feel, "athlete_notes": (notes or ev.get("notes") or "")[:1000],
+                 "garmin_race_activity": race_act, "form_on_race_day": before,
+                 "event_info": {k: v for k, v in (ev.get("info") or {}).items() if k in ("distances", "elevation_gain", "terrain", "cutoffs")}}
+        out = await structured(DEBRIEF_SYSTEM, json.dumps(facts, default=str)[:12000], DEBRIEF_TOOL)
+        clean = {"summary": str(out.get("summary") or "")[:800],
+                 "went_well": [str(x)[:200] for x in (out.get("went_well") or [])][:4],
+                 "work_on": [str(x)[:200] for x in (out.get("work_on") or [])][:4],
+                 "learnings": [str(x)[:200] for x in (out.get("learnings") or [])][:4],
+                 "feel": feel if isinstance(feel, int) and 1 <= feel <= 5 else None,
+                 "created": int(self._clock())}
+        if not clean["summary"]:
+            raise CoachError("Couldn't write the debrief just now. Try again in a minute.")
+        self.events.set_debrief(user_id, event_id, clean)
+        return clean
 
     async def lookup_event(self, user_id: str, name: str, etype: str | None = None,
                            when: str | None = None, location: str | None = None) -> dict[str, Any]:

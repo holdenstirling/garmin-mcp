@@ -37,6 +37,8 @@ from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
 from .adjust import propose as propose_adjustment
 from . import racepack
+from .share import Shares
+from .share import render as render_share
 from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -742,6 +744,25 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         ev = await _plan_call(lambda: _events().set_main(user_id, eid))
         return _events_resp(user_id, event=ev)
 
+    async def event_debrief(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        feel = body.get("feel")
+        try:
+            out = await chat.agent.debrief(
+                user_id, request.path_params["event_id"],
+                result=body.get("result") if isinstance(body.get("result"), str) else None,
+                feel=feel if isinstance(feel, int) and not isinstance(feel, bool) else None,
+                notes=body.get("notes") if isinstance(body.get("notes"), str) else None)
+        except CoachError as e:
+            raise _UserError(str(e)) from None
+        except Exception as e:
+            log_event(logger, logging.WARNING, "debrief_failed", user_id=user_id, error=type(e).__name__)
+            raise _UserError("The debrief didn't work just now. Try again in a minute.", 502) from None
+        return _events_resp(user_id, debrief=out)
+
     async def event_lookup(request: Request, user_id: str) -> Response:
         assert chat is not None
         body = await read_json(request)
@@ -1152,6 +1173,38 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         tid = request.path_params["trip_id"]
         return _plan_resp(user_id, await _plan_call(lambda: plans.remove_travel(user_id, tid)))
 
+    # -------------------------------------------------------------- share --
+    shares = Shares(store) if store is not None else None
+
+    def _share_url(token: str | None) -> str | None:
+        return f"{settings.public_base_url.rstrip('/')}/app/s/{token}" if token else None
+
+    async def share_get(request: Request, user_id: str) -> Response:
+        assert shares is not None
+        return JSONResponse({"url": _share_url(shares.current(user_id))})
+
+    async def share_create(request: Request, user_id: str) -> Response:
+        assert shares is not None
+        return JSONResponse({"url": _share_url(shares.create(user_id))}, status_code=201)
+
+    async def share_delete(request: Request, user_id: str) -> Response:
+        assert shares is not None
+        shares.revoke(user_id)
+        return JSONResponse({"url": None})
+
+    async def share_page(request: Request) -> Response:
+        headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow",
+                   "Referrer-Policy": "no-referrer",
+                   "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}
+        if not host_ok(request) or shares is None or chat is None or plans is None:
+            return HTMLResponse("Not found", status_code=404, headers=headers)
+        uid = shares.resolve(request.path_params["token"])
+        if uid is None:
+            return HTMLResponse("This link isn't active anymore.", status_code=404, headers=headers)
+        page = render_share(auth.profile(uid).get("name", ""), _coach().active_goal(uid),
+                            chat.agent.events.list(uid), plans.get(uid), plans.today(uid))
+        return HTMLResponse(page, headers=headers)
+
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
         return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
@@ -1237,6 +1290,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["PATCH"]),
         Route("/app/api/events/{event_id}", _plan_api(event_delete, mutating=True),
               methods=["DELETE"]),
+        Route("/app/api/events/{event_id}/debrief", _plan_api(event_debrief, mutating=True),
+              methods=["POST"]),
         Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
@@ -1253,6 +1308,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_get, mutating=False), methods=["GET"]),
         Route("/app/api/racepack", _plan_api(racepack_get, mutating=False), methods=["GET"]),
+        Route("/app/api/share", _plan_api(share_get, mutating=False), methods=["GET"]),
+        Route("/app/api/share", _plan_api(share_create, mutating=True), methods=["POST"]),
+        Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/s/{token}", share_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
