@@ -1,13 +1,14 @@
 // Rabbit's motion kit: shared helpers. Every effect is decorative (aria-hidden), short
 // (<= 1.2 s), transform/opacity only, and off under prefers-reduced-motion.
 import { useCallback, useSyncExternalStore } from 'react'
+import { hapticTap } from '@/lib/haptics'
 
 export function reducedMotion(): boolean {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return true }
 }
 
 // ------------------------------------------------------------ celebrate ---
-export type BurstKind = 'xp' | 'challenge' | 'badge' | 'plan' | 'race' | 'checkin' | 'level'
+export type BurstKind = 'xp' | 'challenge' | 'badge' | 'plan' | 'race' | 'checkin' | 'level' | 'kudos' | 'quest'
 export type Burst = { id: number; x: number; y: number; kind: BurstKind }
 type Target = Element | { x: number; y: number } | null | undefined
 
@@ -17,9 +18,12 @@ let timer = 0
 const subs = new Set<() => void>()
 const emit = () => subs.forEach((f) => f())
 
-/** One burst at a time: a new one replaces the running one. Hidden with reduced motion. */
+/** One burst at a time: a new one replaces the running one. Hidden with reduced motion (the
+ *  light haptic tap still fires where the device supports it: lib/haptics). */
 export function celebrate(target: Target, kind: BurstKind = 'xp'): void {
-  if (typeof window === 'undefined' || reducedMotion()) return
+  if (typeof window === 'undefined') return
+  hapticTap()
+  if (reducedMotion()) return
   let x = window.innerWidth / 2, y = window.innerHeight / 3
   if (target instanceof Element) {
     const r = target.getBoundingClientRect()

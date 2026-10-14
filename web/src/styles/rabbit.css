@@ -281,3 +281,96 @@ html.kb-open .tab-bar { display: none; }
   .ex-pop, .ex-count { animation: ex-fade 0.2s ease-out both; animation-delay: 0s; }
 }
 @keyframes ex-fade { from { opacity: 0; } to { opacity: 1; } }
+/* ===== Animation kit (components/anim). Transform/opacity only; one-shots <= 600 ms; idle
+   loops pause via .rb-paused (useIdleLoop: hidden tab / offscreen); nothing moves under
+   prefers-reduced-motion (block at the end). Burst/flame/pull-to-refresh live in fx.css. ===== */
+.rb-paused, .rb-paused * { animation-play-state: paused !important; }
+
+/* HopIn: rise + scale with a little overshoot; ``backwards`` so nothing lingers after. */
+.rb-hop-in { animation: rb-hop-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards; }
+@keyframes rb-hop-in {
+  0% { opacity: 0; transform: translateY(12px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* Pop (verdict badge, new check) and bump (a count that just changed). */
+.rb-pop { animation: rb-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards; }
+@keyframes rb-pop { 0% { opacity: 0; transform: scale(0.55); } 60% { opacity: 1; transform: scale(1.12); } 100% { transform: scale(1); } }
+.rb-bump { display: inline-block; animation: rb-bump 320ms cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+@keyframes rb-bump { 0% { transform: none; } 40% { transform: translateY(-3px) scale(1.25); } 100% { transform: none; } }
+
+/* Shake (errors): a short, small horizontal shake, once. */
+.rb-shake { animation: rb-shake 380ms ease-in-out; }
+@keyframes rb-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+
+/* RabbitHop: the rabbit at a progress bar's end (inside a relative .fx-bar wrapper). */
+.rb-rabbit-hop {
+  position: absolute; left: 0; right: 0; bottom: calc(100% - 3px); height: calc(var(--rb-size) + 8px);
+  overflow: hidden; pointer-events: none;
+}
+.rb-rabbit-hop__track, .rb-rabbit-hop__seat { position: absolute; left: 0; bottom: 0; display: block;
+  transition: transform 600ms cubic-bezier(0.3, 0.7, 0.4, 1); }
+.rb-rabbit-hop__track { width: 100%; height: 100%; transform: translateX(calc(var(--rb-p) * 1%)); }
+.rb-rabbit-hop__seat { width: var(--rb-size); height: var(--rb-size); transform: translateX(calc(var(--rb-p) * -1%)); }
+.rb-rabbit-hop.is-snap .rb-rabbit-hop__track, .rb-rabbit-hop.is-snap .rb-rabbit-hop__seat { transition: none; }
+.rb-rabbit-hop__bunny { display: block; line-height: 0; transform-origin: 50% 100%; }
+.rb-rabbit-hop__bunny.is-hopping { animation: rb-hops 600ms ease-in-out; }
+@keyframes rb-hops {
+  0%, 33%, 66%, 100% { transform: translateY(0) scale(1.05, 0.92); }
+  16%, 50% { transform: translateY(-6px) scale(0.96, 1.05) rotate(-8deg); }
+  83% { transform: translateY(-4px) scale(0.97, 1.04) rotate(-5deg); }
+}
+
+/* EmptyRabbit / RabbitNap: a napping (or peeking) rabbit mark with a slow breathing bob. */
+.rb-nap { position: relative; display: inline-flex; align-items: flex-end; justify-content: center; flex-shrink: 0; color: var(--brand); }
+.rb-nap__body { display: block; line-height: 0; transform-origin: 50% 100%; }
+.rb-nap--sleep .rb-nap__body { animation: rb-breathe 2800ms ease-in-out infinite; }
+.rb-nap--sleep .rb-nap__body .rabbit-logo { opacity: 0.85; }
+@keyframes rb-breathe { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(1px) scale(1.03, 0.95); } }
+.rb-nap__z { position: absolute; right: 2%; top: 4%; font-size: 0.7059rem; font-weight: 700; line-height: 1;
+  color: var(--text-muted); opacity: 0; animation: rb-z 2800ms ease-out infinite; }
+.rb-nap__z--2 { right: -4%; top: -14%; font-size: 0.8235rem; animation-delay: 1400ms; }
+@keyframes rb-z { 0% { opacity: 0; transform: translate(0, 6px) scale(0.6); } 25% { opacity: 1; } 70% { opacity: 0.7; } 100% { opacity: 0; transform: translate(8px, -10px) scale(1); } }
+.rb-nap--peek { overflow: hidden; }
+.rb-nap--peek .rb-nap__body { animation: rb-peek 520ms cubic-bezier(0.2, 0.9, 0.3, 1.25) 120ms backwards, rb-breathe 2800ms ease-in-out 700ms infinite; }
+@keyframes rb-peek { from { transform: translateY(70%); } to { transform: translateY(0); } }
+.rb-nap__edge { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--border-strong); }
+
+/* Streak flame: a subtle idle flicker while the streak is 3+ days (paused offscreen). */
+.rb-flame-idle { display: inline-flex; transform-origin: 50% 85%; animation: rb-flame-idle 1600ms ease-in-out infinite; }
+@keyframes rb-flame-idle {
+  0%, 100% { transform: scale(1) skewX(0deg); }
+  30% { transform: scale(1.04, 1.09) skewX(-3deg); }
+  60% { transform: scale(0.98, 1.02) skewX(2deg); }
+}
+
+/* Tab bar: the Rabbit tab's mark twitches on press (it follows the tab's text color). */
+.tab-bar__item .rb-tab-rabbit .rabbit-logo { color: currentColor; }
+.rb-twitch { display: inline-flex; transform-origin: 30% 90%; animation: rb-twitch 340ms ease-in-out; }
+@keyframes rb-twitch { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-11deg) translateY(-1px); } 60% { transform: rotate(6deg); } 85% { transform: rotate(-2deg); } }
+
+/* Setup quest just done: the check draws itself. */
+.rb-check-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: rb-draw 380ms ease-out 180ms forwards; }
+@keyframes rb-draw { to { stroke-dashoffset: 0; } }
+
+/* Sign in: the running rabbit leaps when you tap Sign in. */
+.rb-jump { animation: rb-jump 560ms cubic-bezier(0.3, 0.7, 0.4, 1); transform-origin: 50% 100%; }
+@keyframes rb-jump {
+  0% { transform: none; } 18% { transform: translateY(4px) scale(1.08, 0.86); }
+  55% { transform: translateY(-26px) rotate(-10deg) scale(0.95, 1.06); }
+  85% { transform: translateY(2px) scale(1.06, 0.92); } 100% { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-hop-in, .rb-pop, .rb-bump, .rb-shake, .rb-rabbit-hop__bunny.is-hopping, .rb-nap__body, .rb-nap--peek .rb-nap__body,
+  .rb-flame-idle, .rb-twitch, .rb-jump { animation: none; }
+  .rb-rabbit-hop__track, .rb-rabbit-hop__seat { transition: none; }
+  .rb-nap__z { animation: none; opacity: 0.8; }
+  .rb-nap__z--2 { opacity: 0.6; }
+  .rb-check-draw path { animation: none; stroke-dashoffset: 0; }
+}

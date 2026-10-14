@@ -1,10 +1,10 @@
-// CarrotBurst: tiny carrots and sparkles flung from a point, with a dust puff. Rendered once
+// CarrotBurst: tiny carrots, hop prints (paws) and sparkles flung from a point, with a dust puff. Rendered once
 // via FxHost (a portal on <body>); trigger anywhere with celebrate()/useCelebrate().
 import { createPortal } from 'react-dom'
-import { Carrot, Puff, Sparkle } from './shapes'
+import { Carrot, HopPrint, Puff, Sparkle } from './shapes'
 import { useBurst, type BurstKind } from './motion'
 
-const COUNT: Record<BurstKind, number> = { xp: 9, checkin: 9, race: 11, plan: 12, challenge: 12, badge: 14, level: 16 }
+const COUNT: Record<BurstKind, number> = { kudos: 7, quest: 8, xp: 9, checkin: 9, race: 11, plan: 12, challenge: 12, badge: 14, level: 16 }
 
 // Small deterministic PRNG so a burst looks the same if React renders it twice.
 function rng(seed: number) {
@@ -16,11 +16,12 @@ export function CarrotBurst({ x, y, kind = 'xp', seed = 1 }: { x: number; y: num
   const n = COUNT[kind]
   const r = rng(seed)
   const big = kind === 'level' || kind === 'badge'
+  const small = kind === 'kudos' || kind === 'quest'
   const parts = Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2 + r() * 0.5 - Math.PI / 2
-    const dist = (big ? 70 : 52) + r() * (big ? 60 : 40)
+    const dist = (big ? 70 : small ? 34 : 52) + r() * (big ? 60 : small ? 24 : 40)
     return {
-      carrot: i % 3 !== 2,
+      shape: i % 3 === 2 ? 'spark' : i % 4 === 1 ? 'paw' : 'carrot',
       dx: Math.round(Math.cos(a) * dist),
       dy: Math.round(Math.sin(a) * dist * 0.85 - 12),
       rot: Math.round((r() - 0.5) * 540),
@@ -39,9 +40,9 @@ export function CarrotBurst({ x, y, kind = 'xp', seed = 1 }: { x: number; y: num
           ['--dx' as string]: `${p.dx}px`, ['--dy' as string]: `${p.dy}px`, ['--rot' as string]: `${p.rot}deg`,
           animationDelay: `${p.delay}ms`,
         }
-        return p.carrot
-          ? <Carrot key={i} size={p.size} className="fx-burst__bit" style={style} />
-          : <Sparkle key={i} size={p.size - 3} className="fx-burst__bit fx-burst__spark" style={style} />
+        return p.shape === 'carrot' ? <Carrot key={i} size={p.size} className="fx-burst__bit" style={style} />
+          : p.shape === 'paw' ? <HopPrint key={i} size={p.size - 2} className="fx-burst__bit fx-burst__paw" style={style} />
+            : <Sparkle key={i} size={p.size - 3} className="fx-burst__bit fx-burst__spark" style={style} />
       })}
     </div>
   )

@@ -36,7 +36,9 @@ export function TabBar({ tab, onSelect, dots }: {
 }) {
   // Motion (styles/fx.css): the tapped tab's icon hops once (not on first paint); the Rabbit
   // tab shows the rabbit mark wiggling when Rabbit finished a reply while you were elsewhere.
+  // The Rabbit tab's icon is the app's rabbit mark; its ears twitch on press (styles/rabbit.css).
   const [hop, setHop] = useState<{ id: TabId; n: number } | null>(null)
+  const [twitch, setTwitch] = useState(0)
   const [wiggle, setWiggle] = useState(0)
   useEffect(() => {
     const on = () => setWiggle((n) => n + 1)
@@ -55,12 +57,15 @@ export function TabBar({ tab, onSelect, dots }: {
         return (
           <button key={id} type="button" className="tab-bar__item" aria-current={tab === id ? 'page' : undefined}
             aria-label={dot ? `${label}, ${dot}` : label}
+            onPointerDown={id === 'rabbit' ? () => setTwitch((n) => n + 1) : undefined}
             onClick={() => { if (id !== tab) setHop((h) => ({ id, n: (h?.n ?? 0) + 1 })); onSelect(id) }}>
             {id === 'rabbit' && wiggle > 0 ? (
               <span key={`w${wiggle}`} className="fx-tab-wiggle" aria-hidden><RabbitLogo size={22} /></span>
             ) : (
               <span key={hop?.id === id ? `h${hop.n}` : 'still'} className={hop?.id === id ? 'fx-tab-hop' : 'inline-flex'} aria-hidden>
-                <Icon className="size-[22px]" strokeWidth={tab === id ? 2.25 : 1.75} aria-hidden />
+                {id === 'rabbit'
+                  ? <span key={`t${twitch}`} className={twitch ? 'rb-twitch rb-tab-rabbit' : 'rb-tab-rabbit inline-flex'}><RabbitLogo size={22} /></span>
+                  : <Icon className="size-[22px]" strokeWidth={tab === id ? 2.25 : 1.75} aria-hidden />}
               </span>
             )}
             <span aria-hidden>{label}</span>

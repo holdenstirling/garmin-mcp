@@ -1,11 +1,13 @@
 // StreakFlame: the streak's flame icon. When the streak went up since it was last shown, it
 // does one "carrot-flame" flicker (a carrot-orange flame flares over it and a tiny carrot pops
-// up). At risk today: a slow, gentle pulse. Nothing with reduced motion.
+// up). At risk today: a slow, gentle pulse. A 3+ day streak: a subtle idle flicker, paused
+// when the tab is hidden or the flame is offscreen (anim/useIdleLoop). Nothing with reduced motion.
 import { useState } from 'react'
 import { Flame } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Carrot } from './shapes'
 import { reducedMotion, swapNumber } from './motion'
+import { useIdleLoop } from '@/components/anim/useIdleLoop'
 
 // Several flames can show the same streak (home strip, Progress): the first one to notice the
 // rise lets the others mounting soon after flicker too.
@@ -25,8 +27,11 @@ export function StreakFlame({ streak, atRisk, className, replay }: {
 }) {
   const [on] = useState(() => shouldFlicker(streak))
   const play = on || !!replay
+  const idle = streak >= 3 && !atRisk
+  const [ref, live] = useIdleLoop<HTMLSpanElement>(idle)
   return (
-    <span key={replay} className={cn('fx-flame', atRisk && 'fx-flame--risk', play && 'fx-flame--flicker')}>
+    <span ref={ref} key={replay} className={cn('fx-flame', atRisk && 'fx-flame--risk', play && 'fx-flame--flicker',
+      idle && 'rb-flame-idle', idle && !live && 'rb-paused')}>
       <Flame className={className} />
       {play && <>
         <Flame className={cn(className, 'fx-flame__hot')} aria-hidden />

@@ -1,13 +1,13 @@
 // Friends: a feed of the people you follow (their recent workouts, kudos, short cheers) and
 // People (invite code, add by email/code, requests, following/followers, privacy settings).
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity, Ban, Bike, Check, Copy, Dumbbell, Flame, Footprints, Heart, Layers, MessageCircle, Mountain,
   Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { EmptyRabbit, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
@@ -60,10 +60,10 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   const loadFeed = useCallback(() => {
-    getFeed().then((r) => { setFeed(r.items); setFollowing(r.following); setError(null) }, (e) => setError((e as Error).message))
+    return getFeed().then((r) => { setFeed(r.items); setFollowing(r.following); setError(null) }, (e) => setError((e as Error).message))
   }, [])
   const loadPeople = useCallback(() => {
-    getPeople().then((p) => { setPeople(p); setError(null) }, (e) => setError((e as Error).message))
+    return getPeople().then((p) => { setPeople(p); setError(null) }, (e) => setError((e as Error).message))
   }, [])
   useEffect(() => {
     loadFeed(); loadPeople()
@@ -88,7 +88,8 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
 
   return (
     <Screen title="Friends" subtitle="Train together, cheer each other on" closing={closing} onClose={close} headerExtra={tabs}>
-      {error && <ErrorState compact message={error} onRetry={() => { loadFeed(); loadPeople() }} />}
+      <PullToRefresh onRefresh={() => Promise.all([loadFeed(), loadPeople()])} />
+      {error && <ErrorState compact message={error} onRetry={() => { void loadFeed(); void loadPeople() }} />}
       {tab === 'feed' ? (
         feed == null ? (error ? null : <RabbitLoader className="py-10" label="Loading your friends' workouts" cycle={LOADING} />) : (
           <FeedList items={feed} following={following} imperial={imperial} onOpen={setFriend}
@@ -97,7 +98,7 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
       ) : (
         people == null ? (error ? null : <RabbitLoader className="py-10" label="Loading people" cycle={LOADING} />) : (
           <PeopleTab people={people} onOpen={setFriend}
-            onChanged={() => { loadPeople(); loadFeed(); onChanged?.() }} setPeople={setPeople} />
+            onChanged={() => { void loadPeople(); void loadFeed(); onChanged?.() }} setPeople={setPeople} />
         )
       )}
       {friend && <FriendCard id={friend} imperial={imperial} onClose={() => setFriend(null)} />}
@@ -116,16 +117,12 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
   return (
     <>
       {following === 0 && (
-        <div className="celebrate flex flex-col items-center gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center">
-          <PeekingRabbit size={72} />
-          <h3 className="font-display text-[1.1765rem] text-(--brand)">Training's better together</h3>
-          <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-            Follow a friend to see their workouts here and send kudos. Share your invite code so they can follow you back.
-          </p>
-          <Button variant="primary" className="mt-1 h-10 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
+        <EmptyRabbit hero size={60} className="celebrate rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
+          title="Training's better together"
+          body="Follow a friend to see their workouts here and send kudos. Share your invite code so they can follow you back."
+          action={<Button variant="primary" className="mt-1 h-10 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
             <UserPlus className="size-4" /> Add a friend
-          </Button>
-        </div>
+          </Button>} />
       )}
       {following > 0 && theirs.length === 0 && (
         <p className="px-1 text-center text-[0.7647rem] text-(--text-muted)">No workouts from your friends in the last two weeks yet.</p>
@@ -147,10 +144,14 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
   const [err, setErr] = useState<string | null>(null)
   const line = workoutLine(it, imperial)
 
+  const kudosBtn = useRef<HTMLButtonElement>(null)
+  const [bump, setBump] = useState(false) // the count bumps after your tap, not on first paint
   async function toggleKudos() {
     if (it.mine || busy) return
     setBusy(true); setErr(null)
     const was = it.you_kudoed
+    setBump(true)
+    if (!was) burst(kudosBtn.current, 'kudos') // carrots + paws from the heart (and a haptic tap)
     onUpdate({ you_kudoed: !was, kudos: it.kudos + (was ? -1 : 1) })
     try {
       const r = was ? await takeKudos(it.user.id, it.id) : await giveKudos(it.user.id, it.id)
@@ -199,13 +200,13 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
         {it.xp != null && <span className="shrink-0 text-[0.6471rem] font-semibold text-(--accent)">+{it.xp} XP</span>}
       </div>
       <div className="mt-2.5 flex items-center gap-1">
-        <button type="button" onClick={() => void toggleKudos()} disabled={it.mine} aria-pressed={it.you_kudoed}
+        <button ref={kudosBtn} type="button" onClick={() => void toggleKudos()} disabled={it.mine} aria-pressed={it.you_kudoed}
           aria-label={it.mine ? `${it.kudos} kudos` : it.you_kudoed ? 'Take back kudos' : 'Give kudos'}
           className={cn('hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium transition-colors',
             it.you_kudoed ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary) active:bg-(--bg-inset)',
             it.mine && 'opacity-80')}>
           <Heart key={it.you_kudoed ? `on${it.kudos}` : 'off'} className={cn('size-4', it.you_kudoed && 'celebrate fill-current')} />
-          <span key={it.kudos} className="celebrate tabular-nums">{it.kudos}</span>
+          <span key={it.kudos} className={cn('tabular-nums', bump && 'rb-bump')}>{it.kudos}</span>
         </button>
         {!it.mine && (
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}

@@ -1,4 +1,5 @@
-// One way to say "that didn't load": a short message and a Retry button.
+// One way to say "that didn't load": a short message and a Retry button. It shakes once on
+// mount (.rb-shake, anim kit; still under reduced motion).
 import { RotateCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -8,7 +9,7 @@ export function ErrorState({ message, onRetry, compact, className }: {
   const text = message || "Couldn't load this."
   return (
     <div role="alert"
-      className={cn('flex items-center gap-3 rounded-xl border border-(--danger)/25 bg-(--danger-subtle)',
+      className={cn('rb-shake flex items-center gap-3 rounded-xl border border-(--danger)/25 bg-(--danger-subtle)',
         compact ? 'px-3 py-2' : 'flex-col px-4 py-5 text-center', className)}>
       <p className={cn('min-w-0 leading-snug text-(--danger)', compact ? 'flex-1 text-[0.7059rem]' : 'text-[0.8235rem]')}>{text}</p>
       {onRetry && (

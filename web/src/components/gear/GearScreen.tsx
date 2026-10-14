@@ -6,6 +6,7 @@ import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, MessageCircl
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
+import { EmptyRabbit } from '@/components/anim'
 import { Card, Choice, Field, MultiChoice, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
@@ -83,15 +84,8 @@ export function GearScreen({ onClose, imperial, onAsk }: {
             {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
             {note && <p className="rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-[0.7647rem] text-(--accent)">{note}</p>}
             {active.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-(--accent-subtle) text-(--accent)">
-                  <Footprints className="size-7" />
-                </span>
-                <p className="text-[0.9412rem] font-medium text-(--text)">Your garage is empty</p>
-                <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">
-                  Add your shoes to track every mile and get a heads-up before they wear out.
-                </p>
-              </div>
+              <EmptyRabbit className="py-10" title="Your garage is empty"
+                body="Add your shoes to track every mile and get a heads-up before they wear out." />
             )}
             {KIND_ORDER.map((k) => {
               const list = active.filter((g) => g.kind === k)

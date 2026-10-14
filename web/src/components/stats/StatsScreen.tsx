@@ -20,6 +20,7 @@ import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 import { ChallengesCard } from '@/components/challenges/ChallengesCard'
 import { InsightsCard } from '@/components/insights/InsightsCard'
 import { PullToRefresh } from '@/components/fx/PullToRefresh'
+import { hopIn } from '@/components/anim'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -348,10 +349,10 @@ function BadgesCard({ s }: { s: Stats }) {
       </div>
       {shown.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Every badge earned. Legendary.</p>}
       <div className="grid grid-cols-3 gap-2">
-        {shown.map((b) => (
+        {shown.map((b, i) => (
           <div key={b.id} title={b.description}
-            className={cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
-              b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
+            {...hopIn(i, cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
+              b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)'))}>
             <span className={cn('flex size-9 items-center justify-center rounded-full', b.earned ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-muted)')}>
               {b.earned ? <Award className="size-5" /> : <Lock className="size-4" />}
             </span>

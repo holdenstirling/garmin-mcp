@@ -9,7 +9,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { fmtDay } from '@/components/plan/PlanParts'
 import { fmtDuration, fmtMeters } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { celebrate } from '@/components/fx/motion'
+import { burst, useCountUp } from '@/components/anim'
 import { fmtDist, getReaction, type CheckInRequest, type Reaction, type Verdict } from '@/lib/workout'
 
 const LOADING = ['Studying your splits…', 'Comparing to plan…', 'Counting your XP…']
@@ -18,28 +18,6 @@ const BADGE: Record<Verdict, { label: string; icon: typeof Check; cls: string }>
   close: { label: 'Close', icon: Target, cls: 'bg-(--accent-subtle) text-(--accent) border border-(--accent)/40' },
   different: { label: 'Swapped it', icon: Shuffle, cls: 'bg-(--warning-subtle) text-(--warning-text) border border-(--warning)/40' },
   bonus: { label: 'Bonus workout', icon: Sparkles, cls: 'bg-(--brand) text-white' },
-}
-
-function reducedMotion(): boolean {
-  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return true }
-}
-
-/** Counts up to ``to`` once (instantly with reduced motion). */
-function useCountUp(to: number): number {
-  const [n, setN] = useState(() => (reducedMotion() ? to : 0))
-  useEffect(() => {
-    if (reducedMotion()) { setN(to); return }
-    let raf = 0
-    const t0 = performance.now()
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - t0) / 900)
-      setN(Math.round(to * (1 - (1 - p) ** 3)))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [to])
-  return n
 }
 
 export function ReactionCard({ activityId, imperial, onClose, onCheckIn, onOpenSession }: {
@@ -90,11 +68,11 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
   const a = r.activity
   const p = r.planned
   const best = r.bests[0]
-  // "Nailed it": a carrot burst from the verdict badge as the card pops in (once per card).
+  // The verdict badge pops in; "Nailed it" adds a carrot burst from it (once per card).
   const badge = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (r.verdict !== 'nailed') return
-    const t = window.setTimeout(() => celebrate(badge.current, 'xp'), 250)
+    const t = window.setTimeout(() => burst(badge.current, 'xp'), 320)
     return () => window.clearTimeout(t)
   }, [r.verdict])
   return (
@@ -104,7 +82,8 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
           <span className="absolute right-[-34px] top-[14px] rotate-45 bg-(--brand) px-10 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-widest text-white"
             aria-hidden="true">PR</span>
         )}
-        <span ref={badge} className={cn('inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.9412rem] font-semibold', b.cls)}>
+        <span ref={badge} className={cn('rb-pop inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.9412rem] font-semibold', b.cls)}
+          style={{ animationDelay: '160ms' }}>
           <BIcon className="size-4" strokeWidth={3} /> {b.label}
         </span>
         <p className="max-w-sm text-[0.8824rem] leading-snug text-(--text)">{r.line}</p>
