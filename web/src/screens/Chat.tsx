@@ -25,6 +25,7 @@ import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { TodayCard } from '@/components/today/TodayCard'
+import { useTopInsight } from '@/lib/insights'
 import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { RecapSheet } from '@/components/recap/RecapSheet'
 import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
@@ -261,6 +262,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }, [overlayFree, tab, me])
   // Today card (today.py): one recommendation; it replaces the race-soon and adjust banners.
   const [today, setToday] = useState<Today | null>(null)
+  const topInsight = useTopInsight(today?.date)
   const loadToday = useCallback(() => { getToday().then(setToday, () => {}) }, [])
   // Workout day: the pre-workout screen (from Today / the plan) and the post-workout reaction.
   const [workout, setWorkout] = useState<{ sessionId?: string } | null>(null)
@@ -679,7 +681,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     ) : null
     return (
       <TabScreen key="overview" title="Progress" top={seg} lead={questCard}>
-        <StatsScreen onClose={noop} oura={me.oura.connected} onOpenPlan={builtPlan ? openPlan : undefined} />
+        <StatsScreen onClose={noop} oura={me.oura.connected} onOpenPlan={builtPlan ? openPlan : undefined}
+          onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
     )
   }
@@ -723,7 +726,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && today && (today.garmin || !!goal) && !typing && (
         <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
-          onOpenWorkout={(id) => setWorkout({ sessionId: id })} />
+          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={() => goTab('progress')} />
       )}
 
       {pending ? (
