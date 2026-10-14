@@ -112,6 +112,11 @@ Inspector's loopback redirect is allowed by `OAUTH_ALLOW_LOOPBACK_REDIRECTS`.
 
 ## GCP setup (one time)
 
+**Easiest:** open the guided walkthrough in Cloud Shell (runs everything in your browser, no local
+gcloud needed):
+[Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/holdenstirling/garmin-mcp&cloudshell_tutorial=infra/cloudshell/tutorial.md&show=terminal).
+It uses a free `<ip>.sslip.io` hostname, so no domain is required. The manual steps follow.
+
 Prerequisites: `gcloud` authenticated, a domain you control, and a GitHub account.
 
 1. `cp infra/config.env.example infra/config.env` and fill it in. Get your GitHub numeric ID with
