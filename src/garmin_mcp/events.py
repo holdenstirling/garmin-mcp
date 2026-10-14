@@ -25,6 +25,7 @@ import hashlib
 import json
 import re
 import secrets
+import threading
 import time
 from collections.abc import Awaitable, Callable
 from datetime import date
@@ -62,6 +63,13 @@ INFO_KEYS = ("summary", "date", "location", "start_time", "distances", "elevatio
              "suggested_type", "suggested_distance")
 
 
+def type_for_distance(dist: str | None) -> str:
+    d = (dist or "").lower()
+    if not d or d == "other":
+        return "other"
+    return next((t for t, ds in TYPE_DISTANCES.items() if d in ds and t != "other"), "other")
+
+
 def _new_id() -> str:
     return f"e{secrets.token_hex(6)}"
 
@@ -71,6 +79,7 @@ class EventStore:
         self._s = store
         self._coach = coach
         self._clock = clock
+        self._adopt_lock = threading.Lock()
 
     def _doc(self, user_id: str):
         return self._s.user_doc(user_id, "events")
@@ -138,9 +147,15 @@ class EventStore:
         g = self._coach.active_goal(user_id)
         if not g or g.get("event_id") or not g.get("date"):
             return
+        with self._adopt_lock:
+            g = self._coach.active_goal(user_id)
+            if not g or g.get("event_id"):
+                return
+            self._adopt(user_id, g)
+
+    def _adopt(self, user_id: str, g: dict[str, Any]) -> None:
         dist = (g.get("distance") or "").lower()
-        etype = next((t for t, ds in TYPE_DISTANCES.items() if dist in ds and t != "other"),
-                     "other")
+        etype = type_for_distance(dist)
         ev = self.create(user_id, {
             "name": (g.get("event") or g.get("title") or "My race")[:120], "date": g["date"],
             "type": etype, "distance": dist[:40], "priority": g.get("priority") or "A",
@@ -180,7 +195,7 @@ class EventStore:
         ev = self._doc(user_id).update(apply)
         g = self._coach.active_goal(user_id)
         if g and g.get("event_id") == event_id:
-            self._sync_goal(user_id, g, ev)
+            self._sync_goal(user_id, g, ev, set(e))
         return dict(ev, main=bool(g and g.get("event_id") == event_id))
 
     def delete(self, user_id: str, event_id: str) -> None:
@@ -214,11 +229,16 @@ class EventStore:
         out["course"] = (out.get("course") or "")[:300]
         return out
 
-    def _sync_goal(self, user_id: str, goal: dict[str, Any], ev: dict[str, Any]) -> None:
-        patch = self._goal_fields(ev)
-        if goal.get("title") in (None, "", goal.get("event")):
+    def _sync_goal(self, user_id: str, goal: dict[str, Any], ev: dict[str, Any],
+                   keys: set[str] | None = None) -> None:
+        """Copy the event's fields onto the goal: only ``keys`` (the fields just edited)
+        when given, so an unrelated edit never rolls back a goal change made elsewhere."""
+        full = self._goal_fields(ev)
+        patch = {gk: full[gk] for ek, gk in _GOAL_SYNC.items() if keys is None or ek in keys}
+        if (keys is None or "name" in keys) and goal.get("title") in (None, "", goal.get("event")):
             patch["title"] = ev["name"][:80]
-        self._coach.update_goal(user_id, goal["id"], patch)
+        if patch:
+            self._coach.update_goal(user_id, goal["id"], patch)
 
     def _link_goal(self, user_id: str, goal_id: str, event_id: str) -> None:
         def apply(d: dict[str, Any]) -> None:
@@ -242,9 +262,7 @@ class EventStore:
         if eid and eid in self._doc(user_id).load().get("events", {}):
             return self.update(user_id, eid, fields)
         if "type" not in fields:
-            dist = fields["distance"]
-            fields["type"] = next((t for t, ds in TYPE_DISTANCES.items() if dist in ds and t != "other"),
-                                  "other")
+            fields["type"] = type_for_distance(fields["distance"])
         ev = self.create(user_id, fields)
         self._link_goal(user_id, g["id"], ev["id"])
         return dict(ev, main=True)
@@ -252,9 +270,8 @@ class EventStore:
     # ----------------------------------------------------- plan support --
     def plan_events(self, user_id: str) -> list[dict[str, Any]]:
         """Events other than the main one, for the plan builder."""
-        main = self.main_id(user_id)
         return [{k: e.get(k) for k in ("id", "name", "type", "date", "priority", "distance")}
-                for e in self.list(user_id) if e["id"] != main]
+                for e in self.list(user_id) if not e["main"]]
 
     @staticmethod
     def signature(events: list[dict[str, Any]]) -> str:

@@ -1,5 +1,6 @@
 // Small building blocks for the plan screens, in Rabbit's existing look: grouped cards,
 // DM Mono labels, forest-green accent chips.
+import { useState } from 'react'
 import { ChevronLeft, Minus, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -137,21 +138,33 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
   step?: number; min: number; max: number; suffix?: string; decimals?: number; label: string
 }) {
   const v = value ?? null
+  // Typed text lives here until it's a complete number ("7." stays "7." while typing).
+  const [text, setText] = useState<string | null>(null)
+  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n * 10 ** decimals) / 10 ** decimals))
   const bump = (d: number) => {
+    setText(null)
     const base = v ?? Math.round(((min + max) / 2) / step) * step
-    const next = Math.min(max, Math.max(min, Math.round((base + d) * 10 ** decimals) / 10 ** decimals))
-    onChange(next)
+    onChange(clamp(base + d))
   }
   return (
     <div className="flex items-center gap-2">
       <button type="button" className="plan-step-btn" aria-label={`Less ${label}`} onClick={() => bump(-step)}><Minus className="size-4" /></button>
       <div className="flex flex-1 items-baseline justify-center gap-1">
-        <input inputMode="decimal" aria-label={label} value={v ?? ''} placeholder="–"
+        <input inputMode="decimal" aria-label={label} value={text ?? (v ?? '')} placeholder="–"
           onChange={(e) => {
             const t = e.target.value.replace(',', '.')
+            if (!/^\d*\.?\d*$/.test(t)) return
+            setText(t)
             if (t === '') return onChange(null)
             const n = Number(t)
-            if (Number.isFinite(n)) onChange(n)
+            if (Number.isFinite(n) && !t.endsWith('.') && n >= min && n <= max) onChange(n)
+          }}
+          onBlur={() => {
+            if (text == null) return
+            setText(null)
+            if (text === '' || text === '.') return onChange(null)
+            const n = Number(text)
+            if (Number.isFinite(n)) onChange(clamp(n))
           }}
           className="w-20 bg-transparent text-center font-display text-[1.6471rem] leading-none text-(--text) outline-none placeholder:text-(--text-muted)" />
         {suffix && <span className="text-[0.7647rem] text-(--text-muted)">{suffix}</span>}

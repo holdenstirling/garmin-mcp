@@ -42,9 +42,10 @@ fi
 echo "    ok"
 
 if command -v uv >/dev/null; then
-  echo "==> Running the plan tests"
-  uv run -q pytest -q tests/test_plans.py tests/test_coaching.py 2>&1 | tail -15 \
-    || echo "(tests couldn't run here; continuing)"
+  echo "==> Running the full test suite (nothing deploys if a test fails)"
+  if ! uv run -q pytest -q -x 2>&1 | tail -25; then
+    [[ "${SKIP_TESTS:-}" == 1 ]] || { echo "!! tests failed. Nothing deployed."; exit 1; }
+  fi
 fi
 
 ./deploy.sh --rabbit

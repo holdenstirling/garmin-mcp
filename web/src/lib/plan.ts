@@ -24,6 +24,7 @@ export type BuiltPlan = {
   kinds: Record<string, string[]>
   events: { id: string; name: string; date: string; priority: 'B' | 'C' }[]
   events_changed: boolean
+  race_changed: boolean
 }
 export type SyncResult = {
   uploaded: number; unchanged: number; removed: number; skipped: number
@@ -37,7 +38,7 @@ export type AthleteNumbers = {
 }
 export type AthleteFull = Athlete & Partial<AthleteNumbers> & {
   sex?: 'female' | 'male' | 'other' | null; level?: 'new' | 'intermediate' | 'advanced' | null
-  available_days?: string[]; long_day?: string | null; equipment?: string[]
+  available_days?: string[]; long_day?: string | null; equipment?: string[]; favorite_sports?: string[]
 }
 export type GoalFull = Goal & {
   target_time?: string | null; goal_type?: 'finish' | 'time' | 'compete' | null
@@ -87,6 +88,11 @@ export const PHASE_LABEL: Record<PlanWeekBuilt['phase'], string> = {
 export const WEEKDAYS = [
   ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
 ] as const
+export const FAVORITE_SPORTS = [
+  ['run', 'Running'], ['trail', 'Trail running'], ['bike', 'Road cycling'], ['gravel', 'Gravel'], ['mtb', 'Mountain biking'],
+  ['swim', 'Pool swimming'], ['open_water', 'Open water'], ['strength', 'Strength'], ['yoga', 'Yoga & mobility'],
+  ['hike', 'Hiking'], ['climb', 'Climbing'], ['ski', 'Skiing'], ['row', 'Rowing'], ['walk', 'Walking'],
+] as const
 export const EQUIPMENT = [
   ['pool', 'Pool'], ['open_water', 'Open water'], ['power_meter', 'Power meter'], ['indoor_trainer', 'Indoor trainer'],
   ['hr_strap', 'HR strap'], ['treadmill', 'Treadmill'], ['gym', 'Gym'],
@@ -106,7 +112,7 @@ export function parsePace(v: string): number | null {
   return Number(m[1]) * 60 + Number(m[2] ?? 0)
 }
 export const KM_PER_MI = 1.609344
-export const cmToFtIn = (cm: number) => { const inches = cm / 2.54; return { ft: Math.floor(inches / 12), inch: Math.round(inches % 12) } }
+export const cmToFtIn = (cm: number) => { const inches = Math.round(cm / 2.54); return { ft: Math.floor(inches / 12), inch: inches % 12 } }
 export const ftInToCm = (ft: number, inch: number) => Math.round((ft * 12 + inch) * 2.54)
 export const kgToLb = (kg: number) => Math.round(kg * 2.20462)
 export const lbToKg = (lb: number) => Math.round((lb / 2.20462) * 10) / 10

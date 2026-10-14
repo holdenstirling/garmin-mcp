@@ -166,7 +166,11 @@ class AnthropicBackend:
             text = [b.text for b in msg.content if getattr(b, "type", None) == "text"]
             if stop != "pause_turn":
                 break
-            messages = [messages[0], {"role": "assistant", "content": msg.content}]
+            # Paused mid-search: hand back everything so far and let it continue.
+            if messages[-1]["role"] == "assistant":
+                messages[-1]["content"] = list(messages[-1]["content"]) + list(msg.content)
+            else:
+                messages.append({"role": "assistant", "content": list(msg.content)})
         self.last_research_stop = stop
         return "".join(text)
 

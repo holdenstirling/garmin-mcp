@@ -85,7 +85,34 @@ class PlanService:
         if self._events is not None:
             sig = self._events.signature(self._events.plan_events(user_id))
             plan["events_changed"] = sig != plan.get("events_sig", sig)
+        # The race itself moved (or changed distance) since the build.
+        plan["race_changed"] = (plan.get("race_date") != g.get("date") or
+                                plan.get("distance") != (g.get("distance") or "other").lower())
         return plan
+
+    def release_garmin(self, user_id: str, goal_id: str) -> list[int]:
+        """Take the Garmin workout ids of a plan that's being replaced by a new goal's plan
+        (future sessions + orphans), so the new plan's next sync removes them."""
+        today = self.today(user_id).isoformat()
+        ids: list[int] = []
+
+        def fn(d: dict[str, Any]) -> None:
+            if not d:
+                return
+            ids.extend(d.get("garmin_orphans", []))
+            d["garmin_orphans"] = []
+            for _, day, x in iter_sessions(d):
+                if day >= today and (x.get("garmin") or {}).get("workout_ids"):
+                    ids.extend(x["garmin"]["workout_ids"])
+                    x.pop("garmin", None)
+        self._doc(user_id, goal_id).update(fn)
+        return ids
+
+    def adopt_orphans(self, user_id: str, ids: list[int]) -> None:
+        if not ids:
+            return
+        goal = self._goal(user_id)
+        self._update_plan(user_id, goal, lambda p: p.setdefault("garmin_orphans", []).extend(ids))
 
     def today(self, user_id: str) -> date:
         return self._now(user_id).date()
@@ -139,11 +166,17 @@ class PlanService:
         """Drop the built plan (after removing its workouts from Garmin when connected)."""
         goal = self._goal(user_id)
         removed = {"removed": 0, "errors": []}
-        if self.get(user_id) is not None:
+        plan = self.get(user_id)
+        on_garmin = bool(plan) and (bool(plan.get("garmin_orphans")) or any(
+            (x.get("garmin") or {}).get("workout_ids") for _, _, x in iter_sessions(plan)))
+        if on_garmin:
             try:
                 removed = self.unsync(user_id)
+            except ReauthRequired:
+                raise PlanError("Reconnect Garmin in settings first, so Rabbit can remove the "
+                                "workouts it added, then delete the plan.") from None
             except (GarminError, PlanError):
-                pass  # not connected: nothing we can clean up remotely
+                pass  # Garmin not connected at all: nothing we can clean up remotely
         self._doc(user_id, goal["id"]).delete()
 
         def apply(d: dict[str, Any]) -> None:
@@ -233,6 +266,9 @@ class PlanService:
             target = upd.get("date", day)
             if day < today.isoformat() and target != day:
                 raise PlanError("Past sessions can't be moved.")
+            if target != day and target < today.isoformat():
+                raise PlanError("Sessions can't be moved into the past.")
+            old_sport = s["sport"]
             if "title" in upd:
                 s["title"], s["title_custom"] = upd["title"] or s["title"], bool(upd["title"])
             if "detail" in upd:
@@ -245,10 +281,17 @@ class PlanService:
                 s.pop("legs", None)
                 s = rebuild_session(s, swim_pace=plan.get("swim_pace", 125.0), phase=w["phase"])
             s["edited"] = True
-            del w["days"][day][i]
-            if not w["days"][day]:
-                w["days"][day] = [make_session("rest", "rest", 0)]
-            self._place(plan, target, s)
+            if s.get("garmin") and (target != day or s["sport"] != old_sport or s["sport"] == "rest"):
+                # Its Garmin workout no longer matches: remove it on the next sync.
+                self._orphan(plan, s)
+                s.pop("garmin", None)
+            if target == day:  # same day: edit in place (no per-day limit to trip over)
+                w["days"][day][i] = s
+            else:
+                del w["days"][day][i]
+                if not w["days"][day]:
+                    w["days"][day] = [make_session("rest", "rest", 0)]
+                self._place(plan, target, s)
             recompute_week(w)
             w2 = week_for(plan, date.fromisoformat(target))
             if w2 is not None and w2 is not w:
@@ -363,6 +406,9 @@ class PlanService:
             if g.get("hash") == h and g.get("workout_ids"):
                 result["unchanged"] += 1
                 continue
+            ids: list[int] = []
+            sched: list[Any] = []
+            old_gone = False
             try:
                 for wid in g.get("workout_ids", []):
                     try:
@@ -371,7 +417,7 @@ class PlanService:
                         if "does not exist" not in str(e):
                             raise
                     self._sleep()
-                ids, sched = [], []
+                old_gone = True
                 for wo in wos:
                     up = svc.workout_upload(user_id, wo)
                     wid = up.get("workoutId")
@@ -382,9 +428,12 @@ class PlanService:
                     sc = svc.workout_schedule(user_id, wid, day)
                     sched.append(sc.get("workoutScheduleId") or sc.get("scheduleId") or sc.get("id"))
                     self._sleep()
-            except ReauthRequired:
-                raise
             except GarminError as e:
+                # Never lose track of what's on Garmin: half-made uploads get removed on
+                # the next sync, and a session whose old workout is gone forgets it.
+                self._record_partial(user_id, goal, s["id"], ids, old_gone)
+                if isinstance(e, ReauthRequired):
+                    raise
                 result["errors"].append({"title": s["title"], "date": day, "error": str(e)[:160]})
                 continue
             rec = {"workout_ids": ids, "schedule_ids": sched, "hash": h, "date": day,
@@ -459,6 +508,19 @@ class PlanService:
             p.setdefault("garmin_orphans", []).extend(rec["workout_ids"])  # deleted meanwhile
         self._update_plan(user_id, goal, fn)
 
+    def _record_partial(self, user_id: str, goal: dict[str, Any], sid: str, new_ids: list[int],
+                        old_gone: bool) -> None:
+        if not new_ids and not old_gone:
+            return
+
+        def fn(p: dict[str, Any]) -> None:
+            p.setdefault("garmin_orphans", []).extend(new_ids)
+            if old_gone:
+                for _, _, x in iter_sessions(p):
+                    if x["id"] == sid:
+                        x.pop("garmin", None)
+        self._update_plan(user_id, goal, fn)
+
     def _sleep(self) -> None:
         if self._pause:
             time.sleep(self._pause)
@@ -490,7 +552,8 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
     return {k: plan.get(k) for k in ("start", "first_day", "race_date", "distance", "race_kind",
                                      "level", "peak_hours", "start_hours", "note", "created",
                                      "updated")} | {
-        "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed"))} | {
+        "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
+        "race_changed": bool(plan.get("race_changed"))} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,
         "garmin": plan.get("garmin") or {}, "pending_removals": len(plan.get("garmin_orphans", [])),
         "kinds": {k: list(v) for k, v in KINDS_BY_SPORT.items()},

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
@@ -36,6 +36,13 @@ LEVELS = ("new", "intermediate", "advanced")
 EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
 DEFAULT_DAYS = ("tue", "wed", "thu", "sat", "sun")
 MAX_WEEKS = 52
+MAX_PER_DAY = 4
+# Favorite sports (athlete profile) -> the engine sport they train.
+FAVORITE_SPORTS = ("run", "trail", "bike", "gravel", "mtb", "swim", "open_water", "strength",
+                   "yoga", "hike", "climb", "ski", "row", "walk")
+FAVORITE_ENGINE = {"run": "run", "trail": "run", "hike": "run", "walk": "run", "climb": "run",
+                   "ski": "run", "bike": "bike", "gravel": "bike", "mtb": "bike", "row": "bike",
+                   "swim": "swim", "open_water": "swim"}
 ZONE_NAMES = {1: "easy", 2: "aerobic", 3: "tempo", 4: "threshold", 5: "hard"}
 
 # kind: tri | run | bike | general. peak: weekly hours at peak for new/intermediate/advanced.
@@ -312,6 +319,7 @@ class Inputs:
     equipment: list[str]
     swim_pace: float
     title: str
+    favorites: list[str] = field(default_factory=list)
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
@@ -334,7 +342,8 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   days=sorted(set(days), key=DAYS.index), long_day=long_day,
                   limiters=[x for x in (goal.get("limiters") or []) if x in ("swim", "bike", "run")],
                   equipment=list(athlete.get("equipment") or []), swim_pace=pace,
-                  title=goal.get("title") or "Race")
+                  title=goal.get("title") or "Race",
+                  favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS])
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -376,8 +385,17 @@ def week_hours(ph: list[str], start_h: float, peak_h: float) -> list[tuple[float
     return out
 
 
-def _split(kind: str, limiters: list[str]) -> dict[str, float]:
+def _split(kind: str, limiters: list[str], favorites: list[str] | None = None) -> dict[str, float]:
     s = dict(SPLIT[kind])
+    fav = set(favorites or [])
+    if kind == "general" and fav:
+        # No specific race: train the sports they actually like.
+        engine = {FAVORITE_ENGINE[f] for f in fav if f in FAVORITE_ENGINE}
+        if engine:
+            share = 0.9 / len(engine)
+            s = {sp: share for sp in sorted(engine)} | {"strength": 0.1}
+    if fav & {"strength", "yoga"} and "strength" not in s:
+        s["strength"] = 0.07
     for lim in limiters:
         if lim in s:
             s[lim] += 0.05
@@ -450,6 +468,9 @@ def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> di
     rest.sort(key=lambda s: order.get(s["kind"], 99))
     quality_days: set[str] = set()
     for s in rest:
+        avail = [d for d in days if len(out[d]) < MAX_PER_DAY]
+        if not avail:
+            continue  # few training days: the least important sessions are left out
         def cost(d: str) -> tuple[int, int, int, int]:
             same = sum(x["sport"] == s["sport"] for x in out[d])
             near = 0
@@ -458,7 +479,7 @@ def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> di
                 hard = quality_days | {long_day, run_long_day}
                 near = sum(DAYS[(i + o) % 7] in hard for o in (-1, 0, 1))
             return (same, near, load[d], DAYS.index(d))
-        day = min(days, key=cost)
+        day = min(avail, key=cost)
         put(day, s)
         if s["kind"] in QUALITY:
             quality_days.add(day)
@@ -523,7 +544,7 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
     if n < 6:  # short runway: hold near current volume
         peak_h = max(start_h, min(peak_h, start_h * 1.15))
     hours = week_hours(ph, start_h, peak_h)
-    split = _split(race_kind, inp.limiters)
+    split = _split(race_kind, inp.limiters, inp.favorites)
     if race_kind == "tri" and inp.equipment and not {"pool", "open_water"} & set(inp.equipment):
         split.pop("swim", None)  # no water access: skip swims rather than plan the impossible
         tot = sum(split.values())

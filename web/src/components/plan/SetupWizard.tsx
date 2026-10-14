@@ -17,13 +17,15 @@ import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, 
 import { PhaseStrip, WeekPreview } from './PlanParts'
 import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
 import { EventBasics } from '@/components/events/EventForm'
-import { TYPE_DISTANCES, type EventFields, type EventType } from '@/lib/events'
+import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
 const DRAFT_KEY = 'rabbit.setup.v1'
 
 type Draft = {
+  goalId: string | null       // the goal this draft was started for
+  restored?: boolean
   newGoal: boolean
   event: EventFields
   goal: Partial<GoalFull>
@@ -41,6 +43,7 @@ function initialDraft(me: Me): Draft {
   const a = (me.athlete ?? {}) as AthleteFull
   const g = (me.goal ?? null) as GoalFull | null
   const fresh: Draft = {
+    goalId: g?.id ?? null,
     newGoal: !g,
     event: { type: typeForDistance(g?.distance) },
     goal: g ? {
@@ -62,7 +65,14 @@ function initialDraft(me: Me): Draft {
   try {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as (Draft & { at: number }) | null
     if (saved && Date.now() - saved.at < 14 * 86_400_000) {
-      return { ...fresh, ...saved, event: { ...fresh.event, ...(saved.event ?? {}) }, goal: { ...fresh.goal, ...saved.goal }, athlete: { ...fresh.athlete, ...saved.athlete }, start_date: todayIso() }
+      const athlete = { ...fresh.athlete, ...saved.athlete }
+      // Race answers only come back for the same goal, and never a half-made "new race"
+      // (it would otherwise be applied to the current goal).
+      if (saved.goalId === fresh.goalId && !saved.newGoal) {
+        return { ...fresh, event: { ...fresh.event, ...(saved.event ?? {}) }, goal: { ...fresh.goal, ...saved.goal },
+          athlete, restored: true }
+      }
+      return { ...fresh, athlete }
     }
   } catch { /* storage unavailable: start fresh */ }
   return fresh
@@ -86,6 +96,19 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
   const [note, setNote] = useState<string | null>(null)
   const [plan, setPlan] = useState<BuiltPlan | null>(null)
   const [sync, setSync] = useState<{ days: number; result: SyncResult | null; busy: boolean; error: string | null }>({ days: 14, result: null, busy: false, error: null })
+
+  // Start from the main event's real type, location and lookup details.
+  useEffect(() => {
+    const eid = me.goal?.event_id
+    if (!eid || draft.restored || draft.newGoal) return
+    let live = true
+    listEvents().then((r) => {
+      const ev = r.events.find((e) => e.id === eid)
+      if (!live || !ev) return
+      setDraft((d) => d.newGoal ? d : ({ ...d, event: { ...d.event, type: ev.type, location: ev.location, url: ev.url, info: ev.info ?? undefined } }))
+    }, () => {})
+    return () => { live = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (step === 'done') return
@@ -427,8 +450,10 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
 }
 
 function typeForDistance(d: string | undefined | null): EventType {
-  const hit = (Object.entries(TYPE_DISTANCES) as [EventType, string[]][]).find(([t, ds]) => t !== 'other' && ds.includes(d ?? ''))
-  return hit ? hit[0] : 'triathlon'
+  if (!d) return 'triathlon'
+  if (d === 'other') return 'other'
+  const hit = (Object.entries(TYPE_DISTANCES) as [EventType, string[]][]).find(([t, ds]) => t !== 'other' && ds.includes(d))
+  return hit ? hit[0] : 'other'
 }
 
 function hasNumbers(a: Partial<AthleteFull>): boolean {

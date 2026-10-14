@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
-  EQUIPMENT, KM_PER_MI, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, kgToLb, lbToKg, parsePace, type AthleteFull,
+  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, kgToLb, lbToKg, parsePace, type AthleteFull,
 } from '@/lib/plan'
 import { Card, Choice, Field, MultiChoice, NumberStepper, OptionCard, areaCls, inputCls } from './ui'
 
@@ -14,6 +14,12 @@ export function YouFields({ a, setA }: Props) {
   const imperial = a.units === 'imperial'
   return (
     <>
+      <Card>
+        <Field label="Favorite sports" hint="What you love doing. Rabbit leans your training and stats toward these.">
+          <MultiChoice value={(a.favorite_sports ?? []) as typeof FAVORITE_SPORTS[number][0][]} options={FAVORITE_SPORTS}
+            onChange={(v) => setA({ favorite_sports: v })} />
+        </Field>
+      </Card>
       <div className="flex flex-col gap-2">
         <OptionCard selected={a.level === 'new'} title="New to this" description="First race at this distance, or under a year of steady training." onClick={() => setA({ level: 'new' })} />
         <OptionCard selected={a.level === 'intermediate'} title="A few seasons in" description="You've done races like this and train most weeks." onClick={() => setA({ level: 'intermediate' })} />

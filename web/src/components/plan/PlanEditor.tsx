@@ -139,9 +139,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
       </div>
-      {plan.events_changed && (
+      {(plan.events_changed || plan.race_changed) && (
         <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
-          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">Your events changed since this plan was built. Rebuild to fit them in (session edits are replaced).</p>
+          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">
+            {plan.race_changed ? 'Your race date or distance changed since this plan was built.' : 'Your events changed since this plan was built.'}
+            {' '}Rebuild to fit {plan.race_changed ? 'it' : 'them'} in (session edits are replaced).</p>
           <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
         </div>
       )}

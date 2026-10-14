@@ -49,6 +49,11 @@ _ATHLETE_ENUM = {"sex": ("female", "male", "other"), "level": ("new", "intermedi
                  "units": ("metric", "imperial")}
 _WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
+_FAVORITES = ("run", "trail", "bike", "gravel", "mtb", "swim", "open_water", "strength", "yoga",
+              "hike", "climb", "ski", "row", "walk")
+# Goal field -> its main event's field (kept in step both ways).
+GOAL_EVENT_FIELDS = {"event": "name", "date": "date", "distance": "distance",
+                     "goal_type": "goal_type", "target_time": "target_time", "course": "course"}
 _GOAL_TEXT = {"title": 80, "event": 120, "distance": 40, "target": 160, "priorities": 600,
               "plan": 12000, "notes": 2000, "course": 300}
 _GOAL_ENUM = {"goal_type": ("finish", "time", "compete"), "priority": ("A", "B", "C")}
@@ -65,6 +70,11 @@ def _clean_text(v: Any, limit: int, field: str) -> str:
     if not isinstance(v, str):
         raise CoachError(f"{field} must be text")
     return v.strip()[:limit]
+
+
+def _sync_ok(ev_patch: dict[str, Any]) -> bool:
+    """An event always has a name and a date: don't push blanks over them."""
+    return not any(k in ("name", "date") and not v for k, v in ev_patch.items())
 
 
 def _new_id(prefix: str) -> str:
@@ -133,10 +143,19 @@ class CoachStore:
         return dict(self._s.user_doc(user_id, "profile").load().get("athlete", {}))
 
     def update_athlete(self, user_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+        upd = self.validate_athlete(patch)
+
+        def apply(p: dict[str, Any]) -> dict[str, Any]:
+            a = p.setdefault("athlete", {})
+            a.update(upd)
+            return dict(a)
+        return self._s.user_doc(user_id, "profile").update(apply)
+
+    def validate_athlete(self, patch: dict[str, Any]) -> dict[str, Any]:
         upd: dict[str, Any] = {}
         for k, v in patch.items():
             if k in _ATHLETE_TEXT:
-                upd[k] = _clean_text(v, _ATHLETE_TEXT[k], k)
+                upd[k] = _clean_text("" if v is None else v, _ATHLETE_TEXT[k], k)
             elif k in _ATHLETE_ENUM:
                 if v in (None, ""):
                     upd[k] = None
@@ -152,8 +171,9 @@ class CoachStore:
                 if not isinstance(v, int | float) or isinstance(v, bool) or not lo <= v <= hi:
                     raise CoachError(f"{k.replace('_', ' ')} must be a number from {lo} to {hi}")
                 upd[k] = int(round(v)) if whole else round(float(v), 1)
-            elif k in ("available_days", "equipment"):
-                allowed = _WEEKDAYS if k == "available_days" else _EQUIPMENT
+            elif k in ("available_days", "equipment", "favorite_sports"):
+                allowed = {"available_days": _WEEKDAYS, "equipment": _EQUIPMENT,
+                           "favorite_sports": _FAVORITES}[k]
                 if not isinstance(v, list) or any(x not in allowed for x in v):
                     raise CoachError(f"{k.replace('_', ' ')} must be a list from {', '.join(allowed)}")
                 upd[k] = [x for x in allowed if x in v]
@@ -166,12 +186,7 @@ class CoachStore:
                 upd[k] = v
             else:
                 raise CoachError(f"unknown profile field {k!r}")
-
-        def apply(p: dict[str, Any]) -> dict[str, Any]:
-            a = p.setdefault("athlete", {})
-            a.update(upd)
-            return dict(a)
-        return self._s.user_doc(user_id, "profile").update(apply)
+        return upd
 
     # ----------------------------------------------------------- goals -----
     def _goals_doc(self, user_id: str):
@@ -264,7 +279,18 @@ class CoachStore:
                 raise CoachError("goal not found")
             goal.update(g)
             return dict(goal)
-        return self._goals_doc(user_id).update(apply)
+        goal = self._goals_doc(user_id).update(apply)
+        ev_patch = {GOAL_EVENT_FIELDS[k]: v for k, v in g.items() if k in GOAL_EVENT_FIELDS}
+        if goal.get("event_id") and ev_patch and _sync_ok(ev_patch):
+            eid = goal["event_id"]
+
+            def push(d: dict[str, Any]) -> None:
+                ev = d.get("events", {}).get(eid)
+                if ev is not None:
+                    ev.update(ev_patch)
+                    ev["updated"] = int(self._clock())
+            self._s.user_doc(user_id, "events").update(push)
+        return goal
 
     def set_plan(self, user_id: str, summary: str | None,
                  files: list[dict[str, Any]] | None = None, *,
@@ -521,9 +547,12 @@ class CoachStore:
                 lines.append(f"Their training plan (your summary of what they shared): {plan}")
                 pw = plan_week(g, now.date())
                 lines.extend(plan_days or [])
-                if pw["index"] is not None:
+                if pw["index"] is not None and pw["index"] >= 1:
                     lines.append(f"This is week {pw['index']}" + (f" of {pw['weeks']}" if pw["weeks"] else "")
                                  + f" of the plan ({pw['start']} to {pw['end']}).")
+                elif pw["index"] is not None:
+                    lines.append(f"The plan's week 1 starts on {g.get('plan_start')}; until then, "
+                                 "they keep training as they are.")
                 else:
                     lines.append("Plan start date and length aren't saved yet; when you know them, "
                                  "pass start_date and weeks to save_plan so the app can number weeks.")

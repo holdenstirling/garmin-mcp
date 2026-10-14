@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import date
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
@@ -28,7 +29,7 @@ from .coaching import CoachError
 from .config import Settings
 from .garminlogin import Busy, Cooldown, LoginManager
 from .logs import log_event
-from .planbuilder import PlanError
+from .planbuilder import PlanError, build_plan
 from .plans import public_plan
 from .events import TYPE_DISTANCES, TYPES
 from .providers import GarminError, ReauthRequired
@@ -602,19 +603,35 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         coach = _coach()
 
         def run() -> tuple[dict[str, Any], dict[str, Any]]:
-            if athlete:
-                coach.update_athlete(user_id, athlete)
-            cur = coach.active_goal(user_id)
-            if cur is None or body.get("new_goal") is True:
-                coach.create_goal(user_id, goal_in)
-            elif goal_in:
-                coach.update_goal(user_id, cur["id"], goal_in)
             start = body.get("start_date")
             if start is not None and not isinstance(start, str):
                 raise PlanError("start_date must be YYYY-MM-DD")
+            cur = coach.active_goal(user_id)
+            new_goal = cur is None or body.get("new_goal") is True
+            # Dry run first: validate everything and build the plan in memory, so a bad
+            # answer saves nothing (no half-saved profile, no orphaned new goal).
+            a_upd = coach.validate_athlete(athlete)
+            g_upd = coach._validate_goal(goal_in, partial=not new_goal)
+            try:
+                first = date.fromisoformat(start) if start else None
+            except ValueError:
+                raise PlanError("Start date must be YYYY-MM-DD.") from None
+            build_plan(coach.athlete(user_id) | a_upd, ({} if new_goal else dict(cur or {})) | g_upd,
+                       today=plans.today(user_id), start=first)
+            if athlete:
+                coach.update_athlete(user_id, athlete)
+            carried: list[int] = []
+            if new_goal:
+                if cur is not None:
+                    carried = plans.release_garmin(user_id, cur["id"])
+                coach.create_goal(user_id, goal_in)
+            elif goal_in:
+                coach.update_goal(user_id, cur["id"], goal_in)
             ev = body.get("event")
             chat.agent.events.upsert_from_goal(user_id, ev if isinstance(ev, dict) else None)
-            return plans.build(user_id, start or None), coach.active_goal(user_id) or {}
+            plan = plans.build(user_id, start or None)
+            plans.adopt_orphans(user_id, carried)
+            return plans.get(user_id) or plan, coach.active_goal(user_id) or {}
         plan, goal = await _plan_call(run)
         return _plan_resp(user_id, plan, 201, goal=goal, athlete=coach.athlete(user_id))
 
