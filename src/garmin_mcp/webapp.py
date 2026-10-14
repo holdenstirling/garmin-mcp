@@ -41,7 +41,8 @@ from . import racepack
 from .share import Shares
 from .share import render as render_share
 from .planbuilder import iter_sessions
-from .progress import quests_view, week_goal
+from .gear import GearStore, catalog as gear_catalog, usage as gear_usage
+from .progress import GEAR_XP, quests_view, week_goal
 from .stats import compute as stats_compute
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -867,6 +868,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "calendar": bool(auth.calendar and auth.calendar.connected(user_id)),
             "oura": bool(auth.oura and auth.oura.connected(user_id)),
             "coach": bool(auth.coach_links.coaches_of(user_id)),
+            "gear": bool(gear_store and gear_store.list(user_id)),
         }
         available = {"notify": push is not None, "calendar": auth.calendar is not None, "oura": auth.oura is not None}
         return state, available
@@ -884,9 +886,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             stats, acts, stats_ok = stats_compute([], today), [], False
         goal = agent.coach.active_goal(user_id)
         today = date.fromisoformat(stats["today"])
+        bonus = {f"gear:{g['id']}": GEAR_XP for g in (gear_store.list(user_id) if gear_store else [])}
         out = await anyio.to_thread.run_sync(lambda: agent.progress.update(
             user_id, acts=acts, today=today, stats=stats,
-            plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state))
+            plan_key=goal["id"] if goal and plans is not None and plans.get(user_id) else None, quests=state,
+            bonus=bonus))
         quests = quests_view(state, available)
         core = [q for q in quests if not q["optional"]]
         return JSONResponse({**out, "quests": quests,
@@ -897,6 +901,96 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         assert chat is not None
         await anyio.to_thread.run_sync(lambda: chat.agent.progress.seen(user_id))
         return JSONResponse({"ok": True})
+
+    # ---------------------------------------------------------------- gear --
+    # Gear garage (gear.py): items in the encrypted ``gear`` doc, mileage from the cached
+    # year of activities, Garmin gear import on request (read-only Garmin calls).
+    gear_store = (GearStore(store, today=lambda uid: chat.agent._now(uid).date())
+                  if store is not None and chat is not None else None)
+
+    def _gear_items(user_id: str) -> tuple[list[dict[str, Any]], bool]:
+        """Items with mileage; works (without activities) when Garmin isn't reachable."""
+        assert chat is not None and gear_store is not None
+        items = gear_store.list(user_id)
+        try:
+            _, acts = chat.agent.stats.activities(user_id)
+            ok = True
+        except Exception:
+            acts, ok = [], False
+        gstats: dict[str, dict[str, Any]] = {}
+        if ok:
+            for it in items:
+                u = it.get("garmin_uuid")
+                if u and not it.get("retired") and len(gstats) < 30:
+                    try:
+                        gstats[u] = chat.agent._service.gear_stats(user_id, u)
+                    except Exception:  # fall back to Rabbit's own count
+                        pass
+        return gear_usage(items, acts, gstats), ok
+
+    async def _gear_resp(user_id: str, status: int = 200, *, full: bool = False, **extra: Any) -> JSONResponse:
+        items, ok = await anyio.to_thread.run_sync(lambda: _gear_items(user_id))
+        body: dict[str, Any] = {"items": items, "stats_ok": ok, **extra}
+        if full:
+            body.update(gear_catalog())
+        return JSONResponse(body, status_code=status)
+
+    async def _gear_body(request: Request) -> dict[str, Any]:
+        body = await read_json(request)
+        if body is None:
+            return {}
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        return body
+
+    async def gear_get(request: Request, user_id: str) -> Response:
+        if gear_store is None:
+            return _err(503, "Gear isn't configured on this server.")
+        return await _gear_resp(user_id, full=True)
+
+    async def gear_create(request: Request, user_id: str) -> Response:
+        assert gear_store is not None
+        body = await _gear_body(request)
+        item = await _plan_call(lambda: gear_store.create(user_id, body))
+        return await _gear_resp(user_id, 201, item_id=item["id"])
+
+    async def gear_update(request: Request, user_id: str) -> Response:
+        assert gear_store is not None
+        body = await _gear_body(request)
+        gid = request.path_params["gear_id"]
+        item = await _plan_call(lambda: gear_store.update(user_id, gid, body))
+        return await _gear_resp(user_id, item_id=item["id"])
+
+    async def gear_delete(request: Request, user_id: str) -> Response:
+        assert gear_store is not None
+        gid = request.path_params["gear_id"]
+        await _plan_call(lambda: gear_store.delete(user_id, gid))
+        return await _gear_resp(user_id)
+
+    async def gear_retire(request: Request, user_id: str) -> Response:
+        assert gear_store is not None
+        body = await _gear_body(request)
+        retired = body.get("retired", True)
+        if not isinstance(retired, bool):
+            raise ValueError("retired")
+        gid = request.path_params["gear_id"]
+        item = await _plan_call(lambda: gear_store.retire(user_id, gid, retired))
+        return await _gear_resp(user_id, item_id=item["id"])
+
+    async def gear_import(request: Request, user_id: str) -> Response:
+        assert chat is not None and gear_store is not None
+        svc = chat.agent._service
+        try:
+            raw = await anyio.to_thread.run_sync(lambda: svc.gear_list(user_id))
+        except ReauthRequired:
+            raise _UserError("Reconnect Garmin in settings, then try again.", 409) from None
+        except GarminError as e:
+            raise _UserError(f"Couldn't read your gear from Garmin: {e}", 502) from None
+        except Exception as e:
+            log_event(logger, logging.WARNING, "gear_import_failed", user_id=user_id, error=type(e).__name__)
+            raise _UserError("Couldn't read your gear from Garmin right now. Try again in a bit.", 502) from None
+        res = await _plan_call(lambda: gear_store.import_garmin(user_id, raw.get("gear"), raw.get("defaults")))
+        return await _gear_resp(user_id, imported=res)
 
     # ------------------------------------------------------------- coaches --
     links = auth.coach_links
@@ -1274,7 +1368,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         today = plans.today(user_id)
         wx = await racepack.forecast(event.get("location") or "", date.fromisoformat(event["date"]), today)
         athlete = _coach().athlete(user_id)
-        return JSONResponse(racepack.build(event, athlete, plans.get(user_id) if event.get("main") else None, today, wx))
+        gear = (await anyio.to_thread.run_sync(lambda: _gear_items(user_id)))[0] if gear_store else []
+        return JSONResponse(racepack.build(event, athlete, plans.get(user_id) if event.get("main") else None, today, wx,
+                                           gear=gear))
 
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
@@ -1412,6 +1508,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
         Route("/app/api/progress", _plan_api(progress_get, mutating=False), methods=["GET"]),
         Route("/app/api/progress/seen", _plan_api(progress_seen, mutating=True), methods=["POST"]),
+        Route("/app/api/gear", _plan_api(gear_get, mutating=False), methods=["GET"]),
+        Route("/app/api/gear", _plan_api(gear_create, mutating=True), methods=["POST"]),
+        Route("/app/api/gear/import-garmin", _plan_api(gear_import, mutating=True), methods=["POST"]),
+        Route("/app/api/gear/{gear_id}", _plan_api(gear_update, mutating=True), methods=["PATCH"]),
+        Route("/app/api/gear/{gear_id}", _plan_api(gear_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/gear/{gear_id}/retire", _plan_api(gear_retire, mutating=True), methods=["POST"]),
         Route("/app/api/load", _plan_api(load_get, mutating=False), methods=["GET"]),
         Route("/app/api/coach/athletes/{athlete_id}/load", _plan_api(coach_athlete_load, mutating=False),
               methods=["GET"]),

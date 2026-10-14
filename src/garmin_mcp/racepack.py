@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx2
 
+from .gear import for_race
 from .nutrition import race_target
 from .planbuilder import iter_sessions
 
@@ -159,7 +160,9 @@ async def forecast(location: str, race_day: date, today: date, http: httpx2.Asyn
 
 
 def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] | None, today: date,
-          wx: dict[str, Any] | None = None) -> dict[str, Any]:
+          wx: dict[str, Any] | None = None, gear: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """``gear`` is the athlete's garage with mileage (``gear.usage``); the relevant active
+    items go into ``your_gear`` with worn-out / brand-new shoe warnings."""
     race_day = date.fromisoformat(event["date"])
     etype = event.get("type") or "other"
     week: list[dict[str, Any]] = []
@@ -179,6 +182,7 @@ def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] |
         "info": event.get("info") or {},
         "pacing": pacing(event, athlete),
         "fueling": fueling(event, athlete),
+        "your_gear": for_race(gear or [], etype, imperial=athlete.get("units") == "imperial"),
         "gear": GEAR.get(etype if etype in GEAR else ("trail" if etype in ("trail", "mountaineering") else "other"), GEAR["other"]),
         "weather": wx, "weather_tips": tips,
         "week": week,

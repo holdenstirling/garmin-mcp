@@ -4,7 +4,8 @@ Sport-agnostic and race-optional. XP comes from what the athlete actually does:
 
 * every workout Garmin records: 10 XP plus 1 XP per 2 minutes (capped at 3 hours),
 * planned sessions completed (+15 each) and perfect plan weeks (+100),
-* each badge earned (+100) and each setup quest finished (its own XP).
+* each badge earned (+100) and each setup quest finished (its own XP),
+* small one-off bonuses passed in by key (e.g. +25 per gear item added).
 
 Awards are kept in a per-user ledger (``progress`` doc) keyed by activity id, plan, badge
 and quest, so XP only ever goes up, a workout is never counted twice, and a plan rebuild
@@ -24,6 +25,8 @@ from .stats import ACTIVE_WEEK, HISTORY_DAYS, _rows
 PLAN_SESSION_XP = 15
 PERFECT_WEEK_XP = 100
 BADGE_XP = 100
+GEAR_XP = 25  # first time each gear item is added (bonus key "gear:<id>")
+MAX_BONUS_KEYS = 500
 
 # Level names, rabbit-themed: (first level, name).
 TIERS: list[tuple[int, str]] = [(1, "Kit"), (5, "Hopper"), (10, "Runner"), (15, "Trail Hare"),
@@ -40,6 +43,7 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
     ("calendar", "Connect Google Calendar", "Plans around busy days and travel", 50, True),
     ("oura", "Connect Oura", "Readiness and sleep in your stats", 50, True),
     ("coach", "Invite a coach", "Train with a real person in the loop", 50, True),
+    ("gear", "Add your shoes or bike", "Track mileage and get retirement alerts", 50, True),
 ]
 
 
@@ -98,8 +102,11 @@ class Progress:
         return self._s.user_doc(user_id, "progress")
 
     def update(self, user_id: str, *, acts: list[dict[str, Any]], today: date, stats: dict[str, Any],
-               plan_key: str | None, quests: dict[str, bool]) -> dict[str, Any]:
-        """Award anything new, then return the level, quests and pending celebrations."""
+               plan_key: str | None, quests: dict[str, bool],
+               bonus: dict[str, int] | None = None) -> dict[str, Any]:
+        """Award anything new, then return the level, quests and pending celebrations.
+
+        ``bonus`` maps a stable key to one-off XP; each key is awarded once, ever."""
         rows = [r for r in _rows(acts) if r["date"] <= today and r.get("id") is not None]
         earned = [b["id"] for b in stats.get("badges") or [] if b.get("earned")]
         plan = stats.get("plan") or {}
@@ -141,6 +148,13 @@ class Progress:
                 if ok and q in qxp and q not in qd:
                     qd.append(q)
                     gained += qxp[q]
+            if bonus:
+                bd = d.setdefault("bonus", [])
+                for k, v in bonus.items():
+                    if k not in bd and isinstance(v, int) and 0 < v <= 1000:
+                        bd.append(k)
+                        gained += v
+                del bd[:-MAX_BONUS_KEYS]
             xp += gained
             d["xp"] = xp
             if first:
@@ -168,5 +182,5 @@ class Progress:
         self._doc(user_id).update(apply)
 
 
-__all__ = ["Progress", "QUESTS", "level_of", "level_floor", "level_view", "quests_view", "week_goal",
+__all__ = ["Progress", "QUESTS", "GEAR_XP", "level_of", "level_floor", "level_view", "quests_view", "week_goal",
            "workout_xp", "tier_name"]

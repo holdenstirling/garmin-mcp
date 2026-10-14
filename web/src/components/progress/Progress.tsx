@@ -127,7 +127,7 @@ export function ProgressHero({ p, headline }: { p: Progress; headline: string })
 
 const ACTION_LABEL: Record<QuestId, string> = {
   garmin: 'Connect', sports: 'Choose', goal: 'Set goal', plan: 'Build', sync: 'Send',
-  notify: 'Turn on', calendar: 'Connect', oura: 'Connect', coach: 'Invite',
+  notify: 'Turn on', calendar: 'Connect', oura: 'Connect', coach: 'Invite', gear: 'Add gear',
 }
 
 /** Setup checklist: each step earns XP. */
