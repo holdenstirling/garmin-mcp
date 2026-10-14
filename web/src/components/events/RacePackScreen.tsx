@@ -18,7 +18,16 @@ function readGear(key: string): string[] | null {
   } catch { return null }
 }
 
-export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: string; imperial: boolean; onClose: () => void }) {
+/** "Race-week pack" for races, "Trip checklist" for trips, "Event checklist" otherwise. */
+export function packTitle(kind: string | null | undefined): string {
+  return !kind || kind === 'race' ? 'Race-week pack' : kind === 'trip' ? 'Trip checklist' : 'Event checklist'
+}
+
+export function RacePackScreen({ eventId, imperial, onClose, kind }: {
+  eventId?: string; imperial: boolean; onClose: () => void
+  /** the event's kind (known before the pack loads); non-races get a checklist, no pacing */
+  kind?: string | null
+}) {
   const [p, setP] = useState<RacePack | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
@@ -39,24 +48,27 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
   }, [checked, key])
   const done = checked ?? []
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const k = kind ?? p?.event.kind ?? 'race'
+  const race = k === 'race'
   const temp = (c: number | null) => c == null ? '–' : imperial ? `${cToF(c)}°F` : `${Math.round(c)}°C`
 
   return (
-    <Screen title="Race-week pack" subtitle={p ? `${p.event.name} · ${p.days_out > 0 ? `${p.days_out} days to go` : p.days_out === 0 ? 'Race day!' : 'Done'}` : undefined}
+    <Screen title={packTitle(k)} subtitle={p ? `${p.event.name} · ${p.days_out > 0 ? `${p.days_out} days to go` : p.days_out === 0 ? (race ? 'Race day!' : 'Today!') : 'Done'}` : undefined}
       closing={closing} onClose={close}
       headerExtra={p ? (
         <div className="mx-auto mt-2 flex max-w-xl justify-center">
           <button type="button" onClick={() => setFit(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">
-            <Gauge className="size-3.5" /> Readiness, race fit and strategy
+            <Gauge className="size-3.5" /> {race ? 'Readiness, race fit and strategy' : 'Event prep and game plan'}
           </button>
         </div>
       ) : undefined}>
-      {!p && !error && <RabbitLoader className="py-16" label="Building your race pack" cycle={['Packing your race bag…', 'Checking the course…', 'Planning race-day fuel…']} />}
+      {!p && !error && <RabbitLoader className="py-16" label={race ? 'Building your race pack' : 'Building your checklist'}
+        cycle={race ? ['Packing your race bag…', 'Checking the course…', 'Planning race-day fuel…'] : ['Packing your bag…', 'Checking the weather…', 'Making your list…']} />}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {p && (
         <>
-          <Card>
+          {race && <Card>
             <Field label="Pacing by leg">
               <div className="flex flex-col gap-3">
                 {p.pacing.map((x) => (
@@ -69,7 +81,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
                 ))}
               </div>
             </Field>
-          </Card>
+          </Card>}
           <Card>
             <Field label="Fueling plan">
               <p className="flex items-center gap-2 text-[0.8235rem] text-(--text)"><Utensils className="size-4 text-(--accent)" />
@@ -143,7 +155,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
             </Field>
           </Card>
           {Object.keys(p.info).length > 0 && <Card className="p-4"><InfoBlock info={p.info} /></Card>}
-          {fit && <RaceFitScreen eventId={p.event.id} onClose={() => setFit(false)} />}
+          {fit && <RaceFitScreen eventId={p.event.id} race={race} onClose={() => setFit(false)} />}
         </>
       )}
     </Screen>

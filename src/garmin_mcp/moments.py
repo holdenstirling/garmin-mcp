@@ -170,6 +170,10 @@ def race_moment(event: dict[str, Any], days: int) -> dict[str, Any] | None:
         "week": f"🏁 Race week: {name} in {days} days. Easy miles, early nights, pack checked.",
         "eve": f"🏁 {name} is tomorrow! Lay out your kit, fuel early, trust the work.",
     }
+    if event.get("kind") not in (None, "", "race"):  # a challenge or other main event
+        lines["week"] = f"🏁 Big week: {name} in {days} days. Easy miles, early nights, kit checked."
+        return {"type": "race", "key": f"race:{eid}:{sid}", "text": _clip(lines[sid]),
+                "push_title": "Event countdown", "actions": []}
     acts = [action("readiness", "Race readiness", event_id=eid)]
     if sid in ("week", "eve"):
         acts.append(action("racepack", "Race-week pack", event_id=eid))

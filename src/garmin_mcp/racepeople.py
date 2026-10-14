@@ -61,7 +61,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "team_grade": False, "team_finish": False,  # teammates racing with you
     "crew_notes": "", "tracking_url": "",
 }
-COPY_FIELDS = ("name", "type", "distance", "date", "location", "url")
+COPY_FIELDS = ("name", "type", "distance", "date", "location", "url", "kind", "end_date", "time", "at")
 CREW_KIT = ["Bib number, start time and wave", "Spare fuel and bottles they trained with",
             "Warm layer and dry clothes for the finish", "Phone charged + a battery pack",
             "Chairs, sunscreen, snacks and water for you", "Where and when to meet (see the plan above)"]

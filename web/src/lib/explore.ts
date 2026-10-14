@@ -1,5 +1,5 @@
 // Explore races: RunSignup search (server-side, cached), "Find more with Rabbit" web search,
-// and "Add to my races". Everything comes back as plain text; render it as text only.
+// and "Add to my events". Everything comes back as plain text; render it as text only.
 import { getJSON, sendJSON } from '@/lib/api'
 import { fmtDist } from '@/lib/format'
 import type { RaceEvent } from '@/lib/events'

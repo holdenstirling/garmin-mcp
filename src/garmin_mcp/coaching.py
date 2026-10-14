@@ -722,11 +722,12 @@ class CoachStore:
                       if (e.get("date") or "") >= now.date().isoformat()),
                      key=lambda e: e.get("date") or "")[:8]
         if evs:
+            from .events import context_label as _ev_label  # local: events imports this module
             ev_lines = []
             for e in evs:
                 bit = (f"- {e['date']}: {e.get('name')} ({e.get('type') or 'event'}"
                        f"{', ' + e['distance'] if e.get('distance') else ''}; "
-                       f"{'MAIN goal' if e['id'] == main_ev else (e.get('priority') or 'B') + ' race'})")
+                       f"{_ev_label(e, main_ev)})")
                 info = e.get("info") or {}
                 facts = "; ".join(f"{k.replace('_', ' ')}: {_flat(info[k], 80)}" for k in
                                   ("location", "distances", "elevation_gain", "terrain", "cutoffs")

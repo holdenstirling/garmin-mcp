@@ -12,21 +12,43 @@ export type DirectoryCoach = {
   /** the coach has a Rabbit login: "Invite as my coach" works in the app */
   can_invite: boolean
   match: { score: number; why: string }
+  /** true/false only when Rabbit recorded it; null = unknown (never assume remote) */
+  remote: boolean | null
+  /** "~15 mi from you" (city centroids) when you saved a location in Explore */
+  distance_label: string | null
 }
 export type DirectoryRace = { id: string | null; name: string | null; type: string | null; distance: string | null; date: string | null }
 export type DirectoryResp = {
   coaches: DirectoryCoach[]; race: DirectoryRace | null
   coach_status: 'have_coach' | 'looking' | 'self_coached' | null; has_coach: boolean
+  /** a saved Explore location exists (distances work); the location itself never comes back */
+  has_location?: boolean; area?: string
 }
+export type CoachScope = 'local' | 'remote'
+export type CoachFormat = 'any' | 'in_person' | 'remote'
+export const DISTANCES_MI = [10, 25, 50] as const
+
+/** A coach or club a web search found: name, specialty, area and a link. Not verified. */
+export type WebCoach = { id: string; name: string; specialty: string; area: string; url: string; source: 'web'; label: string }
+export type WebCoachResp = {
+  coaches: WebCoach[]; area: string; label: string
+  state: 'ok' | 'needs_location' | 'limit' | 'unavailable' | 'failed'
+}
+/** One web search per city + sport (shared, cached a week); uses 1 of the daily Explore searches on a miss. */
+export const findWebCoaches = (sport?: string) =>
+  sendJSON<WebCoachResp>('POST', '/api/coaches/directory/web', sport ? { sport } : {})
 
 export const DIRECTORY_SPORTS: [string, string][] = [
   ['triathlon', 'Triathlon'], ['running', 'Running'], ['cycling', 'Cycling'], ['swimming', 'Swimming'], ['strength', 'Strength'],
 ]
 
-export function getDirectory(f: { sport?: string; q?: string } = {}) {
+export function getDirectory(f: { sport?: string; q?: string; scope?: CoachScope; format?: CoachFormat; within?: number } = {}) {
   const p = new URLSearchParams()
   if (f.sport) p.set('sport', f.sport)
   if (f.q?.trim()) p.set('q', f.q.trim())
+  if (f.scope) p.set('scope', f.scope)
+  if (f.format && f.format !== 'any') p.set('format', f.format)
+  if (f.within) p.set('within', String(f.within))
   const qs = p.toString()
   return getJSON<DirectoryResp>(`/api/coaches/directory${qs ? `?${qs}` : ''}`)
 }

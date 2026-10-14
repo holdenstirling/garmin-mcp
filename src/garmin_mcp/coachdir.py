@@ -69,12 +69,55 @@ _TRI = re.compile(r"triathlon|\btri\b|70\.3|140\.6|ironman", re.I)
 PUBLIC = ("id", "name", "business", "location", "photo_url", "sports", "specialties", "credentials",
           "bio", "highlights", "testimonial", "services", "pricing_note", "contact", "accepting",
           "verified_by_operator")
+# "Near you" distances (miles) and the coach formats the app filters on.
+DISTANCES_MI = (10, 25, 50)
+FORMATS = ("any", "in_person", "remote")
+SCOPES = ("local", "remote")
+KM_PER_MI = 1.609344
+
+
+def remote_of(c: dict[str, Any]) -> bool | None:
+    """True/False only when the operator recorded it; unknown stays None (never claimed)."""
+    v = c.get("remote")
+    return v if isinstance(v, bool) else None
 
 
 def public_view(c: dict[str, Any]) -> dict[str, Any]:
     out = {k: copy.deepcopy(c.get(k)) for k in PUBLIC}
     out["can_invite"] = bool(c.get("rabbit_user_email"))
+    out["remote"] = remote_of(c)
     return out
+
+
+def coach_place(c: dict[str, Any]) -> dict[str, str]:
+    """{"city", "state"} from the entry (``city``/``state`` fields, else "Golden, Colorado")."""
+    from .geo import parse_home, state_code
+    if c.get("city") and c.get("state"):
+        return {"city": str(c["city"])[:60], "state": state_code(c["state"]) or str(c["state"])[:40]}
+    p = parse_home(str(c.get("location") or ""))
+    return {"city": p["city"], "state": p["state"]}
+
+
+def coach_coords(c: dict[str, Any]) -> tuple[float, float] | None:
+    """Coordinates the operator stored on the entry (``lat``/``lon``), if any."""
+    lat, lon = c.get("lat"), c.get("lon")
+    if isinstance(lat, int | float) and isinstance(lon, int | float) and not isinstance(lat, bool) \
+            and -90 <= lat <= 90 and -180 <= lon <= 180:
+        return float(lat), float(lon)
+    return None
+
+
+def distance_mi(a: tuple[float, float], b: tuple[float, float]) -> float:
+    from .local import distance_km
+    return distance_km(a[0], a[1], b[0], b[1]) / KM_PER_MI
+
+
+def distance_label(mi: float) -> str:
+    """"~15 mi from you": coarse on purpose (city centroids, and it mustn't pinpoint anyone)."""
+    if mi < 5:
+        return "Under 5 mi from you"
+    step = 5 if mi < 100 else 25
+    return f"~{int(round(mi / step) * step)} mi from you"
 
 
 def _join(xs: list[str]) -> str:
@@ -141,10 +184,27 @@ class CoachDirectory:
         raise CoachError("coach not found")
 
     def search(self, athlete: dict[str, Any], race: dict[str, Any] | None, *,
-               sport: str | None = None, q: str | None = None) -> list[dict[str, Any]]:
+               sport: str | None = None, q: str | None = None, scope: str | None = None,
+               fmt: str | None = None, within_mi: int | None = None,
+               origin: tuple[float, float] | None = None,
+               coords: dict[str, tuple[float, float] | None] | None = None,
+               home_state: str = "") -> list[dict[str, Any]]:
+        """``scope`` "local": coaches within ``within_mi`` of ``origin`` (the athlete's saved
+        location; coach coordinates from ``coords`` by id, city centroids) or, without an
+        origin, in ``home_state``. "remote": everyone except coaches recorded as in-person
+        only. ``fmt`` "remote" keeps only coaches recorded as coaching remotely. Each result
+        gets ``distance_label`` ("~15 mi from you") when both ends are known; the athlete's
+        own location never leaves the server."""
         sport = (sport or "").strip().lower() or None
         if sport and sport not in SPORTS:
             raise CoachError(f"sport must be one of {', '.join(SPORTS)}")
+        if scope not in (None, "", *SCOPES):
+            raise CoachError("scope must be local or remote")
+        if fmt not in (None, "", *FORMATS):
+            raise CoachError("format must be any, in_person or remote")
+        if within_mi is not None and within_mi not in DISTANCES_MI:
+            raise CoachError(f"distance must be one of {', '.join(map(str, DISTANCES_MI))} mi")
+        coords = coords or {}
         words = [w for w in (q or "").lower().split() if w][:6]
         out = []
         for c in self.all():
@@ -155,8 +215,29 @@ class CoachDirectory:
                                 c.get("bio", ""), *(c.get("specialties") or []), *(c.get("sports") or [])]).lower()
                 if not all(w in hay for w in words):
                     continue
-            out.append(public_view(c) | {"match": match(c, athlete, race)})
-        return sorted(out, key=lambda c: (-c["match"]["score"], c["name"]))
+            remote = remote_of(c)
+            if fmt == "remote" and remote is not True:
+                continue
+            if scope == "remote" and remote is False:
+                continue
+            here = coords.get(c.get("id") or "") or coach_coords(c)
+            mi = distance_mi(origin, here) if origin and here else None
+            if scope == "local":
+                if origin is not None:
+                    if mi is None or mi > (within_mi or 50):
+                        continue
+                elif not home_state or coach_place(c)["state"] != home_state:
+                    continue
+            view = public_view(c) | {"match": match(c, athlete, race)}
+            view["distance_label"] = distance_label(mi) if mi is not None else None
+            view["_mi"] = mi
+            out.append(view)
+        out.sort(key=lambda c: ((c["_mi"] if scope == "local" and c["_mi"] is not None else 0),
+                                -c["match"]["score"], c["name"]))
+        for c in out:
+            c.pop("_mi", None)
+        return out
 
 
-__all__ = ["CoachDirectory", "SEED_COACHES", "SPORTS", "match", "public_view"]
+__all__ = ["CoachDirectory", "DISTANCES_MI", "FORMATS", "SCOPES", "SEED_COACHES", "SPORTS", "coach_coords",
+           "coach_place", "distance_label", "distance_mi", "match", "public_view", "remote_of"]

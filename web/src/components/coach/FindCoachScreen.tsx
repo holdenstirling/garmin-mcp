@@ -1,19 +1,29 @@
 // Find a coach: a short, curated list of human coaches, ranked for the athlete's main race
-// and sports. The athlete contacts coaches directly (email, phone, website); Rabbit takes
-// no cut. "Invite as my coach" only for coaches who already use Rabbit.
+// and sports. "Near you | Anywhere (remote)": near you filters by distance (city centroids,
+// from a location saved in Explore) and in-person/remote; "Find coaches near me on the web"
+// runs one web search (sport + city only), labelled as not verified. The athlete contacts
+// coaches directly (email, phone, website); Rabbit takes no cut. "Invite as my coach" only
+// for coaches who already use Rabbit.
 import { useCallback, useEffect, useState } from 'react'
-import { BadgeCheck, ExternalLink, Mail, MessageCircle, Phone, Quote, Sparkles, UserPlus, X } from 'lucide-react'
+import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Sparkles, UserPlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, Screen, inputCls } from '@/components/plan/ui'
 import { Switch } from '@/components/settings/Grouped'
+import { cn } from '@/lib/utils'
 import {
-  DIRECTORY_SPORTS, getDirectory, initials, inviteDirectoryCoach, mailtoHref,
-  type DirectoryCoach, type DirectoryResp,
+  DIRECTORY_SPORTS, DISTANCES_MI, findWebCoaches, getDirectory, initials, inviteDirectoryCoach, mailtoHref,
+  type CoachScope, type DirectoryCoach, type DirectoryResp, type WebCoachResp,
 } from '@/lib/coachdir'
 
-const FILTERS_FROM = 5 // search and filters only help once there are 5+ coaches
+const FILTERS_FROM = 5 // text search only helps once there are 5+ coaches
+const WEB_STATE: Record<Exclude<WebCoachResp['state'], 'ok'>, string> = {
+  needs_location: 'Add your location in Explore first, so Rabbit knows which city to search.',
+  limit: "That's today's web searches used up. Try again tomorrow.",
+  unavailable: "Web search isn't available right now.",
+  failed: "The web search didn't work just now. Try again in a minute.",
+}
 
 export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited }: {
   athleteName: string
@@ -28,48 +38,125 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
   const [error, setError] = useState<string | null>(null)
   const [sport, setSport] = useState('')
   const [q, setQ] = useState('')
+  const [scope, setScope] = useState<CoachScope>('local')
+  const [within, setWithin] = useState<number>(50)
+  const [inPerson, setInPerson] = useState(true)
+  const [remoteOk, setRemoteOk] = useState(true)
+  const [web, setWeb] = useState<WebCoachResp | null>(null)
+  const [webBusy, setWebBusy] = useState(false)
+  const [webError, setWebError] = useState<string | null>(null)
   const [open, setOpen] = useState<DirectoryCoach | null>(null)
   const [closing, setClosing] = useState(false)
   const [total, setTotal] = useState(0)
+  // In person only -> everyone near you; remote only -> coaches Rabbit knows coach remotely.
+  const format = scope === 'local' && !inPerson && remoteOk ? 'remote' : 'any'
 
   const load = useCallback(() => {
     setError(null)
-    getDirectory({ sport, q }).then((r) => { setData(r); setTotal((t) => Math.max(t, r.coaches.length)) },
-      (e) => setError((e as Error).message))
-  }, [sport, q])
+    getDirectory({ sport, q, scope, format, within: scope === 'local' ? within : undefined })
+      .then((r) => { setData(r); setTotal((t) => Math.max(t, r.coaches.length)) }, (e) => setError((e as Error).message))
+  }, [sport, q, scope, format, within])
+  async function searchWeb() {
+    setWebBusy(true); setWebError(null)
+    try { setWeb(await findWebCoaches(sport || undefined)) }
+    catch (e) { setWebError((e as Error).message) } finally { setWebBusy(false) }
+  }
+  useEffect(() => { setWeb(null) }, [sport])
   useEffect(() => { const id = window.setTimeout(load, q ? 250 : 0); return () => window.clearTimeout(id) }, [load, q])
   const close = () => { setClosing(true); setTimeout(onBack ?? onClose, 200) }
 
   return (
     <Screen title="Find a coach" subtitle="Human coaches who can work alongside Rabbit" closing={closing}
       onClose={close} onBack={onBack ? close : undefined}>
+      <div role="tablist" aria-label="Where" className="flex gap-1 rounded-full bg-(--bg-inset) p-0.5">
+        {([['local', 'Near you'], ['remote', 'Anywhere (remote)']] as const).map(([v, l]) => (
+          <button key={v} type="button" role="tab" aria-selected={scope === v} onClick={() => setScope(v)}
+            className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
+              scope === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+        ))}
+      </div>
       <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
         Rabbit doesn't take a cut; you contact coaches directly. Ranked for {data?.race?.name ? <b className="text-(--text)">{data.race.name}</b> : 'your sports'}.
       </p>
-      {total >= FILTERS_FROM && (
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        {total >= FILTERS_FROM && (
           <input className={inputCls} type="search" placeholder="Search coaches" aria-label="Search coaches"
             value={q} onChange={(e) => setQ(e.target.value)} />
-          <div className="flex flex-wrap gap-1.5">
-            <Chip selected={!sport} onClick={() => setSport('')}>All</Chip>
-            {DIRECTORY_SPORTS.map(([id, label]) => (
-              <Chip key={id} selected={sport === id} onClick={() => setSport(sport === id ? '' : id)}>{label}</Chip>
-            ))}
-          </div>
+        )}
+        <div className="flex flex-wrap gap-1.5" aria-label="Sport">
+          <Chip selected={!sport} onClick={() => setSport('')}>All</Chip>
+          {DIRECTORY_SPORTS.map(([id, label]) => (
+            <Chip key={id} selected={sport === id} onClick={() => setSport(sport === id ? '' : id)}>{label}</Chip>
+          ))}
         </div>
-      )}
+        {scope === 'local' && (
+          <>
+            {data?.has_location ? (
+              <div className="flex flex-wrap gap-1.5" aria-label="Distance">
+                {DISTANCES_MI.map((mi) => <Chip key={mi} selected={within === mi} onClick={() => setWithin(mi)}>{mi} mi</Chip>)}
+              </div>
+            ) : data && (
+              <p className="flex items-start gap-1.5 px-1 text-[0.7059rem] text-(--text-muted)">
+                <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                {data.area ? `Showing coaches in ${data.area.split(', ').pop()}. ` : ''}Save your location in Explore to see distances.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5" aria-label="Coaching format">
+              <Chip selected={inPerson} onClick={() => { if (inPerson && !remoteOk) setRemoteOk(true); setInPerson(!inPerson) }}>In person</Chip>
+              <Chip selected={remoteOk} onClick={() => { if (remoteOk && !inPerson) setInPerson(true); setRemoteOk(!remoteOk) }}>Remote</Chip>
+            </div>
+          </>
+        )}
+      </div>
       {!data && !error && <RabbitLoader className="py-16" label="Finding coaches" cycle={['Finding coaches…', 'Matching your race…', 'Checking who fits…']} />}
       {error && <ErrorState message={error} onRetry={load} />}
       {data && data.coaches.length === 0 && (
-        <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">No coaches match that yet.</p>
+        <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">
+          {scope === 'local' ? 'No coaches in Rabbit’s list near you yet. Try Anywhere, or search the web below.' : 'No coaches match that yet.'}
+        </p>
       )}
       {data?.coaches.map((c) => <CoachCard key={c.id} c={c} onOpen={() => setOpen(c)} />)}
+      {data && scope === 'local' && (
+        <section className="flex flex-col gap-2 border-t border-(--border) pt-3">
+          {!web && (
+            <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" loading={webBusy} onClick={() => void searchWeb()}>
+              <Globe className="size-4" /> Find coaches near me on the web
+            </Button>
+          )}
+          {!web && !webBusy && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Searches by your sport and city only. Uses 1 of your daily web searches.</p>}
+          {webBusy && <RabbitLoader className="py-6" label="Searching the web" cycle={['Searching the web…', 'Checking coaching sites…', 'Keeping only real links…']} />}
+          {webError && <ErrorState compact message={webError} onRetry={() => void searchWeb()} />}
+          {web && web.state !== 'ok' && <p className="px-1 text-[0.7647rem] text-(--text-muted)">{WEB_STATE[web.state]}</p>}
+          {web && web.state === 'ok' && (
+            <>
+              <p className="flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                <Globe className="size-3.5" /> {web.label}
+              </p>
+              {web.coaches.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Nothing with a website turned up around {web.area}.</p>}
+              {web.coaches.map((w) => (
+                <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
+                  className="flex min-h-11 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 active:bg-(--bg-inset)">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{w.name}</span>
+                    <span className="block truncate text-[0.7059rem] text-(--text-muted)">{[w.specialty, w.area || web.area].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 text-[0.7059rem] text-(--accent)">{hostOf(w.url)} <ExternalLink className="size-3" /></span>
+                </a>
+              ))}
+            </>
+          )}
+        </section>
+      )}
       {open && data && (
         <CoachDetail c={open} race={data.race} athleteName={athleteName} onClose={() => setOpen(null)}
           onAsk={onAsk} onInvited={() => { setOpen(null); onInvited?.() }} />
       )}
     </Screen>
   )
+}
+
+function hostOf(u: string): string {
+  try { return new URL(u).hostname.replace(/^www\./, '') } catch { return u }
 }
 
 function Initials({ name, size = 48 }: { name: string; size?: number }) {
@@ -92,7 +179,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
             <span className="truncate">{c.name}</span>
             {c.verified_by_operator && <BadgeCheck className="size-4 shrink-0 text-(--accent)" aria-label="Checked by Rabbit" />}
           </span>
-          <span className="block truncate text-[0.7647rem] text-(--text-muted)">{c.business} · {c.location}</span>
+          <span className="block truncate text-[0.7647rem] text-(--text-muted)">{c.business} · {c.distance_label ?? c.location}</span>
         </span>
       </span>
       <span className="flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
@@ -102,6 +189,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
         {c.specialties.map((s) => (
           <span key={s} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">{s}</span>
         ))}
+        {c.remote === true && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] text-(--accent)">Coaches remotely</span>}
         {!c.accepting && <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 text-[0.6471rem] text-(--warning-text)">Not taking athletes</span>}
       </span>
     </button>

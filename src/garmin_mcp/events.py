@@ -54,11 +54,28 @@ TYPE_DISTANCES = {
     "other": ("other",),
 }
 _TEXT = {"name": 120, "distance": 40, "location": 120, "url": 300, "course": 300,
-         "notes": 1000, "result": 120}
+         "notes": 1000, "result": 120, "with": 80, "at": 80}
+# What kind of event it is. Existing events have no ``kind`` and are races.
+#   race: priority A/B/C, plan building, readiness, finish estimate, race pack.
+#   group_activity: group ride/run/swim or league game; each occurrence (weekly when
+#     ``recurring``) becomes a planned session (``duration_min``, ``intensity``).
+#   trip: training camp, adventure or hut trip; the plan goes short and easy on those days.
+#   challenge: personal challenge (a 14er, an FKT attempt, a solo century); like a C race.
+#   milestone: a life event worth training around (wedding, move, new baby); rest days.
+#   other: on the calendar; a planned session only when it has a duration.
+KINDS = ("race", "group_activity", "trip", "challenge", "milestone", "other")
+KIND_LABEL = {"race": "race", "group_activity": "group activity", "trip": "trip",
+              "challenge": "challenge", "milestone": "life event", "other": "event"}
+# Kinds that can be the main event (the plan builds toward it).
+MAIN_KINDS = ("race", "challenge", "other")
+INTENSITIES = ("easy", "moderate", "hard")
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+MAX_SPAN_DAYS = 30
+_HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 COURSE_PROFILES = ("flat", "rolling", "hilly", "mountainous")
 MAX_ELEVATION_M = 5500
 _ENUM = {"type": TYPES, "priority": ("A", "B", "C"), "goal_type": ("finish", "time", "compete"),
-         "course_profile": COURSE_PROFILES}
+         "course_profile": COURSE_PROFILES, "intensity": INTENSITIES}
 # Fields copied onto the active goal while this event is the main one.
 _GOAL_SYNC = {"name": "event", "date": "date", "distance": "distance", "goal_type": "goal_type",
               "target_time": "target_time", "course": "course"}
@@ -67,11 +84,58 @@ INFO_KEYS = ("summary", "date", "location", "start_time", "distances", "elevatio
              "suggested_type", "suggested_distance", "suggested_course_profile", "suggested_elevation_m")
 
 
+def kind_of(ev: dict[str, Any] | None) -> str:
+    """The event's kind; events saved before kinds existed are races."""
+    k = (ev or {}).get("kind")
+    return k if k in KINDS else "race"
+
+
+def is_race(ev: dict[str, Any] | None) -> bool:
+    """Readiness, finish estimates and the race-week pack are for races only."""
+    return kind_of(ev) == "race"
+
+
 def type_for_distance(dist: str | None) -> str:
     d = (dist or "").lower()
     if not d or d == "other":
         return "other"
     return next((t for t, ds in TYPE_DISTANCES.items() if d in ds and t != "other"), "other")
+
+
+_PLAN_EXTRA = ("kind", "end_date", "recurring", "duration_min", "intensity", "time", "with", "at")
+
+
+def _recurring(v: Any) -> dict[str, str] | None:
+    """{"weekday": "tue", "until": "YYYY-MM-DD"} (weekly), or None."""
+    if v in (None, "", False):
+        return None
+    if not isinstance(v, dict) or set(v) - {"weekday", "until", "every"}:
+        raise CoachError("repeat must be {weekday, until}")
+    if v.get("every") not in (None, "week"):
+        raise CoachError("events can only repeat weekly")
+    if v.get("weekday") not in WEEKDAYS:
+        raise CoachError("pick the weekday it repeats on")
+    try:
+        until = date.fromisoformat(str(v.get("until")))
+    except ValueError:
+        raise CoachError("pick the date it repeats until") from None
+    return {"weekday": v["weekday"], "until": until.isoformat()}
+
+
+def context_label(e: dict[str, Any], main_id: str | None) -> str:
+    """For Rabbit's context: "MAIN goal" / "B race" / "group activity, weekly on tue until ..."."""
+    if e.get("id") == main_id:
+        return "MAIN goal"
+    k = kind_of(e)
+    if k == "race":
+        return f"{e.get('priority') or 'B'} race"
+    bits = [KIND_LABEL[k]]
+    rec = e.get("recurring")
+    if isinstance(rec, dict) and rec.get("weekday"):
+        bits.append(f"weekly on {rec['weekday']} until {rec.get('until')}")
+    if e.get("end_date"):
+        bits.append(f"until {e['end_date']}")
+    return ", ".join(bits)
 
 
 def _new_id() -> str:
@@ -110,6 +174,37 @@ class EventStore:
                     out[k] = date.fromisoformat(str(v)).isoformat()
                 except ValueError:
                     raise CoachError("date must be YYYY-MM-DD") from None
+            elif k == "kind":
+                if v in (None, ""):
+                    out[k] = "race"
+                elif v not in KINDS:
+                    raise CoachError(f"kind must be one of {', '.join(KINDS)}")
+                else:
+                    out[k] = v
+            elif k == "end_date":
+                if v in (None, ""):
+                    out[k] = None
+                else:
+                    try:
+                        out[k] = date.fromisoformat(str(v)).isoformat()
+                    except ValueError:
+                        raise CoachError("end date must be YYYY-MM-DD") from None
+            elif k == "time":
+                if v in (None, ""):
+                    out[k] = None
+                elif not isinstance(v, str) or not _HHMM.match(v.strip()):
+                    raise CoachError("time must look like 18:30")
+                else:
+                    out[k] = v.strip()
+            elif k == "duration_min":
+                if v in (None, ""):
+                    out[k] = None
+                elif not isinstance(v, int | float) or isinstance(v, bool) or not 10 <= v <= 600:
+                    raise CoachError("duration must be 10 to 600 minutes")
+                else:
+                    out[k] = int(round(v))
+            elif k == "recurring":
+                out[k] = _recurring(v)
             elif k == "target_time":
                 if v in (None, ""):
                     out[k] = None
@@ -135,6 +230,18 @@ class EventStore:
                 raise CoachError("Add the event date.")
         return out
 
+    @staticmethod
+    def _check(ev: dict[str, Any]) -> None:
+        """Cross-field rules on the merged event."""
+        if ev.get("end_date"):
+            if ev["end_date"] < ev["date"]:
+                raise CoachError("The end date is before the start date.")
+            if (date.fromisoformat(ev["end_date"]) - date.fromisoformat(ev["date"])).days >= MAX_SPAN_DAYS:
+                raise CoachError(f"An event can span up to {MAX_SPAN_DAYS} days.")
+        rec = ev.get("recurring")
+        if rec and rec.get("until") and rec["until"] < ev["date"]:
+            raise CoachError("A weekly event has to repeat until after its first date.")
+
     def validate_extra(self, extra: dict[str, Any] | None) -> dict[str, Any]:
         """The setup wizard's event-only fields (type, location, url, info), checked."""
         return self._validate({k: extra[k] for k in ("type", "location", "url", "info")
@@ -146,13 +253,13 @@ class EventStore:
         main = self.main_id(user_id)
         evs = sorted(self._doc(user_id).load().get("events", {}).values(),
                      key=lambda e: (e.get("date") or "", e.get("created", 0)))
-        return [dict(e, main=e["id"] == main) for e in evs]
+        return [dict(e, main=e["id"] == main, kind=kind_of(e)) for e in evs]
 
     def get(self, user_id: str, event_id: str) -> dict[str, Any]:
         e = self._doc(user_id).load().get("events", {}).get(event_id)
         if e is None:
             raise CoachError("event not found")
-        return dict(e, main=event_id == self.main_id(user_id))
+        return dict(e, main=event_id == self.main_id(user_id), kind=kind_of(e))
 
     def main_id(self, user_id: str) -> str | None:
         g = self._coach.active_goal(user_id)
@@ -187,6 +294,10 @@ class EventStore:
         ev = {"id": _new_id(), "type": "other", "distance": "", "location": "", "url": "",
               "priority": "B", "goal_type": None, "target_time": None, "course": "",
               "notes": "", "result": "", "info": None, "created": now, "updated": now} | e
+        ev.setdefault("kind", "race")
+        if ev["kind"] != "race" and "priority" not in e:
+            ev["priority"] = "C"  # only races are A/B; the plan ignores it for other kinds
+        self._check(ev)
 
         def add(d: dict[str, Any]) -> None:
             evs = d.setdefault("events", {})
@@ -200,11 +311,16 @@ class EventStore:
         e = self._validate(patch, partial=True)
         if "name" in e and not e["name"]:
             raise CoachError("Give the event a name.")
+        g_main = self.main_id(user_id) if "kind" in e else None
 
         def apply(d: dict[str, Any]) -> dict[str, Any]:
             ev = d.get("events", {}).get(event_id)
             if ev is None:
                 raise CoachError("event not found")
+            merged = ev | e
+            self._check(merged)
+            if g_main == event_id and kind_of(merged) not in MAIN_KINDS:
+                raise CoachError("Your main event has to be a race or a challenge.")
             ev.update(e)
             ev["updated"] = int(self._clock())
             return dict(ev)
@@ -212,7 +328,7 @@ class EventStore:
         g = self._coach.active_goal(user_id)
         if g and g.get("event_id") == event_id:
             self._sync_goal(user_id, g, ev, set(e))
-        return dict(ev, main=bool(g and g.get("event_id") == event_id))
+        return dict(ev, main=bool(g and g.get("event_id") == event_id), kind=kind_of(ev))
 
     def delete(self, user_id: str, event_id: str) -> None:
         if self.main_id(user_id) == event_id:
@@ -226,6 +342,8 @@ class EventStore:
     def set_main(self, user_id: str, event_id: str) -> dict[str, Any]:
         """Point the active goal at this event (or create the goal if there is none)."""
         ev = self.get(user_id, event_id)
+        if kind_of(ev) not in MAIN_KINDS:
+            raise CoachError("Only a race or a challenge can be your main event.")
         g = self._coach.active_goal(user_id)
         if g is None:
             fields = {"title": ev["name"][:80], "priority": "A"} | self._goal_fields(ev)
@@ -312,13 +430,27 @@ class EventStore:
     # ----------------------------------------------------- plan support --
     def plan_events(self, user_id: str) -> list[dict[str, Any]]:
         """Events other than the main one, for the plan builder."""
-        return [{k: e.get(k) for k in ("id", "name", "type", "date", "priority", "distance")}
-                for e in self.list(user_id) if not e["main"]]
+        out = []
+        for e in self.list(user_id):
+            if e["main"]:
+                continue
+            x = {k: e.get(k) for k in ("id", "name", "type", "date", "priority", "distance")}
+            # Kind-specific fields only when set, so older events (and the signature of
+            # plans built from them) stay exactly as they were.
+            for k in _PLAN_EXTRA:
+                if e.get(k) not in (None, "", "race"):
+                    x[k] = e[k]
+            out.append(x)
+        return out
 
     @staticmethod
     def signature(events: list[dict[str, Any]]) -> str:
-        key = sorted((e["id"], e.get("date"), e.get("priority"), e.get("type")) for e in events)
-        return hashlib.sha256(json.dumps(key).encode()).hexdigest()[:16]
+        def key(e: dict[str, Any]) -> list[Any]:
+            k = [e["id"], e.get("date"), e.get("priority"), e.get("type")]
+            extra = [[f, e[f]] for f in _PLAN_EXTRA if e.get(f) not in (None, "", "race")]
+            return k + extra if extra else k
+        keys = sorted((key(e) for e in events), key=lambda k: json.dumps(k))
+        return hashlib.sha256(json.dumps(keys).encode()).hexdigest()[:16]
 
     # ------------------------------------------------------------ lookup --
     def take_lookup(self, user_id: str, today: date) -> None:
@@ -495,5 +627,5 @@ def lookup_prompt(name: str, etype: str | None, when: str | None, location: str 
 Researcher = Callable[[str, str], Awaitable[str]]
 
 
-__all__ = ["DEBRIEF_SYSTEM", "DEBRIEF_TOOL", "STRATEGY_SYSTEM", "STRATEGY_TOOL", "COURSE_PROFILES", "EventStore", "TYPES", "TYPE_SPORT", "TYPE_DISTANCES", "LOOKUP_SYSTEM", "REPORT_TOOL",
+__all__ = ["KINDS", "KIND_LABEL", "MAIN_KINDS", "context_label", "is_race", "kind_of", "DEBRIEF_SYSTEM", "DEBRIEF_TOOL", "STRATEGY_SYSTEM", "STRATEGY_TOOL", "COURSE_PROFILES", "EventStore", "TYPES", "TYPE_SPORT", "TYPE_DISTANCES", "LOOKUP_SYSTEM", "REPORT_TOOL",
            "clean_info", "parse_lookup", "lookup_prompt", "Researcher"]

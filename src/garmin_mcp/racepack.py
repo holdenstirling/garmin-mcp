@@ -177,7 +177,7 @@ def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] |
     if wx and isinstance(wx.get("low_c"), int | float) and wx["low_c"] <= 5:
         tips.append("Cold start: warm layers you can drop, gloves, and a hot drink before the start.")
     return {
-        "event": {k: event.get(k) for k in ("id", "name", "type", "distance", "date", "location", "url", "priority")},
+        "event": {k: event.get(k) for k in ("id", "name", "type", "distance", "date", "location", "url", "priority", "kind")},
         "days_out": (race_day - today).days,
         "info": event.get("info") or {},
         "pacing": pacing(event, athlete),

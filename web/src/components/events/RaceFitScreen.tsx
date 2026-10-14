@@ -26,7 +26,11 @@ const CHIP: Record<Impact, string> = {
   neutral: 'bg-(--bg-elevated) text-(--text-muted)',
 }
 
-export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+export function RaceFitScreen({ eventId, onClose, race = true }: {
+  eventId: string; onClose: () => void
+  /** false for group activities, trips, challenges and life events: "Event prep", no readiness grade or finish estimate */
+  race?: boolean
+}) {
   const [v, setV] = useState<RaceView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [r, setR] = useState<Readiness | null>(null)
@@ -38,9 +42,10 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
     getRaceView(eventId).then(setV, (e) => setError((e as Error).message))
   }, [eventId])
   const loadReadiness = useCallback(() => {
+    if (!race) { setRDone(true); return }
     setRError(null)
     getReadiness(eventId).then(setR, (e) => setRError((e as Error).message)).finally(() => setRDone(true))
-  }, [eventId])
+  }, [eventId, race])
   useEffect(() => { load(); loadReadiness() }, [load, loadReadiness])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   // Ask your coach: race-tied thread with the athlete's coach; no coach -> Find a coach.
@@ -77,13 +82,14 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
   )
 
   return (
-    <Screen title="Race readiness" subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
-      {(!v || !rDone) && !error && <RabbitLoader className="py-16" label="Grading your readiness" cycle={['Grading your readiness…', 'Checking your long runs…', 'Sizing up the course…']} />}
+    <Screen title={race ? 'Race readiness' : 'Event prep'} subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
+      {(!v || !rDone) && !error && <RabbitLoader className="py-16" label={race ? 'Grading your readiness' : 'Getting your prep ready'}
+        cycle={race ? ['Grading your readiness…', 'Checking your long runs…', 'Sizing up the course…'] : ['Checking the details…', 'Sizing up the conditions…', 'Lining up your prep…']} />}
       {error && <ErrorState message={error} onRetry={load} />}
       {v && rDone && (
         <>
-          <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />
-          <FinishEstimate eventId={eventId} />
+          {race && <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />}
+          {race && <FinishEstimate eventId={eventId} />}
           <RacePeopleSection eventId={eventId} eventName={v.event.name} />
           <h2 className="mt-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Course & conditions</h2>
           <p className="px-1 text-[0.8824rem] leading-snug text-(--text)">{v.racefit.summary}</p>
@@ -95,7 +101,7 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
             </Card>
           )}
           <p className="px-1 text-[0.7059rem] text-(--text-muted)">
-            Based on your profile (strengths, home elevation, heat) and the race details. Add more of either for a sharper read.
+            Based on your profile (strengths, home elevation, heat) and the {race ? 'race' : 'event'} details. Add more of either for a sharper read.
           </p>
           {v.coach_notes.length > 0 && (
             <Card>
@@ -114,7 +120,7 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
               </Field>
             </Card>
           )}
-          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} extra={coachExtra} />
+          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} extra={coachExtra} race={race} />
         </>
       )}
       {coachThread && (
@@ -150,8 +156,8 @@ function FactorRow({ f }: { f: FitFactor }) {
   )
 }
 
-function StrategyCard({ eventId, strategy, onUpdated, extra }: {
-  eventId: string; strategy: RaceStrategy | null; onUpdated: (v: RaceView) => void
+function StrategyCard({ eventId, strategy, onUpdated, extra, race }: {
+  eventId: string; strategy: RaceStrategy | null; onUpdated: (v: RaceView) => void; race: boolean
   /** "Ask your coach" or "Find a coach", next to the AI strategy */
   extra?: React.ReactNode
 }) {
@@ -169,10 +175,10 @@ function StrategyCard({ eventId, strategy, onUpdated, extra }: {
   ] : []
   return (
     <Card>
-      <Field label="Race strategy" hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : 'Rabbit writes a plan for the day from your profile, this race and your training phase.'}>
+      <Field label={race ? 'Race strategy' : 'Game plan'} hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : `Rabbit writes a plan for the day from your profile, this ${race ? 'race' : 'event'} and your training phase.`}>
         {!strategy ? (
           <Button variant="primary" className="h-10 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void run()}>
-            <Sparkles className="size-4" /> Get AI race strategy
+            <Sparkles className="size-4" /> {race ? 'Get AI race strategy' : 'Get AI game plan'}
           </Button>
         ) : (
           <div className="flex flex-col gap-2.5 text-[0.7647rem] leading-snug">

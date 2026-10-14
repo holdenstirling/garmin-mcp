@@ -160,7 +160,8 @@ def _plan_days(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: d
 
 
 def _main_event(events: list[dict[str, Any]] | None, today: date) -> dict[str, Any] | None:
-    up = [e for e in events or [] if (e.get("date") or "") >= today.isoformat()]
+    up = [e for e in events or [] if (e.get("date") or "") >= today.isoformat()
+          and (e.get("kind") or "race") in ("race", "challenge")]
     up.sort(key=lambda e: (not e.get("main"), e.get("priority") != "A", e.get("date") or ""))
     return up[0] if up else None
 
@@ -539,7 +540,7 @@ def rule_gear(*, today: date, gear: list[dict[str, Any]] | None, events: list[di
     runs = ("running", "trail", "triathlon", "duathlon", "ultra", "marathon", "other")
     race = next((e for e in sorted(events or [], key=lambda e: e.get("date") or "")
                  if today.isoformat() <= (e.get("date") or "") <= (today + timedelta(days=56)).isoformat()
-                 and (e.get("priority") in ("A", "B") or e.get("main"))
+                 and (e.get("priority") in ("A", "B") or e.get("main")) and (e.get("kind") or "race") == "race"
                  and (e.get("type") or "other") in runs), None)
     ev = _ev([min(100.0, float(g.get("pct_of_alert") or 0))], ["Used"], "%", "meter", target=100)
     if race:
