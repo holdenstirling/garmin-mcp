@@ -1650,6 +1650,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             raise _UserError("The strategy didn't work just now. Try again in a minute.", 502) from None
         return JSONResponse(await _plan_call(lambda: _race_view(user_id, eid)))
 
+    # Race readiness (readiness.py): deterministic grade per race, cached 10 min per user+event.
+    # Garmin + check-ins + plan only (never Oura), and never put into the model's context.
+    from .readiness import ReadinessService
+    _readiness = ReadinessService.from_agent(chat.agent) if chat is not None else None
+
+    async def event_readiness(request: Request, user_id: str) -> Response:
+        assert _readiness is not None
+        eid = request.path_params["event_id"]
+        return JSONResponse(await _plan_call(lambda: _readiness.get(user_id, eid)))
+
+    async def readiness_list(request: Request, user_id: str) -> Response:
+        assert _readiness is not None
+        return JSONResponse({"races": await _plan_call(lambda: _readiness.upcoming(user_id))})
+
+    async def coach_athlete_readiness(request: Request, user_id: str) -> Response:
+        assert _readiness is not None
+        aid = _aid(request)
+        await _plan_call(lambda: links.require(user_id, aid))
+        return JSONResponse({"races": await _plan_call(lambda: _readiness.upcoming(aid))})
+
     # ------------------------------------------------------------ explore --
     # Race discovery (explore.py): RunSignup search with fit hints, "Find more with Rabbit"
     # (web research, daily allowance, never any Oura data), and "Add to my races".
@@ -2012,6 +2032,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/social/people/{person_id}/photo", _photo_cache(_social_api(social_photo, mutating=False)), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
+        Route("/app/api/events/{event_id}/readiness", _plan_api(event_readiness, mutating=False), methods=["GET"]),
+        Route("/app/api/readiness", _plan_api(readiness_list, mutating=False), methods=["GET"]),
+        Route("/app/api/coach/athletes/{athlete_id}/readiness", _plan_api(coach_athlete_readiness, mutating=False),
+              methods=["GET"]),
         Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),
         Route("/app/api/events", _plan_api(event_create, mutating=True), methods=["POST"]),
         Route("/app/api/events/lookup", _plan_api(event_lookup, mutating=True), methods=["POST"]),

@@ -13,6 +13,8 @@ import {
 import { EventBasics, EventGoal, InfoBlock } from './EventForm'
 import { RacePackScreen } from './RacePackScreen'
 import { RaceFitScreen } from './RaceFitScreen'
+import { ReadinessRow } from './Readiness'
+import { listReadiness, type RaceGrade } from '@/lib/readiness'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
@@ -35,10 +37,13 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const [changed, setChanged] = useState(false)
   const [fit, setFit] = useState<string | null>(null)
   const [pack, setPack] = useState<string | null>(null)
+  const [grades, setGrades] = useState<Record<string, RaceGrade>>({})
 
   const load = useCallback(() => {
     setError(null)
     listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
+    // Grades are a bonus on the cards: a failure just leaves the plain "Readiness" row.
+    listReadiness().then((r) => setGrades(Object.fromEntries(r.races.map((g) => [g.event_id, g]))), () => {})
   }, [])
   useEffect(load, [load])
 
@@ -85,7 +90,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">
-                {upcoming.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
+                {upcoming.map((e) => <EventCard key={e.id} e={e} grade={grades[e.id]} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
                   onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />)}
               </section>
             )}
@@ -115,16 +120,20 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   )
 }
 
-function EventCard({ e, onClick, onFit, onPack }: { e: RaceEvent; onClick: () => void; onFit?: () => void; onPack?: () => void }) {
+function EventCard({ e, grade, onClick, onFit, onPack }: {
+  e: RaceEvent; grade?: RaceGrade; onClick: () => void; onFit?: () => void; onPack?: () => void
+}) {
   const n = daysUntil(e.date)
   if (!onFit) return <EventCardButton e={e} onClick={onClick} />
   return (
     <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
       <EventCardButton e={e} onClick={onClick} bare />
-      <button type="button" onClick={onFit}
-        className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-        <Gauge className="size-3.5" /> Race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
-      </button>
+      {grade ? <ReadinessRow g={grade} onClick={onFit} /> : (
+        <button type="button" onClick={onFit}
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-3.5" /> Readiness & race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+        </button>
+      )}
       {onPack && (
         <button type="button" onClick={onPack}
           className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
@@ -237,7 +246,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
             <Backpack className="size-4" /> Race-week pack
           </Button>
           <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFitOpen(true)}>
-            <Gauge className="size-4" /> Race fit
+            <Gauge className="size-4" /> Readiness
           </Button>
         </div>
       )}

@@ -25,6 +25,8 @@ import type { Stats } from '@/lib/stats'
 import { photoUrl } from '@/lib/photo'
 import type { RaceEvent } from '@/lib/events'
 import { ThreadView } from './ThreadView'
+import { RaceGradeLine } from '@/components/events/Readiness'
+import { getAthleteReadiness, mainRace, type RaceGrade } from '@/lib/readiness'
 import { ThreadList } from './CoachInbox'
 
 /** Coach home: the athlete list. ``onClose`` when shown over an athlete's own app. */
@@ -188,6 +190,7 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
         <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={onMessage}><MessageSquare className="size-4" /> Message</Button>
       </div>
       {!o.link.can_edit_plan && <p className="px-1 text-[0.7059rem] text-(--text-muted)"><Lock className="inline size-3" /> View only: the athlete hasn't given you edit access to the plan.</p>}
+      <AthleteGrade aid={o.athlete_id} />
       {upcoming.length > 0 && (
         <Card>
           <Field label="Events">
@@ -235,6 +238,14 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
       </Card>
     </>
   )
+}
+
+/** The athlete's main race readiness grade (deterministic, from their Garmin training and plan). */
+function AthleteGrade({ aid }: { aid: string }) {
+  const [g, setG] = useState<RaceGrade | null>(null)
+  useEffect(() => { getAthleteReadiness(aid).then((r) => setG(mainRace(r.races)), () => setG(null)) }, [aid])
+  if (!g) return null
+  return <Card><Field label="Race readiness"><div className="-mx-4 -my-3"><RaceGradeLine g={g} /></div></Field></Card>
 }
 
 function AthleteStats({ aid }: { aid: string }) {

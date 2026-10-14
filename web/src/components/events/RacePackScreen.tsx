@@ -48,7 +48,7 @@ export function RacePackScreen({ eventId, imperial, onClose }: { eventId?: strin
         <div className="mx-auto mt-2 flex max-w-xl justify-center">
           <button type="button" onClick={() => setFit(true)}
             className="inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">
-            <Gauge className="size-3.5" /> Race fit and strategy
+            <Gauge className="size-3.5" /> Readiness, race fit and strategy
           </button>
         </div>
       ) : undefined}>

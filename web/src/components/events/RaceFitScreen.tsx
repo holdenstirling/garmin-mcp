@@ -1,14 +1,18 @@
-// Race fit: how you match one race (altitude, climbing, heat, terrain...), one line per
-// factor and collapsed by default; Rabbit's AI race strategy; your coach's race notes.
-import { useEffect, useState } from 'react'
+// Race readiness + race fit for one race: the readiness grade (status, headline, how you're
+// tracking, what to do next), then course & conditions (race-fit factors, collapsed by
+// default), your coach's race notes, and Rabbit's AI race strategy.
+import { useCallback, useEffect, useState } from 'react'
 import { ChevronDown, RefreshCw, Sparkles, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { timeAgo } from '@/lib/coach'
 import { countdown, type RaceStrategy } from '@/lib/events'
 import { IMPACT_LABEL, getRaceView, makeStrategy, type FitFactor, type Impact, type RaceView } from '@/lib/racefit'
+import { getReadiness, type Readiness } from '@/lib/readiness'
+import { ReadinessSection } from './Readiness'
 
 const CHIP: Record<Impact, string> = {
   helps: 'bg-(--accent-subtle) text-(--accent)',
@@ -20,17 +24,30 @@ const CHIP: Record<Impact, string> = {
 export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const [v, setV] = useState<RaceView | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [r, setR] = useState<Readiness | null>(null)
+  const [rError, setRError] = useState<string | null>(null)
+  const [rDone, setRDone] = useState(false)
   const [closing, setClosing] = useState(false)
-  useEffect(() => { getRaceView(eventId).then(setV, (e) => setError((e as Error).message)) }, [eventId])
+  const load = useCallback(() => {
+    setError(null)
+    getRaceView(eventId).then(setV, (e) => setError((e as Error).message))
+  }, [eventId])
+  const loadReadiness = useCallback(() => {
+    setRError(null)
+    getReadiness(eventId).then(setR, (e) => setRError((e as Error).message)).finally(() => setRDone(true))
+  }, [eventId])
+  useEffect(() => { load(); loadReadiness() }, [load, loadReadiness])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   return (
-    <Screen title="Race fit" subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
-      {!v && !error && <RabbitLoader className="py-16" label="Checking your race fit" cycle={['Sizing up the course…', 'Checking your fitness…', 'Crunching the numbers…']} />}
-      {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
-      {v && (
+    <Screen title="Race readiness" subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
+      {(!v || !rDone) && !error && <RabbitLoader className="py-16" label="Grading your readiness" cycle={['Grading your readiness…', 'Checking your long runs…', 'Sizing up the course…']} />}
+      {error && <ErrorState message={error} onRetry={load} />}
+      {v && rDone && (
         <>
-          <p className="px-1 text-[0.9412rem] leading-snug text-(--text)">{v.racefit.summary}</p>
+          <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />
+          <h2 className="mt-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Course & conditions</h2>
+          <p className="px-1 text-[0.8824rem] leading-snug text-(--text)">{v.racefit.summary}</p>
           {v.racefit.factors.length > 0 && (
             <Card>
               <div className="divide-y divide-(--border)">
@@ -41,7 +58,6 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
           <p className="px-1 text-[0.7059rem] text-(--text-muted)">
             Based on your profile (strengths, home elevation, heat) and the race details. Add more of either for a sharper read.
           </p>
-          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} />
           {v.coach_notes.length > 0 && (
             <Card>
               <Field label="From your coach">
@@ -59,6 +75,7 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
               </Field>
             </Card>
           )}
+          <StrategyCard eventId={eventId} strategy={v.strategy} onUpdated={setV} />
         </>
       )}
     </Screen>
@@ -70,7 +87,7 @@ function FactorRow({ f }: { f: FitFactor }) {
   return (
     <div>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-        className="flex w-full items-center gap-2.5 px-4 py-3 text-left active:bg-(--bg-inset)">
+        className="flex min-h-11 w-full items-center gap-2.5 px-4 py-3 text-left active:bg-(--bg-inset)">
         <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[0.6471rem] font-semibold uppercase tracking-wider', CHIP[f.impact])}>
           {IMPACT_LABEL[f.impact]}
         </span>
