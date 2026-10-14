@@ -1,26 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarClock, CircleDot, CalendarDays, LogOut, Map as MapIcon, Megaphone, Target, User, Users, Watch } from 'lucide-react'
+import { Bell, CalendarClock, CircleDot, LogOut, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
-import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
+import { postJSON, signOut, type Me } from '@/lib/api'
 import { CALENDAR_CONNECT_URL, disconnectCalendar } from '@/lib/calendar'
 import { OURA_CONNECT_URL, disconnectOura } from '@/lib/oura'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
-export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOpenEvents, onOpenProfile, onOpenPlan, onOpenCoaches, onOpenAthletes }: {
+// Profile, plan, events, gear and people live in their tabs (Me, Plan, Races).
+export function SettingsPanels({ me, onChange, onDevDone }: {
   me: Me
-  goal: Goal | null
-  onEditGoal: () => void
-  onOpenEvents: () => void
-  onOpenProfile: () => void
-  onOpenPlan: () => void
-  onOpenCoaches: () => void
-  onOpenAthletes: () => void
   onChange: () => void
   onDevDone: () => void
 }) {
@@ -77,33 +71,9 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
     : here ? `On for this device${me.push.subscriptions > 1 ? ` and ${me.push.subscriptions - 1} other` : ''}`
     : me.push.subscriptions ? `Off here, on for ${me.push.subscriptions} other device${me.push.subscriptions === 1 ? '' : 's'}` : 'Off'
   const canToggle = me.push.available && pushSupported() && here !== null
-  const countdown = goalCountdown(goal)
 
   return (
     <div className="settings flex flex-col gap-6">
-      <Group label="Training">
-        <Row icon={<Icon><Target /></Icon>} title={goal ? goal.title : 'No goal yet'}
-          subtitle={goal ? (countdown ? `${countdown} · What Rabbit knows` : 'What Rabbit knows') : 'Tell Rabbit what you are training for'}
-          onClick={onEditGoal} />
-        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add, edit and look up your races"
-          onClick={onOpenEvents} />
-        <Row icon={<Icon><MapIcon /></Icon>} title="Training plan"
-          subtitle={goal?.plan_source === 'builder' ? 'Edit sessions and sync to Garmin' : 'Build a plan from your race and schedule'}
-          onClick={onOpenPlan} />
-        <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="Body, zones, schedule and equipment"
-          onClick={onOpenProfile} />
-      </Group>
-
-      <Group label="Coaching" footer="Your coach sees your plan, events and stats. Your Rabbit chats stay private unless you share them.">
-        <Row icon={<Icon><Megaphone /></Icon>} title="Coaches"
-          subtitle={me.coaches ? `${me.coaches} coach${me.coaches === 1 ? '' : 'es'}` : 'Invite a coach by email'} onClick={onOpenCoaches} />
-        <ShareRow />
-        {me.coaching > 0 && (
-          <Row icon={<Icon><Users /></Icon>} title="Athletes you coach" subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`}
-            onClick={onOpenAthletes} />
-        )}
-      </Group>
-
       <Group label="Garmin"
         footer={me.garmin.connected ? 'Rabbit can read your activities, sleep and training data. It only adds workouts to your Garmin calendar when you sync a plan you built in Rabbit.' : undefined}>
         {me.garmin.connected ? (
@@ -148,7 +118,7 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
       )}
 
       <Group label="Oura" footer={me.oura.available
-        ? 'Readiness, sleep and HRV appear in Stats and help Rabbit adjust your week. Oura data stays in the app: it is never sent to the AI coach (Oura\'s API terms).'
+        ? 'Readiness, sleep and HRV appear in Progress and help Rabbit adjust your week. Oura data stays in the app: it is never sent to Rabbit\'s AI (Oura\'s API terms).'
         : 'Oura needs a one-time server setup: create an app at developer.ouraring.com, then run 8-oura.sh in Cloud Shell.'}>
         {me.oura.connected ? (
           <>
@@ -173,6 +143,10 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOp
       {me.garmin.connected && me.chat.available && (
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />
       )}
+
+      <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
+        <ShareRow />
+      </Group>
 
       <Group label="Notifications" footer={pushMsg ?? undefined}>
         <Row icon={<Icon><Bell /></Icon>} title="Notifications" subtitle={pushStatus}

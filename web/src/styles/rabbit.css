@@ -206,6 +206,28 @@ html.kb-open .empty-hero { transform: none; }
   animation: modal-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .plan-screen--exit { animation: modal-slide-down 0.2s ease-in forwards; }
+.plan-screen--tab { position: relative; inset: auto; z-index: auto; flex: 1; min-height: 0; padding-left: 0; padding-right: 0; animation: none; }
+
+/* Bottom tab bar (components/nav/TabBar). Pages above it don't pad for the home indicator;
+   the bar does. It steps aside while typing (keyboard open). */
+.tab-bar {
+  position: relative; z-index: 30; display: flex; flex-shrink: 0;
+  border-top: 1px solid var(--border); background: var(--bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab-bar__item {
+  position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-size: 0.6471rem; font-weight: 500;
+  transition: color 0.15s ease;
+}
+.tab-bar__item[aria-current="page"] { color: var(--accent); }
+.tab-bar__item:active { opacity: 0.7; }
+.tab-bar__dot { position: absolute; top: 7px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 999px;
+  background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+html.kb-open .tab-bar { display: none; }
+.with-tabbar .composer-bar { padding-bottom: 8px; }
+.tab-page { animation: modal-fade-in 0.16s ease-out backwards; }
+@media (prefers-reduced-motion: reduce) { .tab-page, .tab-bar__item { animation: none; transition: none; } }
 .plan-chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px;
   border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-surface);

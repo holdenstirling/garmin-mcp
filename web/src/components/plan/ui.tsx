@@ -1,41 +1,99 @@
 // Small building blocks for the plan screens, in Rabbit's existing look: grouped cards,
 // DM Mono labels, forest-green accent chips.
-import { useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { ChevronLeft, Minus, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/useDialog'
 
-/** Full-screen page that slides up over the app (setup wizard, plan editor). */
+// Tab pages (components/nav): the first Screen rendered inside a TabScreen becomes the tab's
+// page (no close button, no slide, sits above the tab bar). Screens it opens on top (event
+// editor, race pack, a friend) stay full-screen overlays.
+type Embed = { claim: { owner: string | null }; title?: string; top?: React.ReactNode; lead?: React.ReactNode }
+const EmbedCtx = createContext<Embed | null>(null)
+
+export function TabScreen({ title, top, lead, children }: {
+  /** replaces the embedded screen's own title */
+  title?: string
+  /** under the title, above the screen's own header extras (segmented control) */
+  top?: React.ReactNode
+  /** first thing in the scrolling body */
+  lead?: React.ReactNode
+  children: React.ReactNode
+}) {
+  const claim = useRef<{ owner: string | null }>({ owner: null }).current
+  return <EmbedCtx.Provider value={{ claim, title, top, lead }}>{children}</EmbedCtx.Provider>
+}
+
+/** Full-screen page that slides up over the app (setup wizard, plan editor), or a tab page
+ *  inside a TabScreen. One close model: a child screen (onBack) shows only a back arrow, a
+ *  root screen only an X, and a tab page neither. */
 export function Screen({ title, subtitle, onBack, onClose, closing, footer, children, headerExtra }: {
   title: string; subtitle?: string
   onBack?: () => void; onClose: () => void; closing?: boolean
   footer?: React.ReactNode; children: React.ReactNode; headerExtra?: React.ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  useDialog(ref, onClose)
-  return (
-    <div ref={ref} tabIndex={-1} className={cn('plan-screen', closing && 'plan-screen--exit')} role="dialog" aria-modal aria-label={title}>
+  const none = useRef<HTMLDivElement>(null)
+  const id = useId()
+  const embed = useContext(EmbedCtx)
+  if (embed && embed.claim.owner == null) embed.claim.owner = id
+  const embedded = !!embed && embed.claim.owner === id
+  // The page was swapped for another (unmounts run before mounts): the new one takes over.
+  const [, rerender] = useState(0)
+  useEffect(() => {
+    if (!embed) return
+    const c = embed.claim
+    if (c.owner == null) { c.owner = id; rerender((n) => n + 1) }
+    return () => { if (c.owner === id) c.owner = null }
+  }, [embed?.claim, id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useDialog(embedded ? none : ref, onClose)
+  const name = embedded && embed.title ? embed.title : title
+  const body = (
+    <>
       <header className="shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
-        <div className="flex items-center gap-2">
-          {onBack ? (
-            <button className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-5" /></button>
-          ) : <span className="w-8" />}
-          <div className="min-w-0 flex-1 text-center">
-            <h2 className="truncate font-display text-[1.0588rem] leading-tight text-(--brand)">{title}</h2>
+        {embedded && !onBack ? (
+          <div className="mx-auto max-w-xl px-1">
+            <h1 className="truncate font-display text-[1.4118rem] leading-tight text-(--brand)">{name}</h1>
             {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
           </div>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            {onBack ? (
+              <button className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-5" /></button>
+            ) : <span className="modal-close invisible" aria-hidden />}
+            <div className="min-w-0 flex-1 text-center">
+              <h2 className="truncate font-display text-[1.0588rem] leading-tight text-(--brand)">{name}</h2>
+              {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
+            </div>
+            {onBack || embedded ? <span className="modal-close invisible" aria-hidden />
+              : <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>}
+          </div>
+        )}
+        {embedded && embed.top}
         {headerExtra}
       </header>
       <div className="settings min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-5">{children}</div>
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-5">
+          {embedded && embed.lead}
+          {children}
+        </div>
       </div>
       {footer && (
-        <footer className="shrink-0 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <footer className={cn('shrink-0 border-t border-(--border) bg-(--bg) px-4 pt-3',
+          embedded ? 'pb-3' : 'pb-[max(12px,env(safe-area-inset-bottom))]')}>
           <div className="mx-auto flex w-full max-w-xl gap-2">{footer}</div>
         </footer>
       )}
+    </>
+  )
+  // Whatever a screen opens inside itself is an overlay again, never the tab page.
+  const inner = <EmbedCtx.Provider value={null}>{body}</EmbedCtx.Provider>
+  if (embedded) {
+    return <section className="plan-screen plan-screen--tab" aria-label={name}>{inner}</section>
+  }
+  return (
+    <div ref={ref} tabIndex={-1} className={cn('plan-screen', closing && 'plan-screen--exit')} role="dialog" aria-modal aria-label={title}>
+      {inner}
     </div>
   )
 }

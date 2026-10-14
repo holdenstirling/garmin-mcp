@@ -13,7 +13,7 @@ export function fmtMinutes(m: number): string {
   return r ? `${h}h ${r}m` : `${h}h`
 }
 
-function fmtRange(start: string, end: string): string {
+export function fmtRange(start: string, end: string): string {
   const a = new Date(`${start}T12:00:00`)
   const b = new Date(`${end}T12:00:00`)
   const mon = (d: Date) => d.toLocaleDateString([], { month: 'short' })
@@ -24,7 +24,7 @@ function fmtRange(start: string, end: string): string {
 
 const hasDuration = (title: string) => /\d+\s*(['’]|min\b|h\b)/i.test(title)
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /** "Week 3 of 39 · Base" (whatever is known). */
 export function planLine(week: PlanWeek | null, goal: Goal): string {
@@ -36,9 +36,9 @@ export function planLine(week: PlanWeek | null, goal: Goal): string {
   return bits.join(' · ')
 }
 
-type DayState = 'done' | 'partial' | 'missed' | 'planned' | 'rest' | 'extra' | 'empty'
+export type DayState = 'done' | 'partial' | 'missed' | 'planned' | 'rest' | 'extra' | 'empty'
 
-function dayState(d: WeekDay): DayState {
+export function dayState(d: WeekDay): DayState {
   const work = d.sessions.filter((s) => s.status !== 'rest')
   if (work.length) {
     const done = work.filter((s) => s.status === 'done').length
@@ -55,7 +55,7 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
   extra: 'extra workout', empty: 'nothing planned',
 }
 
-function DayDot({ day }: { day: WeekDay }) {
+export function DayDot({ day }: { day: WeekDay }) {
   const st = dayState(day)
   return (
     <span className="flex flex-col items-center gap-1" role="img"
@@ -90,7 +90,7 @@ function items(day: WeekDay): Item[] {
 
 /** One day: a line per session; tapping a session opens its details and an Ask button.
  *  Only the Ask button starts a chat, so opening and closing details never does. */
-function DayRow({ day, openKey, onToggle, onAsk }: {
+export function DayRow({ day, openKey, onToggle, onAsk }: {
   day: WeekDay; openKey: string | null
   onToggle: (key: string | null) => void
   onAsk: (day: WeekDay, session?: PlannedSession) => void

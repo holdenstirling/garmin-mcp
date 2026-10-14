@@ -34,6 +34,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   const [showPast, setShowPast] = useState(false)
   const [changed, setChanged] = useState(false)
   const [fit, setFit] = useState<string | null>(null)
+  const [pack, setPack] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
@@ -84,7 +85,8 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">
-                {upcoming.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} onFit={() => setFit(e.id)} />)}
+                {upcoming.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
+                  onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />)}
               </section>
             )}
             {past.length > 0 && (
@@ -108,20 +110,27 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
       )}
       {fit && <RaceFitScreen eventId={fit} onClose={() => setFit(null)} />}
+      {pack && <RacePackScreen eventId={pack} imperial={imperial} onClose={() => setPack(null)} />}
     </>
   )
 }
 
-function EventCard({ e, onClick, onFit }: { e: RaceEvent; onClick: () => void; onFit?: () => void }) {
+function EventCard({ e, onClick, onFit, onPack }: { e: RaceEvent; onClick: () => void; onFit?: () => void; onPack?: () => void }) {
   const n = daysUntil(e.date)
   if (!onFit) return <EventCardButton e={e} onClick={onClick} />
   return (
     <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
       <EventCardButton e={e} onClick={onClick} bare />
       <button type="button" onClick={onFit}
-        className="flex w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+        className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
         <Gauge className="size-3.5" /> Race fit <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
       </button>
+      {onPack && (
+        <button type="button" onClick={onPack}
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Backpack className="size-3.5" /> Race-week pack <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+        </button>
+      )}
     </div>
   )
 }

@@ -352,7 +352,7 @@ function RabbitChats({ aid }: { aid: string }) {
         {(threads ?? []).map((t) => (
           <button key={t.id} type="button" onClick={() => setOpen(t.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'Coach log (briefs and notes)' : t.title || 'Chat'}</span>
+              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'Rabbit (briefs and notes)' : t.title || 'Chat'}</span>
               <span className="block text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
             </span>
             <ChevronRight className="size-4 text-(--text-muted)" />

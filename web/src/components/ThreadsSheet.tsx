@@ -1,5 +1,5 @@
 // Ported from Dolly's ConversationList (web-mcp): same rows, relative times and delete
-// confirmation; the goal's pinned coach log sits on top. No virtualization needed at this size.
+// confirmation; the pinned Rabbit thread (briefs, workout notes) sits on top. No virtualization needed at this size.
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useState } from 'react'
 import { MessageSquarePlus, Pin, Trash2, X } from 'lucide-react'
@@ -49,7 +49,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
               {t.kind === 'coach' && <Pin className="mt-0.5 size-3.5 shrink-0 text-(--accent)" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
-                  {t.kind === 'coach' ? 'Coach log' : t.title || 'New chat'}
+                  {t.kind === 'coach' ? 'Rabbit' : t.title || 'New chat'}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {t.kind === 'coach' ? 'Briefs, workout notes and chats you started' : formatRelativeTime(t.updated)}
