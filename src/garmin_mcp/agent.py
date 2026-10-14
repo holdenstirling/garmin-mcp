@@ -41,6 +41,7 @@ from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
 from .plans import PlanService
+from .events import LOOKUP_SYSTEM, EventStore, lookup_prompt, parse_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,21 @@ class AnthropicBackend:
                 if event.type == "text":
                     await on_text(event.text)
             return await stream.get_final_message()
+
+    async def research(self, system: str, prompt: str, *, max_searches: int = 4) -> str:
+        """One-shot answer with Anthropic's server-side web search (event lookups).
+        Returns the answer's text; continues a paused turn a couple of times."""
+        messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
+        tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": max_searches}]
+        text: list[str] = []
+        for _ in range(3):
+            msg = await self._client.messages.create(
+                model=self.model, max_tokens=2000, system=system, tools=tools, messages=messages)
+            text = [b.text for b in msg.content if getattr(b, "type", None) == "text"]
+            if msg.stop_reason != "pause_turn":
+                break
+            messages = [messages[0], {"role": "assistant", "content": msg.content}]
+        return "".join(text)
 
 
 # ------------------------------------------------------------------ agent ---
@@ -301,7 +317,28 @@ class Agent:
         self._tz = default_timezone
         self._clock = clock
         self.planner = WeekPlanner(self, clock=clock)
-        self.plans = PlanService(store, self.coach, service, now=self._now, clock=clock)
+        self.events = EventStore(store, self.coach, clock=clock)
+        self.plans = PlanService(store, self.coach, service, now=self._now, clock=clock,
+                                 events=self.events)
+
+    async def lookup_event(self, user_id: str, name: str, etype: str | None = None,
+                           when: str | None = None, location: str | None = None) -> dict[str, Any]:
+        """Web lookup of an event's details (counted against a small daily allowance)."""
+        research = getattr(self._backend, "research", None)
+        if research is None:
+            raise CoachError("Event lookup isn't available on this server.")
+        name = " ".join(str(name or "").split())[:120]
+        if len(name) < 3:
+            raise CoachError("Type the event's name first.")
+        self.events.take_lookup(user_id, self._now(user_id).date())
+        text = await research(LOOKUP_SYSTEM, lookup_prompt(name, etype, when, location))
+        info = parse_lookup(text)
+        log_event(logger, logging.INFO, "event_lookup", user_id=user_id, found=bool(info))
+        if not info:
+            raise CoachError("Couldn't find reliable details for that event. Check the name, "
+                             "or add the details yourself.")
+        info["fetched_at"] = int(self._clock())
+        return info
 
     # --------------------------------------------------------- user state --
     def _profile(self, user_id: str) -> dict[str, Any]:

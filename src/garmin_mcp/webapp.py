@@ -30,6 +30,7 @@ from .garminlogin import Busy, Cooldown, LoginManager
 from .logs import log_event
 from .planbuilder import PlanError
 from .plans import public_plan
+from .events import TYPE_DISTANCES, TYPES
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
 from .webauth import WebAuth
@@ -611,6 +612,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             start = body.get("start_date")
             if start is not None and not isinstance(start, str):
                 raise PlanError("start_date must be YYYY-MM-DD")
+            ev = body.get("event")
+            chat.agent.events.upsert_from_goal(user_id, ev if isinstance(ev, dict) else None)
             return plans.build(user_id, start or None), coach.active_goal(user_id) or {}
         plan, goal = await _plan_call(run)
         return _plan_resp(user_id, plan, 201, goal=goal, athlete=coach.athlete(user_id))
@@ -660,6 +663,71 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         assert plans is not None
         result = await _plan_call(lambda: plans.unsync(user_id))
         return _plan_resp(user_id, plans.get(user_id), result=result)
+
+    # ------------------------------------------------------------- events --
+    def _events():
+        assert chat is not None
+        return chat.agent.events
+
+    def _events_resp(user_id: str, status: int = 200, **extra: Any) -> JSONResponse:
+        return JSONResponse({"events": _events().list(user_id),
+                             "types": {t: list(TYPE_DISTANCES[t]) for t in TYPES}, **extra},
+                            status_code=status)
+
+    async def events_list(request: Request, user_id: str) -> Response:
+        await _plan_call(lambda: _events().list(user_id))
+        return _events_resp(user_id)
+
+    async def event_create(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        main = body.pop("main", False) is True
+
+        def run() -> dict[str, Any]:
+            ev = _events().create(user_id, body)
+            return _events().set_main(user_id, ev["id"]) if main else ev
+        ev = await _plan_call(run)
+        return _events_resp(user_id, 201, event=ev)
+
+    async def event_update(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        eid = request.path_params["event_id"]
+        ev = await _plan_call(lambda: _events().update(user_id, eid, body))
+        return _events_resp(user_id, event=ev)
+
+    async def event_delete(request: Request, user_id: str) -> Response:
+        eid = request.path_params["event_id"]
+        await _plan_call(lambda: _events().delete(user_id, eid))
+        return _events_resp(user_id)
+
+    async def event_main(request: Request, user_id: str) -> Response:
+        eid = request.path_params["event_id"]
+        ev = await _plan_call(lambda: _events().set_main(user_id, eid))
+        return _events_resp(user_id, event=ev)
+
+    async def event_lookup(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        args = {k: body.get(k) if isinstance(body.get(k), str) else None
+                for k in ("name", "type", "date", "location")}
+        try:
+            info = await chat.agent.lookup_event(user_id, args["name"] or "", args["type"],
+                                                 args["date"], args["location"])
+        except CoachError as e:
+            raise _UserError(str(e)) from None
+        except Exception as e:  # model/API trouble: say so plainly
+            log_event(logger, logging.WARNING, "event_lookup_failed", user_id=user_id,
+                      error=type(e).__name__)
+            raise _UserError("The lookup didn't work just now. Try again in a minute.", 502) from None
+        eid = body.get("event_id")
+        if isinstance(eid, str) and eid:
+            await _plan_call(lambda: _events().update(user_id, eid, {"info": info}))
+        return JSONResponse({"info": info})
 
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
@@ -738,6 +806,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["DELETE"]),
         Route("/app/api/plan/garmin/sync", _plan_api(plan_sync, mutating=True), methods=["POST"]),
         Route("/app/api/plan/garmin/remove", _plan_api(plan_unsync, mutating=True),
+              methods=["POST"]),
+        Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),
+        Route("/app/api/events", _plan_api(event_create, mutating=True), methods=["POST"]),
+        Route("/app/api/events/lookup", _plan_api(event_lookup, mutating=True), methods=["POST"]),
+        Route("/app/api/events/{event_id}", _plan_api(event_update, mutating=True),
+              methods=["PATCH"]),
+        Route("/app/api/events/{event_id}", _plan_api(event_delete, mutating=True),
+              methods=["DELETE"]),
+        Route("/app/api/events/{event_id}/main", _plan_api(event_main, mutating=True),
               methods=["POST"]),
         Route("/app/api/garmin/numbers", _plan_api(garmin_numbers, mutating=False),
               methods=["GET"]),

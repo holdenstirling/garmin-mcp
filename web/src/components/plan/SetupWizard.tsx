@@ -9,12 +9,15 @@ import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import type { Me, Sport } from '@/lib/api'
 import {
-  DISTANCES, EQUIPMENT, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, getGarminNumbers, kgToLb, lbToKg, KM_PER_MI,
-  parsePace, setupPlan, sportsFor, syncGarmin, weeksUntil,
+  DISTANCES, cmToFtIn, fmtPace, getGarminNumbers, kgToLb, KM_PER_MI,
+  setupPlan, sportsFor, syncGarmin, weeksUntil,
   type AthleteFull, type BuiltPlan, type GoalFull, type SyncResult,
 } from '@/lib/plan'
-import { Card, Chip, ChipRow, Choice, Field, MultiChoice, NumberStepper, OptionCard, Progress, Screen, StepIntro, areaCls, inputCls } from './ui'
+import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, StepIntro, areaCls, inputCls } from './ui'
 import { PhaseStrip, WeekPreview } from './PlanParts'
+import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
+import { EventBasics } from '@/components/events/EventForm'
+import { TYPE_DISTANCES, type EventFields, type EventType } from '@/lib/events'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
@@ -22,6 +25,7 @@ const DRAFT_KEY = 'rabbit.setup.v1'
 
 type Draft = {
   newGoal: boolean
+  event: EventFields
   goal: Partial<GoalFull>
   athlete: Partial<AthleteFull>
   start_date: string
@@ -38,6 +42,7 @@ function initialDraft(me: Me): Draft {
   const g = (me.goal ?? null) as GoalFull | null
   const fresh: Draft = {
     newGoal: !g,
+    event: { type: typeForDistance(g?.distance) },
     goal: g ? {
       title: g.title, event: g.event, distance: g.distance || undefined, date: g.date, priority: g.priority ?? 'A',
       course: g.course ?? '', goal_type: g.goal_type ?? (g.target ? 'time' : 'finish'), target_time: g.target_time ?? '',
@@ -57,7 +62,7 @@ function initialDraft(me: Me): Draft {
   try {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as (Draft & { at: number }) | null
     if (saved && Date.now() - saved.at < 14 * 86_400_000) {
-      return { ...fresh, ...saved, goal: { ...fresh.goal, ...saved.goal }, athlete: { ...fresh.athlete, ...saved.athlete }, start_date: todayIso() }
+      return { ...fresh, ...saved, event: { ...fresh.event, ...(saved.event ?? {}) }, goal: { ...fresh.goal, ...saved.goal }, athlete: { ...fresh.athlete, ...saved.athlete }, start_date: todayIso() }
     }
   } catch { /* storage unavailable: start fresh */ }
   return fresh
@@ -151,7 +156,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
         if (athlete[k] === '' && k !== 'injuries' && k !== 'experience') delete athlete[k]
       }
       if (athlete.long_day && !(athlete.available_days ?? []).includes(athlete.long_day)) athlete.long_day = null
-      const r = await setupPlan({ athlete, goal, start_date: draft.start_date, new_goal: draft.newGoal && !!me.goal })
+      const r = await setupPlan({ athlete, goal, event: draft.event, start_date: draft.start_date, new_goal: draft.newGoal && !!me.goal })
       setPlan(r.plan)
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
       setStep('done')
@@ -254,32 +259,26 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
               <Field label="This plan is for">
                 <ChipRow>
                   <Chip selected={!draft.newGoal} onClick={() => setDraft((d) => ({ ...d, newGoal: false }))}>{me.goal.title}</Chip>
-                  <Chip selected={draft.newGoal} onClick={() => setDraft((d) => ({ ...d, newGoal: true, goal: { priority: 'A', goal_type: 'finish', limiters: [] } }))}>A new race</Chip>
+                  <Chip selected={draft.newGoal} onClick={() => setDraft((d) => ({ ...d, newGoal: true, event: { type: 'triathlon' }, goal: { priority: 'A', goal_type: 'finish', limiters: [] } }))}>A new race</Chip>
                 </ChipRow>
               </Field>
             </Card>
           )}
+          <EventBasics value={{ name: g.event ?? '', type: draft.event.type, distance: g.distance ?? '', date: g.date ?? '',
+            location: draft.event.location, url: draft.event.url, info: draft.event.info ?? undefined }}
+            onChange={(p) => {
+              const gp: Partial<GoalFull> = {}
+              if (p.name !== undefined) { gp.event = p.name; gp.title = p.name }
+              if (p.distance !== undefined) gp.distance = p.distance
+              if (p.date !== undefined) gp.date = p.date || null
+              if (p.course !== undefined && !g.course) gp.course = p.course
+              if (Object.keys(gp).length) setG(gp)
+              const { type, location, url, info } = p
+              const ep: EventFields = Object.fromEntries(Object.entries({ type, location, url, info }).filter(([, v]) => v !== undefined))
+              if (Object.keys(ep).length) setDraft((d) => ({ ...d, event: { ...d.event, ...ep } }))
+            }} />
+          {weeks != null && g.date && g.date > todayIso() && <p className="-mt-3 px-4 text-[0.7647rem] text-(--text-muted)">{runwayHint(weeks)}</p>}
           <Card>
-            <Field label="Distance">
-              <ChipRow>
-                {DISTANCES.map((d) => (
-                  <Chip key={d.value} selected={g.distance === d.value} onClick={() => setG({ distance: d.value })}>{d.label}</Chip>
-                ))}
-              </ChipRow>
-            </Field>
-            <Field label="Race name" hint="Optional. e.g. Boulder 70.3 or the Denver Half.">
-              <input className={inputCls} value={g.event ?? ''} placeholder="Race name" maxLength={120}
-                onChange={(e) => setG({ event: e.target.value, title: e.target.value })} />
-            </Field>
-            <Field label="Race date" hint={weeks != null && g.date && g.date > todayIso() ? runwayHint(weeks) : undefined}>
-              <input type="date" className={inputCls} value={g.date ?? ''} min={todayIso()} onChange={(e) => setG({ date: e.target.value || null })} />
-            </Field>
-          </Card>
-          <Card>
-            <Field label="How important is it?" hint="Your A race gets the full taper. B and C races are tune-ups.">
-              <Choice value={g.priority ?? 'A'} onChange={(v) => setG({ priority: v ?? 'A' })}
-                options={[['A', 'A race'], ['B', 'B race'], ['C', 'Training race']]} />
-            </Field>
             <Field label="Course notes" hint="Optional: hilly, hot, wetsuit, altitude…">
               <textarea className={areaCls} value={g.course ?? ''} maxLength={300} onChange={(e) => setG({ course: e.target.value })}
                 placeholder="Anything about the course" />
@@ -325,44 +324,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
           </StepIntro>
           {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
           {note && <p className="px-1 text-[0.7647rem] text-(--accent)">{note}</p>}
-          <div className="flex flex-col gap-2">
-            <OptionCard selected={a.level === 'new'} title="New to this" description="First race at this distance, or under a year of steady training." onClick={() => setA({ level: 'new' })} />
-            <OptionCard selected={a.level === 'intermediate'} title="A few seasons in" description="You've done races like this and train most weeks." onClick={() => setA({ level: 'intermediate' })} />
-            <OptionCard selected={a.level === 'advanced'} title="Experienced" description="Years of structured training; you handle big weeks." onClick={() => setA({ level: 'advanced' })} />
-          </div>
-          <Card>
-            <Field label="Units">
-              <Choice value={a.units ?? 'metric'} onChange={(v) => setA({ units: v ?? 'metric' })} options={[['metric', 'Metric'], ['imperial', 'Imperial']]} />
-            </Field>
-            <Field label="Sex" hint="Optional. Helps Rabbit read heart-rate and recovery data.">
-              <Choice value={a.sex ?? null} allowNone onChange={(v) => setA({ sex: v })} options={[['female', 'Female'], ['male', 'Male'], ['other', 'Other']]} />
-            </Field>
-            <Field label="Age">
-              <NumberStepper label="age" value={a.age} min={10} max={100} onChange={(v) => setA({ age: v })} suffix="years" />
-            </Field>
-            <Field label="Height">
-              {imperial ? (
-                <HeightImperial cm={a.height_cm ?? null} onChange={(cm) => setA({ height_cm: cm })} />
-              ) : (
-                <NumberStepper label="height" value={a.height_cm} min={100} max={250} onChange={(v) => setA({ height_cm: v })} suffix="cm" />
-              )}
-            </Field>
-            <Field label="Weight">
-              {imperial ? (
-                <NumberStepper label="weight" value={a.weight_kg ? kgToLb(a.weight_kg) : null} min={66} max={550}
-                  onChange={(v) => setA({ weight_kg: v == null ? null : lbToKg(v) })} suffix="lb" />
-              ) : (
-                <NumberStepper label="weight" value={a.weight_kg} min={30} max={250} step={0.5} decimals={1}
-                  onChange={(v) => setA({ weight_kg: v })} suffix="kg" />
-              )}
-            </Field>
-          </Card>
-          <Card>
-            <Field label="Injuries or limits" hint="Optional. Rabbit keeps these in mind in every brief.">
-              <textarea className={areaCls} value={a.injuries ?? ''} maxLength={500} onChange={(e) => setA({ injuries: e.target.value })}
-                placeholder="e.g. Achilles gets cranky above 40 km a week" />
-            </Field>
-          </Card>
+          <YouFields a={a} setA={setA} sports={sports} />
         </>
       )}
 
@@ -374,36 +336,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
           </StepIntro>
           {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
           {note && <p className="px-1 text-[0.7647rem] text-(--accent)">{note}</p>}
-          <Card>
-            <Field label="Resting heart rate">
-              <NumberStepper label="resting heart rate" value={a.resting_hr} min={25} max={120} onChange={(v) => setA({ resting_hr: v })} suffix="bpm" />
-            </Field>
-            <Field label="Max heart rate">
-              <NumberStepper label="max heart rate" value={a.max_hr} min={100} max={230} onChange={(v) => setA({ max_hr: v })} suffix="bpm" />
-            </Field>
-            <Field label="Threshold heart rate" hint="Roughly your average heart rate for an all-out hour.">
-              <NumberStepper label="threshold heart rate" value={a.threshold_hr} min={80} max={220} onChange={(v) => setA({ threshold_hr: v })} suffix="bpm" />
-            </Field>
-          </Card>
-          <Card>
-            {sports.includes('bike') && (
-              <Field label="Cycling FTP" hint={a.weight_kg && a.ftp_w ? `${(a.ftp_w / a.weight_kg).toFixed(1)} W/kg. Bike workouts target power.` : 'Bike workouts target power when you have a power meter.'}>
-                <NumberStepper label="FTP" value={a.ftp_w} min={50} max={600} step={5} onChange={(v) => setA({ ftp_w: v })} suffix="watts" />
-              </Field>
-            )}
-            {sports.includes('run') && (
-              <Field label={`Threshold run pace (per ${imperial ? 'mile' : 'km'})`} hint="About your 10K-to-half-marathon race pace. Run workouts target pace.">
-                <PaceInput seconds={a.run_threshold_pace == null ? null : imperial ? a.run_threshold_pace * KM_PER_MI : a.run_threshold_pace}
-                  placeholder={imperial ? '7:15' : '4:30'}
-                  onChange={(s) => setA({ run_threshold_pace: s == null ? null : Math.round(imperial ? s / KM_PER_MI : s) })} />
-              </Field>
-            )}
-            {sports.includes('swim') && (
-              <Field label="Swim CSS (per 100 m)" hint="Your sustainable pace for a hard 1500 m. Sets swim distances.">
-                <PaceInput seconds={a.swim_css ?? null} placeholder="1:45" onChange={(s) => setA({ swim_css: s })} />
-              </Field>
-            )}
-          </Card>
+          <NumbersFields a={a} setA={setA} sports={sports} />
         </>
       )}
 
@@ -412,24 +345,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
           <StepIntro eyebrow="Your week" title="When can you train?">
             Rabbit starts close to what you do now and builds gradually from there.
           </StepIntro>
-          <Card>
-            <Field label="Hours a week right now" hint="Average of the last month. Garmin's history helps if you're unsure.">
-              <NumberStepper label="hours per week" value={a.weekly_hours} min={1} max={30} step={0.5} decimals={1}
-                onChange={(v) => setA({ weekly_hours: v })} suffix="hours" />
-            </Field>
-            <Field label="Training days" hint={(a.available_days ?? []).length < 3 ? 'Three or more days works best.' : `${(a.available_days ?? []).length} days a week. The rest are rest days.`}>
-              <MultiChoice value={a.available_days ?? []} options={WEEKDAYS} onChange={(v) => setA({ available_days: v, long_day: v.includes(a.long_day ?? '') ? a.long_day : v[v.length - 1] ?? null })} />
-            </Field>
-            <Field label="Long-session day" hint={sports.includes('bike') && sports.includes('run') ? 'Your long ride (or brick). The long run goes the day after.' : 'Your longest session of the week.'}>
-              <Choice value={a.long_day ?? null} onChange={(v) => setA({ long_day: v })}
-                options={WEEKDAYS.filter(([d]) => (a.available_days ?? []).includes(d))} />
-            </Field>
-          </Card>
-          <Card>
-            <Field label="What do you have access to?" hint={sports.includes('swim') && !(a.equipment ?? []).some((e) => e === 'pool' || e === 'open_water') && (a.equipment ?? []).length ? 'No pool or open water selected, so Rabbit will leave out swims.' : 'Optional.'}>
-              <MultiChoice value={(a.equipment ?? []) as typeof EQUIPMENT[number][0][]} options={EQUIPMENT} onChange={(v) => setA({ equipment: v })} />
-            </Field>
-          </Card>
+          <WeekFields a={a} setA={setA} sports={sports} />
         </>
       )}
 
@@ -510,6 +426,11 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
   )
 }
 
+function typeForDistance(d: string | undefined | null): EventType {
+  const hit = (Object.entries(TYPE_DISTANCES) as [EventType, string[]][]).find(([t, ds]) => t !== 'other' && ds.includes(d ?? ''))
+  return hit ? hit[0] : 'triathlon'
+}
+
 function hasNumbers(a: Partial<AthleteFull>): boolean {
   return [a.resting_hr, a.max_hr, a.threshold_hr, a.ftp_w, a.run_threshold_pace, a.swim_css].some((v) => v != null)
 }
@@ -522,16 +443,6 @@ function runwayHint(weeks: number): string {
   return `${weeks} weeks away: room for base, build, peak and taper.`
 }
 
-function GarminFill({ busy, onClick }: { busy: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} disabled={busy}
-      className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-left disabled:opacity-60">
-      <Watch className="size-4 shrink-0 text-(--accent)" />
-      <span className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)">{busy ? 'Asking Garmin…' : 'Fill in from Garmin'}</span>
-    </button>
-  )
-}
-
 function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
   return (
     <button type="button" onClick={onEdit} className="flex w-full items-start gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
@@ -539,35 +450,6 @@ function ReviewRow({ label, value, onEdit }: { label: string; value: string; onE
       <span className="min-w-0 flex-1 text-[0.8235rem] leading-snug text-(--text)">{value}</span>
       <span className="text-[0.7059rem] text-(--accent)">Edit</span>
     </button>
-  )
-}
-
-function HeightImperial({ cm, onChange }: { cm: number | null; onChange: (cm: number | null) => void }) {
-  const { ft, inch } = cm ? cmToFtIn(cm) : { ft: 5, inch: 9 }
-  return (
-    <div className="flex gap-3">
-      <div className="flex-1"><NumberStepper label="feet" value={cm ? ft : null} min={3} max={8} onChange={(v) => onChange(v == null ? null : ftInToCm(v, inch))} suffix="ft" /></div>
-      <div className="flex-1"><NumberStepper label="inches" value={cm ? inch : null} min={0} max={11} onChange={(v) => onChange(v == null ? null : ftInToCm(ft, v))} suffix="in" /></div>
-    </div>
-  )
-}
-
-function PaceInput({ seconds, onChange, placeholder }: { seconds: number | null; onChange: (s: number | null) => void; placeholder: string }) {
-  const [text, setText] = useState(seconds != null ? fmtPace(seconds) : '')
-  const [bad, setBad] = useState(false)
-  useEffect(() => { setText(seconds != null ? fmtPace(seconds) : '') }, [seconds])
-  return (
-    <div className="flex flex-col gap-1">
-      <input className={inputCls} inputMode="numeric" placeholder={placeholder} value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          if (!text.trim()) { setBad(false); onChange(null); return }
-          const s = parsePace(text)
-          setBad(s == null)
-          if (s != null) onChange(s)
-        }} />
-      {bad && <span className="text-[0.7059rem] text-(--danger)">Use minutes:seconds, like {placeholder}.</span>}
-    </div>
   )
 }
 

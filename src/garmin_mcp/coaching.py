@@ -538,6 +538,25 @@ class CoachStore:
                          "for (race or event, date, target) and invite them to upload their plan. "
                          "Once they name a goal, call training_history before asking about their "
                          "background. Save what you learn as you go.")
+        main_ev = (g or {}).get("event_id")
+        evs = sorted((e for e in self._s.user_doc(user_id, "events").load().get("events", {}).values()
+                      if (e.get("date") or "") >= now.date().isoformat()),
+                     key=lambda e: e.get("date") or "")[:8]
+        if evs:
+            ev_lines = []
+            for e in evs:
+                bit = (f"- {e['date']}: {e.get('name')} ({e.get('type') or 'event'}"
+                       f"{', ' + e['distance'] if e.get('distance') else ''}; "
+                       f"{'MAIN goal' if e['id'] == main_ev else (e.get('priority') or 'B') + ' race'})")
+                info = e.get("info") or {}
+                facts = "; ".join(f"{k.replace('_', ' ')}: {info[k]}" for k in
+                                  ("location", "distances", "elevation_gain", "terrain", "cutoffs")
+                                  if info.get(k))
+                if facts:
+                    bit += f" [looked up on the web: {facts[:300]}]"
+                ev_lines.append(bit)
+            lines.append("Upcoming events on their calendar (they manage these in the app's "
+                         "Events screen):\n" + "\n".join(ev_lines))
         lines.append(f"Coach notes: {self.notes(user_id) or 'none yet'}")
         if thread is not None:
             lines.append("Thread: the coach log (briefs and workout notes)." if thread["kind"] == "coach"

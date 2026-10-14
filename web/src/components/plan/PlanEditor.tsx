@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, MessageCircle, Plus, RefreshCw, Trash2, Watch } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus, RefreshCw, Trash2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -9,7 +9,7 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { cn } from '@/lib/utils'
 import type { Me, Sport } from '@/lib/api'
 import {
-  addSession, deletePlan, deleteSession, getPlan, removeFromGarmin, sportsFor, syncGarmin, updateSession,
+  addSession, deletePlan, deleteSession, getPlan, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, updateSession,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, Screen } from './ui'
@@ -19,7 +19,7 @@ import { SyncSummary } from './SetupWizard'
 
 type Editing = { session: PlanSession | null; date: string }
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents }: {
   me: Me
   goalTitle: string
   onClose: () => void
@@ -27,6 +27,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   onAsk: (text: string) => void
   onChanged: () => void
   onMeChanged: () => void
+  onOpenEvents: () => void
 }) {
   const [plan, setPlan] = useState<BuiltPlan | null | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -39,6 +40,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     { busy: null, result: null, removed: null, error: null })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [rebuilding, setRebuilding] = useState(false)
 
   const load = useCallback(() => {
     getPlan().then((r) => {
@@ -94,6 +96,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       setSync((s) => ({ ...s, busy: null, removed: r.result.removed }))
     } catch (e) { setSync((s) => ({ ...s, busy: null, error: (e as Error).message })) }
   }
+  async function doRebuild() {
+    setRebuilding(true)
+    try { applied((await rebuildPlan()).plan) }
+    catch (e) { setSync((s) => ({ ...s, error: (e as Error).message })) }
+    finally { setRebuilding(false) }
+  }
   async function doDelete() {
     setDeleting(true)
     try {
@@ -131,6 +139,17 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
       </div>
+      {plan.events_changed && (
+        <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
+          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">Your events changed since this plan was built. Rebuild to fit them in (session edits are replaced).</p>
+          <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
+        </div>
+      )}
+      {plan.events.length > 0 && (
+        <p className="-mb-2 px-1 text-[0.7059rem] text-(--text-muted)">
+          Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${e.priority === 'C' ? 'training race' : 'B race'})`).join(' · ')}
+        </p>
+      )}
       <Card className="p-4">
         <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
       </Card>
@@ -225,6 +244,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       <Group label="Plan">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close(); onAsk('About my plan: ') }} />
+        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races; they go into the plan"
+          onClick={onOpenEvents} />
         <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
           onClick={onRebuild} />
         {confirmDelete ? (

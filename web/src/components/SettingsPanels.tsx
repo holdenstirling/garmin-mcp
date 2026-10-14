@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, LogOut, Target, Watch } from 'lucide-react'
+import { Bell, CalendarDays, LogOut, Map as MapIcon, Target, User, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { CoachingSettings } from '@/components/CoachingSettings'
@@ -8,10 +8,13 @@ import { goalCountdown, postJSON, signOut, type Goal, type Me } from '@/lib/api'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
-export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone }: {
+export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone, onOpenEvents, onOpenProfile, onOpenPlan }: {
   me: Me
   goal: Goal | null
   onEditGoal: () => void
+  onOpenEvents: () => void
+  onOpenProfile: () => void
+  onOpenPlan: () => void
   onChange: () => void
   onDevDone: () => void
 }) {
@@ -76,6 +79,13 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone }: {
         <Row icon={<Icon><Target /></Icon>} title={goal ? goal.title : 'No goal yet'}
           subtitle={goal ? (countdown ? `${countdown} · What Rabbit knows` : 'What Rabbit knows') : 'Tell Rabbit what you are training for'}
           onClick={onEditGoal} />
+        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add, edit and look up your races"
+          onClick={onOpenEvents} />
+        <Row icon={<Icon><MapIcon /></Icon>} title="Training plan"
+          subtitle={goal?.plan_source === 'builder' ? 'Edit sessions and sync to Garmin' : 'Build a plan from your race and schedule'}
+          onClick={onOpenPlan} />
+        <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="Body, zones, schedule and equipment"
+          onClick={onOpenProfile} />
       </Group>
 
       <Group label="Garmin"

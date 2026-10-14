@@ -1,6 +1,6 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, MessageCircle, MessagesSquare, Sparkles, Target, Upload, X } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Map as MapIcon, MessageCircle, MessagesSquare, Sparkles, Target, Upload, User, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { MemorySheet } from '@/components/MemorySheet'
@@ -8,6 +8,8 @@ import { PlanSheet } from '@/components/PlanSheet'
 import { PlanPins } from '@/components/chat/PlanPins'
 import { PlanEditor } from '@/components/plan/PlanEditor'
 import { SetupWizard } from '@/components/plan/SetupWizard'
+import { ProfileScreen } from '@/components/plan/ProfileScreen'
+import { EventsScreen } from '@/components/events/EventsScreen'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -72,7 +74,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -180,7 +182,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setPlanScreen(null)
   }
   const builtPlan = goal?.plan_source === 'builder'
-  const startSetup = () => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen('setup') }
+  const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
+  const startSetup = () => showScreen('setup')
   const openPlan = () => (builtPlan ? setPlanScreen('planner') : open('plan'))
   const close = () => { setClosing(true); setTimeout(() => { setSheet(null); setClosing(false) }, 200) }
   // Drag-dismiss animates itself out, then unmounts at once (no second exit animation).
@@ -417,6 +420,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <PlanPins goal={goal} week={week} loading={weekLoading}
           onOpenPlan={openPlan} onAskDay={askDay} />
       )}
+      {isCoach && goal && (
+        <nav aria-label="Training" className="flex shrink-0 justify-center gap-2 border-b border-(--border) px-3 pb-2.5">
+          <HomeButton icon={builtPlan ? MapIcon : Sparkles} primary={!builtPlan}
+            onClick={() => showScreen(builtPlan ? 'planner' : 'setup')}>{builtPlan ? 'My plan' : 'Build my plan'}</HomeButton>
+          <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
+          <HomeButton icon={User} onClick={() => showScreen('profile')}>Profile</HomeButton>
+        </nav>
+      )}
 
       {pending ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
@@ -588,7 +599,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onRebuild={() => setPlanScreen('setup')}
           onAsk={tellRabbit}
           onChanged={() => { void refreshThreads(); loadWeek() }}
-          onMeChanged={onChange} />
+          onMeChanged={onChange}
+          onOpenEvents={() => setPlanScreen('events')} />
+      )}
+      {planScreen === 'events' && (
+        <EventsScreen hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
+          onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
+          onOpenPlan={() => setPlanScreen('planner')} onBuildPlan={() => setPlanScreen('setup')} />
+      )}
+      {planScreen === 'profile' && (
+        <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
+          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} />
       )}
       {sheet === 'settings' && (
         <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>
@@ -600,11 +621,26 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </div>
             <div className="modal-body overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
               <SettingsPanels me={me} goal={goal} onEditGoal={() => open('memory')} onChange={onChange}
+                onOpenEvents={() => showScreen('events')} onOpenProfile={() => showScreen('profile')}
+                onOpenPlan={() => showScreen(builtPlan ? 'planner' : 'setup')}
                 onDevDone={() => void reload()} />
             </div>
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+function HomeButton({ icon: Icon, primary, onClick, children }: {
+  icon: typeof Sparkles; primary?: boolean; onClick: () => void; children: React.ReactNode
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[0.7059rem] font-medium transition-colors active:opacity-70 ${
+        primary ? 'border-(--accent) bg-(--accent) text-white dark:bg-(--accent-subtle) dark:text-(--accent)'
+          : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)'}`}>
+      <Icon className="size-3.5" />{children}
+    </button>
   )
 }

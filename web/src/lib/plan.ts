@@ -22,6 +22,8 @@ export type BuiltPlan = {
   garmin: { window?: number; synced_at?: number | null; last?: { uploaded: number; unchanged: number; removed: number }; errors?: number }
   pending_removals: number
   kinds: Record<string, string[]>
+  events: { id: string; name: string; date: string; priority: 'B' | 'C' }[]
+  events_changed: boolean
 }
 export type SyncResult = {
   uploaded: number; unchanged: number; removed: number; skipped: number
@@ -43,7 +45,7 @@ export type GoalFull = Goal & {
 }
 
 export const getPlan = () => getJSON<{ plan: BuiltPlan | null }>('/api/plan')
-export const setupPlan = (body: { athlete: Partial<AthleteFull>; goal: Partial<GoalFull>; start_date?: string; new_goal?: boolean }) =>
+export const setupPlan = (body: { athlete: Partial<AthleteFull>; goal: Partial<GoalFull>; event?: Record<string, unknown>; start_date?: string; new_goal?: boolean }) =>
   sendJSON<{ plan: BuiltPlan; goal: GoalFull; athlete: AthleteFull }>('POST', '/api/plan/setup', body)
 export const rebuildPlan = (start_date?: string) => sendJSON<{ plan: BuiltPlan }>('POST', '/api/plan/rebuild', start_date ? { start_date } : {})
 export const deletePlan = () => sendJSON<{ ok: boolean; removed: number }>('DELETE', '/api/plan')

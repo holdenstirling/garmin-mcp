@@ -65,6 +65,7 @@ src/garmin_mcp/
   weekplan.py          Rabbit: "this week" planned vs done
   planbuilder.py       Rabbit: plan generator (phases, sessions, Garmin workout JSON)
   plans.py             Rabbit: built plans, session edits, Garmin calendar sync
+  events.py            Rabbit: race calendar, main event <-> goal, web lookup of event details
   proactive.py         Rabbit: morning brief, workout notes, reconnect nudge
   webchat.py           Rabbit: chat turns that outlive the request
   attachments.py       Rabbit: validated image/PDF/text uploads

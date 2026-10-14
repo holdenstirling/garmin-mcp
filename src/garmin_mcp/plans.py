@@ -40,6 +40,7 @@ from .planbuilder import (
 from .providers import GarminError, ReauthRequired
 
 if TYPE_CHECKING:
+    from .events import EventStore
     from .tools import GarminService
 
 logger = logging.getLogger(__name__)
@@ -53,13 +54,14 @@ TEXT_LIMITS = {"title": 60, "detail": 400}
 class PlanService:
     def __init__(self, store: AppStore, coach: CoachStore, service: "GarminService | None",
                  *, now: Callable[[str], datetime], clock: Callable[[], float] = time.time,
-                 pause: float = SYNC_PAUSE_S) -> None:
+                 pause: float = SYNC_PAUSE_S, events: "EventStore | None" = None) -> None:
         self._s = store
         self._coach = coach
         self._service = service
         self._now = now
         self._clock = clock
         self._pause = pause
+        self._events = events
         self._sync_locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
 
@@ -78,7 +80,12 @@ class PlanService:
         if g is None or g.get("plan_source") != "builder":
             return None
         plan = self._doc(user_id, g["id"]).load()
-        return plan or None
+        if not plan:
+            return None
+        if self._events is not None:
+            sig = self._events.signature(self._events.plan_events(user_id))
+            plan["events_changed"] = sig != plan.get("events_sig", sig)
+        return plan
 
     def today(self, user_id: str) -> date:
         return self._now(user_id).date()
@@ -103,7 +110,11 @@ class PlanService:
             first = date.fromisoformat(start) if start else None
         except ValueError:
             raise PlanError("Start date must be YYYY-MM-DD.") from None
-        plan = build_plan(self._coach.athlete(user_id), goal, today=today, start=first)
+        events = self._events.plan_events(user_id) if self._events is not None else []
+        plan = build_plan(self._coach.athlete(user_id), goal, today=today, start=first,
+                          events=events)
+        if self._events is not None:
+            plan["events_sig"] = self._events.signature(events)
         plan["created"] = plan["updated"] = int(self._clock())
         plan["goal_id"] = goal["id"]
 
@@ -479,6 +490,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
     return {k: plan.get(k) for k in ("start", "first_day", "race_date", "distance", "race_kind",
                                      "level", "peak_hours", "start_hours", "note", "created",
                                      "updated")} | {
+        "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed"))} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,
         "garmin": plan.get("garmin") or {}, "pending_removals": len(plan.get("garmin_orphans", [])),
         "kinds": {k: list(v) for k, v in KINDS_BY_SPORT.items()},

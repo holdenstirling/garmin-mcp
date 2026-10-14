@@ -495,7 +495,8 @@ def _race_week(inp: Inputs, race_kind: str, week_start: date, plan_start: date,
 
 
 def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
-               start: date | None = None) -> dict[str, Any]:
+               start: date | None = None,
+               events: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     inp = inputs_from(athlete, goal)
     prof = race_profile(inp.distance)
     race_kind = prof["kind"]
@@ -574,11 +575,79 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                 "hours": h, "focus": week_focus(phase, rec, race_kind), "days": days}
         recompute_week(week)
         weeks.append(week)
-    return {"start": week1.isoformat(), "first_day": start.isoformat(),
+    placed_events = apply_events(weeks, events or [], inp, start)
+    return {"events": placed_events, "start": week1.isoformat(), "first_day": start.isoformat(),
             "race_date": inp.race_date.isoformat(), "distance": inp.distance,
             "race_kind": race_kind, "level": inp.level, "peak_hours": round(peak_h, 1),
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
             "note": note, "weeks": weeks}
+
+
+# Event type -> the sport of its race-day session.
+EVENT_SPORT = {"triathlon": "brick", "duathlon": "brick", "running": "run", "trail": "run",
+               "cycling": "bike", "swimming": "swim", "mountaineering": "other", "other": "other"}
+
+
+def apply_events(weeks: list[dict[str, Any]], events: list[dict[str, Any]], inp: Inputs,
+                 start: date) -> list[dict[str, Any]]:
+    """Drop the athlete's other events (B and C races) into the plan as race days.
+
+    B race: easy two days out, short openers the day before, rest the day after, and the
+    next day easy. C race: raced as a hard training day with an easy day either side.
+    Events on or after the main race, before the plan starts, or in race week are skipped.
+    Returns the events that were placed."""
+    by_day: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    for w in weeks:
+        for d in w["days"]:
+            by_day[d] = (w, w["days"])
+    placed: list[dict[str, Any]] = []
+    for ev in sorted(events, key=lambda e: e.get("date") or ""):
+        try:
+            d = date.fromisoformat(ev.get("date") or "")
+        except ValueError:
+            continue
+        if d < start or d >= inp.race_date or d.isoformat() not in by_day:
+            continue
+        week, _ = by_day[d.isoformat()]
+        if week["phase"] == "race":
+            continue
+        prio = ev.get("priority") if ev.get("priority") in ("B", "C") else "B"
+        sport = EVENT_SPORT.get(ev.get("type") or "other", "other")
+        race = make_session("other", "race", 0, title=f"Race: {ev.get('name') or 'Event'}"[:60])
+        race["sport"], race["kind"], race["event_id"] = sport, "race", ev.get("id")
+        race["detail"] = (f"{prio} race. Race it with intent, but it's a step toward {inp.title}: "
+                          "start controlled and recover well after." if prio == "B" else
+                          f"Training race: treat it as a hard workout on the way to {inp.title}. "
+                          "No taper; keep it controlled.")
+        _put(by_day, d, [race])
+        train = "run" if sport in ("run", "brick", "other") else sport
+        if prio == "B":
+            _put(by_day, d - timedelta(days=2), [make_session(train, "easy", 35, swim_pace=inp.swim_pace)])
+            _put(by_day, d - timedelta(days=1), [make_session(train, "openers", 30, swim_pace=inp.swim_pace)])
+            _put(by_day, d + timedelta(days=1), [make_session("rest", "rest", 0)])
+            _put(by_day, d + timedelta(days=2), [make_session("bike" if sport != "bike" else "run",
+                                                              "recovery", 40, swim_pace=inp.swim_pace)])
+        else:
+            _put(by_day, d - timedelta(days=1), [make_session(train, "easy", 30, swim_pace=inp.swim_pace)])
+            _put(by_day, d + timedelta(days=1), [make_session("bike" if sport != "bike" else "run",
+                                                              "recovery", 40, swim_pace=inp.swim_pace)])
+        placed.append({"id": ev.get("id"), "name": ev.get("name"), "date": d.isoformat(),
+                       "priority": prio})
+    for w in weeks:
+        recompute_week(w)
+    return placed
+
+
+def _put(by_day: dict[str, tuple[dict[str, Any], dict[str, Any]]], d: date,
+         sessions: list[dict[str, Any]]) -> None:
+    """Replace a day's sessions, unless it's outside the plan or already a race day."""
+    hit = by_day.get(d.isoformat())
+    if hit is None:
+        return
+    _, days = hit
+    if any(s.get("kind") == "race" for s in days[d.isoformat()]):
+        return
+    days[d.isoformat()] = sessions
 
 
 def week_focus(phase: str, recovery: bool, race_kind: str) -> str:
@@ -638,6 +707,10 @@ def summary_markdown(plan: dict[str, Any], goal: dict[str, Any]) -> str:
             lines.append("- Race target: " + " / ".join(tgt))
         if goal.get("limiters"):
             lines.append("- Extra focus on: " + ", ".join(goal["limiters"]))
+    if plan.get("events"):
+        lines += ["", "### Other races in the plan"]
+        for e in plan["events"]:
+            lines.append(f"- {e['date']}: {e['name']} ({e['priority']} race)")
     lines += ["", "### Rules",
               "- Easy days stay easy (Z1-2). Quality days are the ones with Z4-5 work.",
               "- Missed a session? Skip it and carry on; never stack two hard days.",
