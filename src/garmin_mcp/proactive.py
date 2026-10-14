@@ -53,10 +53,11 @@ TURN_TIMEOUT = 180.0
 WORKOUT_PROMPT = (
     "A new activity just synced from Garmin (id | sport | start | duration | distance):\n"
     "{lines}\n\n"
-    "Write a short note to the athlete about it: 2-3 short sentences, under 60 words. Say what "
-    "stood out (pace, power, HR, effort vs. what today's planned session was for), and give one "
-    "practical note about the next day or two of their plan. Look up details or recent load/HRV "
-    "with tools if that helps. Don't open with a greeting. This will be sent as a phone notification."
+    "Write Rabbit's quick reaction to it: 2-3 short sentences, under 50 words. Line 1: a specific "
+    "win or verdict vs. what today's planned session was for (e.g. **Nailed the tempo.** 7:42/mi "
+    "held right in zone). Then one practical note for the next day or two of their plan. Look up "
+    "details or recent load/HRV with tools if that helps. No greeting, no recap of the data you "
+    "read. This will be sent as a phone notification."
 )
 BRIEF_PROMPT = (
     "Write this morning's brief for the athlete. Check last night's sleep, HRV and training "
