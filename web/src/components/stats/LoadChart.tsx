@@ -6,7 +6,7 @@ import { InfoTip } from '@/components/ui/InfoTip'
 import type { Term } from '@/lib/glossary'
 import { getLoad, type Load } from '@/lib/load'
 
-const W = 360, H = 170, TOP = 96, PAD = 4
+const W = 360, H = 186, BAND = 18, TOP = 108, PAD = 4
 
 export function LoadCard({ base = '/api' }: { base?: string }) {
   const [l, setL] = useState<Load | null>(null)
@@ -23,7 +23,8 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
       <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h3>
       {error && !l ? <ErrorState compact message="Couldn't load your fitness chart." onRetry={() => setAttempt((n) => n + 1)} /> : (
       <Card className="p-4">
-        {!l ? <div className="skeleton h-[170px]" role="status" aria-label="Loading fitness chart" /> : <Chart l={l} />}
+        {l && <Legend />}
+        {!l ? <div className="skeleton h-[186px]" role="status" aria-label="Loading fitness chart" /> : <Chart l={l} />}
         {l && (
           <>
             <div className="mt-2 grid grid-cols-3 gap-2 text-center">
@@ -38,6 +39,19 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
       </Card>
       )}
     </section>
+  )
+}
+
+function Legend() {
+  const item = (swatch: React.ReactNode, label: string) => (
+    <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)">{swatch}{label}</span>
+  )
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {item(<span className="h-[3px] w-4 rounded-full bg-(--accent)" />, 'Fitness')}
+      {item(<span className="h-[2px] w-4 rounded-full bg-(--chart-fatigue)" />, 'Fatigue')}
+      {item(<span className="flex items-end gap-px"><span className="h-2 w-1 bg-(--accent) opacity-60" /><span className="h-1 w-1 bg-(--chart-form) opacity-60" /></span>, 'Form (fresh up, tired down)')}
+    </div>
   )
 }
 
@@ -56,9 +70,9 @@ function Chart({ l }: { l: Load }) {
     const maxY = Math.max(10, ...s.map((p) => Math.max(p.ctl, p.atl))) * 1.1
     const maxT = Math.max(10, ...s.map((p) => Math.abs(p.tsb)))
     const x = (i: number) => PAD + (i / Math.max(1, s.length - 1)) * (W - 2 * PAD)
-    const y = (v: number) => TOP - (v / maxY) * (TOP - 8)
-    const zero = TOP + (H - TOP) / 2
-    const ty = (v: number) => zero - (v / maxT) * ((H - TOP) / 2 - 4)
+    const y = (v: number) => TOP - 4 - (v / maxY) * (TOP - BAND - 8)
+    const zero = TOP + 6 + (H - TOP - 6) / 2
+    const ty = (v: number) => zero - (v / maxT) * ((H - TOP - 6) / 2 - 3)
     const path = (key: 'ctl' | 'atl', planned: boolean) => {
       let d = '', pen = false
       s.forEach((p, i) => {
@@ -74,6 +88,7 @@ function Chart({ l }: { l: Load }) {
   const bw = Math.max(1, (W - 2 * PAD) / s.length - 0.6)
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Fitness, fatigue and form chart">
+      <line x1={0} x2={W} y1={TOP + 2} y2={TOP + 2} stroke="var(--border)" strokeWidth={0.6} strokeDasharray="1 3" />
       <line x1={0} x2={W} y1={geo.zero} y2={geo.zero} stroke="var(--border)" strokeWidth={0.8} />
       {s.map((p, i) => (
         <rect key={p.date} x={geo.x(i) - bw / 2} width={bw} y={Math.min(geo.zero, geo.ty(p.tsb))} height={Math.abs(geo.ty(p.tsb) - geo.zero)}
@@ -83,15 +98,16 @@ function Chart({ l }: { l: Load }) {
       <path d={geo.path('atl', true)} fill="none" stroke="var(--chart-fatigue)" strokeWidth={1.4} strokeDasharray="3 3" opacity={0.7} />
       <path d={geo.path('ctl', false)} fill="none" stroke="var(--accent)" strokeWidth={2.2} />
       <path d={geo.path('ctl', true)} fill="none" stroke="var(--accent)" strokeWidth={2.2} strokeDasharray="4 3" />
-      {geo.todayIdx >= 0 && <line x1={geo.x(geo.todayIdx)} x2={geo.x(geo.todayIdx)} y1={4} y2={H} stroke="var(--text-muted)" strokeWidth={0.8} strokeDasharray="2 2" />}
-      {geo.todayIdx >= 0 && <text x={geo.x(geo.todayIdx) + 3} y={13} fontSize={10} fill="var(--text-muted)">today</text>}
+      {geo.todayIdx >= 0 && <line x1={geo.x(geo.todayIdx)} x2={geo.x(geo.todayIdx)} y1={BAND} y2={H} stroke="var(--text-muted)" strokeWidth={0.8} strokeDasharray="2 2" />}
+      {geo.todayIdx >= 0 && (
+        <text x={geo.x(geo.todayIdx)} y={12} fontSize={11} textAnchor={geo.todayIdx > s.length * 0.85 ? 'end' : 'middle'} fill="var(--text-muted)">today</text>
+      )}
       {geo.raceIdx >= 0 && (
         <>
-          <line x1={geo.x(geo.raceIdx)} x2={geo.x(geo.raceIdx)} y1={4} y2={H} stroke="var(--brand)" strokeWidth={1.2} />
-          <text x={geo.x(geo.raceIdx) - 3} y={13} fontSize={10} textAnchor="end" fill="var(--brand)">race</text>
+          <line x1={geo.x(geo.raceIdx)} x2={geo.x(geo.raceIdx)} y1={BAND} y2={H} stroke="var(--brand)" strokeWidth={1.2} />
+          <text x={geo.x(geo.raceIdx)} y={12} fontSize={11} textAnchor="end" fill="var(--brand)">race</text>
         </>
       )}
-      <text x={PAD} y={TOP + 12} fontSize={10} fill="var(--text-muted)">form</text>
     </svg>
   )
 }

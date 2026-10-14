@@ -94,7 +94,8 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
     <>
       <WeekRing done={p.week.done} target={p.week.target} />
       <span className="min-w-0">
-        <span className="block text-[0.7647rem] font-medium leading-tight text-(--text)">{weekGoalText(p)}</span>
+        <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">This week</span>
+        <span className="block text-[0.8235rem] font-medium leading-tight text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
         {planTime && <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">{planTime} planned time</span>}
         {onOpenPlan && <span className="block text-[0.6471rem] font-medium leading-tight text-(--accent)">Open plan</span>}
       </span>
@@ -114,18 +115,20 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <div className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5">
-          <span className={cn('flex size-9 items-center justify-center rounded-full',
+        <div className="relative flex items-center gap-2.5 rounded-xl bg-(--bg-inset) py-2.5 pl-3 pr-8">
+          <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
             s.at_risk ? 'bg-(--warning) text-white' : s.current ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-muted)')}>
             <Flame className="size-5" />
           </span>
-          <span>
-            <span className="block font-display text-[1.3rem] leading-none text-(--text)">{s.current}</span>
-            <span className="flex items-center gap-1 text-[0.6471rem] text-(--text-muted)">
-              day streak · best {s.best}<InfoTip term="streak" align="start" />
+          <span className="min-w-0">
+            <span className="flex items-baseline gap-1">
+              <span className="font-display text-[1.3rem] leading-none text-(--text)">{s.current}</span>
+              <span className="text-[0.7059rem] text-(--text-secondary)">day streak</span>
             </span>
+            <span className="block text-[0.6471rem] text-(--text-muted)">Best {s.best}</span>
             {s.at_risk && <span className="block text-[0.6471rem] font-medium text-(--warning-text)">At risk today</span>}
           </span>
+          <span className="absolute right-1 top-1"><InfoTip term="streak" align="end" /></span>
         </div>
         {onOpenPlan ? (
           <button type="button" onClick={onOpenPlan}

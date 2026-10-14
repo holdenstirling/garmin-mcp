@@ -15,10 +15,12 @@ import { ProgressHero } from '@/components/progress/Progress'
 import { getProgress, type Progress } from '@/lib/progress'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
 import { fmtDuration } from '@/lib/format'
+import { MainRaceGrade } from '@/components/events/Readiness'
+import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 
 type Period = 'week' | 'month' | 'year'
 
-export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
+export function StatsScreen({ onClose, onOpenPlan, onOpenRecap }: {
   onClose: () => void; onOpenPlan?: () => void; oura?: boolean; onOpenRecap?: () => void
 }) {
   const [s, setS] = useState<Stats | null>(null)
@@ -27,6 +29,7 @@ export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [loadKey, setLoadKey] = useState(0)
+  const [fitId, setFitId] = useState<string | null>(null)
 
   const load = useCallback((fresh = false) => {
     setBusy(true)
@@ -63,8 +66,10 @@ export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
         </div>
       )}
       {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => load(true)} compact={!!s} />}
+      {s && <MainRaceGrade onOpen={setFitId} />}
       {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
-        recovery={oura ? <Recovery /> : null} more={<CheckinsCard />} />}
+        recovery={<Recovery />} more={<CheckinsCard />} />}
+      {fitId && <RaceFitScreen eventId={fitId} onClose={() => setFitId(null)} />}
     </Screen>
   )
 }
@@ -210,19 +215,26 @@ function WeeklyBars({ s }: { s: Stats }) {
     <section className="flex flex-col gap-2">
       <SectionLabel>Weekly training time · 12 weeks</SectionLabel>
       <Card className="p-4">
-        <div className="flex h-32 items-end gap-1.5">
-          {s.weekly.map((w, i) => (
+        <div className="flex h-28 items-end gap-1.5">
+          {s.weekly.map((w) => (
             <div key={w.start} className="flex h-full flex-1 flex-col justify-end" title={`${hours(w.hours)} · ${w.workouts} workouts`}>
-              <div className="flex flex-col-reverse overflow-hidden rounded-t-[4px]" style={{ height: `${(w.hours / max) * 100}%` }}>
+              <div className="flex flex-col-reverse overflow-hidden rounded-t-[4px]" style={{ height: `${Math.max(w.hours > 0 ? 3 : 0, (w.hours / max) * 100)}%` }}>
                 {sports.map((sp) => (w.by_sport[sp] ? <span key={sp} style={{ flexGrow: w.by_sport[sp], background: SPORT_COLOR[sp] }} /> : null))}
               </div>
-              {/* every other week labelled (always this week) so the dates stay readable */}
-              <span className={cn('mt-1 whitespace-nowrap text-center text-[0.6471rem]', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}
-                aria-hidden={(s.weekly.length - 1 - i) % 2 === 1}>
-                {(s.weekly.length - 1 - i) % 2 === 0 ? new Date(`${w.start}T12:00:00`).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) : '\u00a0'}
-              </span>
             </div>
           ))}
+        </div>
+        {/* dates under every other bar (always this week), in their own row so bars stay aligned */}
+        <div className="mt-1 flex gap-1.5">
+          {s.weekly.map((w, i) => {
+            const shown = (s.weekly.length - 1 - i) % 2 === 0
+            return (
+              <span key={w.start} aria-hidden={!shown}
+                className={cn('flex-1 overflow-visible whitespace-nowrap text-center text-[0.6471rem] leading-tight', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+                {shown ? new Date(`${w.start}T12:00:00`).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) : '\u00a0'}
+              </span>
+            )
+          })}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
           {sports.map((sp) => <span key={sp} className="flex items-center gap-1 text-[0.6471rem] text-(--text-muted)"><span className="size-2 rounded-full" style={{ background: SPORT_COLOR[sp] }} />{SPORT_NAME[sp]}</span>)}
