@@ -40,6 +40,14 @@ in plain text.
 bash infra/cloudshell/4-logins.sh
 ```
 
+## Later: reconnect TrainingPeaks
+
+When the TrainingPeaks cookie expires (every few weeks), re-run only that login:
+
+```sh
+bash infra/cloudshell/5-trainingpeaks.sh
+```
+
 ## Done
 
 Add the connector in claude.ai: Settings → Connectors → Add custom connector, with the
