@@ -27,7 +27,7 @@ PRIVACY = """
 <ul>
 <li><b>Your Google account</b>: name, email and profile picture, to sign you in. Only invited accounts can use Rabbit.</li>
 <li><b>Garmin Connect</b> (when you connect it): workouts, heart rate, sleep and similar training data, and the planned workouts Rabbit sends to your watch.</li>
-<li><b>Oura</b> (when you connect it): readiness, sleep, heart rate variability, resting heart rate, activity and workout summaries.</li>
+<li><b>Oura</b> (when you connect it): readiness, sleep, heart rate variability, resting heart rate and daily activity summaries. Oura workouts are not imported; workouts come from Garmin only.</li>
 <li><b>Google Calendar</b> (when you connect it, read-only): event times, used to spot busy days and travel.</li>
 <li><b>What you enter</b>: your profile, goals, races, gear, photo, chats and coach messages.</li>
 </ul>

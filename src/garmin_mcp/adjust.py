@@ -2,9 +2,10 @@
 revised rest of the week the athlete approves with one tap.
 
 Deterministic rules (no model call), so recovery data from any source, including Oura,
-can be used without sending it to an AI model:
+can be used without sending it to an AI model. ``recovery`` comes from the athlete's chosen
+source (``sources.recovery_for``: Oura or Garmin, tagged ``source``; reasons name it):
 
-* **Recovery low** (any of: Oura readiness under 70 on 2 of the last 3 days; HRV 15%+
+* **Recovery low** (any of: readiness under 70 on 2 of the last 3 days; HRV 15%+
   under baseline on 2 of the last 3 days; resting HR 5+ bpm over baseline on 2 of 3;
   form (TSB) under -30): the next 3 days' quality sessions become easy at 70% duration,
   long sessions are capped at 75%, and if tomorrow has a session it becomes rest when
@@ -47,7 +48,8 @@ def _recovery_flags(recovery: dict[str, Any] | None, tsb: float | None) -> tuple
     if last3:
         low_ready = sum(1 for d in last3 if isinstance(d.get("readiness"), int | float) and d["readiness"] < 70)
         if low_ready >= 2:
-            reasons.append("Readiness has been low (under 70) on 2 of the last 3 days.")
+            src = {"oura": "Oura readiness", "garmin": "Garmin readiness"}.get(str((recovery or {}).get("source")), "Readiness")
+            reasons.append(f"{src} has been low (under 70) on 2 of the last 3 days.")
             very = very or any((d.get("readiness") or 100) < 60 for d in last3[-2:])
         if base.get("hrv"):
             low_hrv = sum(1 for d in last3 if isinstance(d.get("hrv"), int | float) and d["hrv"] < base["hrv"] * 0.85)

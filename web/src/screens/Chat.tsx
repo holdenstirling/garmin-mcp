@@ -34,6 +34,8 @@ import { markReactionShown, reactionShown } from '@/lib/workout'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { SettingsPanels } from '@/components/SettingsPanels'
+import { DataSourcesSheet } from '@/components/settings/DataSourcesSheet'
+import { setCurrentSources } from '@/lib/sources'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
 import { Group, Icon, Row as SettingsRow } from '@/components/settings/Grouped'
 import { WeekList } from '@/components/week/WeekStrip'
@@ -356,6 +358,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   const openThread = (id: string) => { setPending(null); setThreadId(id) }
 
+  const [sourcesAsk, setSourcesAsk] = useState(false)
   // Back from connecting Google Calendar or Oura.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -364,7 +367,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.history.replaceState(null, '', '/app/')
     if (cal) showToast(cal === 'connected' ? 'Google Calendar connected' : "Couldn't connect Google Calendar")
     if (oura) showToast(oura === 'connected' ? 'Oura connected' : "Couldn't connect Oura")
+    if (oura === 'connected') setSourcesAsk(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Data sources (lib/sources.ts): screens read the current choice; ask once how to use Oura
+  // (right after connecting it, or on the next open for anyone connected before this existed).
+  useEffect(() => { setCurrentSources(me.settings.data_sources) }, [me.settings.data_sources])
+  useEffect(() => {
+    if (me.oura.connected && me.settings.data_sources_asked === false) setSourcesAsk(true)
+  }, [me.oura.connected, me.settings.data_sources_asked])
   // Tapping a brief or workout-note notification opens Rabbit's log: from a cold start via
   // ?open=coach, or (app already running) via a message from the service worker.
   const openCoach = useRef(openParam === 'coach')
@@ -875,6 +885,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           }} />
       )}
       <VoiceCheckIn open={!!voice} sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
+      {sourcesAsk && me.oura.connected && (
+        <DataSourcesSheet me={me} onClose={() => { setSourcesAsk(false); onChange() }}
+          onSaved={(msg) => { setSourcesAsk(false); showToast(msg); onChange() }} />
+      )}
       {toast && <div key={toast.n} className="rabbit-toast" role="status">{toast.msg}</div>}
 
       {sheet === 'threads' && (
@@ -939,7 +953,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
             </div>
             <div className="modal-body overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-              <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()} />
+              <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()} onToast={showToast} />
             </div>
           </div>
         </div>

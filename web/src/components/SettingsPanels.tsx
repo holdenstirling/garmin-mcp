@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Bell, CalendarClock, CircleDot, LogOut, Watch } from 'lucide-react'
+import { Bell, CalendarClock, CircleDot, Layers, LogOut, Watch } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
+import { DataSourcesSheet } from '@/components/settings/DataSourcesSheet'
+import { defaultSources, sourcesSummary } from '@/lib/sources'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { postJSON, signOut, type Me } from '@/lib/api'
@@ -13,11 +15,13 @@ import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thi
 
 // Settings sheet content: Garmin connection, notifications, device checks, account.
 // Profile, plan, events, gear and people live in their tabs (Me, Plan, Races).
-export function SettingsPanels({ me, onChange, onDevDone }: {
+export function SettingsPanels({ me, onChange, onDevDone, onToast }: {
   me: Me
   onChange: () => void
   onDevDone: () => void
+  onToast?: (msg: string) => void
 }) {
+  const [sourcesOpen, setSourcesOpen] = useState(false)
   const [pushMsg, setPushMsg] = useState<string | null>(null)
   const [here, setHere] = useState<boolean | null>(null) // this device subscribed?
   useEffect(() => { void thisDeviceSubscribed().then(setHere) }, [me.push.subscriptions])
@@ -139,6 +143,16 @@ export function SettingsPanels({ me, onChange, onDevDone }: {
           <Row icon={<Icon tone="muted"><CircleDot /></Icon>} title="Oura Ring" subtitle="Not set up on this server yet" />
         )}
       </Group>
+
+      <Group label="Data sources" footer="Workouts come from Garmin only, so nothing is counted twice.">
+        <Row icon={<Icon><Layers /></Icon>} title="Data sources"
+          subtitle={sourcesSummary(me.settings.data_sources ?? defaultSources(me.oura.connected))}
+          onClick={() => setSourcesOpen(true)} />
+      </Group>
+      {sourcesOpen && (
+        <DataSourcesSheet me={me} onClose={() => setSourcesOpen(false)}
+          onSaved={(msg) => { setSourcesOpen(false); onToast?.(msg); onChange() }} />
+      )}
 
       {me.garmin.connected && me.chat.available && (
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />

@@ -11,9 +11,18 @@ export type CoachSettings = {
   workout_feedback: boolean
   recap_enabled?: boolean
   has_notes: boolean
+  /** which device Rabbit trusts for what (workouts are always Garmin) */
+  data_sources?: DataSources
+  /** answered "How should Rabbit use your data?" */
+  data_sources_asked?: boolean
 }
 
-export async function putSettings(patch: Partial<CoachSettings>): Promise<CoachSettings> {
+export type DataSource = 'garmin' | 'oura'
+export type DataSources = { workouts: 'garmin'; recovery: DataSource; sleep: DataSource; show_both: boolean }
+
+export async function putSettings(patch: Partial<Omit<CoachSettings, 'data_sources'>> & {
+  data_sources?: Partial<Omit<DataSources, 'workouts'>>
+}): Promise<CoachSettings> {
   const r = await fetch('/app/api/settings', {
     method: 'PUT', credentials: 'same-origin',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch),
