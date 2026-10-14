@@ -286,3 +286,5 @@ def test_clean_cookie_accepts_common_paste_formats() -> None:
     assert clean_cookie(f"  {COOKIE}\n") == COOKIE
     assert clean_cookie(f"Production_tpAuth={COOKIE}") == COOKIE
     assert clean_cookie(f"foo=1; Production_tpAuth={COOKIE}; bar=2") == COOKIE
+    assert clean_cookie(f"Production_tpAuth\t{COOKIE}\t.trainingpeaks.com\t/\tSession") == COOKIE
+    assert clean_cookie(f"{COOKIE}\t.trainingpeaks.com\t/") == COOKIE

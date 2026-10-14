@@ -46,12 +46,18 @@ class _OneShotStore(TokenStore):
 
 
 def clean_cookie(raw: str) -> str:
-    """Accept the bare value, ``Production_tpAuth=<value>`` or a whole Cookie header."""
+    """Accept the bare value, ``Production_tpAuth=<value>``, a whole Cookie header, or a
+    row copied from the browser's cookie table (name, value, domain, ... separated by tabs)."""
     raw = raw.strip().strip('"').strip("'")
     for part in raw.split(";"):
         part = part.strip()
         if part.startswith(f"{COOKIE_NAME}="):
             return part.split("=", 1)[1].strip()
+    tokens = raw.split()
+    if len(tokens) > 1:
+        if COOKIE_NAME in tokens and tokens.index(COOKIE_NAME) + 1 < len(tokens):
+            return tokens[tokens.index(COOKIE_NAME) + 1].strip('"')
+        return max(tokens, key=len).strip('"')  # the value is by far the longest field
     return raw
 
 
@@ -76,9 +82,14 @@ def main(argv: list[str] | None = None, *, client_factory=TrainingPeaksClient) -
         print(f"Deleted the TrainingPeaks cookie for {user_id}.")
         return 0
 
-    cookie = clean_cookie(getpass.getpass(f"{COOKIE_NAME} cookie value (hidden): "))
+    raw = getpass.getpass(f"{COOKIE_NAME} cookie value (hidden): ")
+    cookie = clean_cookie(raw)
     if len(cookie) < 20 or any(c.isspace() for c in cookie):
-        print("That doesn't look like a Production_tpAuth value.", file=sys.stderr)
+        # Lengths only: never echo any part of the value.
+        print(f"That doesn't look like a Production_tpAuth value (received {len(raw)} "
+              f"characters{'; nothing was pasted' if not raw.strip() else ''}). Copy the "
+              "whole Value of the Production_tpAuth cookie, usually a few hundred "
+              "characters, and try again.", file=sys.stderr)
         return 2
 
     print("Checking the cookie with TrainingPeaks...")
