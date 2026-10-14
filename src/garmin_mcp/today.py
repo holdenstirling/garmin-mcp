@@ -3,8 +3,10 @@
 No model call, so Oura readiness may feed it (Oura's API terms forbid sending it to an
 AI model; nothing here goes to one). Inputs: today's planned sessions (built plan, or
 the cached week of an uploaded plan) merged with Garmin activities, form (TSB from
-``load.compute``), Oura readiness vs. its 28-day baseline when connected, the day
-streak, the plan-adjustment proposal, the main race date and this week's misses.
+``load.compute``), readiness from the athlete's chosen recovery source (``sources.py``:
+Oura vs. its 28-day baseline when chosen and connected, else Garmin training readiness;
+the signal says which), the day streak, the plan-adjustment proposal, the main race
+date and this week's misses.
 
 Priority, first match wins:
 
@@ -37,6 +39,7 @@ import anyio
 from .adjust import propose as propose_adjustment
 from .logs import log_event
 from .planbuilder import QUALITY, week_for
+from .sources import LABEL, recovery_for
 from .weekplan import merge
 
 if TYPE_CHECKING:
@@ -67,12 +70,13 @@ def _mins(m: Any) -> str:
     return f" ({int(m)}')" if isinstance(m, int | float) and m else ""
 
 
-def _signals(form: float | None, readiness: float | None, streak: dict[str, Any] | None) -> list[dict[str, Any]]:
+def _signals(form: float | None, readiness: float | None, streak: dict[str, Any] | None,
+             source: str = "oura") -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if form is not None:
         out.append({"label": "Form", "value": f"{form:+.0f}", "good": form >= -10})
     if readiness is not None:
-        out.append({"label": "Oura readiness", "value": f"{readiness:.0f}", "good": readiness >= LOW_READINESS})
+        out.append({"label": f"{LABEL.get(source, 'Oura')} readiness", "value": f"{readiness:.0f}", "good": readiness >= LOW_READINESS})
     if streak and streak.get("current"):
         out.append({"label": "Streak", "value": str(streak["current"]), "good": not streak.get("at_risk")})
     return out[:3]
@@ -82,8 +86,9 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
               form: float | None = None, readiness: float | None = None,
               readiness_baseline: float | None = None, streak: dict[str, Any] | None = None,
               adjust: dict[str, Any] | None = None, race: dict[str, Any] | None = None,
-              checkins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Pure: the card for ``today``. ``days`` is ``weekplan.merge`` output for this week."""
+              checkins: list[dict[str, Any]] | None = None, readiness_source: str = "oura") -> dict[str, Any]:
+    """Pure: the card for ``today``. ``days`` is ``weekplan.merge`` output for this week.
+    ``readiness_source`` (``garmin``/``oura``) labels the readiness signal."""
     t = today.isoformat()
     day = next((d for d in days or [] if d.get("date") == t), None)
     sessions = [s for s in (day or {}).get("sessions", []) if s.get("status") != "rest"]
@@ -95,7 +100,7 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
               if s.get("status") == "missed"]
     session = planned[0] if planned else None
     trained_today = bool(done_acts) or bool((streak or {}).get("today_done"))
-    signals = _signals(form, readiness, streak)
+    signals = _signals(form, readiness, streak, readiness_source)
 
     def card(tone: str, headline: str, detail: str, action: tuple[str, str],
              s: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -250,18 +255,19 @@ class TodayService:
                 form = now.get("tsb") if isinstance(now.get("tsb"), int | float) else None
             except Exception:
                 pass
-        recovery = readiness = base = None
-        if self._oura is not None and self._oura.connected(user_id):
-            try:
-                recovery = await self._oura.recovery(user_id, today, 28)
-                latest = recovery.get("latest") or {}
-                if latest.get("date", "") >= (today - timedelta(days=1)).isoformat() \
-                        and isinstance(latest.get("readiness"), int | float):
-                    readiness = float(latest["readiness"])
-                b = (recovery.get("baseline") or {}).get("readiness")
-                base = float(b) if isinstance(b, int | float) else None
-            except Exception:  # Oura down: decide from the rest
-                recovery = None
+        # The athlete's chosen recovery source (sources.py): Oura only when chosen and connected.
+        readiness = base = None
+        try:
+            recovery, source = await recovery_for(a, self._oura, user_id, today)
+        except Exception:  # recovery down: decide from the rest
+            recovery, source = None, "garmin"
+        if recovery:
+            latest = recovery.get("latest") or {}
+            if latest.get("date", "") >= (today - timedelta(days=1)).isoformat() \
+                    and isinstance(latest.get("readiness"), int | float):
+                readiness = float(latest["readiness"])
+            b = (recovery.get("baseline") or {}).get("readiness")
+            base = float(b) if isinstance(b, int | float) else None
         try:
             checkins = a.checkins.list(user_id, 7)
         except Exception:
@@ -300,8 +306,9 @@ class TodayService:
             race = None
         out = recommend(today=today, days=days, has_plan=bool(plan) or planned is not None, form=form,
                         readiness=readiness, readiness_baseline=base, streak=streak, adjust=adjust, race=race,
-                        checkins=checkins)
+                        checkins=checkins, readiness_source=source)
         out["garmin"] = acts is not None
+        out["recovery_source"] = source
         return out
 
 

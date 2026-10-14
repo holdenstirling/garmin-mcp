@@ -31,7 +31,9 @@ logger = logging.getLogger(__name__)
 AUTH_URL = "https://cloud.ouraring.com/oauth/authorize"
 TOKEN_URL = "https://api.ouraring.com/oauth/token"
 API = "https://api.ouraring.com/v2/usercollection"
-SCOPES = "personal daily heartrate workout"
+# No "workout": Oura workouts are never imported (Garmin is the only workout source, so
+# nothing is double counted; see sources.py). "session" is unused too.
+SCOPES = "personal daily heartrate"
 CACHE_S = 900
 
 

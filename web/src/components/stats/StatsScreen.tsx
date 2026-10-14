@@ -350,8 +350,19 @@ function BadgesCard({ s }: { s: Stats }) {
   )
 }
 
-/** Oura readiness, HRV, resting HR and sleep vs your own baseline (app-only data). */
+// Recovery follows Settings -> Data sources: Oura-only keeps the baseline tiles below;
+// Garmin, mixed sources or "Show both" render RecoveryCompare.
+import { RecoveryCompare } from './RecoveryCompare'
+import { useDataSources } from '@/lib/sources'
+
 function Recovery() {
+  const src = useDataSources()
+  if (src && (src.recovery !== 'oura' || src.sleep !== 'oura' || src.show_both)) return <RecoveryCompare />
+  return <OuraRecovery />
+}
+
+/** Oura readiness, HRV, resting HR and sleep vs your own baseline (app-only data). */
+function OuraRecovery() {
   const [r, setR] = useState<OuraRecovery | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)

@@ -36,6 +36,7 @@ from .events import TYPE_DISTANCES, TYPES
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
+from .sources import garmin_recovery, prefs_for, recovery_for, validate as validate_sources
 from .adjust import propose as propose_adjustment
 from . import racefit, racepack
 from .profilephoto import MAX_PHOTO, PhotoError, PhotoStore
@@ -370,7 +371,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "brief_enabled": p.get("brief_enabled", True),
                 "workout_feedback": p.get("workout_feedback", True),
                 "recap_enabled": p.get("recap_enabled", True),
-                "has_notes": bool(p.get("notes"))}
+                "has_notes": bool(p.get("notes")),
+                # sources.py: workouts always Garmin; recovery/sleep Garmin or Oura.
+                "data_sources": prefs_for(store, user_id, bool(auth.oura and auth.oura.connected(user_id)))[0]
+                if store else {"workouts": "garmin", "recovery": "garmin", "sleep": "garmin", "show_both": False},
+                "data_sources_asked": p.get("data_sources_asked", False) is True}
 
     async def put_settings(request: Request, user_id: str) -> Response:
         if store is None:
@@ -393,12 +398,24 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if not isinstance(bt, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", bt):
                 return _err(400, "brief_time must be HH:MM")
             upd["brief_time"] = bt
-        for key in ("brief_enabled", "workout_feedback", "recap_enabled"):
+        for key in ("brief_enabled", "workout_feedback", "recap_enabled", "data_sources_asked"):
             if key in body:
                 if not isinstance(body[key], bool):
                     return _err(400, f"{key} must be true or false")
                 upd[key] = body[key]
-        store.user_doc(user_id, "profile").update(lambda p: p.update(upd))
+        sources_patch: dict[str, Any] | None = None
+        if "data_sources" in body:
+            try:
+                sources_patch = validate_sources(body["data_sources"])
+            except ValueError as e:
+                return _err(400, str(e))
+
+        def apply(p: dict[str, Any]) -> None:
+            p.update(upd)
+            if sources_patch is not None:
+                cur = p.get("data_sources") if isinstance(p.get("data_sources"), dict) else {}
+                p["data_sources"] = {**cur, **sources_patch}
+        store.user_doc(user_id, "profile").update(apply)
         return JSONResponse(_settings_view(user_id))
 
     async def dev_action(request: Request, user_id: str) -> Response:
@@ -1421,6 +1438,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             log_event(logger, logging.WARNING, "oura_read_failed", error=type(e).__name__)
             return _err(502, "Oura didn't answer just now. Try again later.")
 
+    async def recovery_get(request: Request, user_id: str) -> Response:
+        """Progress recovery: the chosen source's data, plus the other one when ``show_both``."""
+        if chat is None:
+            return _err(503, "Chat isn't configured on this server.")
+        connected = bool(auth.oura and auth.oura.connected(user_id))
+        prefs, _ = prefs_for(chat.agent._store, user_id, connected)
+        today = plans.today(user_id) if plans else date.today()
+        want_oura = connected and (prefs["show_both"] or "oura" in (prefs["recovery"], prefs["sleep"]))
+        want_garmin = prefs["show_both"] or not connected or "garmin" in (prefs["recovery"], prefs["sleep"])
+        oura_data = garmin_data = None
+        if want_oura and auth.oura is not None:
+            try:
+                oura_data = await auth.oura.recovery(user_id, today, 28)
+            except Exception as e:  # shown as unavailable; the Garmin side still renders
+                log_event(logger, logging.INFO, "recovery_oura_skip", error=type(e).__name__)
+        if want_garmin:
+            garmin_data = await anyio.to_thread.run_sync(garmin_recovery, chat.agent._service, user_id, today)
+        return JSONResponse({"sources": prefs, "oura_connected": connected,
+                             "oura": oura_data, "garmin": garmin_data})
+
     async def oura_delete(request: Request, user_id: str) -> Response:
         if auth.oura is not None:
             auth.oura.disconnect(user_id)
@@ -1446,12 +1483,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if plan is None:
             return {"status": "none"}
         today, acts = await _plan_call(lambda: chat.agent.stats.activities(user_id))
-        recovery = None
-        if auth.oura is not None and auth.oura.connected(user_id):
-            try:
-                recovery = await auth.oura.recovery(user_id, today, 28)
-            except Exception:  # Oura down or rate-limited: suggest from the rest
-                recovery = None
+        # The athlete's chosen recovery source (sources.py); down or missing: suggest from the rest.
+        try:
+            recovery, _ = await recovery_for(chat.agent, auth.oura, user_id, today)
+        except Exception:
+            recovery = None
         load_now = (await _plan_call(lambda: chat.agent.stats.load(user_id))).get("now") or {}
         return propose_adjustment(plan, acts, today, recovery=recovery, tsb=load_now.get("tsb"),
                                   dismissed=plan.get("adjust_dismissed"), checkins=chat.agent.checkins.list(user_id, 7))
@@ -2073,6 +2109,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/calendar/start", calendar_start, methods=["GET"]),
         Route("/app/api/oura", _plan_api(oura_get, mutating=False), methods=["GET"]),
         Route("/app/api/oura", _plan_api(oura_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/recovery", _plan_api(recovery_get, mutating=False), methods=["GET"]),
         Route("/app/auth/oura/start", oura_start, methods=["GET"]),
         Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
