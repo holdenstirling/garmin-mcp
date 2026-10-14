@@ -13,6 +13,7 @@ import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { EventsScreen } from '@/components/events/EventsScreen'
 import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
+import { GearScreen } from '@/components/gear/GearScreen'
 import { Celebration, HomeProgress, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, type Progress, type QuestId } from '@/lib/progress'
 import { CoachInbox } from '@/components/coach/CoachInbox'
@@ -84,7 +85,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -219,6 +220,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'garmin' || q === 'notify' || q === 'calendar' || q === 'oura') { setPlanScreen(null); open('settings'); return }
     if (q === 'sports') { showScreen('profile'); return }
     if (q === 'coach') { showScreen('coaches'); return }
+    if (q === 'gear') { showScreen('gear'); return }
     if (q === 'sync') { showScreen(builtPlan ? 'planner' : 'setup'); return }
     showScreen('setup')
   }
@@ -713,13 +715,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'stats' && (
         <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
       )}
+      {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'quests' && progress && (
         <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
       )}
       {progress && homeInView && isCoach && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
       {planScreen === 'profile' && (
         <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
-          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} onOpenEvents={() => setPlanScreen('events')} />
+          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} onOpenEvents={() => setPlanScreen('events')} onOpenGear={() => setPlanScreen('gear')} />
       )}
       {sheet === 'settings' && (
         <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>

@@ -1,6 +1,7 @@
 // Settings > Training profile: everything the plan builder and coach use about you,
 // editable any time. Saving doesn't touch the plan; rebuild it to apply the changes.
 import { useMemo, useState } from 'react'
+import { ChevronRight, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { putAthlete, type Me, type Sport } from '@/lib/api'
 import { getGarminNumbers, sportsFor, type AthleteFull } from '@/lib/plan'
@@ -11,11 +12,13 @@ import { PhotoField } from './PhotoField'
 
 type Tab = 'you' | 'goals' | 'numbers' | 'week'
 
-export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, onOpenEvents }: {
+export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, onOpenEvents, onOpenGear }: {
   me: Me; hasBuiltPlan: boolean
   onClose: () => void; onSaved: () => void; onRebuild: () => void
   /** opens the Events screen (full event editing) */
   onOpenEvents?: () => void
+  /** opens the Gear garage */
+  onOpenGear?: () => void
 }) {
   const initial = me.athlete as AthleteFull
   const [a, setAState] = useState<Partial<AthleteFull>>(() => ({ ...initial }))
@@ -99,7 +102,17 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
           </Card>
           <StepIntro eyebrow="Race fit" title="Strengths and where you train">Race fit compares these with each race.</StepIntro>
           <TraitsFields a={a} setA={setA} sports={sports} />
-          {/* GEAR_ENTRY: "Gear garage" row goes here */}
+          {onOpenGear && (
+            <button type="button" onClick={onOpenGear}
+              className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+              <Footprints className="size-5 shrink-0 text-(--accent)" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.8824rem] font-medium text-(--text)">Gear garage</span>
+                <span className="block text-[0.6471rem] text-(--text-muted)">Shoes, bikes and more: mileage and retirement alerts</span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />
+            </button>
+          )}
         </>
       )}
       {tab === 'goals' && (
