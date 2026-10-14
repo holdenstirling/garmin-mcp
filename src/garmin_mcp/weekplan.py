@@ -25,6 +25,7 @@ import anyio
 
 from .attachments import AttachmentError
 from .coaching import plan_week, training_phase
+from .planbuilder import to_planned_week
 from .logs import log_event
 from .providers import GarminError, ReauthRequired
 
@@ -202,8 +203,18 @@ class WeekPlanner:
                     ) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """(plan week, cached planned week or None). Never calls the model."""
         pw = plan_week(goal, today)
+        built = self._built(user_id, goal, date.fromisoformat(pw["start"]))
+        if built is not None:
+            return pw, built
         key = f"{goal['id']}:{pw['start']}:{self._version(goal)}"
         return pw, self._doc(user_id).load().get("weeks", {}).get(key)
+
+    def _built(self, user_id: str, goal: dict[str, Any], start: date) -> dict[str, Any] | None:
+        """A plan built in the app is already day by day: no model call needed."""
+        if goal.get("plan_source") != "builder":
+            return None
+        plan = self._agent.plans.get(user_id)
+        return to_planned_week(plan, start) if plan else None
 
     async def ensure(self, user_id: str) -> None:
         """Make sure this week's planned sessions are cached (before a brief or workout
@@ -262,6 +273,9 @@ class WeekPlanner:
 
     async def _planned(self, user_id: str, goal: dict[str, Any], start: date,
                        pw: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
+        built = self._built(user_id, goal, start)
+        if built is not None:
+            return built, "ready"
         key = f"{goal['id']}:{start.isoformat()}:{self._version(goal)}"
         hit = self._doc(user_id).load().get("weeks", {}).get(key)
         if hit:

@@ -40,6 +40,7 @@ from .toolspec import AGENT_TOOLS
 from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
+from .plans import PlanService
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +301,7 @@ class Agent:
         self._tz = default_timezone
         self._clock = clock
         self.planner = WeekPlanner(self, clock=clock)
+        self.plans = PlanService(store, self.coach, service, now=self._now, clock=clock)
 
     # --------------------------------------------------------- user state --
     def _profile(self, user_id: str) -> dict[str, Any]:

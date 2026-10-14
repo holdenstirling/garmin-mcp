@@ -1,11 +1,13 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, MessagesSquare, Target, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MessageCircle, MessagesSquare, Sparkles, Target, Upload, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { MemorySheet } from '@/components/MemorySheet'
 import { PlanSheet } from '@/components/PlanSheet'
 import { PlanPins } from '@/components/chat/PlanPins'
+import { PlanEditor } from '@/components/plan/PlanEditor'
+import { SetupWizard } from '@/components/plan/SetupWizard'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -69,6 +71,8 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 }
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
+// Full-screen pages over the app: the plan setup wizard and the built plan.
+type PlanScreen = 'setup' | 'planner'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -81,6 +85,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     useCoach(threadId, me.chat.active_turn, queued, () => setQueued(null))
   const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
   const [closing, setClosing] = useState(false)
+  const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -172,7 +177,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (coachId) setThreadId(coachId)
     setDraft((d) => ({ text, n: (d?.n ?? 0) + 1 }))
     if (sheet) { setSheet(null); setClosing(false) }
+    setPlanScreen(null)
   }
+  const builtPlan = goal?.plan_source === 'builder'
+  const startSetup = () => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen('setup') }
+  const openPlan = () => (builtPlan ? setPlanScreen('planner') : open('plan'))
   const close = () => { setClosing(true); setTimeout(() => { setSheet(null); setClosing(false) }, 200) }
   // Drag-dismiss animates itself out, then unmounts at once (no second exit animation).
   const dismissNow = useCallback(() => { setSheet(null); setClosing(false) }, [])
@@ -393,17 +402,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           Garmin isn't connected yet. Tap to connect so Rabbit can see your training.
         </button>
       )}
-      {!goal && isCoach && items.length > 0 && (
-        <button onClick={() => tellRabbit("I'm training for ")}
+      {isCoach && (!goal ? items.length > 0 : !goal.plan) && (
+        <button onClick={startSetup}
           className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left text-xs text-(--accent)">
-          <Target className="size-4 shrink-0" />
-          Tell Rabbit what you're training for so briefs and feedback fit your plan.
+          {goal ? <Sparkles className="size-4 shrink-0" /> : <Target className="size-4 shrink-0" />}
+          <span className="min-w-0 flex-1">{goal
+            ? `Build a training plan for ${goal.title} and sync it to your watch.`
+            : 'Build your training plan: race, goals and schedule, then sync it to Garmin.'}</span>
+          <ChevronRight className="size-4 shrink-0" />
         </button>
       )}
 
       {showPins && goal && (
         <PlanPins goal={goal} week={week} loading={weekLoading}
-          onOpenPlan={() => open('plan')} onAskDay={askDay} />
+          onOpenPlan={openPlan} onAskDay={askDay} />
       )}
 
       {pending ? (
@@ -436,19 +448,45 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <RabbitLogo size={64} thinking className="text-(--brand) opacity-60" />
         </div>
       ) : items.length === 0 && settled && isCoach && !goal ? (
-        <div className="flex flex-1 flex-col justify-end overflow-y-auto px-4 py-4">
-          <div className="mx-auto w-full max-w-2xl">
-            <div className="mb-3 flex items-center gap-2 pl-1"><RabbitLogo size={22} />
-              <span className="text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">Rabbit</span></div>
-            <div className="max-w-[85%] rounded-xl rounded-tl-sm border border-border bg-background px-3.5 py-2.5 text-[0.8235rem] leading-relaxed shadow-sm">
-              <p>Hi{me.profile.name ? ` ${me.profile.name}` : ''}! I'm Rabbit, your training pacer.</p>
-              <p className="mt-1.5">What are you training for? Tell me the race and when it is. If you have a plan from a coach or an app, send it as a PDF or screenshots and I'll keep it in mind for every brief and workout note.</p>
+        <div className="flex flex-1 flex-col justify-center overflow-y-auto px-4 py-6">
+          <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+            <div className="flex flex-col items-center text-center">
+              <span className="logo-tile mb-4 flex size-16 items-center justify-center rounded-[18px] bg-(--brand) shadow-sm">
+                <RabbitLogo size={52} />
+              </span>
+              <p className="font-display text-[1.6471rem] leading-tight text-(--brand)">
+                Hi{me.profile.name ? ` ${me.profile.name.split(' ')[0]}` : ''}, let's build your plan
+              </p>
+              <p className="mt-2 text-[0.8235rem] leading-snug text-(--text-secondary)">
+                Tell Rabbit about your race, your goals and your week. You'll get a plan from today to race day, with workouts you can send straight to your Garmin.
+              </p>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2 pl-1">
-              <button className="rounded-full border border-border bg-background px-3 py-1.5 text-[0.7647rem] hover:bg-secondary"
-                onClick={() => tellRabbit("I'm training for ")}>I'm training for…</button>
+            <button type="button" onClick={startSetup}
+              className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-white"><Sparkles className="size-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9412rem] font-semibold text-(--accent)">Build my plan</span>
+                <span className="block text-[0.7059rem] text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-(--accent)" />
+            </button>
+            <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
               <label htmlFor={ATTACH_INPUT_ID} onClick={() => setDraft((d) => ({ text: "Here's my training plan.", n: (d?.n ?? 0) + 1 }))}
-                className="cursor-pointer rounded-full border border-border bg-background px-3 py-1.5 text-[0.7647rem] hover:bg-secondary">Upload my plan</label>
+                className="flex cursor-pointer items-center gap-3 px-4 py-3 active:bg-(--bg-inset)">
+                <Upload className="size-4 shrink-0 text-(--text-secondary)" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.8235rem] text-(--text)">I already have a plan</span>
+                  <span className="block text-[0.6471rem] text-(--text-muted)">Send a PDF or screenshots from a coach or app</span>
+                </span>
+              </label>
+              <button type="button" onClick={() => tellRabbit("I'm training for ")}
+                className="flex w-full items-center gap-3 border-t border-(--border) px-4 py-3 text-left active:bg-(--bg-inset)">
+                <MessageCircle className="size-4 shrink-0 text-(--text-secondary)" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.8235rem] text-(--text)">Just chat with Rabbit</span>
+                  <span className="block text-[0.6471rem] text-(--text-muted)">Describe your race and training in your own words</span>
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -536,7 +574,21 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <PlanSheet goal={goal} week={week} closing={closing} onClose={close} onDismissed={dismissNow}
           onAsk={() => tellRabbit('About my plan: ')}
           onUploadPlan={() => tellRabbit("Here's my updated training plan.")}
-          onEdit={() => open('memory')} />
+          onEdit={() => open('memory')} onBuild={startSetup} />
+      )}
+      {planScreen === 'setup' && (
+        <SetupWizard me={{ ...me, goal }} onClose={() => setPlanScreen(null)}
+          onDone={() => { onChange(); void refreshThreads(); loadWeek() }}
+          onOpenPlan={() => setPlanScreen('planner')}
+          onUploadPlan={() => tellRabbit("Here's my training plan.")}
+          onMeChanged={onChange} />
+      )}
+      {planScreen === 'planner' && (
+        <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'} onClose={() => setPlanScreen(null)}
+          onRebuild={() => setPlanScreen('setup')}
+          onAsk={tellRabbit}
+          onChanged={() => { void refreshThreads(); loadWeek() }}
+          onMeChanged={onChange} />
       )}
       {sheet === 'settings' && (
         <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>

@@ -28,6 +28,9 @@ from .coaching import CoachError
 from .config import Settings
 from .garminlogin import Busy, Cooldown, LoginManager
 from .logs import log_event
+from .planbuilder import PlanError
+from .plans import public_plan
+from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
 from .webauth import WebAuth
 from .webchat import ChatRunner, Turn, TurnBusy
@@ -71,6 +74,16 @@ class _Static(StaticFiles):
 
 def _err(status: int, message: str) -> JSONResponse:
     return JSONResponse({"error": message}, status_code=status)
+
+
+class _UserError(Exception):
+    """An error whose message goes to the app as-is (not a ValueError, so _api's generic
+    "bad request" handling doesn't swallow it)."""
+
+    def __init__(self, message: str, status: int = 400) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status = status
 
 
 async def read_json(request: Request) -> Any:
@@ -540,6 +553,118 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except CoachError as e:
             return _err(400, str(e))
 
+    # ------------------------------------------------------- plan builder --
+    plans = chat.agent.plans if chat is not None else None
+
+    def _plan_resp(user_id: str, plan: dict[str, Any] | None, status: int = 200,
+                   **extra: Any) -> JSONResponse:
+        assert plans is not None
+        return JSONResponse({"plan": public_plan(plan, plans.today(user_id)), **extra},
+                            status_code=status)
+
+    async def _plan_call(fn: Callable[[], Any]) -> Any:
+        """Run a PlanService call off the event loop; its validation errors become 400s
+        with their message (they're ValueErrors, which _api would turn into "bad request")."""
+        try:
+            return await anyio.to_thread.run_sync(fn)
+        except (PlanError, CoachError) as e:
+            raise _UserError(str(e)) from None
+        except ReauthRequired:
+            raise _UserError("Reconnect Garmin in settings, then try again.", 409) from None
+        except GarminError as e:
+            raise _UserError(str(e), 502) from None
+
+    def _plan_api(handler: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
+        async def inner(request: Request, user_id: str) -> Response:
+            if plans is None:
+                return _err(503, "The plan builder isn't configured on this server.")
+            try:
+                return await handler(request, user_id)
+            except _UserError as e:
+                return _err(e.status, e.message)
+        return _api(inner, mutating=mutating)
+
+    async def plan_get(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        return _plan_resp(user_id, plans.get(user_id))
+
+    async def plan_setup(request: Request, user_id: str) -> Response:
+        """The setup wizard's one save: profile, then the goal (new or updated), then
+        build the plan. Each step validates before anything later runs."""
+        assert plans is not None and chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        athlete, goal_in = body.get("athlete") or {}, body.get("goal") or {}
+        if not isinstance(athlete, dict) or not isinstance(goal_in, dict):
+            raise ValueError("body")
+        coach = _coach()
+
+        def run() -> tuple[dict[str, Any], dict[str, Any]]:
+            if athlete:
+                coach.update_athlete(user_id, athlete)
+            cur = coach.active_goal(user_id)
+            if cur is None or body.get("new_goal") is True:
+                coach.create_goal(user_id, goal_in)
+            elif goal_in:
+                coach.update_goal(user_id, cur["id"], goal_in)
+            start = body.get("start_date")
+            if start is not None and not isinstance(start, str):
+                raise PlanError("start_date must be YYYY-MM-DD")
+            return plans.build(user_id, start or None), coach.active_goal(user_id) or {}
+        plan, goal = await _plan_call(run)
+        return _plan_resp(user_id, plan, 201, goal=goal, athlete=coach.athlete(user_id))
+
+    async def plan_rebuild(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        start = body.get("start_date") if isinstance(body, dict) else None
+        plan = await _plan_call(lambda: plans.build(user_id, start if isinstance(start, str) else None))
+        return _plan_resp(user_id, plan)
+
+    async def plan_delete(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        out = await _plan_call(lambda: plans.delete(user_id))
+        return JSONResponse({"ok": True, **out})
+
+    async def session_add(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        return _plan_resp(user_id, await _plan_call(lambda: plans.add_session(user_id, body)), 201)
+
+    async def session_update(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        sid = request.path_params["session_id"]
+        return _plan_resp(user_id, await _plan_call(lambda: plans.update_session(user_id, sid, body)))
+
+    async def session_delete(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        sid = request.path_params["session_id"]
+        return _plan_resp(user_id, await _plan_call(lambda: plans.delete_session(user_id, sid)))
+
+    async def plan_sync(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        days = body.get("days", 14) if isinstance(body, dict) else 14
+        if not isinstance(days, int) or isinstance(days, bool):
+            raise ValueError("days")
+        result = await _plan_call(lambda: plans.sync(user_id, days))
+        return _plan_resp(user_id, plans.get(user_id), result=result)
+
+    async def plan_unsync(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        result = await _plan_call(lambda: plans.unsync(user_id))
+        return _plan_resp(user_id, plans.get(user_id), result=result)
+
+    async def garmin_numbers(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        return JSONResponse({"numbers": await _plan_call(lambda: plans.garmin_numbers(user_id))})
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -602,6 +727,20 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["POST"]),
         Route("/app/api/plan/week", _api(plan_week_get, mutating=False), methods=["GET"]),
         Route("/app/api/athlete", _api(athlete_put, mutating=True), methods=["PUT"]),
+        Route("/app/api/plan", _plan_api(plan_get, mutating=False), methods=["GET"]),
+        Route("/app/api/plan", _plan_api(plan_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/plan/setup", _plan_api(plan_setup, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/rebuild", _plan_api(plan_rebuild, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/sessions", _plan_api(session_add, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/sessions/{session_id}", _plan_api(session_update, mutating=True),
+              methods=["PATCH"]),
+        Route("/app/api/plan/sessions/{session_id}", _plan_api(session_delete, mutating=True),
+              methods=["DELETE"]),
+        Route("/app/api/plan/garmin/sync", _plan_api(plan_sync, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/garmin/remove", _plan_api(plan_unsync, mutating=True),
+              methods=["POST"]),
+        Route("/app/api/garmin/numbers", _plan_api(garmin_numbers, mutating=False),
+              methods=["GET"]),
         Route("/app/api/garmin/login", _api(garmin_login, mutating=True), methods=["POST"]),
         Route("/app/api/garmin/login/{job_id}", _api(garmin_login_status, mutating=False),
               methods=["GET"]),

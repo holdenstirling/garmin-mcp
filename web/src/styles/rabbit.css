@@ -197,3 +197,39 @@ html.kb-open .empty-hero { transform: none; }
 
 /* Chat loading: fade in after a beat so very quick loads don't flash it. */
 .chat-loading { animation: modal-fade-in 0.2s ease-out 0.1s both; }
+
+/* Plan builder: full-screen pages (setup wizard, plan editor) that slide up over the app. */
+.plan-screen {
+  position: fixed; inset: 0; z-index: 48; display: flex; flex-direction: column;
+  background: var(--bg);
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  animation: modal-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.plan-screen--exit { animation: modal-slide-down 0.2s ease-in forwards; }
+.plan-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px;
+  border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-surface);
+  color: var(--text-secondary); font-size: 0.8235rem; line-height: 1.2; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+.plan-chip:active { transform: scale(0.97); }
+.plan-chip:disabled { opacity: 0.45; cursor: default; }
+.plan-chip--on { border-color: var(--accent); background: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .plan-chip--on { background: var(--accent-subtle); color: var(--accent); }
+}
+:root.dark .plan-chip--on { background: var(--accent-subtle); color: var(--accent); }
+.plan-step-btn {
+  display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-surface);
+  color: var(--text-secondary); flex-shrink: 0;
+}
+.plan-step-btn:active { background: var(--bg-inset); }
+/* Phase strip in the plan header: one segment per week, the current week ringed. */
+.phase-base { background: color-mix(in srgb, var(--accent) 35%, var(--bg-elevated)); }
+.phase-build { background: color-mix(in srgb, var(--accent) 65%, var(--bg-elevated)); }
+.phase-peak { background: var(--accent); }
+.phase-taper { background: color-mix(in srgb, var(--warning) 55%, var(--bg-elevated)); }
+.phase-race { background: var(--brand); }
+.phase-recovery { background: var(--bg-elevated); }
+@media (prefers-reduced-motion: reduce) { .plan-screen, .plan-screen--exit { animation-duration: 0.01ms; } }

@@ -1,0 +1,190 @@
+// Bottom sheet for one plan session: see its structure, change sport/type/length/day,
+// rename it, add notes, or delete it. In add mode it creates a new session on a day.
+import { useState } from 'react'
+import { MessageCircle, Trash2, X } from 'lucide-react'
+import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { Button } from '@/components/ui/button'
+import type { Sport } from '@/lib/api'
+import { KIND_LABEL, ZONE_LABEL, fmtMin, stepText, type PlanSession, type Step } from '@/lib/plan'
+import { Card, Choice, Field, NumberStepper, areaCls, inputCls } from './ui'
+import { SPORT_LABEL, fmtDay, todayStr } from './PlanParts'
+
+export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }
+
+const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
+
+export function SessionSheet({ session, date, kinds, sports, raceDate, onSave, onDelete, onAsk, onClose, onDismissed, closing }: {
+  session: PlanSession | null          // null = add mode
+  date: string
+  kinds: Record<string, string[]>
+  sports: Sport[]
+  raceDate: string
+  onSave: (d: SessionDraft, changed: Partial<SessionDraft>) => Promise<void>
+  onDelete?: () => Promise<void>
+  onAsk?: () => void
+  onClose: () => void; onDismissed: () => void; closing: boolean
+}) {
+  const drag = useSheetDrag(onDismissed)
+  const adding = !session
+  const initial: SessionDraft = {
+    date,
+    sport: session?.sport ?? sports[0] ?? 'run',
+    kind: session?.kind ?? 'easy',
+    minutes: session?.minutes ?? (session?.legs.reduce((a, l) => a + l.minutes, 0) || 45),
+    title: session?.title ?? '',
+    detail: session?.detail ?? '',
+  }
+  const [d, setD] = useState<SessionDraft>(initial)
+  const [busy, setBusy] = useState<'save' | 'delete' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const isRace = session?.kind === 'race'
+  const past = date < todayStr()
+  const sportKinds = (kinds[d.sport] ?? []).filter((k) => k !== 'race')
+  const locked = isRace || past
+  const choices = [...new Set([...SPORTS.filter((s) => s === 'brick' ? sports.length > 1 : s === 'strength' || s === 'rest' || sports.includes(s)), ...(session ? [session.sport] : [])])]
+
+  const set = (p: Partial<SessionDraft>) => setD((x) => {
+    const n = { ...x, ...p }
+    if (p.sport && !(kinds[p.sport] ?? []).includes(n.kind)) n.kind = (kinds[p.sport] ?? ['easy'])[0] ?? 'easy'
+    return n
+  })
+
+  const changed = Object.fromEntries(
+    (Object.keys(d) as (keyof SessionDraft)[]).filter((k) => d[k] !== initial[k]).map((k) => [k, d[k]]),
+  ) as Partial<SessionDraft>
+
+  async function save() {
+    setBusy('save'); setError(null)
+    try { await onSave(d, changed); onClose() }
+    catch (e) { setError((e as Error).message) }
+    finally { setBusy(null) }
+  }
+  async function remove() {
+    if (!onDelete) return
+    setBusy('delete'); setError(null)
+    try { await onDelete(); onClose() }
+    catch (e) { setError((e as Error).message) }
+    finally { setBusy(null) }
+  }
+
+  const steps: { label?: string; steps: Step[] }[] = session
+    ? session.legs.length
+      ? session.legs.map((l) => ({ label: `${SPORT_LABEL[l.sport]} · ${fmtMin(l.minutes)}`, steps: l.steps }))
+      : session.steps.length ? [{ steps: session.steps }] : []
+    : []
+
+  return (
+    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
+      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
+        <div className="sheet-handle" />
+        <div className="modal-header">
+          <h2 className="modal-title">{session ? session.title : 'Add a session'}</h2>
+          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
+        </div>
+        <div className="modal-body settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+            {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {session?.synced && ' · on your Garmin calendar'}
+          </p>
+
+          {steps.length > 0 && (
+            <Card>
+              <Field label="The workout" hint={session?.synced ? 'Changes go to your watch on the next sync.' : undefined}>
+                <div className="flex flex-col gap-2">
+                  {steps.map((g, i) => (
+                    <div key={i} className="flex flex-col gap-1">
+                      {g.label && <span className="text-[0.7059rem] font-medium text-(--text-secondary)">{g.label}</span>}
+                      <ol className="flex flex-col gap-1">
+                        {g.steps.map((s, j) => <StepItem key={j} s={s} />)}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              </Field>
+            </Card>
+          )}
+          {session?.detail && !locked && steps.length === 0 && (
+            <p className="px-1 text-[0.8235rem] text-(--text-secondary)">{session.detail}</p>
+          )}
+
+          {locked ? (
+            <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+              {isRace ? 'Race day stays put. Change the race date by rebuilding the plan.' : 'This day has passed, so it can\'t be changed.'}
+            </p>
+          ) : (
+            <Card>
+              <Field label="Sport">
+                <Choice value={d.sport} options={choices.map((s) => [s, SPORT_LABEL[s]] as [Sport, string])} onChange={(v) => v && set({ sport: v })} />
+              </Field>
+              {sportKinds.length > 1 && (
+                <Field label="Type" className="border-t border-(--border)">
+                  <Choice value={d.kind} options={sportKinds.map((k) => [k, KIND_LABEL[k] ?? k] as [string, string])} onChange={(v) => v && set({ kind: v })} />
+                </Field>
+              )}
+              {d.sport !== 'rest' && (
+                <Field label="Length" className="border-t border-(--border)" hint={d.sport === 'swim' ? 'Swims sync to Garmin by distance, worked out from this time and your swim pace.' : undefined}>
+                  <NumberStepper label="minutes" value={d.minutes} min={10} max={600} step={5} suffix="min"
+                    onChange={(v) => set({ minutes: v ?? 10 })} />
+                </Field>
+              )}
+              <Field label="Day" className="border-t border-(--border)">
+                <input type="date" className={inputCls} value={d.date} min={todayStr()} max={raceDate}
+                  onChange={(e) => e.target.value && set({ date: e.target.value })} />
+              </Field>
+              <Field label="Name" className="border-t border-(--border)" hint={adding ? 'Leave blank for a name like "Easy run".' : undefined}>
+                <input className={inputCls} maxLength={60} value={d.title} placeholder={`${KIND_LABEL[d.kind] ?? ''} ${SPORT_LABEL[d.sport].toLowerCase()}`.trim()}
+                  onChange={(e) => set({ title: e.target.value })} />
+              </Field>
+              {!adding && (
+                <Field label="Notes" className="border-t border-(--border)">
+                  <textarea className={areaCls} maxLength={400} value={d.detail} onChange={(e) => set({ detail: e.target.value })} />
+                </Field>
+              )}
+            </Card>
+          )}
+
+          {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+
+          <div className="flex gap-2">
+            {onAsk && (
+              <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onAsk}>
+                <MessageCircle className="size-4" /> Ask
+              </Button>
+            )}
+            {!locked && (
+              <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
+                disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
+                {adding ? 'Add session' : 'Save changes'}
+              </Button>
+            )}
+            {onDelete && !locked && (
+              <Button variant="default" size="icon" className="size-11 text-(--danger)" aria-label="Delete session"
+                loading={busy === 'delete'} onClick={() => void remove()}>
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StepItem({ s }: { s: Step }) {
+  if (s.type === 'repeat') {
+    return (
+      <li className="rounded-lg border border-(--border) px-3 py-2">
+        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{s.reps} times</span>
+        <ol className="mt-1 flex flex-col gap-1">{s.steps.map((x, i) => <StepItem key={i} s={x} />)}</ol>
+      </li>
+    )
+  }
+  const tone = s.type === 'work' ? 'bg-(--accent)' : s.type === 'steady' ? 'bg-(--accent)/60' : 'bg-(--bg-elevated)'
+  return (
+    <li className="flex items-center gap-2.5 text-[0.8235rem]">
+      <span className={`h-5 w-1 shrink-0 rounded-full ${tone}`} />
+      <span className="flex-1 text-(--text)">{stepText(s)}</span>
+      <span className="text-[0.7059rem] text-(--text-muted)">{ZONE_LABEL[s.zone] ?? ''}</span>
+    </li>
+  )
+}

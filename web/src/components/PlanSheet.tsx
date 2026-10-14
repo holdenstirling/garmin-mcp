@@ -3,17 +3,17 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { FileText, MessageCircle, Pencil, X } from 'lucide-react'
+import { FileText, MessageCircle, Pencil, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Group, Icon } from '@/components/settings/Grouped'
+import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import { planLine } from '@/components/chat/PlanPins'
 import { attachmentUrl, formatFileSize } from '@/lib/attachments'
 import type { Goal, PlanWeek } from '@/lib/api'
 
-export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onClose, onDismissed, closing }: {
+export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, onClose, onDismissed, closing }: {
   goal: Goal; week: PlanWeek | null
-  onAsk: () => void; onUploadPlan: () => void; onEdit: () => void
+  onAsk: () => void; onUploadPlan: () => void; onEdit: () => void; onBuild: () => void
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const drag = useSheetDrag(onDismissed)
@@ -48,6 +48,10 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onClose, on
               </Button>
             )}
           </div>
+
+          <Group footer={goal.plan ? 'Replaces this plan with one built from your answers. You can sync it to Garmin.' : 'Answer a few questions and get a week-by-week plan you can sync to Garmin.'}>
+            <Row icon={<Icon><Sparkles /></Icon>} title="Build a plan in Rabbit" subtitle="Race, goals, you and your week" onClick={onBuild} />
+          </Group>
 
           {files.length > 0 && (
             <Group label="Plan files">

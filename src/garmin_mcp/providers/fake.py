@@ -238,7 +238,41 @@ def fake_answer(fn_name: str, kwargs: dict[str, Any], today: date | None = None)
                 "vo2MaxRunning": 52.0, "vo2MaxCycling": 54.0}
     if fn_name == "get_race_predictions":
         return {"time5K": 1290, "time10K": 2710, "timeHalfMarathon": 6020, "timeMarathon": 12780}
+    if fn_name == "get_user_profile":
+        return {"userData": {"gender": "MALE", "weight": 72500.0, "height": 178.0,
+                             "birthDate": "1990-05-04", "measurementSystem": "metric",
+                             "lactateThresholdHeartRate": 168}}
+    if fn_name == "get_heart_rate_zones":
+        return [{"sport": "DEFAULT", "maxHeartRateUsed": 188, "restingHeartRateUsed": 47,
+                 "lactateThresholdHeartRateUsed": 168}]
+    if fn_name == "get_cycling_ftp":
+        return {"functionalThresholdPower": 245, "sport": "CYCLING"}
+    # Plan sync writes: kept in memory so dev mode and tests can see what was sent.
+    if fn_name == "upload_workout":
+        wo = kwargs["workout_json"]
+        if not wo.get("workoutSegments"):
+            raise GarminError("Garmin returned an error.")
+        FAKE_WORKOUTS["next"] += 1
+        wid = 900_000 + FAKE_WORKOUTS["next"]
+        FAKE_WORKOUTS["uploaded"][wid] = wo
+        return {"workoutId": wid, "workoutName": wo.get("workoutName")}
+    if fn_name == "schedule_workout":
+        FAKE_WORKOUTS["next"] += 1
+        sid = 700_000 + FAKE_WORKOUTS["next"]
+        FAKE_WORKOUTS["scheduled"][sid] = (int(kwargs["workout_id"]), kwargs["date_str"])
+        return {"workoutScheduleId": sid, "calendarDate": kwargs["date_str"]}
+    if fn_name == "delete_workout":
+        wid = int(kwargs["workout_id"])
+        FAKE_WORKOUTS["uploaded"].pop(wid, None)
+        FAKE_WORKOUTS["deleted"].append(wid)
+        for sid, (w, _) in list(FAKE_WORKOUTS["scheduled"].items()):
+            if w == wid:
+                del FAKE_WORKOUTS["scheduled"][sid]
+        return None
     raise GarminError(f"Fake Garmin has no data for {fn_name}.")
+
+
+FAKE_WORKOUTS: dict[str, Any] = {"next": 0, "uploaded": {}, "scheduled": {}, "deleted": []}
 
 
 class FakeSession(GarminSession):

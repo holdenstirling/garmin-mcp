@@ -38,8 +38,21 @@ DISTANCES = ("sprint triathlon", "olympic triathlon", "70.3", "140.6", "5k", "10
 
 _ATHLETE_TEXT = {"experience": 300, "training_days": 200, "injuries": 500,
                  "preferences": 500}
+# name -> (low, high, integer?). Paces are seconds (run per km, swim CSS per 100 m).
+_ATHLETE_NUM = {
+    "weekly_hours": (0, 40, False), "age": (10, 100, True),
+    "height_cm": (100, 250, True), "weight_kg": (30, 250, False),
+    "resting_hr": (25, 120, True), "max_hr": (100, 230, True), "threshold_hr": (80, 220, True),
+    "ftp_w": (50, 600, True), "run_threshold_pace": (150, 600, True), "swim_css": (50, 240, True),
+}
+_ATHLETE_ENUM = {"sex": ("female", "male", "other"), "level": ("new", "intermediate", "advanced"),
+                 "units": ("metric", "imperial")}
+_WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+_EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
 _GOAL_TEXT = {"title": 80, "event": 120, "distance": 40, "target": 160, "priorities": 600,
-              "plan": 12000, "notes": 2000}
+              "plan": 12000, "notes": 2000, "course": 300}
+_GOAL_ENUM = {"goal_type": ("finish", "time", "compete"), "priority": ("A", "B", "C")}
+_TIME_RE = re.compile(r"^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$")
 PLAN_CONTEXT_CHARS = 8000
 MAX_PLAN_FILES = 10
 
@@ -73,6 +86,16 @@ def training_phase(race: date, today: date) -> tuple[int, str]:
     if weeks < 16:
         return weeks, "build"
     return weeks, "base"
+
+
+def _fmt_athlete(k: str, v: Any) -> str:
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v)
+    if k in ("run_threshold_pace", "swim_css") and isinstance(v, int | float):
+        return f"{int(v) // 60}:{int(v) % 60:02d} per {'km' if k == 'run_threshold_pace' else '100 m'}"
+    unit = {"height_cm": " cm", "weight_kg": " kg", "ftp_w": " W", "resting_hr": " bpm",
+            "max_hr": " bpm", "threshold_hr": " bpm", "weekly_hours": " h"}.get(k, "")
+    return f"{v}{unit}"
 
 
 def plan_week(goal: dict[str, Any] | None, today: date, offset: int = 0) -> dict[str, Any]:
@@ -114,17 +137,33 @@ class CoachStore:
         for k, v in patch.items():
             if k in _ATHLETE_TEXT:
                 upd[k] = _clean_text(v, _ATHLETE_TEXT[k], k)
-            elif k == "units":
-                if v not in ("metric", "imperial"):
-                    raise CoachError("units must be metric or imperial")
-                upd[k] = v
-            elif k in ("weekly_hours", "age"):
+            elif k in _ATHLETE_ENUM:
                 if v in (None, ""):
                     upd[k] = None
                     continue
-                if not isinstance(v, int | float) or isinstance(v, bool) or not 0 <= v <= 120:
-                    raise CoachError(f"{k} must be a number")
-                upd[k] = round(float(v), 1) if k == "weekly_hours" else int(v)
+                if v not in _ATHLETE_ENUM[k]:
+                    raise CoachError(f"{k} must be one of {', '.join(_ATHLETE_ENUM[k])}")
+                upd[k] = v
+            elif k in _ATHLETE_NUM:
+                if v in (None, ""):
+                    upd[k] = None
+                    continue
+                lo, hi, whole = _ATHLETE_NUM[k]
+                if not isinstance(v, int | float) or isinstance(v, bool) or not lo <= v <= hi:
+                    raise CoachError(f"{k.replace('_', ' ')} must be a number from {lo} to {hi}")
+                upd[k] = int(round(v)) if whole else round(float(v), 1)
+            elif k in ("available_days", "equipment"):
+                allowed = _WEEKDAYS if k == "available_days" else _EQUIPMENT
+                if not isinstance(v, list) or any(x not in allowed for x in v):
+                    raise CoachError(f"{k.replace('_', ' ')} must be a list from {', '.join(allowed)}")
+                upd[k] = [x for x in allowed if x in v]
+            elif k == "long_day":
+                if v in (None, ""):
+                    upd[k] = None
+                    continue
+                if v not in _WEEKDAYS:
+                    raise CoachError("long_day must be a weekday (mon..sun)")
+                upd[k] = v
             else:
                 raise CoachError(f"unknown profile field {k!r}")
 
@@ -161,6 +200,24 @@ class CoachStore:
                     out[k] = date.fromisoformat(str(v)).isoformat()
                 except ValueError:
                     raise CoachError("date must be YYYY-MM-DD") from None
+            elif k in _GOAL_ENUM:
+                if v in (None, ""):
+                    out[k] = None
+                elif v not in _GOAL_ENUM[k]:
+                    raise CoachError(f"{k.replace('_', ' ')} must be one of {', '.join(_GOAL_ENUM[k])}")
+                else:
+                    out[k] = v
+            elif k == "target_time":
+                if v in (None, ""):
+                    out[k] = None
+                elif not isinstance(v, str) or not _TIME_RE.match(v.strip()):
+                    raise CoachError("target time must look like 5:30:00 or 45:00")
+                else:
+                    out[k] = v.strip()
+            elif k == "limiters":
+                if not isinstance(v, list) or any(x not in ("swim", "bike", "run") for x in v):
+                    raise CoachError("limiters must be a list of swim, bike, run")
+                out[k] = [x for x in ("swim", "bike", "run") if x in v]
             else:
                 raise CoachError(f"unknown goal field {k!r}")
         if not partial and not out.get("title"):
@@ -175,6 +232,9 @@ class CoachStore:
                 "distance": g.get("distance", ""), "target": g.get("target", ""),
                 "priorities": g.get("priorities", ""), "plan": g.get("plan", ""),
                 "plan_files": []}
+        for k in ("goal_type", "priority", "target_time", "limiters", "course"):
+            if g.get(k) not in (None, "", []):
+                goal[k] = g[k]
 
         def add(d: dict[str, Any]) -> bool:
             goals = d.setdefault("goals", {})
@@ -241,6 +301,8 @@ class CoachStore:
                 known = {f["id"] for f in goal.get("plan_files", [])}
                 goal["plan_files"] = (goal.get("plan_files", []) +
                                       [f for f in files if f["id"] not in known])[-MAX_PLAN_FILES:]
+                # A plan from an uploaded file replaces a built one as the source of truth.
+                goal["plan_source"] = "uploaded"
             return dict(goal)
         return self._goals_doc(user_id).update(apply)
 
@@ -430,9 +492,9 @@ class CoachStore:
                       plan_days: list[str] | None = None) -> str:
         """``plan_days``: lines about today's (and tomorrow's) planned sessions."""
         lines = [f"Today: {now:%A %Y-%m-%d}, {now:%H:%M} local time ({now.tzname()})."]
-        a = {k: v for k, v in self.athlete(user_id).items() if v not in (None, "")}
+        a = {k: v for k, v in self.athlete(user_id).items() if v not in (None, "", [])}
         lines.append("Athlete profile: " + (
-            "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in a.items()) if a
+            "; ".join(f"{k.replace('_', ' ')}: {_fmt_athlete(k, v)}" for k, v in a.items()) if a
             else "not set up yet (ask about experience, weekly hours and injuries when it's useful)."))
         g = self.active_goal(user_id)
         if g:
@@ -442,10 +504,16 @@ class CoachStore:
                 when = (f" on {g['date']} ({weeks} weeks out, roughly the {phase} phase)"
                         if phase != "post-race" else f" on {g['date']} (already happened)")
             bits = [f"Active goal: {g.get('title')}{when}."]
-            for k in ("event", "distance", "target", "priorities"):
+            for k in ("event", "distance", "target", "target_time", "goal_type", "priority",
+                      "priorities", "limiters", "course"):
                 if g.get(k):
-                    bits.append(f"{k.capitalize()}: {g[k]}.")
+                    v = ", ".join(g[k]) if isinstance(g[k], list) else g[k]
+                    bits.append(f"{k.replace('_', ' ').capitalize()}: {v}.")
             lines.append(" ".join(bits))
+            if g.get("plan_source") == "builder":
+                lines.append("Their plan was built in the app's plan builder; they edit sessions and "
+                             "sync them to Garmin from the plan screen. Point them there for changes "
+                             "rather than rewriting the plan with save_plan.")
             if g.get("plan"):
                 plan = g["plan"]
                 if len(plan) > PLAN_CONTEXT_CHARS:

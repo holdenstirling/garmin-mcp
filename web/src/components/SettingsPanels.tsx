@@ -79,7 +79,7 @@ export function SettingsPanels({ me, goal, onEditGoal, onChange, onDevDone }: {
       </Group>
 
       <Group label="Garmin"
-        footer={me.garmin.connected ? 'Rabbit can read your activities, sleep and training data. It never changes anything in Garmin.' : undefined}>
+        footer={me.garmin.connected ? 'Rabbit can read your activities, sleep and training data. It only adds workouts to your Garmin calendar when you sync a plan you built in Rabbit.' : undefined}>
         {me.garmin.connected ? (
           <>
             <Row icon={<Icon><Watch /></Icon>} title="Garmin Connect"

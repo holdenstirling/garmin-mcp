@@ -55,8 +55,9 @@ class GarminService:
         }
 
     # --------------------------------------------------------------- execute --
-    def _upstream(self, user_id: str, fn: Any, kwargs: dict[str, Any], *, read: bool) -> Any:
-        if not self.limiter.allow(user_id):
+    def _upstream(self, user_id: str, fn: Any, kwargs: dict[str, Any], *, read: bool,
+                  limited: bool = True) -> Any:
+        if limited and not self.limiter.allow(user_id):
             raise RateLimited("Per-user rate limit reached for this server; wait a minute.")
         session = self.provider.get_client(user_id)
         try:
@@ -154,6 +155,93 @@ class GarminService:
         if not isinstance(blob, bytes | bytearray) or not blob:
             raise GarminError("Garmin returned no file for that activity.")
         return bytes(blob)
+
+    # ---------------------------------------------- Rabbit plan sync (internal) --
+    # Fixed Garmin methods with payloads Rabbit built itself, called only from the plan
+    # builder's explicit "Sync to Garmin" action. They never go through the registry or
+    # `execute`, so GARMIN_ALLOW_WRITES (the generic write switch for MCP callers) does not
+    # apply. Not rate-limited per call: a sync paces itself.
+    def workout_upload(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        from garminconnect import Garmin
+
+        out = self._upstream(user_id, Garmin.upload_workout, {"workout_json": payload},
+                             read=False, limited=False)
+        return out if isinstance(out, dict) else {}
+
+    def workout_schedule(self, user_id: str, workout_id: int, day: str) -> dict[str, Any]:
+        from garminconnect import Garmin
+
+        out = self._upstream(user_id, Garmin.schedule_workout,
+                             {"workout_id": int(workout_id), "date_str": str(day)},
+                             read=False, limited=False)
+        return out if isinstance(out, dict) else {}
+
+    def workout_delete(self, user_id: str, workout_id: int) -> None:
+        from garminconnect import Garmin
+
+        self._upstream(user_id, Garmin.delete_workout, {"workout_id": int(workout_id)},
+                       read=False, limited=False)
+
+    def training_numbers(self, user_id: str) -> dict[str, Any]:
+        """Profile numbers Garmin knows (to prefill Rabbit's setup). Best effort: each
+        read that fails is just skipped."""
+        out: dict[str, Any] = {}
+
+        def read(method: str, **kw: Any) -> Any:
+            info = self.registry.get(method)
+            if info is None or info.access is not Access.READ:
+                return None
+            try:
+                return self._cached_call(user_id, info.name, info.fn, kw)
+            except ReauthRequired:
+                raise
+            except GarminError:
+                return None
+
+        prof = read("get_user_profile") or {}
+        ud = prof.get("userData") if isinstance(prof, dict) else None
+        if isinstance(ud, dict):
+            w = ud.get("weight")
+            if isinstance(w, int | float) and w > 0:
+                out["weight_kg"] = round(w / 1000.0 if w > 400 else w, 1)
+            h = ud.get("height")
+            if isinstance(h, int | float) and 100 <= h <= 250:
+                out["height_cm"] = round(h)
+            g = str(ud.get("gender") or "").lower()
+            if g in ("male", "female"):
+                out["sex"] = g
+            bd = ud.get("birthDate")
+            if isinstance(bd, str) and len(bd) >= 10:
+                try:
+                    b = date.fromisoformat(bd[:10])
+                    t = date.today()
+                    out["age"] = t.year - b.year - ((t.month, t.day) < (b.month, b.day))
+                except ValueError:
+                    pass
+            lt = ud.get("lactateThresholdHeartRate")
+            if isinstance(lt, int | float) and 80 <= lt <= 220:
+                out["threshold_hr"] = int(lt)
+            if ud.get("measurementSystem") in ("metric", "statute_us", "statute_uk"):
+                out["units"] = "metric" if ud["measurementSystem"] == "metric" else "imperial"
+        zones = read("get_heart_rate_zones")
+        if isinstance(zones, list):
+            z = next((x for x in zones if isinstance(x, dict) and x.get("sport") == "DEFAULT"),
+                     next((x for x in zones if isinstance(x, dict)), None))
+            if z:
+                for src, dst, lo, hi in (("maxHeartRateUsed", "max_hr", 100, 230),
+                                         ("restingHeartRateUsed", "resting_hr", 25, 120),
+                                         ("lactateThresholdHeartRateUsed", "threshold_hr", 80, 220)):
+                    v = z.get(src)
+                    if isinstance(v, int | float) and lo <= v <= hi:
+                        out.setdefault(dst, int(v))
+        ftp = read("get_cycling_ftp")
+        if isinstance(ftp, list):
+            ftp = ftp[0] if ftp else None
+        if isinstance(ftp, dict):
+            v = ftp.get("functionalThresholdPower")
+            if isinstance(v, int | float) and 50 <= v <= 600:
+                out["ftp_w"] = int(v)
+        return out
 
     def activities_between(self, user_id: str, start: date, end: date,
                            activitytype: str | None = None) -> list[dict[str, Any]]:
