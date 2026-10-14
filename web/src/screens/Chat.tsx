@@ -10,6 +10,7 @@ import { PlanEditor } from '@/components/plan/PlanEditor'
 import { SetupWizard } from '@/components/plan/SetupWizard'
 import { ProfileScreen } from '@/components/plan/ProfileScreen'
 import { EventsScreen } from '@/components/events/EventsScreen'
+import { RacePackScreen } from '@/components/events/RacePackScreen'
 import { StatsScreen } from '@/components/stats/StatsScreen'
 import { CoachInbox } from '@/components/coach/CoachInbox'
 import { CoachesScreen } from '@/components/coach/CoachesScreen'
@@ -80,7 +81,7 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
 // Full-screen pages over the app: the plan setup wizard and the built plan.
-type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes'
+type PlanScreen = 'setup' | 'planner' | 'events' | 'profile' | 'stats' | 'coach' | 'coaches' | 'athletes' | 'racepack'
 
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -190,6 +191,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setPlanScreen(null)
   }
   const builtPlan = goal?.plan_source === 'builder'
+  const raceSoon = !!goal?.date && (() => { const n = (new Date(`${goal.date}T12:00:00`).getTime() - Date.now()) / 86_400_000; return n >= -1 && n <= 14 })()
   // A suggested plan adjustment shows as a banner on the home screen.
   useEffect(() => {
     if (!builtPlan || planScreen) return
@@ -437,6 +439,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           Garmin isn't connected yet. Tap to connect so Rabbit can see your training.
         </button>
       )}
+      {isCoach && raceSoon && (
+        <button onClick={() => showScreen('racepack')}
+          className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--brand)/30 bg-(--bg-surface) px-3 py-2 text-left text-xs text-(--brand)">
+          <Flame className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1">Race week is close. Open your race-week pack: pacing, fueling, gear and weather.</span>
+          <ChevronRight className="size-4 shrink-0" />
+        </button>
+      )}
       {isCoach && adjustHint && (
         <button onClick={() => showScreen('planner')}
           className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left text-xs text-(--accent)">
@@ -656,10 +666,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} />}
       {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'events' && (
-        <EventsScreen hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
+        <EventsScreen hasBuiltPlan={builtPlan} imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={() => setPlanScreen('planner')} onBuildPlan={() => setPlanScreen('setup')} />
       )}
+      {planScreen === 'racepack' && <RacePackScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'stats' && (
         <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
       )}

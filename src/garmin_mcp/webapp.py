@@ -36,6 +36,7 @@ from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
 from .adjust import propose as propose_adjustment
+from . import racepack
 from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -1121,6 +1122,24 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         plan = await _plan_call(lambda: plans.apply_adjustment(user_id, prop["changes"]))
         return _plan_resp(user_id, plan, applied=len(prop["changes"]))
 
+    async def racepack_get(request: Request, user_id: str) -> Response:
+        assert chat is not None and plans is not None
+        eid = request.query_params.get("event_id") or None
+
+        def pick() -> dict[str, Any]:
+            ev = chat.agent.events
+            if eid:
+                return ev.get(user_id, eid)
+            main = next((e for e in ev.list(user_id) if e["main"]), None)
+            if main is None:
+                raise CoachError("Add your race in Events first.")
+            return main
+        event = await _plan_call(pick)
+        today = plans.today(user_id)
+        wx = await racepack.forecast(event.get("location") or "", date.fromisoformat(event["date"]), today)
+        athlete = _coach().athlete(user_id)
+        return JSONResponse(racepack.build(event, athlete, plans.get(user_id) if event.get("main") else None, today, wx))
+
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
         body = await read_json(request)
@@ -1233,6 +1252,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_get, mutating=False), methods=["GET"]),
+        Route("/app/api/racepack", _plan_api(racepack_get, mutating=False), methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),

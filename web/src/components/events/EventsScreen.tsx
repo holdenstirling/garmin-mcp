@@ -1,7 +1,7 @@
 // Events: every race on your calendar. Add, edit, look up, delete, and pick the main one
 // (the race your plan builds toward). Other races become B/C race days in the plan.
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Bike, CalendarPlus, ChevronRight, Footprints, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
+import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -11,19 +11,21 @@ import {
   type EventFields, type EventType, type RaceEvent,
 } from '@/lib/events'
 import { EventBasics, EventGoal, InfoBlock } from './EventForm'
+import { RacePackScreen } from './RacePackScreen'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
   swimming: Waves, mountaineering: Mountain, other: Activity,
 }
 
-export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, startAdding }: {
+export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, startAdding, imperial = false }: {
   hasBuiltPlan: boolean
   onClose: () => void
   onChanged: () => void
   onOpenPlan: () => void
   onBuildPlan: () => void
   startAdding?: boolean
+  imperial?: boolean
 }) {
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +96,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         )}
       </Screen>
       {editing && (
-        <EventEditor event={editing === 'new' ? null : editing} isFirst={(events ?? []).length === 0}
+        <EventEditor event={editing === 'new' ? null : editing} isFirst={(events ?? []).length === 0} imperial={imperial}
           onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
       )}
     </>
@@ -133,8 +135,8 @@ function EventCard({ e, onClick }: { e: RaceEvent; onClick: () => void }) {
   )
 }
 
-function EventEditor({ event, isFirst, onClose, onSaved }: {
-  event: RaceEvent | null; isFirst: boolean
+function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
+  event: RaceEvent | null; isFirst: boolean; imperial: boolean
   onClose: () => void; onSaved: (list: RaceEvent[]) => void
 }) {
   const [closing, setClosing] = useState(false)
@@ -143,6 +145,7 @@ function EventEditor({ event, isFirst, onClose, onSaved }: {
   const [busy, setBusy] = useState<'save' | 'delete' | 'main' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pack, setPack] = useState(false)
   const set = (p: EventFields) => setV((x) => ({ ...x, ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   const past = !!event && daysUntil(event.date) < 0
@@ -194,6 +197,12 @@ function EventEditor({ event, isFirst, onClose, onSaved }: {
           Make this my main event (the plan builds toward it)
         </label>
       )}
+      {event && !past && (
+        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => setPack(true)}>
+          <Backpack className="size-4" /> Race-week pack
+        </Button>
+      )}
+      {pack && event && <RacePackScreen eventId={event.id} imperial={imperial} onClose={() => setPack(false)} />}
       {event && !event.main && !past && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'main'}
           onClick={() => void run('main', () => makeMainEvent(event.id))}>
