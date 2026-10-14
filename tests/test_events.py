@@ -68,6 +68,9 @@ def test_event_crud_and_main_link(env) -> None:
     ev.set_main("u", b["id"])
     g2 = agent.coach.active_goal("u")
     assert g2["id"] == g["id"] and g2["event_id"] == b["id"] and g2["title"] == "Leadville 100 Run"
+    # The old main event keeps its own details and becomes a B race.
+    old = ev.get("u", a["id"])
+    assert old["name"] == "Boulder 70.3" and old["date"] == "2027-06-26" and old["priority"] == "B"
     # Editing the main event keeps the goal in step; the main one can't be deleted.
     ev.update("u", b["id"], {"date": "2027-08-22", "target_time": "24:59:00"})
     g3 = agent.coach.active_goal("u")

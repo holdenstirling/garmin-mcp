@@ -215,12 +215,25 @@ class EventStore:
             fields = {"title": ev["name"][:80], "priority": "A"} | self._goal_fields(ev)
             g = self._coach.create_goal(user_id, fields)
         else:
+            prev = g.get("event_id")
+            # Re-point first, so the goal update below can't write into the old event.
+            self._link_goal(user_id, g["id"], event_id)
             self._coach.update_goal(user_id, g["id"], {"title": ev["name"][:80], "priority": "A",
                                                         "target": ""} | self._goal_fields(ev))
+            if prev and prev != event_id:
+                self._demote(user_id, prev)
         self._link_goal(user_id, g["id"], event_id)
         if ev.get("priority") != "A":
             self.update(user_id, event_id, {"priority": "A"})
         return self.get(user_id, event_id)
+
+    def _demote(self, user_id: str, event_id: str) -> None:
+        """The previous main event stays on the calendar as a B race."""
+        def apply(d: dict[str, Any]) -> None:
+            ev = d.get("events", {}).get(event_id)
+            if ev is not None and ev.get("priority") == "A":
+                ev["priority"] = "B"
+        self._doc(user_id).update(apply)
 
     def _goal_fields(self, ev: dict[str, Any]) -> dict[str, Any]:
         out = {gk: ev.get(ek) for ek, gk in _GOAL_SYNC.items()}

@@ -55,7 +55,8 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
       <Card>
         <Field label="Type of event">
           <Choice value={type} options={EVENT_TYPES}
-            onChange={(v) => v && onChange({ type: v, distance: TYPE_DISTANCES[v].includes(value.distance ?? '') ? value.distance : TYPE_DISTANCES[v][0] })} />
+            onChange={(v) => v && onChange({ type: v, distance: TYPE_DISTANCES[v].includes(value.distance ?? '') ? value.distance
+              : TYPE_DISTANCES[v].length === 1 ? TYPE_DISTANCES[v][0] : '' })} />
         </Field>
         <Field label="Event name" className="border-t border-(--border)"
           hint="Type the name, then look it up to fill in the date, location and course from the web.">
