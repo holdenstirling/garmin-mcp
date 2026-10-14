@@ -93,7 +93,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
-  const [coachThread, setCoachThread] = useState<string | null>(null)
+  const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -197,7 +197,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       const c = (await getCoaches()).coaches[0]
       if (!c) return
       const r = await athleteChat.open({ coach: c.email, session_id: s.id })
-      setCoachThread(r.thread.id)
+      setCoachMsgThread(r.thread.id)
       setPlanScreen('coach')
     } catch (e) { showToast((e as Error).message) }
   }
@@ -443,7 +443,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <HomeButton icon={Flame} onClick={() => showScreen('stats')}>Stats</HomeButton>
           <HomeButton icon={CalendarDays} onClick={() => showScreen('events')}>Events</HomeButton>
           {me.coaches > 0 && (
-            <HomeButton icon={Megaphone} onClick={() => { setCoachThread(null); showScreen('coach') }}>
+            <HomeButton icon={Megaphone} onClick={() => { setCoachMsgThread(null); showScreen('coach') }}>
               Coach{me.coach_unread ? ` (${me.coach_unread})` : ''}
             </HomeButton>
           )}
@@ -627,7 +627,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onMessage={me.coaches > 0 ? (s) => void messageCoach(s) : undefined} messageLabel="Message coach" />
       )}
       {planScreen === 'coach' && (
-        <CoachInbox openThreadId={coachThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
+        <CoachInbox openThreadId={coachMsgThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
       )}
       {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} />}
       {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
