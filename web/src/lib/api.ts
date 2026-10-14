@@ -9,6 +9,7 @@ export type CoachSettings = {
   brief_time: string
   brief_enabled: boolean
   workout_feedback: boolean
+  recap_enabled?: boolean
   has_notes: boolean
 }
 

@@ -104,6 +104,8 @@ class Settings:
     poll_timezone: str = "America/Denver"
     poll_fast_hours: str = "5-9"
     poll_fast_minutes: int = 5
+    poll_day_hours: str = "6-22"
+    poll_day_minutes: int = 5
     poll_max_fires_per_day: int = 10
 
     # MCP endpoint + GitHub OAuth AS. false = Rabbit-only process (own service/port/data dir).
@@ -223,6 +225,8 @@ class Settings:
             poll_timezone=os.environ.get("POLL_TIMEZONE", "America/Denver").strip(),
             poll_fast_hours=os.environ.get("POLL_FAST_HOURS", "5-9"),
             poll_fast_minutes=_int("POLL_FAST_MINUTES", 5),
+            poll_day_hours=os.environ.get("POLL_DAY_HOURS", "6-22"),
+            poll_day_minutes=_int("POLL_DAY_MINUTES", 5),
             poll_max_fires_per_day=_int("POLL_MAX_FIRES_PER_DAY", 10),
             mcp_enabled=_bool("MCP_ENABLED", True),
             app_enabled=_bool("APP_ENABLED", False),

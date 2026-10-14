@@ -250,3 +250,65 @@ def test_fast_poll_window_uses_each_users_time_zone(env, monkeypatch) -> None:
     env.clock.t = datetime(2026, 10, 12, 13, 5, tzinfo=UTC)  # 07:05 in Denver, 13:05 UTC
     p.tick()
     assert polled == ["friend"]  # Denver's 5-9am window; UTC is outside its own window
+
+
+# ------------------------------------------------------------ live + recap --
+def _recap_proactive(env, recaps: list[str], sent: list[tuple[str, str, str, str]], fail: dict[str, bool]) -> Proactive:
+    def recap(u: str) -> dict[str, Any]:
+        recaps.append(u)
+        if fail.get("on"):
+            raise RuntimeError("garmin down")
+        return {"summary": "5 workouts · +312 XP · 9-day streak"}
+    return Proactive(service=env.service, store=env.store, token_store=env.tokens, users=lambda: ["friend"],
+                     deliver=lambda u, k, p: FireResult(FireOutcome.OK, 200), notify=lambda u, t, b: None,
+                     schedule=Schedule.parse("UTC", "", 5), state_dir=env.store._root / "poller",
+                     default_tz="UTC", clock=env.clock, recap=recap,
+                     notify_url=lambda u, t, b, url: sent.append((u, t, b, url)))
+
+
+def test_sunday_recap_claimed_once_per_week(env) -> None:
+    recaps: list[str] = []
+    sent: list[tuple[str, str, str, str]] = []
+    fail = {"on": False}
+    p = _recap_proactive(env, recaps, sent, fail)
+    _profile(env, brief_enabled=False, workout_feedback=False, timezone="UTC")
+    env.clock.t = datetime(2026, 10, 17, 18, 30, tzinfo=UTC)  # Saturday: nothing
+    p.tick()
+    assert sent == []
+    env.clock.t = datetime(2026, 10, 18, 17, 59, tzinfo=UTC)  # Sunday, not yet due
+    p.tick()
+    assert sent == []
+    fail["on"] = True                                         # due, but the recap can't be built
+    env.clock.t = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
+    p.tick()
+    assert sent == [] and len(recaps) == 1
+    fail["on"] = False                                        # retried next tick, then sent once
+    env.clock.t = datetime(2026, 10, 18, 18, 1, tzinfo=UTC)
+    p.tick()
+    env.clock.t = datetime(2026, 10, 18, 18, 30, tzinfo=UTC)
+    p.tick()
+    assert sent == [("friend", "Your week", "5 workouts · +312 XP · 9-day streak", "/app/?open=recap")]
+    env.clock.t = datetime(2026, 10, 25, 22, 0, tzinfo=UTC)   # next Sunday, 4 h late: skipped
+    p.tick()
+    assert len(sent) == 1
+    _profile(env, recap_time="21:30")
+    p.tick()
+    assert len(sent) == 2
+    _profile(env, recap_enabled=False)
+    env.clock.t = datetime(2026, 11, 1, 21, 45, tzinfo=UTC)
+    p.tick()
+    assert len(sent) == 2
+
+
+def test_new_activity_invalidates_stats(env) -> None:
+    seen: list[str] = []
+    p = Proactive(service=env.service, store=env.store, token_store=env.tokens, users=lambda: ["friend"],
+                  deliver=lambda u, k, pr: FireResult(FireOutcome.OK, 200), notify=lambda u, t, b: None,
+                  schedule=Schedule.parse("UTC", "0-23", 1), state_dir=env.store._root / "poller2",
+                  default_tz="UTC", clock=env.clock, on_new_activity=seen.append)
+    p.poll("friend")  # baseline
+    assert seen == []
+    simulate_activity()
+    env.service.cache.clear_user("friend")
+    p.poll("friend")
+    assert seen == ["friend"]

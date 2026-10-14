@@ -34,6 +34,7 @@ from .config import Settings
 from .logs import log_event, setup_logging
 from .providers import GarminError, GarminProvider
 from .poller import Poller, PollerThread, RoutineClient, Schedule, StateStore, token_fingerprint
+from .recap import RecapService
 from .providers.unofficial import UnofficialProvider
 from .registry import Registry
 from .resilience import RateLimiter, TTLCache
@@ -323,8 +324,12 @@ def build_rabbit(settings: Settings, fernet_key: str, token_store: EncryptedFile
             deliver=AgentDelivery(chat, push, lambda: parts.loop_holder.get("loop")),
             notify=(lambda u, t, b: push.send(u, t, b)) if push else (lambda u, t, b: None),
             schedule=Schedule.parse(settings.poll_timezone, settings.poll_fast_hours,
-                                    settings.poll_fast_minutes),
+                                    settings.poll_fast_minutes, settings.poll_day_hours,
+                                    settings.poll_day_minutes),
             state_dir=settings.data_dir / "poller", default_tz=settings.poll_timezone,
+            on_new_activity=lambda u: chat.agent.stats.invalidate(u, activities=True),
+            recap=lambda u: RecapService(chat.agent).get(u),
+            notify_url=(lambda u, t, b, url: push.send(u, t, b, url=url)) if push else None,
         )
     hook = on_tokens_changed or (lambda user_id: None)
 
@@ -394,7 +399,8 @@ def build_poller(settings: Settings, service: GarminService,
         token_fingerprint=token_fingerprint(lambda: token_store.load(user)),
     )
     schedule = Schedule.parse(settings.poll_timezone, settings.poll_fast_hours,
-                              settings.poll_fast_minutes)
+                              settings.poll_fast_minutes, settings.poll_day_hours,
+                              settings.poll_day_minutes)
     return PollerThread(poller, schedule, state_dir / "poller.lock")
 
 

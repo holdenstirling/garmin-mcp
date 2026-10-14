@@ -46,6 +46,9 @@ from .planbuilder import iter_sessions
 from .gear import GearStore, catalog as gear_catalog, usage as gear_usage
 from .progress import GEAR_XP, quests_view, week_goal
 from .stats import compute as stats_compute
+from .recap import RecapError, RecapService
+from .sync import LiveSync
+from .today import TodayService
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
 from .webauth import WebAuth
@@ -365,6 +368,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "brief_time": p.get("brief_time") or "06:30",
                 "brief_enabled": p.get("brief_enabled", True),
                 "workout_feedback": p.get("workout_feedback", True),
+                "recap_enabled": p.get("recap_enabled", True),
                 "has_notes": bool(p.get("notes"))}
 
     async def put_settings(request: Request, user_id: str) -> Response:
@@ -388,7 +392,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if not isinstance(bt, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", bt):
                 return _err(400, "brief_time must be HH:MM")
             upd["brief_time"] = bt
-        for key in ("brief_enabled", "workout_feedback"):
+        for key in ("brief_enabled", "workout_feedback", "recap_enabled"):
             if key in body:
                 if not isinstance(body[key], bool):
                     return _err(400, f"{key} must be true or false")
@@ -904,6 +908,37 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         assert chat is not None
         await anyio.to_thread.run_sync(lambda: chat.agent.progress.seen(user_id))
         return JSONResponse({"ok": True})
+
+    # ------------------------------------------- live sync / today / recap --
+    # sync.py: on-demand "anything new on Garmin?" (throttled per user, own cursor doc);
+    # today.py: the deterministic Today card; recap.py: the weekly recap.
+    def _garmin_connected(uid: str) -> bool:
+        try:
+            return token_store.load(uid) is not None
+        except TokenStoreError:
+            return False
+
+    live_sync = (LiveSync(store, lambda uid: chat.agent._service.read_uncached(
+        uid, "get_activities", {"start": 0, "limit": 5}), connected=_garmin_connected,
+        on_new=lambda uid: chat.agent.stats.invalidate(uid, activities=True))
+        if store is not None and chat is not None else None)
+
+    async def sync_post(request: Request, user_id: str) -> Response:
+        if live_sync is None:
+            return _err(503, "Sync isn't configured on this server.")
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: live_sync.check(user_id)))
+
+    async def today_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        return JSONResponse(await TodayService(chat.agent, auth.oura).get(user_id))
+
+    async def recap_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        week = request.query_params.get("week") or None
+        try:
+            return JSONResponse(await _plan_call(lambda: RecapService(chat.agent).get(user_id, week)))
+        except RecapError as e:
+            return _err(400, str(e))
 
     # ---------------------------------------------------------------- gear --
     # Gear garage (gear.py): items in the encrypted ``gear`` doc, mileage from the cached
@@ -1632,6 +1667,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/stats", _plan_api(stats_get, mutating=False), methods=["GET"]),
         Route("/app/api/progress", _plan_api(progress_get, mutating=False), methods=["GET"]),
         Route("/app/api/progress/seen", _plan_api(progress_seen, mutating=True), methods=["POST"]),
+        Route("/app/api/sync", _plan_api(sync_post, mutating=True), methods=["POST"]),
+        Route("/app/api/today", _plan_api(today_get, mutating=False), methods=["GET"]),
+        Route("/app/api/recap", _plan_api(recap_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_get, mutating=False), methods=["GET"]),
         Route("/app/api/gear", _plan_api(gear_create, mutating=True), methods=["POST"]),
         Route("/app/api/gear/import-garmin", _plan_api(gear_import, mutating=True), methods=["POST"]),

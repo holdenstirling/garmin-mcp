@@ -20,7 +20,9 @@ import { CoachInbox } from '@/components/coach/CoachInbox'
 import { CoachesScreen } from '@/components/coach/CoachesScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
-import { getAdjust } from '@/lib/adjust'
+import { TodayCard } from '@/components/today/TodayCard'
+import { RecapPill, RecapSheet } from '@/components/recap/RecapSheet'
+import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -100,7 +102,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
-  const [adjustHint, setAdjustHint] = useState(false)
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -199,12 +200,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setPlanScreen(null)
   }
   const builtPlan = goal?.plan_source === 'builder'
-  const raceSoon = !!goal?.date && (() => { const n = (new Date(`${goal.date}T12:00:00`).getTime() - Date.now()) / 86_400_000; return n >= -1 && n <= 14 })()
-  // A suggested plan adjustment shows as a banner on the home screen.
-  useEffect(() => {
-    if (!builtPlan || planScreen) return
-    getAdjust().then((p) => setAdjustHint(p.status === 'suggest'), () => {})
-  }, [builtPlan, planScreen])
   const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
   const startSetup = () => showScreen('setup')
   // Gamification: level, streak, this week and setup quests, refreshed whenever home is in view.
@@ -216,6 +211,70 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     getProgress().then((p) => { if (live) setProgress(p) }, () => {})
     return () => { live = false }
   }, [homeInView, me])
+  // Today card (today.py): one recommendation; it replaces the race-soon and adjust banners.
+  const [today, setToday] = useState<Today | null>(null)
+  const loadToday = useCallback(() => { getToday().then(setToday, () => {}) }, [])
+  useEffect(() => { if (homeInView) loadToday() }, [homeInView, me, loadToday])
+  const todayAction = (kind: TodayActionKind) => {
+    if (kind === 'open_racepack') showScreen('racepack')
+    else if (kind === 'review_adjust' || kind === 'open_session') openPlan()
+    else if (kind === 'build_plan') startSetup()
+    else if (kind === 'log_rest') showToast('Enjoy the rest. Recovery is training too.')
+    else tellRabbit(today?.tone === 'done' ? "About today's workout: " : `About today (${today?.headline ?? 'my training'}): `)
+  }
+  // Live workout sync (sync.py): on open, on return to the app and every minute on home.
+  // One request at a time; a new workout refreshes XP, the week and the Today card.
+  const syncing = useRef(false)
+  useEffect(() => {
+    if (!homeInView || !me.garmin.connected) return
+    const run = async () => {
+      if (syncing.current || document.visibilityState !== 'visible') return
+      syncing.current = true
+      try {
+        const r = await syncNow()
+        if (!r.changed) return
+        const p = await getProgress().catch(() => null)
+        if (p) setProgress(p)
+        loadToday()
+        loadWeek()
+        const a = r.new[r.new.length - 1]
+        const xp = p && p.gained > 0 ? ` · +${p.gained} XP` : ''
+        showToast(a ? `Workout synced: ${a.name}${xp}` : `Workout synced${xp}`)
+      } catch { /* offline or signed out: try again next time */ } finally {
+        syncing.current = false
+      }
+    }
+    void run()
+    const onVis = () => { if (document.visibilityState === 'visible') void run() }
+    document.addEventListener('visibilitychange', onVis)
+    const timer = window.setInterval(() => void run(), 60_000)
+    return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
+  }, [homeInView, me.garmin.connected, loadToday]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Weekly recap (recap.py): from the Sunday push (?open=recap), the home pill (Sunday noon
+  // through Monday, dismissible per week) and Stats.
+  const [recap, setRecap] = useState<{ week?: string } | null>(() =>
+    new URLSearchParams(window.location.search).get('open') === 'recap' ? {} : null)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('open') === 'recap') window.history.replaceState(null, '', '/app/')
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === 'open' && String(e.data.url).includes('open=recap')) setRecap({})
+    }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, [])
+  const recapPillWeek = (() => {
+    const now = new Date()
+    if (now.getDay() === 0 && now.getHours() >= 12) return shiftWeek(localDay(now), 0)
+    if (now.getDay() === 1) return shiftWeek(localDay(now), -1)
+    return null
+  })()
+  const [recapDismissed, setRecapDismissed] = useState<string | null>(() => {
+    try { return window.localStorage.getItem('rabbit.recap.dismissed') } catch { return null }
+  })
+  const dismissRecapPill = (wk: string) => {
+    setRecapDismissed(wk)
+    try { window.localStorage.setItem('rabbit.recap.dismissed', wk) } catch { /* this session only */ }
+  }
   const doQuest = (q: QuestId) => {
     if (q === 'garmin' || q === 'notify' || q === 'calendar' || q === 'oura') { setPlanScreen(null); open('settings'); return }
     if (q === 'sports') { showScreen('profile'); return }
@@ -472,22 +531,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           Couldn't load your chats. Tap to retry.
         </button>
       )}
-      {isCoach && raceSoon && (
-        <button onClick={() => showScreen('racepack')}
-          className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--brand)/30 bg-(--bg-surface) px-3 py-2 text-left text-xs text-(--brand)">
-          <Flame className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1">Race week is close. Open your race-week pack: pacing, fueling, gear and weather.</span>
-          <ChevronRight className="size-4 shrink-0" />
-        </button>
-      )}
-      {isCoach && adjustHint && (
-        <button onClick={() => showScreen('planner')}
-          className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left text-xs text-(--accent)">
-          <Sparkles className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1">Rabbit suggests adjusting this week. Tap to review.</span>
-          <ChevronRight className="size-4 shrink-0" />
-        </button>
-      )}
       {isCoach && (!goal ? items.length > 0 : !goal.plan) && (
         <button onClick={startSetup}
           className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left text-xs text-(--accent)">
@@ -499,6 +542,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         </button>
       )}
 
+      {isCoach && today && (today.garmin || !!goal) && (
+        <TodayCard key={today.date} today={today} onAction={todayAction} onAsk={tellRabbit} />
+      )}
+      {isCoach && recapPillWeek && recapDismissed !== recapPillWeek && (
+        <RecapPill onOpen={() => setRecap({ week: recapPillWeek })} onDismiss={() => dismissRecapPill(recapPillWeek)} />
+      )}
       {showPins && goal && (
         <PlanPins goal={goal} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek}
           onOpenPlan={openPlan} onAskDay={askDay} />
@@ -713,9 +762,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {planScreen === 'racepack' && <RacePackScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} />}
       {planScreen === 'stats' && (
-        <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined} />
+        <StatsScreen onClose={() => setPlanScreen(null)} oura={me.oura.connected} onOpenPlan={builtPlan ? () => setPlanScreen('planner') : undefined}
+          onOpenRecap={() => setRecap({})} />
       )}
       {planScreen === 'gear' && <GearScreen imperial={me.athlete.units === 'imperial'} onClose={() => setPlanScreen(null)} />}
+      {recap && <RecapSheet week={recap.week} onClose={() => setRecap(null)} onAsk={(t) => { setRecap(null); tellRabbit(t) }} />}
       {planScreen === 'quests' && progress && (
         <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
       )}

@@ -12,6 +12,11 @@ once a minute and, for each allowlisted user with Garmin tokens:
   Briefs more than 3 hours late are skipped rather than sent stale.
 * **Reconnect nudge**: one push when Garmin rejects the user's tokens; reset
   when they connect again.
+* **Fresh stats**: when the poller sees a new activity, ``on_new_activity`` drops the
+  user's cached stats/activities (XP, streak and load are current at once).
+* **Weekly recap**: Sundays at ``recap_time`` (default 18:00 local, ``recap_enabled``
+  default on), claimed once per week before sending like the brief (up to 3 tries on a
+  definite failure, skipped when 3+ hours late). A plain push, no model call.
 
 Delivery: the agent turn is stored in the user's chat history (``kind:
 "proactive"``), then a push with the first lines of the message goes out.
@@ -40,6 +45,7 @@ from .webchat import ChatRunner, TurnBusy
 logger = logging.getLogger(__name__)
 
 DEFAULT_BRIEF_TIME = "06:30"
+DEFAULT_RECAP_TIME = "18:00"
 BRIEF_MAX_LATE = timedelta(hours=3)
 BRIEF_TRIES = 3
 TURN_TIMEOUT = 180.0
@@ -69,6 +75,8 @@ BRIEF_PROMPT = (
 
 Deliver = Callable[[str, str, str], FireResult]  # (user_id, kind, prompt) -> result
 Notify = Callable[[str, str, str], None]  # (user_id, title, body)
+NotifyUrl = Callable[[str, str, str, str], None]  # (user_id, title, body, url)
+Recap = Callable[[str], dict[str, Any]]  # user_id -> this week's recap (recap.RecapService)
 
 
 def push_preview(text: str, limit: int = 180) -> str:
@@ -94,7 +102,9 @@ class Proactive:
     def __init__(self, *, service: GarminService, store: AppStore, token_store: TokenStore,
                  users: Callable[[], list[str]], deliver: Deliver, notify: Notify,
                  schedule: Schedule, state_dir: Path, default_tz: str,
-                 clock: Callable[[], datetime] = lambda: datetime.now(UTC)) -> None:
+                 clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+                 on_new_activity: Callable[[str], None] | None = None,
+                 recap: Recap | None = None, notify_url: NotifyUrl | None = None) -> None:
         self._service = service
         self._store = store
         self._tokens = token_store
@@ -106,6 +116,9 @@ class Proactive:
         self._state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self._tz = default_tz
         self._clock = clock
+        self._on_new = on_new_activity
+        self._recap = recap
+        self._notify_url = notify_url
         self._pollers: dict[str, Poller] = {}
         self._lock = threading.Lock()
 
@@ -153,6 +166,8 @@ class Proactive:
                     self.poll(user_id)
                 if profile.get("brief_enabled", True):
                     self._maybe_brief(user_id, profile, now)
+                if profile.get("recap_enabled", True):
+                    self._maybe_recap(user_id, profile, now)
             except Exception as e:  # one user's problem never stops the others
                 log_event(logger, logging.ERROR, "proactive_error", user_id=user_id,
                           error=type(e).__name__)
@@ -161,6 +176,12 @@ class Proactive:
         summary = self.poller(user_id).poll()
         if summary.get("error") == "reauth_required":
             self._nudge_reconnect(user_id)
+        if summary.get("new") and self._on_new is not None:
+            try:
+                self._on_new(user_id)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "invalidate_failed", user_id=user_id,
+                          error=type(e).__name__)
         return summary
 
     # -------------------------------------------------------------- brief --
@@ -197,6 +218,46 @@ class Proactive:
                 lambda d: d.pop("brief_date", None) if d.get("brief_date") == day else None)
         log_event(logger, logging.INFO, "brief", user_id=user_id, outcome=result.outcome.value)
         return result
+
+    # -------------------------------------------------------------- recap --
+    def _maybe_recap(self, user_id: str, profile: dict[str, Any], now: datetime) -> None:
+        if self._recap is None or self._notify_url is None:
+            return
+        local = now.astimezone(self._zone(profile))
+        if local.weekday() != 6:  # Sunday
+            return
+        try:
+            hh, mm = (int(x) for x in str(profile.get("recap_time") or DEFAULT_RECAP_TIME).split(":"))
+            due = datetime.combine(local.date(), dtime(hh, mm), local.tzinfo)
+        except (ValueError, TypeError):
+            return
+        if local < due or local - due > BRIEF_MAX_LATE:
+            return
+        week = (local.date() - timedelta(days=6)).isoformat()  # Monday of this week
+        doc = self._store.user_doc(user_id, "proactive")
+
+        def claim(d: dict[str, Any]) -> bool:
+            if d.get("recap_week") == week:
+                return False
+            if d.get("recap_try_week") != week:
+                d["recap_try_week"], d["recap_tries"] = week, 0
+            if d["recap_tries"] >= BRIEF_TRIES:
+                return False
+            d["recap_tries"] += 1
+            d["recap_week"] = week  # claimed before sending: at most once
+            return True
+        if not doc.update(claim):
+            return
+        try:
+            r = self._recap(user_id)
+            text = str(r.get("summary") or "Your week in review is ready.")
+        except Exception as e:  # Garmin down: nothing was sent, try again next tick
+            self._store.user_doc(user_id, "proactive").update(
+                lambda d: d.pop("recap_week", None) if d.get("recap_week") == week else None)
+            log_event(logger, logging.WARNING, "recap_failed", user_id=user_id, error=type(e).__name__)
+            return
+        self._notify_url(user_id, "Your week", text, "/app/?open=recap")
+        log_event(logger, logging.INFO, "recap_sent", user_id=user_id, week=week)
 
     # ----------------------------------------------------------- reconnect --
     def _nudge_reconnect(self, user_id: str) -> None:

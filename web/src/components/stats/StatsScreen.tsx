@@ -15,7 +15,9 @@ import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type
 
 type Period = 'week' | 'month' | 'year'
 
-export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void; onOpenPlan?: () => void; oura?: boolean }) {
+export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
+  onClose: () => void; onOpenPlan?: () => void; oura?: boolean; onOpenRecap?: () => void
+}) {
   const [s, setS] = useState<Stats | null>(null)
   const [p, setP] = useState<Progress | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +40,13 @@ export function StatsScreen({ onClose, onOpenPlan, oura }: { onClose: () => void
     <Screen title="Your progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}
       closing={closing} onClose={close}
       headerExtra={s ? (
-        <div className="mx-auto mt-1 flex max-w-xl justify-end">
+        <div className="mx-auto mt-1 flex max-w-xl justify-end gap-3">
+          {onOpenRecap && (
+            <button type="button" onClick={onOpenRecap}
+              className="inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
+              <CalendarCheck className="size-3" /> Weekly recap
+            </button>
+          )}
           <button type="button" onClick={() => load(true)} disabled={busy} aria-label="Refresh"
             className="inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
             <RefreshCw className={cn('size-3', busy && 'animate-spin')} /> Refresh

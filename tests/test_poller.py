@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -271,6 +271,28 @@ def test_schedule_fast_window_and_hourly() -> None:
     assert s.next_after(mdt(10, 0)) == mdt(11, 0)
     assert s.next_after(mdt(4, 30)) == mdt(5, 0)
     assert s.next_after(mdt(23, 30)).astimezone(s.tz).hour == 0
+
+
+def test_schedule_day_window_every_five_minutes() -> None:
+    s = Schedule.parse("America/Denver", "5-9", 5, "6-22", 5)
+    mdt = lambda h, m: datetime(2026, 10, 5, h, m, tzinfo=s.tz)  # noqa: E731
+    assert s.next_after(mdt(5, 2)) == mdt(5, 5)       # fast window
+    assert s.next_after(mdt(10, 0)) == mdt(10, 5)     # day window: every 5 minutes
+    assert s.next_after(mdt(14, 33)) == mdt(14, 35)
+    assert s.next_after(mdt(22, 55)) == mdt(23, 0)    # 22:xx is inside, 23:00 is hourly
+    assert s.next_after(mdt(23, 0)) == mdt(0, 0) + timedelta(days=1)
+    assert s.next_after(mdt(3, 5)) == mdt(4, 0)       # overnight: hourly
+    assert s.matches(mdt(4, 0)) and not s.matches(mdt(4, 5))
+    with pytest.raises(RuntimeError):
+        Schedule.parse("UTC", "5-9", 5, "6-25", 5)
+    with pytest.raises(RuntimeError):
+        Schedule.parse("UTC", "5-9", 5, "6-22", 0)
+
+
+def test_settings_default_day_window() -> None:
+    from garmin_mcp.config import Settings
+    f = Settings.__dataclass_fields__
+    assert (f["poll_day_hours"].default, f["poll_day_minutes"].default) == ("6-22", 5)
 
 
 def test_schedule_handles_dst_fall_back() -> None:

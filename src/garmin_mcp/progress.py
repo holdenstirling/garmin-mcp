@@ -11,6 +11,11 @@ Awards are kept in a per-user ledger (``progress`` doc) keyed by activity id, pl
 and quest, so XP only ever goes up, a workout is never counted twice, and a plan rebuild
 doesn't hand out the same sessions again. The first read back-fills the past year, so
 existing athletes start at the level their training has earned.
+
+For the weekly recap the ledger also keeps ``xp_by_week`` (Monday -> XP, last
+``KEEP_WEEKS`` weeks; workouts count in their own week, everything else in the week it
+was awarded) and ``badge_dates`` (badge -> date first earned). Back-filled history only
+adds workout XP by week and no badge dates, so old badges never show as "this week".
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ PERFECT_WEEK_XP = 100
 BADGE_XP = 100
 GEAR_XP = 25  # first time each gear item is added (bonus key "gear:<id>")
 MAX_BONUS_KEYS = 500
+KEEP_WEEKS = 26
 
 # Level names, rabbit-themed: (first level, name).
 TIERS: list[tuple[int, str]] = [(1, "Kit"), (5, "Hopper"), (10, "Runner"), (15, "Trail Hare"),
@@ -49,6 +55,11 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
 
 def workout_xp(minutes: float) -> int:
     return 10 + int(min(max(minutes, 0), 180) // 2)
+
+
+def week_key(d: date) -> str:
+    """Monday of ``d``'s week (the recap's week id)."""
+    return (d - timedelta(days=d.weekday())).isoformat()
 
 
 def level_floor(level: int) -> int:
@@ -118,12 +129,17 @@ class Progress:
             first = "xp" not in d
             xp = int(d.get("xp") or 0)
             gained = 0
+            by_week = d.setdefault("xp_by_week", {})
             seen = d.setdefault("acts", {})
             for r in rows:
                 k = str(r["id"])
                 if k not in seen:
                     seen[k] = r["date"].isoformat()
-                    gained += workout_xp(r["min"])
+                    wxp = workout_xp(r["min"])
+                    gained += wxp
+                    wk = week_key(r["date"])
+                    by_week[wk] = int(by_week.get(wk) or 0) + wxp
+            workout_gained = gained
             for k in [k for k, v in seen.items() if v < keep_after]:
                 del seen[k]
             if plan_key:
@@ -138,10 +154,13 @@ class Progress:
                     for old in list(d["plans"])[:-20]:
                         del d["plans"][old]
             got = d.setdefault("badges", [])
+            dates = d.setdefault("badge_dates", {})
             for b in earned:
                 if b not in got:
                     got.append(b)
                     gained += BADGE_XP
+                    if not first:
+                        dates[b] = today.isoformat()
             qd = d.setdefault("quests", [])
             qxp = {q[0]: q[3] for q in QUESTS}
             for q, ok in quests.items():
@@ -157,6 +176,11 @@ class Progress:
                 del bd[:-MAX_BONUS_KEYS]
             xp += gained
             d["xp"] = xp
+            if not first and gained > workout_gained:
+                wk = week_key(today)
+                by_week[wk] = int(by_week.get(wk) or 0) + gained - workout_gained
+            for old_week in sorted(by_week)[:-KEEP_WEEKS]:
+                del by_week[old_week]
             if first:
                 # Back-filled history isn't news: start celebrations from here.
                 d["badges_seen"] = list(got)
@@ -174,6 +198,12 @@ class Progress:
                 "level_up": lv["level"] > st["level_seen"],
                 "new_badges": new_badges}
 
+    def ledger(self, user_id: str) -> dict[str, Any]:
+        """Read-only view for the weekly recap: total XP, XP by week, badge dates."""
+        d = self._doc(user_id).load()
+        return {"xp": int(d.get("xp") or 0), "xp_by_week": dict(d.get("xp_by_week") or {}),
+                "badge_dates": dict(d.get("badge_dates") or {})}
+
     def seen(self, user_id: str) -> None:
         """The athlete saw the celebration: clear new badges and level-ups."""
         def apply(d: dict[str, Any]) -> None:
@@ -183,4 +213,4 @@ class Progress:
 
 
 __all__ = ["Progress", "QUESTS", "GEAR_XP", "level_of", "level_floor", "level_view", "quests_view", "week_goal",
-           "workout_xp", "tier_name"]
+           "workout_xp", "tier_name", "week_key"]

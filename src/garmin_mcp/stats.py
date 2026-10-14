@@ -347,9 +347,16 @@ class StatsService:
         self._cache[user_id] = (self._clock(), today, out)
         return out
 
-    def invalidate(self, user_id: str) -> None:
-        """Drop cached stats (after a plan edit) so adherence is current."""
+    def invalidate(self, user_id: str, *, activities: bool = False) -> None:
+        """Drop cached stats (after a plan edit) so adherence is current. With
+        ``activities`` (a new workout synced) also drop the cached year of activities and
+        the user's Garmin read cache, so stats, load, XP and gear mileage re-read."""
         self._cache.pop(user_id, None)
+        if activities:
+            self._acts.pop(user_id, None)
+            cache = getattr(self._svc, "cache", None)
+            if cache is not None:
+                cache.clear_user(user_id)
 
     def load(self, user_id: str) -> dict[str, Any]:
         from .load import compute as load_compute

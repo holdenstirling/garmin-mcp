@@ -352,29 +352,46 @@ def token_fingerprint(load: Callable[[], str | None]) -> Callable[[], str | None
 # --------------------------------------------------------------- schedule ---
 @dataclass(frozen=True)
 class Schedule:
-    """Every ``fast_minutes`` during ``fast_hours`` (local), on the hour otherwise."""
+    """Local-time poll slots: every ``fast_minutes`` during ``fast_hours`` (the
+    morning window), every ``day_minutes`` during ``day_hours`` (daytime), on
+    the hour otherwise (overnight). An empty ``day_hours`` means hourly outside
+    the fast window."""
 
     tz: ZoneInfo
     fast_hours: frozenset[int]
     fast_minutes: int = 5
+    day_hours: frozenset[int] = frozenset()
+    day_minutes: int = 5
 
-    @classmethod
-    def parse(cls, tz: str, fast_hours: str, fast_minutes: int) -> Schedule:
+    @staticmethod
+    def _hours(spec: str) -> set[int]:
         hours: set[int] = set()
-        for part in fast_hours.split(","):
+        for part in spec.split(","):
             part = part.strip()
             if not part:
                 continue
             lo, _, hi = part.partition("-")
             hours.update(range(int(lo), int(hi or lo) + 1))
-        if not 1 <= fast_minutes <= 60 or not hours <= set(range(24)):
+        return hours
+
+    @classmethod
+    def parse(cls, tz: str, fast_hours: str, fast_minutes: int,
+              day_hours: str = "", day_minutes: int = 5) -> Schedule:
+        """``day_hours`` "6-22" means 06:00 through 22:59 local (end hour inclusive)."""
+        fast = cls._hours(fast_hours)
+        day = cls._hours(day_hours)
+        if not 1 <= fast_minutes <= 60 or not fast <= set(range(24)):
             raise RuntimeError("invalid POLL_FAST_HOURS / POLL_FAST_MINUTES")
-        return cls(ZoneInfo(tz), frozenset(hours), fast_minutes)
+        if not 1 <= day_minutes <= 60 or not day <= set(range(24)):
+            raise RuntimeError("invalid POLL_DAY_HOURS / POLL_DAY_MINUTES")
+        return cls(ZoneInfo(tz), frozenset(fast), fast_minutes, frozenset(day), day_minutes)
 
     def matches(self, t: datetime) -> bool:
         local = t.astimezone(self.tz)
         if local.hour in self.fast_hours:
             return local.minute % self.fast_minutes == 0
+        if local.hour in self.day_hours:
+            return local.minute % self.day_minutes == 0
         return local.minute == 0
 
     def next_after(self, now: datetime) -> datetime:
