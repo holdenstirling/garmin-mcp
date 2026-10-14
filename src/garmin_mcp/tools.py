@@ -27,6 +27,10 @@ SPORT_ALIASES = {
 MAX_DAYS = 90
 
 
+# Settings reads used by training_numbers() that may bypass the registry.
+_NUMBER_READS = frozenset({"get_user_profile", "get_heart_rate_zones", "get_cycling_ftp"})
+
+
 class GarminService:
     def __init__(
         self,
@@ -185,14 +189,21 @@ class GarminService:
     def training_numbers(self, user_id: str) -> dict[str, Any]:
         """Profile numbers Garmin knows (to prefill Rabbit's setup). Best effort: each
         read that fails is just skipped."""
+        from garminconnect import Garmin
+
         out: dict[str, Any] = {}
 
         def read(method: str, **kw: Any) -> Any:
+            # Fixed method names only (never caller input). Some plain GETs aren't
+            # classified READ by the registry (e.g. FTP), so call those directly.
             info = self.registry.get(method)
-            if info is None or info.access is not Access.READ:
-                return None
             try:
-                return self._cached_call(user_id, info.name, info.fn, kw)
+                if info is not None and info.access is Access.READ:
+                    return self._cached_call(user_id, info.name, info.fn, kw)
+                fn = getattr(Garmin, method, None)
+                if fn is None or method not in _NUMBER_READS:
+                    return None
+                return self._upstream(user_id, fn, kw, read=True)
             except ReauthRequired:
                 raise
             except GarminError:
