@@ -259,8 +259,13 @@ class GitHubOAuthProvider:
                 headers={"Accept": "application/json"},
             )
             r.raise_for_status()
-            gh_token = r.json().get("access_token")
+            body = r.json()
+            gh_token = body.get("access_token")
             if not gh_token:
+                # GitHub's error code only (e.g. incorrect_client_credentials,
+                # bad_verification_code, redirect_uri_mismatch); never the response body.
+                log_event(logger, logging.WARNING, "github_token_error",
+                          github_error=str(body.get("error", "unknown"))[:60])
                 raise RuntimeError("no access_token from GitHub")
             u = await client.get(
                 GITHUB_USER_URL,
