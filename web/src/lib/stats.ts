@@ -1,5 +1,6 @@
 // Stats screen data: streaks, totals, weekly volume, calendar, bests, badges, plan adherence.
 import { getJSON } from '@/lib/api'
+import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
 
 export type Sport = 'run' | 'bike' | 'swim' | 'brick' | 'strength' | 'hike' | 'climb' | 'ski' | 'paddle' | 'rest' | 'other'
 
@@ -37,14 +38,11 @@ export const SPORT_NAME: Record<Sport, string> = {
 }
 
 export function dist(km: number, units: Stats['units'], sport?: Sport): string {
-  if (sport === 'swim') return units === 'imperial' ? `${Math.round(km * 1093.61).toLocaleString()} yd` : `${Math.round(km * 1000).toLocaleString()} m`
-  return units === 'imperial' ? `${(km * 0.621371).toFixed(km * 0.621371 >= 100 ? 0 : 1)} mi` : `${km.toFixed(km >= 100 ? 0 : 1)} km`
+  return fmtDist(km, units === 'imperial', sport)
 }
 export function climb(m: number, units: Stats['units']): string {
-  return units === 'imperial' ? `${Math.round(m * 3.28084).toLocaleString()} ft` : `${Math.round(m).toLocaleString()} m`
+  return fmtClimb(m, units === 'imperial')
 }
 export function hours(h: number): string {
-  if (h < 1) return `${Math.round(h * 60)}m`
-  const whole = Math.floor(h), m = Math.round((h - whole) * 60)
-  return m ? `${whole}h ${m}m` : `${whole}h`
+  return fmtDuration(h * 60)
 }

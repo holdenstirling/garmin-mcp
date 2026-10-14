@@ -4,6 +4,8 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronDown, Flag, Moon, Sparkles, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/InfoTip'
+import type { Term } from '@/lib/glossary'
 import { cn } from '@/lib/utils'
 import type { Today, TodayActionKind, TodayTone } from '@/lib/live'
 import type { WeekDay } from '@/lib/api'
@@ -11,12 +13,17 @@ import { WeekDots } from '@/components/week/WeekStrip'
 
 const KEY = 'rabbit.today.seen'
 
+/** Signal chip labels that get a plain-language (i). */
+const SIGNAL_TERM: Record<string, Term> = {
+  Form: 'form', Readiness: 'readiness', 'Oura readiness': 'oura_readiness', 'Garmin readiness': 'garmin_readiness', Streak: 'streak',
+}
+
 const TONE: Record<TodayTone, { icon: typeof Zap; color: string; border: string; bg: string }> = {
   go: { icon: Zap, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
   done: { icon: Check, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
   plan: { icon: Sparkles, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
-  easy: { icon: Waves, color: 'text-(--warning)', border: 'border-(--warning)/30', bg: 'bg-(--warning)' },
-  rest: { icon: Moon, color: 'text-(--warning)', border: 'border-(--warning)/30', bg: 'bg-(--warning)' },
+  easy: { icon: Waves, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
+  rest: { icon: Moon, color: 'text-(--text-secondary)', border: 'border-(--border-strong)', bg: 'bg-(--text-muted)' },
   race: { icon: Flag, color: 'text-(--brand)', border: 'border-(--brand)/30', bg: 'bg-(--brand)' },
 }
 
@@ -48,7 +55,7 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout }: {
           <Icon className="size-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[0.5294rem] font-semibold uppercase tracking-widest text-(--text-muted)">Today</span>
+          <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Today</span>
           <span className={cn('block truncate text-[0.8235rem] font-semibold leading-tight', t.color)}>{today.headline}</span>
         </span>
         {collapsed && week && week.length === 7 && <WeekDots days={week} />}
@@ -61,19 +68,21 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout }: {
             <div className="flex flex-wrap gap-1.5">
               {today.signals.map((s) => (
                 <span key={s.label}
-                  className={cn('rounded-full border px-2 py-0.5 text-[0.5882rem] font-medium',
+                  className={cn('inline-flex items-center gap-1 rounded-full border py-0.5 pl-2 text-[0.7059rem] font-medium',
+                    SIGNAL_TERM[s.label] ? 'pr-1' : 'pr-2',
                     s.good ? 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)'
-                      : 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning)')}>
+                      : 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)')}>
                   {s.label} {s.value}
+                  {SIGNAL_TERM[s.label] && <InfoTip term={SIGNAL_TERM[s.label]} />}
                 </span>
               ))}
             </div>
           )}
           <div className="flex items-center gap-3">
-            <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" onClick={() => (workoutId && onOpenWorkout ? onOpenWorkout(workoutId) : onAction(today.action.kind))}>
+            <Button variant="primary" className="hit-44 h-8 px-3 text-[0.7059rem]" onClick={() => (workoutId && onOpenWorkout ? onOpenWorkout(workoutId) : onAction(today.action.kind))}>
               {today.action.label}
             </Button>
-            <button type="button" className="text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline"
+            <button type="button" className="hit-44 text-[0.7059rem] text-(--text-muted) underline-offset-2 hover:underline"
               onClick={() => onAsk(`About today's recommendation (${today.headline}): `)}>
               Ask Rabbit
             </button>

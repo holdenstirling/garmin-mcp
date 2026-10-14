@@ -147,7 +147,7 @@ export function parsePace(v: string): number | null {
   if (!m) return null
   return Number(m[1]) * 60 + Number(m[2] ?? 0)
 }
-export const KM_PER_MI = 1.609344
+export { KM_PER_MI } from '@/lib/format'
 export const cmToFtIn = (cm: number) => { const inches = Math.round(cm / 2.54); return { ft: Math.floor(inches / 12), inch: inches % 12 } }
 export const ftInToCm = (ft: number, inch: number) => Math.round((ft * 12 + inch) * 2.54)
 export const kgToLb = (kg: number) => Math.round(kg * 2.20462)

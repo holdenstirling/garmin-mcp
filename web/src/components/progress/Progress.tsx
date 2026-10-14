@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Award, Check, ChevronRight, Flame, ListChecks, Sparkles, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { markProgressSeen, nextQuest, type Progress, type Quest, type QuestId } from '@/lib/progress'
@@ -55,12 +56,12 @@ export function HomeProgress({ p, onOpenStats, onOpenSetup }: { p: Progress; onO
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline justify-between gap-2">
             <span className="truncate text-[0.7647rem] font-medium text-(--text)">{p.name}</span>
-            <span className="shrink-0 text-[0.5882rem] text-(--text-muted)">{p.to_next.toLocaleString()} XP to Lv {p.level + 1}</span>
+            <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">{p.to_next.toLocaleString()} XP to Lv {p.level + 1}</span>
           </span>
           <XpBar p={p} className="mt-1" />
         </span>
         <span className={cn('flex shrink-0 items-center gap-0.5 text-[0.8235rem] font-semibold',
-          p.streak.at_risk ? 'text-(--warning)' : p.streak.current ? 'text-(--accent)' : 'text-(--text-muted)')}
+          p.streak.at_risk ? 'text-(--warning-text)' : p.streak.current ? 'text-(--accent)' : 'text-(--text-muted)')}
           aria-label={`${p.streak.current} day streak${p.streak.at_risk ? ', at risk today' : ''}`}>
           <Flame className="size-4" />{p.streak.current}
         </span>
@@ -73,7 +74,7 @@ export function HomeProgress({ p, onOpenStats, onOpenSetup }: { p: Progress; onO
           <span className="min-w-0 flex-1 text-[0.7059rem] leading-tight text-(--accent)">
             <span className="font-semibold">Setup {p.setup.done}/{p.setup.total}</span> · Next: {q.title}
           </span>
-          <span className="shrink-0 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.5882rem] font-semibold text-white">+{q.xp} XP</span>
+          <span className="shrink-0 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-semibold text-white">+{q.xp} XP</span>
           <ChevronRight className="size-4 shrink-0 text-(--accent)" />
         </button>
       )}
@@ -81,9 +82,24 @@ export function HomeProgress({ p, onOpenStats, onOpenSetup }: { p: Progress; onO
   )
 }
 
-/** Big card at the top of Stats. */
-export function ProgressHero({ p, headline }: { p: Progress; headline: string }) {
+/** "This week: 3 of 5 sessions": the one wording for the weekly goal everywhere. */
+export const weekGoalText = (p: Progress) => `This week: ${p.week.done} of ${p.week.target} ${p.week.label}`
+
+/** Big card at the top of Progress. ``planTime``: "2h 10m of 4h 30m" planned time this week. */
+export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
+  p: Progress; headline: string; planTime?: string; onOpenPlan?: () => void
+}) {
   const s = p.streak
+  const week = (
+    <>
+      <WeekRing done={p.week.done} target={p.week.target} />
+      <span className="min-w-0">
+        <span className="block text-[0.7647rem] font-medium leading-tight text-(--text)">{weekGoalText(p)}</span>
+        {planTime && <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">{planTime} planned time</span>}
+        {onOpenPlan && <span className="block text-[0.6471rem] font-medium leading-tight text-(--accent)">Open plan</span>}
+      </span>
+    </>
+  )
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-center gap-3">
@@ -105,22 +121,21 @@ export function ProgressHero({ p, headline }: { p: Progress; headline: string })
           </span>
           <span>
             <span className="block font-display text-[1.3rem] leading-none text-(--text)">{s.current}</span>
-            <span className="block text-[0.5882rem] text-(--text-muted)">day streak · best {s.best}</span>
+            <span className="flex items-center gap-1 text-[0.6471rem] text-(--text-muted)">
+              day streak · best {s.best}<InfoTip term="streak" align="start" />
+            </span>
+            {s.at_risk && <span className="block text-[0.6471rem] font-medium text-(--warning-text)">At risk today</span>}
           </span>
         </div>
-        <div className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5">
-          <WeekRing done={p.week.done} target={p.week.target} />
-          <span className="min-w-0">
-            <span className="block text-[0.7647rem] font-medium leading-tight text-(--text)">This week</span>
-            <span className="block text-[0.5882rem] leading-tight text-(--text-muted)">{p.week.done} of {p.week.target} {p.week.label}</span>
-          </span>
-        </div>
+        {onOpenPlan ? (
+          <button type="button" onClick={onOpenPlan}
+            className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5 text-left active:opacity-80">{week}</button>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5">{week}</div>
+        )}
       </div>
       <p className="text-[0.8235rem] leading-snug text-(--text)">{headline}</p>
-      <p className="-mt-2 text-[0.5882rem] text-(--text-muted)">
-        Rest days your plan schedules, plus one free rest day a week, never break your streak.
-        {s.grace_left ? '' : " This week's free day is used."}
-      </p>
+      {!s.grace_left && <p className="-mt-2 text-[0.6471rem] text-(--text-muted)">This week's free rest day is used.</p>}
     </div>
   )
 }
@@ -198,7 +213,7 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
       <div role="dialog" aria-modal="true" aria-label="Achievement"
         className="celebrate relative mx-auto mt-[20vh] flex w-[min(92vw,360px)] flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center shadow-xl"
         onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-4" /></button>
+        <button type="button" className="hit-44 absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-4" /></button>
         {p.level_up ? (
           <>
             <span className="flex items-center gap-1 text-(--accent)"><Sparkles className="size-4" /><Star className="size-5" /><Sparkles className="size-4" /></span>

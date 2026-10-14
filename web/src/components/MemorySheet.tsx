@@ -138,7 +138,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                       className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary px-2 py-1 text-xs">
                       <FileText className="size-3 text-accent" />
                       <span className="max-w-[140px] truncate">{f.name}</span>
-                      <span className="font-mono text-[0.5882rem] text-muted-foreground">{formatFileSize(f.size)}</span>
+                      <span className="font-mono text-[0.6471rem] text-muted-foreground">{formatFileSize(f.size)}</span>
                     </a>
                   ))}
                 </div>

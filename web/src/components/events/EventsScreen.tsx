@@ -50,10 +50,10 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   // "Add" waits for the list: whether a new event becomes the main one depends on it.
   return (
     <>
-      <Screen title="Events" subtitle="Races and challenges on your calendar" closing={closing} onClose={close}
+      <Screen title="Races" subtitle="Races and challenges on your calendar" closing={closing} onClose={close}
         footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={events === null}
           onClick={() => setEditing('new')}>
-          <CalendarPlus className="size-4" /> Add an event</Button>}>
+          <CalendarPlus className="size-4" /> Add a race</Button>}>
         {events === null && !error ? (
           <div className="flex flex-col gap-2.5">
             <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your races…']} />
@@ -79,7 +79,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             {upcoming.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <CalendarPlus className="size-8 text-(--text-muted)" />
-                <p className="text-[0.8824rem] text-(--text)">No upcoming events yet</p>
+                <p className="text-[0.8824rem] text-(--text)">No upcoming races yet</p>
                 <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Add your races, rides and big days. Rabbit plans around all of them.</p>
               </div>
             )}
@@ -158,7 +158,7 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
-        <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.5882rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
+        <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
           {e.main ? 'Main' : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
         <span className="text-[0.6471rem] text-(--text-muted)">{e.result && n < 0 ? e.result : countdown(e.date)}</span>
@@ -298,7 +298,7 @@ function DebriefCard({ event, result, notes, onSaved }: {
           <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3 text-[0.7647rem] leading-snug">
             <p className="text-(--text)">{d.summary}</p>
             {d.went_well.length > 0 && <p><b className="text-(--accent)">Went well:</b> <span className="text-(--text-secondary)">{d.went_well.join('; ')}</span></p>}
-            {d.work_on.length > 0 && <p><b className="text-(--warning)">Work on:</b> <span className="text-(--text-secondary)">{d.work_on.join('; ')}</span></p>}
+            {d.work_on.length > 0 && <p><b className="text-(--warning-text)">Work on:</b> <span className="text-(--text-secondary)">{d.work_on.join('; ')}</span></p>}
             {d.learnings.length > 0 && <p><b className="text-(--text)">For your next plan:</b> <span className="text-(--text-secondary)">{d.learnings.join('; ')}</span></p>}
           </div>
         )}

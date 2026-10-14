@@ -238,7 +238,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                       {fmtDay(d.date, { weekday: 'short' })}
                     </span>
                     <span className="block text-[0.7647rem] text-(--text-secondary)">{fmtDay(d.date, { day: 'numeric' })}</span>
-                    {busyLabel(d.date) && <span className="mt-0.5 block text-[0.5294rem] leading-tight text-(--warning)">{busyLabel(d.date)}</span>}
+                    {busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
                     {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -301,7 +301,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       <Group label="Plan">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close(); onAsk('About my plan: ') }} />
-        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races; they go into the plan"
+        <Row icon={<Icon><CalendarDays /></Icon>} title="Races" subtitle="Add B and C races; they go into the plan"
           onClick={onOpenEvents} />
         <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
           onClick={() => setTravel('new')} />

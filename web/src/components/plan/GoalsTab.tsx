@@ -38,12 +38,12 @@ export function GoalsTab({ seasonGoal, onSeasonGoal, onOpenEvents }: {
       {events === null && !error && <RabbitLoader size={40} className="py-8" label="Loading events…" />}
       {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error} <button type="button" className="underline" onClick={load}>Retry</button></p>}
       {events !== null && upcoming.length === 0 && (
-        <p className="px-1 text-[0.8235rem] text-(--text-muted)">No upcoming events. Add your races in Events.</p>
+        <p className="px-1 text-[0.8235rem] text-(--text-muted)">No upcoming races. Add them in Races.</p>
       )}
       {upcoming.map((e) => <GoalRow key={e.id} e={e} onSaved={(list) => setEvents(list)} />)}
       {onOpenEvents && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onOpenEvents}>
-          <CalendarDays className="size-4" /> Edit events <ChevronRight className="size-4" />
+          <CalendarDays className="size-4" /> Edit races <ChevronRight className="size-4" />
         </Button>
       )}
     </>
@@ -75,7 +75,7 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
       <div className="flex items-center gap-2 px-4 pt-3.5">
         {e.main && <Star className="size-3.5 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
         <span className="min-w-0 flex-1 truncate text-[0.9412rem] font-medium text-(--text)">{e.name}</span>
-        <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.5882rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
+        <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
           {e.main ? 'Main' : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
         <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">{countdown(e.date)}</span>

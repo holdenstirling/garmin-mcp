@@ -1,9 +1,10 @@
-// Your progress, focused: level and streak, recovery, fitness and form, this week's plan,
-// the training trend and the next badges. Everything else sits under "More stats".
+// Your progress, focused: level, streak and this week, recovery, fitness and form, and the
+// training trend. Everything else (badges, totals, calendar, bests) sits under "More stats".
 // Sport-agnostic: everything Garmin records counts.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,7 @@ import { CheckinsCard } from '@/components/checkin/CheckinsCard'
 import { ProgressHero } from '@/components/progress/Progress'
 import { getProgress, type Progress } from '@/lib/progress'
 import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type Stats, type Totals } from '@/lib/stats'
+import { fmtDuration } from '@/lib/format'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -38,29 +40,29 @@ export function StatsScreen({ onClose, onOpenPlan, oura, onOpenRecap }: {
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   return (
-    <Screen title="Your progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}
+    <Screen title="Progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}
       closing={closing} onClose={close}
       headerExtra={s ? (
         <div className="mx-auto mt-1 flex max-w-xl justify-end gap-3">
           {onOpenRecap && (
             <button type="button" onClick={onOpenRecap}
-              className="inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
+              className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
               <CalendarCheck className="size-3" /> Weekly recap
             </button>
           )}
           <button type="button" onClick={() => load(true)} disabled={busy} aria-label="Refresh"
-            className="inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
+            className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
             <RefreshCw className={cn('size-3', busy && 'animate-spin')} /> Refresh
           </button>
         </div>) : undefined}>
       {!s && !error && (
         <div className="flex flex-col gap-3">
-          <RabbitLoader className="py-8" label="Loading stats" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
+          <RabbitLoader className="py-8" label="Loading your progress" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
           <div className="skeleton h-28" aria-hidden="true" />
           <div className="skeleton h-40" aria-hidden="true" />
         </div>
       )}
-      {error && <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => load(true)} compact={!!s} />}
       {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
         recovery={oura ? <Recovery /> : null} more={<CheckinsCard />} />}
     </Screen>
@@ -77,26 +79,31 @@ export function StatsBody({ s, progress, onOpenPlan, loadBase, loadKey, recovery
   const [more, setMore] = useState(false)
   return (
     <>
-      {progress ? <ProgressHero p={progress} headline={s.headline} /> : <StreakHero s={s} />}
+      {progress ? <ProgressHero p={progress} headline={s.headline} planTime={planTime(s)} onOpenPlan={onOpenPlan} />
+        : <StreakHero s={s} />}
       {recovery}
       {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
-      {s.plan?.week && s.plan.week.planned > 0 && <PlanProgress s={s} onOpenPlan={onOpenPlan} />}
       <WeeklyBars s={s} />
-      <BadgesCard s={s} />
       <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
         className="flex items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
         {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} />
       </button>
       {more && <>
+        <BadgesCard s={s} />
         <TotalsCard s={s} period={period} setPeriod={setPeriod} />
         <CalendarHeat s={s} />
         {s.by_sport.length > 0 && <SportsCard s={s} />}
         {Object.keys(s.bests).length > 0 && <BestsCard s={s} />}
-        {s.recent.length > 0 && <RecentCard s={s} />}
         {moreExtra}
       </>}
     </>
   )
+}
+
+/** "2h 10m of 4h 30m" planned time this week, when there's a plan. */
+function planTime(s: Stats): string | undefined {
+  const w = s.plan?.week
+  return w && w.planned > 0 && w.minutes_planned > 0 ? `${fmtDuration(w.minutes_done)} of ${fmtDuration(w.minutes_planned)}` : undefined
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -122,6 +129,11 @@ function StreakHero({ s }: { s: Stats }) {
       </div>
       <p className="max-w-sm text-[0.8824rem] leading-snug text-(--text)">{s.headline}</p>
       <p className="text-[0.6471rem] text-(--text-muted)">Best: {st.best} days · {st.weeks_best} weeks</p>
+      {s.plan?.week && s.plan.week.planned > 0 && (
+        <p className="text-[0.7647rem] text-(--text-secondary)">
+          This week: {s.plan.week.done} of {s.plan.week.planned} sessions{planTime(s) ? ` · ${planTime(s)}` : ''}
+        </p>
+      )}
       <WeekDots s={s} />
     </div>
   )
@@ -139,7 +151,7 @@ function WeekDots({ s }: { s: Stats }) {
         const k = key(d), mins = s.calendar.days[k] ?? 0, isToday = k === s.today, future = d > today
         return (
           <span key={k} className="flex flex-col items-center gap-1">
-            <span className={cn('text-[0.5882rem] uppercase', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+            <span className={cn('text-[0.6471rem] uppercase', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
               {d.toLocaleDateString([], { weekday: 'narrow' })}
             </span>
             <span className={cn('size-6 rounded-full border',
@@ -152,47 +164,11 @@ function WeekDots({ s }: { s: Stats }) {
   )
 }
 
-function PlanProgress({ s, onOpenPlan }: { s: Stats; onOpenPlan?: () => void }) {
-  const w = s.plan!.week!
-  const pct = Math.round((100 * w.done) / w.planned)
-  const td = s.plan!.to_date
-  return (
-    <Card className="p-4">
-      <div className="flex items-center gap-4">
-        <Ring pct={pct} label={`${w.done}/${w.planned}`} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.9412rem] font-medium text-(--text)">This week's plan</p>
-          <p className="text-[0.7647rem] leading-snug text-(--text-muted)">
-            {w.done} of {w.planned} sessions done · {hours(w.minutes_done / 60)} of {hours(w.minutes_planned / 60)}
-          </p>
-          {td.pct != null && <p className="mt-1 text-[0.7059rem] text-(--text-secondary)">Plan to date: {td.pct}% of sessions ({td.done}/{td.planned}){s.plan!.perfect_weeks ? ` · ${s.plan!.perfect_weeks} perfect week${s.plan!.perfect_weeks === 1 ? '' : 's'}` : ''}</p>}
-        </div>
-      </div>
-      {onOpenPlan && <Button variant="default" className="mt-3 h-9 w-full text-[0.7647rem]" onClick={onOpenPlan}>Open plan</Button>}
-    </Card>
-  )
-}
-
-function Ring({ pct, label }: { pct: number; label: string }) {
-  const r = 26, c = 2 * Math.PI * r
-  return (
-    <span className="relative flex size-[68px] shrink-0 items-center justify-center">
-      <svg viewBox="0 0 64 64" className="absolute inset-0 -rotate-90">
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" className="stroke-(--bg-elevated)" />
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" strokeLinecap="round" className="stroke-(--accent) transition-all duration-700"
-          strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, pct / 100))} />
-      </svg>
-      <span className="font-display text-[1rem] text-(--text)">{label}</span>
-    </span>
-  )
-}
-
 function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPeriod: (p: Period) => void }) {
   const t: Totals = s.totals[period]
   const tiles: [typeof Zap, string, string][] = [
     [Zap, 'Workouts', String(t.workouts)],
     [Timer, 'Time', hours(t.hours)],
-    [CalendarCheck, 'Active days', String(t.days)],
     [Mountain, 'Climbing', climb(t.climb_m, s.units)],
   ]
   return (
@@ -202,15 +178,15 @@ function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPer
         <div className="flex gap-1 rounded-lg bg-(--bg-elevated) p-0.5">
           {([['week', 'Week'], ['month', 'Month'], ['year', '12 mo']] as [Period, string][]).map(([p, l]) => (
             <button key={p} type="button" onClick={() => setPeriod(p)} aria-pressed={period === p}
-              className={cn('h-7 rounded-md px-2.5 text-[0.6471rem] font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+              className={cn('hit-44 h-7 rounded-md px-2.5 text-[0.6471rem] font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {tiles.map(([I, label, v]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
             <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><I className="size-3.5" />{label}</span>
-            <span className="mt-1 block font-display text-[1.4rem] leading-tight text-(--text)">{v}</span>
+            <span className="mt-1 block font-display text-[1.2rem] leading-tight text-(--text)">{v}</span>
           </div>
         ))}
       </div>
@@ -240,8 +216,10 @@ function WeeklyBars({ s }: { s: Stats }) {
               <div className="flex flex-col-reverse overflow-hidden rounded-t-[4px]" style={{ height: `${(w.hours / max) * 100}%` }}>
                 {sports.map((sp) => (w.by_sport[sp] ? <span key={sp} style={{ flexGrow: w.by_sport[sp], background: SPORT_COLOR[sp] }} /> : null))}
               </div>
-              <span className={cn('mt-1 text-center text-[0.5294rem]', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
-                {new Date(`${w.start}T12:00:00`).toLocaleDateString([], { month: 'numeric', day: 'numeric' })}
+              {/* every other week labelled (always this week) so the dates stay readable */}
+              <span className={cn('mt-1 whitespace-nowrap text-center text-[0.6471rem]', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}
+                aria-hidden={(s.weekly.length - 1 - i) % 2 === 1}>
+                {(s.weekly.length - 1 - i) % 2 === 0 ? new Date(`${w.start}T12:00:00`).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) : '\u00a0'}
               </span>
             </div>
           ))}
@@ -327,7 +305,7 @@ function BestsCard({ s }: { s: Stats }) {
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
             <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><Trophy className="size-3.5" />{label}</span>
             <span className="mt-1 block font-display text-[1.2rem] leading-tight text-(--text)">{v}</span>
-            {d && <span className="text-[0.5882rem] text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
+            {d && <span className="text-[0.6471rem] text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
           </div>
         ))}
       </div>
@@ -344,7 +322,7 @@ function BadgesCard({ s }: { s: Stats }) {
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <SectionLabel>{all ? 'All badges' : 'Next badges'} · {earned.length} of {s.badges.length} earned</SectionLabel>
-        <button type="button" onClick={() => setAll((a) => !a)} className="text-[0.6471rem] font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
+        <button type="button" onClick={() => setAll((a) => !a)} className="hit-44 text-[0.6471rem] font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
       </div>
       {shown.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Every badge earned. Legendary.</p>}
       <div className="grid grid-cols-3 gap-2">
@@ -356,13 +334,13 @@ function BadgesCard({ s }: { s: Stats }) {
               {b.earned ? <Award className="size-5" /> : <Lock className="size-4" />}
             </span>
             <span className={cn('text-[0.7059rem] font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
-            <span className="text-[0.5882rem] leading-tight text-(--text-muted)">{b.description}</span>
+            <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{b.description}</span>
             {!b.earned && (
               <>
                 <span className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
                   <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.round(b.progress * 100)}%` }} />
                 </span>
-                <span className="text-[0.5294rem] text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
+                <span className="text-[0.7059rem] text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
               </>
             )}
           </div>
@@ -372,36 +350,18 @@ function BadgesCard({ s }: { s: Stats }) {
   )
 }
 
-function RecentCard({ s }: { s: Stats }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>Recent workouts</SectionLabel>
-      <Card>
-        <div className="divide-y divide-(--border)">
-          {s.recent.map((r) => (
-            <div key={`${r.id}-${r.date}`} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="size-2.5 shrink-0 rounded-full" style={{ background: SPORT_COLOR[r.sport] }} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8235rem] text-(--text)">{r.name}</span>
-                <span className="block text-[0.6471rem] text-(--text-muted)">
-                  {new Date(`${r.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
-              </span>
-              <span className="text-right text-[0.7059rem] text-(--text-secondary)">
-                {hours(r.minutes / 60)}{r.km > 0 ? <><br />{dist(r.km, s.units, r.sport)}</> : null}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </section>
-  )
-}
-
 /** Oura readiness, HRV, resting HR and sleep vs your own baseline (app-only data). */
 function Recovery() {
   const [r, setR] = useState<OuraRecovery | null>(null)
-  useEffect(() => { getOura(28).then(setR, () => {}) }, [])
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let live = true
+    setError(false)
+    getOura(28).then((x) => { if (live) setR(x) }, () => { if (live) setError(true) })
+    return () => { live = false }
+  }, [attempt])
+  if (error && !r) return <ErrorState compact message="Couldn't load your Oura recovery." onRetry={() => setAttempt((n) => n + 1)} />
   if (!r?.connected || !r.days?.length) return null
   const last = r.latest ?? r.days[r.days.length - 1]!
   const b = r.baseline
@@ -409,10 +369,10 @@ function Recovery() {
     if (v == null || base == null) return null
     const d = Math.round((v - base) * 10) / 10
     const good = higherIsBetter ? d >= 0 : d <= 0
-    return <span className={good ? 'text-(--accent)' : 'text-(--warning)'}>{d >= 0 ? '+' : ''}{d}{unit}</span>
+    return <span className={good ? 'text-(--accent)' : 'text-(--warning-text)'}>{d >= 0 ? '+' : ''}{d}{unit}</span>
   }
   const tiles: [string, string, React.ReactNode][] = [
-    ['Readiness', last.readiness != null ? String(last.readiness) : '–', delta(last.readiness, b?.readiness, '', true)],
+    ['Oura readiness', last.readiness != null ? String(last.readiness) : '–', delta(last.readiness, b?.readiness, '', true)],
     ['HRV', last.hrv != null ? `${last.hrv} ms` : '–', delta(last.hrv, b?.hrv, ' ms', true)],
     ['Resting HR', last.resting_hr != null ? `${last.resting_hr} bpm` : '–', delta(last.resting_hr, b?.resting_hr, ' bpm', false)],
     ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–', delta(last.sleep_hours, b?.sleep_hours, ' h', true)],
@@ -420,16 +380,18 @@ function Recovery() {
   return (
     <section className="flex flex-col gap-2">
       <SectionLabel>Recovery · Oura · {new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</SectionLabel>
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {tiles.map(([label, v, d]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
-            <span className="block text-[0.5882rem] text-(--text-muted)">{label}</span>
+            <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">
+              {label}{label === 'Oura readiness' && <InfoTip term="oura_readiness" />}
+            </span>
             <span className="mt-0.5 block font-display text-[1.05rem] leading-tight text-(--text)">{v}</span>
-            {d && <span className="block text-[0.5294rem] leading-tight">{d}</span>}
+            {d && <span className="block text-[0.7059rem] leading-tight">{d}</span>}
           </div>
         ))}
       </div>
-      <p className="px-1 text-[0.5882rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data isn't sent to the AI coach.</p>
+      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to Rabbit.</p>
     </section>
   )
 }

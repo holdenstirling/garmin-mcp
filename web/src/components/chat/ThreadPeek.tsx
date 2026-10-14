@@ -49,7 +49,7 @@ export function ThreadPeek({ thread, onOpen, onDelete, onClose }: {
             {failed && <span className="text-[0.7647rem] text-muted-foreground">Couldn't load this chat.</span>}
             {seedText && (
               <span className="block rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[0.7059rem] leading-snug text-muted-foreground">
-                From Rabbit's log: {clip(seedText, 160)}
+                From Rabbit: {clip(seedText, 160)}
               </span>
             )}
             {first?.user && (

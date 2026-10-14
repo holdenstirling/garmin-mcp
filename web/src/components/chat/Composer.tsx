@@ -124,7 +124,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
             <div key={f.localId} className="relative size-16 overflow-hidden rounded-lg border border-border bg-secondary">
               <img src={f.preview} alt={f.name} className={cn('size-full object-cover', f.status === 'uploading' && 'opacity-50')} />
               {f.status === 'uploading' && <span className="absolute inset-0 flex items-center justify-center"><span className="thinking-dots flex gap-[3px]"><span /><span /><span /></span></span>}
-              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-[0.5294rem] text-white" title={f.error}>Failed</span>}
+              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-[0.6471rem] text-white" title={f.error}>Failed</span>}
               <button aria-label="Remove" onClick={() => remove(f.localId)}
                 className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white">
                 <X className="size-3" />

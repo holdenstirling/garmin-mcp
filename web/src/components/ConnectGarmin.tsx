@@ -156,9 +156,9 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
         value={email} onChange={(e) => setEmail(e.target.value)} className="text-base" required />
       <Input type="password" autoComplete="current-password" placeholder="Garmin password"
         value={password} onChange={(e) => setPassword(e.target.value)} className="text-base" required />
-      {message && <p className={`text-xs ${coolingDown ? 'text-(--warning)' : 'text-(--danger)'}`}>{message}</p>}
+      {message && <p className={`text-xs ${coolingDown ? 'text-(--warning-text)' : 'text-(--danger)'}`}>{message}</p>}
       {coolingDown && !message && (
-        <p className="text-xs text-(--warning)">You can try again at {fmtTime(until!)}.</p>
+        <p className="text-xs text-(--warning-text)">You can try again at {fmtTime(until!)}.</p>
       )}
       <Button type="submit" variant="primary" loading={submitting}
         disabled={coolingDown || !email || !password}>

@@ -175,13 +175,13 @@ export function Chart({ spec }: { spec: ChartSpec }) {
                 className="h-2 w-2 shrink-0 rounded-[2px]"
                 style={{ background: color(i, false) }}
               />
-              <span className="font-mono text-[0.5882rem] text-(--text-muted)">{s.name ?? `Series ${i + 1}`}</span>
+              <span className="font-mono text-[0.6471rem] text-(--text-muted)">{s.name ?? `Series ${i + 1}`}</span>
             </li>
           ))}
         </ul>
       )}
       <button type="button" onClick={() => setShowData((v) => !v)}
-        className="mt-2 text-[0.5882rem] font-medium uppercase tracking-widest text-(--text-muted) hover:text-(--text)">
+        className="mt-2 text-[0.6471rem] font-medium uppercase tracking-widest text-(--text-muted) hover:text-(--text)">
         {showData ? "Hide data" : "Show data"}
       </button>
       {showData && <DataTable spec={spec} labels={labels} />}
@@ -207,7 +207,7 @@ function StatTiles({ spec }: { spec: ChartSpec }) {
             className={`rounded-lg border border-(--border) bg-(--bg-surface) px-3 py-2.5 ${reduced ? "" : "cpm-rise"}`}
             style={reduced ? undefined : { animationDelay: `${i * 0.08}s` }}
           >
-            <div className="truncate font-mono text-[0.5882rem] uppercase tracking-wider text-(--text-muted)">
+            <div className="truncate font-mono text-[0.6471rem] uppercase tracking-wider text-(--text-muted)">
               {t.label}
             </div>
             <StatValue value={t.value} unit={spec.unit} reduced={reduced} />
@@ -282,7 +282,7 @@ function XYChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={mL} x2={W - mR} y1={y(t)} y2={y(t)} stroke="var(--chart-grid)" strokeWidth={1} />
-            <text x={mL - 4} y={y(t) + 3} textAnchor="end" className="fill-(--text-muted) font-mono text-[0.5294rem]">
+            <text x={mL - 4} y={y(t) + 3} textAnchor="end" className="fill-(--text-muted) font-mono text-[0.6471rem]">
               {fmtTick(t, spec.unit)}
             </text>
           </g>
@@ -340,7 +340,7 @@ function XYChart({
                       x={x0 + groupW / 2}
                       y={y(series[0]!.data[i] ?? 0) - 3}
                       textAnchor="middle"
-                      className="fill-(--text-muted) font-mono text-[0.5294rem]"
+                      className="fill-(--text-muted) font-mono text-[0.6471rem]"
                     >
                       {fmt(series[0]!.data[i] ?? 0, spec.unit)}
                     </text>
@@ -414,7 +414,7 @@ function XYChart({
               x={mL + bandW * i + bandW / 2}
               y={H - 6}
               textAnchor="middle"
-              className="fill-(--text-muted) font-mono text-[0.5294rem]"
+              className="fill-(--text-muted) font-mono text-[0.6471rem]"
             >
               {lab}
             </text>
@@ -450,7 +450,7 @@ function XYChart({
           className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-md border border-(--border) bg-(--bg-surface) px-2 py-1 shadow-sm"
           style={{ left: `${((mL + bandW * active + bandW / 2) / W) * 100}%`, top: 0 }}
         >
-          <div className="font-mono text-[0.5882rem] text-(--text-muted)">{labels[active]}</div>
+          <div className="font-mono text-[0.6471rem] text-(--text-muted)">{labels[active]}</div>
           {series.map((s, si) => (
             <div key={si} className="flex items-center gap-1.5 whitespace-nowrap">
               <span aria-hidden className="h-2 w-2 rounded-[2px]" style={{ background: color(si, single) }} />
@@ -513,7 +513,7 @@ function Donut({ spec, labels }: { spec: ChartSpec; labels: string[] }) {
         <text x={cx} y={cy - 2} textAnchor="middle" className="fill-(--text) text-[0.7647rem] font-semibold">
           {fmt(total, spec.unit)}
         </text>
-        <text x={cx} y={cy + 12} textAnchor="middle" className="fill-(--text-muted) font-mono text-[0.4706rem] uppercase tracking-wider">
+        <text x={cx} y={cy + 12} textAnchor="middle" className="fill-(--text-muted) font-mono text-[0.6471rem] uppercase tracking-wider">
           total
         </text>
       </svg>
@@ -526,7 +526,7 @@ function Donut({ spec, labels }: { spec: ChartSpec; labels: string[] }) {
             onMouseLeave={() => setActive((x) => (x === i ? null : x))}
           >
             <span aria-hidden className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: a.color }} />
-            <span className="truncate font-mono text-[0.5882rem] text-(--text-muted)">{a.name}</span>
+            <span className="truncate font-mono text-[0.6471rem] text-(--text-muted)">{a.name}</span>
             <span className="ml-auto whitespace-nowrap text-[0.6471rem]">
               {fmt(a.value, spec.unit)} · {Math.round(a.frac * 100)}%
             </span>

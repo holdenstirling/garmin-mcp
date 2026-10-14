@@ -128,7 +128,7 @@ def test_today_go_with_signals() -> None:
     assert c["tone"] == "go" and c["session"]["id"] == "s1"
     assert c["action"]["kind"] == "open_session"
     assert "Form +20 and readiness 88: you're fresh" in c["detail"]
-    assert [s["label"] for s in c["signals"]] == ["Form", "Readiness", "Streak"]
+    assert [s["label"] for s in c["signals"]] == ["Form", "Oura readiness", "Streak"]
     assert len(c["headline"]) <= 60 and len(c["detail"]) <= 160
 
 

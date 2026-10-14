@@ -596,7 +596,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
     else showScreen(r)
   }
-  const weekLead = goal ? <WeekList week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} onAskDay={askDay} /> : null
+  const weekLead = goal ? <WeekList imperial={me.athlete.units === 'imperial'} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} onAskDay={askDay} /> : null
 
   function planTab() {
     if (builtPlan) {

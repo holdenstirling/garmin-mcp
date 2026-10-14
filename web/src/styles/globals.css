@@ -77,7 +77,7 @@
     /* Text */
     --text: #0a0f0c;
     --text-secondary: #3d4a42;
-    --text-muted: #7a8a80;
+    --text-muted: #5f6d64; /* >= 4.5:1 on --bg and --bg-surface */
 
     /* Brand */
     --brand: #1a3a2a;
@@ -109,6 +109,12 @@
     --success-subtle: rgba(22, 163, 74, 0.08);
     --warning: #ca8a04;
     --warning-subtle: rgba(202, 138, 4, 0.08);
+    /* Warning-colored text: --warning is too light for text on cream. */
+    --warning-text: #8a5d00;
+
+    /* Chart series */
+    --chart-fatigue: #c45d74;
+    --chart-form: #d0952f;
     --info: #2563eb;
     --info-subtle: rgba(37, 99, 235, 0.08);
 
@@ -157,7 +163,10 @@
 
       --text: #e4e7e5;
       --text-secondary: #b4bab6;
-      --text-muted: #889089;
+      --text-muted: #949c95;
+      --warning-text: #e8b85c;
+      --chart-fatigue: #e08aa0;
+      --chart-form: #e0b060;
 
       --brand: #a8d5b5;
       --brand-hover: #c8ecd4;
@@ -203,7 +212,10 @@
 
     --text: #e4e7e5;
     --text-secondary: #b4bab6;
-    --text-muted: #889089;
+    --text-muted: #949c95;
+    --warning-text: #e8b85c;
+    --chart-fatigue: #e08aa0;
+    --chart-form: #e0b060;
 
     --brand: #a8d5b5;
     --brand-hover: #c8ecd4;
@@ -428,6 +440,7 @@
 }
 
 .modal-close {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -440,6 +453,13 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
+}
+
+/* 44px hit area around the 32px visual. */
+.modal-close::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .modal-close:hover {
@@ -659,7 +679,7 @@
 
 .jr-badge--warning {
   background: var(--warning-subtle);
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .jr-badge--danger {
@@ -1224,4 +1244,21 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { display: none; }
   .skeleton { animation: rl-pulse 1.8s ease-in-out infinite; }
+}
+
+/* Enlarge a small control's tap target to 44px without changing how it looks.
+   In the components layer so a utility like `absolute` still wins over `relative`. */
+@layer components {
+  .hit-44 {
+    position: relative;
+  }
+  .hit-44::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
 }

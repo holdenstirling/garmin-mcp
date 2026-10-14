@@ -72,7 +72,7 @@ def _signals(form: float | None, readiness: float | None, streak: dict[str, Any]
     if form is not None:
         out.append({"label": "Form", "value": f"{form:+.0f}", "good": form >= -10})
     if readiness is not None:
-        out.append({"label": "Readiness", "value": f"{readiness:.0f}", "good": readiness >= LOW_READINESS})
+        out.append({"label": "Oura readiness", "value": f"{readiness:.0f}", "good": readiness >= LOW_READINESS})
     if streak and streak.get("current"):
         out.append({"label": "Streak", "value": str(streak["current"]), "good": not streak.get("at_risk")})
     return out[:3]

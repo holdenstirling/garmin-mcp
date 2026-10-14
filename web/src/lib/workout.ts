@@ -1,6 +1,7 @@
 // Workout day: the "Ready to go" screen before a session and the reaction card after one
 // (server: workoutday.py). Both are deterministic, no AI.
 import { getJSON } from '@/lib/api'
+import { fmtDist as fmtDistBase } from '@/lib/format'
 
 export type Target = { kind: 'pace' | 'power' | 'hr' | 'rpe' | 'rest'; label: string }
 export type WStep =
@@ -87,7 +88,6 @@ export function writeChecklist(day: string, done: number[]) {
   try { window.localStorage.setItem(CK, JSON.stringify({ day, done })) } catch { /* this session only */ }
 }
 
-export const fmtDist = (km: number, imperial: boolean) =>
-  imperial ? `${(km / 1.609344).toFixed(1)} mi` : `${km.toFixed(1)} km`
+export const fmtDist = (km: number, imperial: boolean, sport?: string | null) => fmtDistBase(km, imperial, sport)
 export const fmtTemp = (c: number | null | undefined, imperial: boolean) =>
   c == null ? '' : imperial ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`

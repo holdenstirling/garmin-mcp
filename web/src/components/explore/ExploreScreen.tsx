@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, Screen, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
@@ -118,7 +119,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
           {RADII.map((r) => <option key={r} value={r}>{r} mi</option>)}
         </select>
       </div>
-      <div className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto px-3">
+      <div className="no-scrollbar -mx-3 -my-1 flex gap-1.5 overflow-x-auto px-3 py-1">
         {home && f.near !== home && <Chip onClick={() => set({ near: home })}><span className="whitespace-nowrap">Use my home</span></Chip>}
         {MONTHS.map((m) => (
           <Chip key={m} selected={f.months === m} onClick={() => set({ months: m })}><span className="whitespace-nowrap">{m === 12 ? '1 year' : `${m} mo`}</span></Chip>
@@ -134,7 +135,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
           )
         })}
       </div>
-      <div className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto px-3">
+      <div className="no-scrollbar -mx-3 -my-1 flex gap-1.5 overflow-x-auto px-3 py-1">
         <Chip selected={!f.distance} onClick={() => set({ distance: null })}><span className="whitespace-nowrap">Any distance</span></Chip>
         {DISTANCE_CHIPS.map(([d, label]) => (
           <Chip key={d} selected={f.distance === d} onClick={() => set({ distance: f.distance === d ? null : d })}>
@@ -171,9 +172,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
             <RabbitLoader label="Finding races" cycle={['Scouting start lines…', 'Checking the calendar…', 'Reading course maps…']} />
           </div>
         ) : error ? (
-          <p className="px-1 text-[0.8235rem] text-(--danger)" role="alert">
-            {error} <button type="button" className="underline" onClick={() => filters && run(filters, 1)}>Retry</button>
-          </p>
+          <ErrorState message={`Couldn't load races: ${error}`} onRetry={() => filters && run(filters, 1)} />
         ) : races && races.length === 0 && !loading ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <span className="flex size-14 items-center justify-center rounded-2xl bg-(--accent-subtle) text-(--accent)">

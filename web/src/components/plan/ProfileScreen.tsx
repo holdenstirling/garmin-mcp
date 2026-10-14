@@ -75,7 +75,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         <div className="mx-auto mt-2.5 flex max-w-xl gap-1 rounded-lg bg-(--bg-elevated) p-1">
           {([['you', 'You'], ['goals', 'Goals'], ['numbers', 'Zones'], ['week', 'Week']] as [Tab, string][]).map(([t, l]) => (
             <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t}
-              className={`h-8 flex-1 rounded-md text-[0.7647rem] font-medium transition-colors ${tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)'}`}>{l}</button>
+              className={`hit-44 h-8 flex-1 rounded-md text-[0.7647rem] font-medium transition-colors ${tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)'}`}>{l}</button>
           ))}
         </div>
       }

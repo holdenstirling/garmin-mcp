@@ -100,7 +100,7 @@ def week_goal(stats: dict[str, Any]) -> dict[str, Any]:
     """This week's target: the plan's sessions when there is a plan, else active-week workouts."""
     pw = ((stats.get("plan") or {}).get("week")) or None
     if pw and pw.get("planned"):
-        return {"kind": "plan", "done": pw["done"], "target": pw["planned"], "label": "planned sessions"}
+        return {"kind": "plan", "done": pw["done"], "target": pw["planned"], "label": "sessions"}
     n = stats["totals"]["week"]["workouts"]
     return {"kind": "active", "done": n, "target": ACTIVE_WEEK, "label": "workouts"}
 

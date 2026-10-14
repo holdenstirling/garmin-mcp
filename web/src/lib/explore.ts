@@ -1,6 +1,7 @@
 // Explore races: RunSignup search (server-side, cached), "Find more with Rabbit" web search,
 // and "Add to my races". Everything comes back as plain text; render it as text only.
 import { getJSON, sendJSON } from '@/lib/api'
+import { fmtDist } from '@/lib/format'
 import type { RaceEvent } from '@/lib/events'
 
 export type ExploreCategory =
@@ -91,7 +92,7 @@ export function placeOf(r: ExploreRace): string {
 export function distanceText(e: ExploreRaceEvent, imperial: boolean): string {
   if (e.distance_label) return e.distance_label
   if (e.distance_km == null) return e.name
-  return imperial ? `${Math.round((e.distance_km / 1.609344) * 10) / 10} mi` : `${Math.round(e.distance_km * 10) / 10} km`
+  return fmtDist(e.distance_km, imperial)
 }
 export function feeFrom(r: ExploreRace): string | null {
   const fees = r.events.map((e) => e.fee_from).filter((x): x is string => !!x)

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, MessageCircle, Plus, RefreshCw, Trash2, Watch, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Choice, Field, MultiChoice, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
@@ -76,9 +77,7 @@ export function GearScreen({ onClose, imperial, onAsk }: {
         {items === null && !error ? (
           <RabbitLoader className="py-16" label="Loading gear" cycle={['Checking the gear closet…', 'Counting miles on your shoes…']} />
         ) : items === null ? (
-          <p className="px-1 text-[0.8235rem] text-(--danger)">
-            {error} <button type="button" className="underline" onClick={load}>Retry</button>
-          </p>
+          <ErrorState message={`Couldn't load your gear: ${error}`} onRetry={load} />
         ) : (
           <>
             {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
@@ -142,7 +141,7 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
         warn ? 'border-(--warning)/50' : 'border-(--border)', g.retired && 'opacity-70')}>
       <span className="flex w-full items-center gap-3">
         <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
-          warn ? 'bg-(--warning-subtle) text-(--warning)' : 'bg-(--accent-subtle) text-(--accent)')}>
+          warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--accent-subtle) text-(--accent)')}>
           <Icon className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -153,7 +152,7 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
           {meta && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{meta}</span>}
         </span>
         {warn ? (
-          <span className="shrink-0 rounded-full bg-(--warning-subtle) px-2 py-0.5 font-mono text-[0.5882rem] font-semibold uppercase tracking-wider text-(--warning)">
+          <span className="shrink-0 rounded-full bg-(--warning-subtle) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--warning-text)">
             {STATUS_LABEL[g.status as 'soon' | 'retire']}
           </span>
         ) : <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />}

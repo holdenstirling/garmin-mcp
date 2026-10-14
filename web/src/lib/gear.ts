@@ -1,5 +1,6 @@
 // Gear garage: shoes, bikes and the rest, with mileage and retirement alerts.
 import { getJSON, sendJSON } from '@/lib/api'
+import { KM_PER_MI, fmtDist as fmtDistBase } from '@/lib/format'
 
 export type GearKind = 'shoes' | 'bike' | 'wetsuit' | 'watch' | 'power_meter' | 'helmet' | 'other'
 export type BikeType = 'road' | 'tri' | 'gravel' | 'mtb' | 'indoor'
@@ -60,14 +61,14 @@ export const SPORT_LABEL: Record<GearSport, string> = {
 /** Sport a new item of this kind is usually the default for. */
 export const DEFAULT_SPORT: Partial<Record<GearKind, GearSport>> = { shoes: 'run', bike: 'bike', wetsuit: 'swim' }
 
-export const KM_PER_MI = 1.609344
+export { KM_PER_MI }
 
 /** "Hoka Clifton 9", falling back to the nickname or the kind. */
 export function gearName(g: Pick<GearItem, 'brand' | 'model' | 'nickname' | 'kind'>): string {
   return [g.brand, g.model].filter(Boolean).join(' ') || g.nickname || KIND_LABEL[g.kind]
 }
 
+/** Gear mileage reads in whole units. */
 export function fmtDist(km: number, imperial: boolean): string {
-  const v = imperial ? km / KM_PER_MI : km
-  return `${Math.round(v).toLocaleString()} ${imperial ? 'mi' : 'km'}`
+  return fmtDistBase(km, imperial, null, { decimals: 0 })
 }

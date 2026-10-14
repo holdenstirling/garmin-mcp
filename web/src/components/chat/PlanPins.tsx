@@ -5,6 +5,7 @@ import { Check, MessageCircle, ChevronRight, Map as MapIcon } from 'lucide-react
 import { cn } from '@/lib/utils'
 import type { Goal, PlannedSession, PlanWeek, Sport, WeekDay } from '@/lib/api'
 import { SPORT_ICON } from '@/components/plan/PlanParts'
+import { fmtDist } from '@/lib/format'
 
 export function fmtMinutes(m: number): string {
   if (m < 60) return `${m}m`
@@ -60,7 +61,7 @@ export function DayDot({ day }: { day: WeekDay }) {
   return (
     <span className="flex flex-col items-center gap-1" role="img"
       aria-label={`${day.weekday}${day.today ? ' (today)' : ''}: ${DAY_STATE_LABEL[st]}`}>
-      <span aria-hidden className={cn('text-[0.5882rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
+      <span aria-hidden className={cn('text-[0.6471rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
         {day.weekday.charAt(0)}
       </span>
       <span className={cn('flex size-[18px] items-center justify-center rounded-full border text-white',
@@ -79,24 +80,24 @@ export function DayDot({ day }: { day: WeekDay }) {
 type Item = { key: string; sport: Sport; title: string; minutes: number | null; detail: string
   status: 'done' | 'missed' | 'planned' | 'rest' | 'extra'; doneMinutes?: number; session?: PlannedSession }
 
-function items(day: WeekDay): Item[] {
+function items(day: WeekDay, imperial = false): Item[] {
   return [
     ...day.sessions.map((s, i) => ({ key: `s${i}`, sport: s.sport, title: s.title, minutes: s.minutes,
       detail: s.detail, status: s.status, doneMinutes: s.activity?.minutes, session: s })),
     ...day.extra.map((a, i) => ({ key: `x${i}`, sport: a.sport, title: a.name, minutes: null,
-      detail: a.distance_km ? `${a.distance_km} km` : '', status: 'extra' as const, doneMinutes: a.minutes })),
+      detail: a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : '', status: 'extra' as const, doneMinutes: a.minutes })),
   ]
 }
 
 /** One day: a line per session; tapping a session opens its details and an Ask button.
  *  Only the Ask button starts a chat, so opening and closing details never does. */
-export function DayRow({ day, openKey, onToggle, onAsk }: {
-  day: WeekDay; openKey: string | null
+export function DayRow({ day, openKey, onToggle, onAsk, imperial = false }: {
+  day: WeekDay; openKey: string | null; imperial?: boolean
   onToggle: (key: string | null) => void
   onAsk: (day: WeekDay, session?: PlannedSession) => void
 }) {
   const date = new Date(`${day.date}T12:00:00`)
-  const list = items(day)
+  const list = items(day, imperial)
   return (
     <div className={cn('flex gap-3 px-2 py-1.5', list.length <= 1 && 'items-center', day.today && 'bg-(--accent-subtle)')}>
       <span className={cn('w-9 shrink-0 text-center leading-tight', list.length > 1 && 'pt-1')}>
@@ -147,8 +148,10 @@ export function DayRow({ day, openKey, onToggle, onAsk }: {
   )
 }
 
-export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPlan, onAskDay }: {
+export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPlan, onAskDay, imperial = false }: {
   goal: Goal
+  /** athlete units (extra activities' distance) */
+  imperial?: boolean
   week: PlanWeek | null
   loading: boolean
   /** the week couldn't be loaded (shown only while there's no week to show) */
@@ -214,7 +217,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
           className="flex w-full items-center gap-2 px-3 pb-2 pt-2 text-left">
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
-              <span className="truncate text-[0.5882rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              <span className="truncate text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">
                 {where}{week ? ` · ${fmtRange(week.start, week.end)}` : ''}
               </span>
               {reading && <span className="ml-auto shrink-0 text-[0.6471rem] text-muted-foreground">Reading your plan…</span>}
@@ -256,11 +259,11 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
-            {week?.garmin_error && <p className="px-2 py-1 text-[0.6471rem] text-(--warning)">{week.garmin_error}</p>}
+            {week?.garmin_error && <p className="px-2 py-1 text-[0.6471rem] text-(--warning-text)">{week.garmin_error}</p>}
             {week?.plan_status === 'error' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Couldn't read this week from your plan. Showing what you've done.</p>}
             {week?.plan_status === 'over_budget' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Planned sessions show up tomorrow (today's limit is used up).</p>}
             <div className="divide-y divide-(--border)">
-              {week?.days.map((d) => <DayRow key={d.date} day={d} openKey={openKey} onToggle={setOpenKey}
+              {week?.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey}
                 onAsk={(day, session) => { setOpen(false); onAskDay(day, session) }} />)}
             </div>
           </div>
