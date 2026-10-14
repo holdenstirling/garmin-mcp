@@ -16,7 +16,7 @@ import {
 } from '@/lib/challenges'
 import { getPeople, type PersonEdge } from '@/lib/social'
 import { HopPrints } from '@/components/fx/HopPrints'
-import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { RabbitHop, RabbitNap } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 
 const SEEN_KEY = 'rabbit.challenges.celebrated'
@@ -112,7 +112,7 @@ export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
         <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
           className={cn('hit-44 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) py-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)',
             v.joined.length === 0 && v.invites.length === 0 && 'flex-col pt-4')}>
-          {v.joined.length === 0 && v.invites.length === 0 && <PeekingRabbit size={56} />}
+          {v.joined.length === 0 && v.invites.length === 0 && <RabbitNap size={40} mode="peek" />}
           <span className="inline-flex items-center gap-1.5">{weekly.length === 0 ? <><Target className="size-4" /> Pick this week's challenge</> : <><Plus className="size-4" /> Add a challenge</>}</span>
         </button>
       )}
@@ -148,7 +148,6 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
   const board = c.leaderboard && c.leaderboard.length > 1 ? c.leaderboard : null
   return (
     <div data-challenge={c.id} className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
-      {party && <Confetti />}
       <div className="flex items-start gap-3">
         <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
           c.done ? 'bg-(--brand) text-white' : 'bg-(--bg-elevated) text-(--accent)', party && 'celebrate')}>
@@ -169,6 +168,7 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
             style={{ width: `${Math.max(2, c.pct)}%` }} />
         </span>
         <HopPrints pct={c.pct} storeKey={`challenge.${c.id}`} />
+        <RabbitHop pct={Math.max(2, c.pct)} value={c.pct} size={12} storeKey={`challenge.${c.id}`} />
       </span>
       <div className="flex items-center gap-2 text-[0.7059rem] text-(--text-muted)">
         <span className="min-w-0 flex-1">{c.done ? 'Done. Nice work.' : `${progressLine(c, imperial)} · ${daysLeft(c.days_left)}`}</span>
@@ -200,27 +200,6 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
 }
 
 /** A short burst of dots. Hidden entirely for reduced motion (the check pop is enough). */
-function Confetti() {
-  const dots = Array.from({ length: 14 }, (_, i) => i)
-  const colors = ['var(--accent)', 'var(--brand)', 'var(--warning-text)']
-  return (
-    <span className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden" aria-hidden="true">
-      <style>{`@keyframes chal-pop{0%{transform:translate(0,0) scale(.6);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}`}</style>
-      {dots.map((i) => {
-        const a = (i / dots.length) * Math.PI * 2
-        return (
-          <span key={i} className="absolute left-[34px] top-[30px] block size-1.5 rounded-full"
-            style={{
-              background: colors[i % colors.length], animation: 'chal-pop 900ms ease-out forwards',
-              ['--dx' as string]: `${Math.round(Math.cos(a) * (40 + (i % 3) * 14))}px`,
-              ['--dy' as string]: `${Math.round(Math.sin(a) * (30 + (i % 4) * 10))}px`,
-            }} />
-        )
-      })}
-    </span>
-  )
-}
-
 // ------------------------------------------------------------------ sheets --
 const own = (e: SyntheticEvent) => e.stopPropagation()
 

@@ -43,6 +43,9 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
   insight?: string | null; onOpenInsight?: () => void
 }) {
   const [collapsed, setCollapsed] = useState(() => seenToday(today.date))
+  // First show of the day: the card hops in (anim kit, .rb-hop-in). The primary button squishes
+  // on press (.press on Button variant="primary").
+  const [firstShow] = useState(() => !collapsed)
   const t = TONE[today.tone] ?? TONE.go
   const Icon = t.icon
   const workoutId = today.action.kind === 'open_session' ? today.session?.id ?? null : null
@@ -54,7 +57,7 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
   const fx = fxTone(today.tone)
   const play = useTodayFx(today.date) && !!fx
   return (
-    <section aria-label="Today" className={cn('coach-pins relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface)', t.border)}>
+    <section aria-label="Today" className={cn('coach-pins relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface)', t.border, firstShow && 'rb-hop-in')}>
       {play && fx && <TodayFx tone={fx} />}
       <button type="button" onClick={toggle} aria-expanded={!collapsed}
         className="flex w-full items-center gap-2.5 px-3 pt-2.5 text-left" style={{ paddingBottom: collapsed ? 10 : 0 }}>

@@ -3,7 +3,6 @@
 :root {
   --fx-carrot: #ee7d23;
   --fx-leaf: #4f9a5c;
-  --fx-ear: #f2a7b4;
   --fx-spark: #f2b632;
   --fx-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
 }
@@ -13,6 +12,7 @@
 .fx-burst__bit, .fx-burst__puff { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
 .fx-burst__bit { animation: fx-fling 900ms cubic-bezier(0.15, 0.7, 0.3, 1) both; }
 .fx-burst__spark { color: var(--fx-spark); }
+.fx-burst__paw { color: var(--brand); }
 .fx-burst__puff { color: var(--text-muted); animation: fx-puff 600ms ease-out both; }
 @keyframes fx-fling {
   0% { transform: translate(-50%, -50%) scale(0.3) rotate(0deg); opacity: 1; }
@@ -38,18 +38,6 @@
   75% { opacity: 0.9; }
   100% { transform: translate(-50%, 0) scale(1); opacity: 0; }
 }
-
-/* ---- PeekingRabbit ---- */
-.fx-peek { position: relative; display: inline-block; overflow: hidden; flex-shrink: 0; }
-.fx-peek svg { display: block; }
-.fx-peek__body { animation: fx-peek-up 620ms var(--fx-spring) 120ms both; }
-.fx-peek__ear--r { transform-origin: 40px 22px; animation: fx-ear-flick 460ms ease-in-out 760ms both; }
-.fx-peek__ear--l { transform-origin: 24px 22px; }
-.fx-peek__eyes { transform-origin: 32px 33px; animation: fx-blink 220ms ease-in-out 1000ms both; }
-.fx-peek__edge { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--border-strong); }
-@keyframes fx-peek-up { from { transform: translateY(30px); } to { transform: translateY(0); } }
-@keyframes fx-ear-flick { 0%, 100% { transform: rotate(0deg); } 35% { transform: rotate(16deg); } 70% { transform: rotate(-5deg); } }
-@keyframes fx-blink { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
 
 /* ---- StreakFlame ---- */
 .fx-flame { position: relative; display: inline-flex; }
@@ -99,6 +87,12 @@
 }
 .fx-ptr__crouch { display: block; transform-origin: 50% 100%; transition: transform 0.15s var(--fx-spring); }
 .fx-ptr__bunny.is-ready .fx-ptr__crouch { transform: translateY(3px) scale(1.1, 0.78); }
+.fx-ptr__bunny.is-busy { opacity: 1; }
+.fx-ptr__bunny.is-busy .fx-ptr__crouch { animation: fx-ptr-hop 480ms ease-in-out infinite; }
+@keyframes fx-ptr-hop {
+  0%, 100% { transform: translateY(0) scale(1.06, 0.9) rotate(0deg); }
+  45% { transform: translateY(-9px) scale(0.96, 1.06) rotate(-10deg); }
+}
 .fx-ptr__bunny.is-leap { animation: fx-ptr-leap 700ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards; }
 .fx-ptr__puff { position: absolute; left: 50%; bottom: -4px; color: var(--text-muted); animation: fx-puff 600ms ease-out both; }
 @keyframes fx-ptr-leap {
@@ -170,8 +164,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fx-burst, .fx-hops, .fx-flame__hot, .fx-flame__carrot, .fx-today, .fx-ptr__puff { display: none; }
-  .fx-burst__bit, .fx-hops__print, .fx-peek__body, .fx-peek__ear--r, .fx-peek__eyes, .fx-flame--risk,
-  .fx-flame--flicker > svg:first-child, .fx-tab-hop, .fx-tab-wiggle, .fx-ptr__bunny.is-leap, .fx-sway,
+  .fx-burst__bit, .fx-hops__print, .fx-flame--risk,
+  .fx-flame--flicker > svg:first-child, .fx-tab-hop, .fx-ptr__bunny.is-busy .fx-ptr__crouch, .fx-tab-wiggle, .fx-ptr__bunny.is-leap, .fx-sway,
   .fx-leap, .fx-medal, .fx-hop { animation: none; }
   .fx-leap { display: none; }
   .fx-ptr__bunny, .fx-ptr__crouch, .press { transition: none; }

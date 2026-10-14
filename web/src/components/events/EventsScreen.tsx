@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { EmptyRabbit, HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
@@ -44,11 +44,11 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
 
   const load = useCallback(() => {
     setError(null)
-    listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
     // Grades are a bonus on the cards: a failure just leaves the plain "Readiness" row.
     listReadiness().then((r) => setGrades(Object.fromEntries(r.races.map((g) => [g.event_id, g]))), () => {})
+    return listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
   }, [])
-  useEffect(load, [load])
+  useEffect(() => { void load() }, [load])
 
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   const upcoming = (events ?? []).filter((e) => daysUntil(e.date) >= 0)
@@ -62,6 +62,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={events === null}
           onClick={() => setEditing('new')}>
           <CalendarPlus className="size-4" /> Add a race</Button>}>
+        <PullToRefresh onRefresh={load} disabled={events === null && !error} />
         {events === null && !error ? (
           <div className="flex flex-col gap-2.5">
             <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your races…']} />
@@ -70,7 +71,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           </div>
         ) : error ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)">
-            {error} <button type="button" className="underline" onClick={load}>Retry</button>
+            {error} <button type="button" className="underline" onClick={() => void load()}>Retry</button>
           </p>
         ) : (
           <>
@@ -85,16 +86,17 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
               </div>
             )}
             {upcoming.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <PeekingRabbit size={72} />
-                <p className="text-[0.8824rem] text-(--text)">No upcoming races yet</p>
-                <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Add your races, rides and big days. Rabbit plans around all of them.</p>
-              </div>
+              <EmptyRabbit className="py-10" size={60} mode="peek" title="No upcoming races yet"
+                body="Add your races, rides and big days. Rabbit plans around all of them." />
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">
-                {upcoming.map((e) => <EventCard key={e.id} e={e} grade={grades[e.id]} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
-                  onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />)}
+                {upcoming.map((e, i) => (
+                  <HopIn key={e.id} index={i}>
+                    <EventCard e={e} grade={grades[e.id]} onClick={() => setEditing(e)} onFit={() => setFit(e.id)}
+                      onPack={daysUntil(e.date) <= 21 ? () => setPack(e.id) : undefined} />
+                  </HopIn>
+                ))}
               </section>
             )}
             {past.length > 0 && (
@@ -103,7 +105,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                   className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
                   Past events ({past.length}) <ChevronRight className={cn('size-3.5 transition-transform', showPast && 'rotate-90')} />
                 </button>
-                {showPast && past.map((e) => <EventCard key={e.id} e={e} onClick={() => setEditing(e)} />)}
+                {showPast && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
             )}
             <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">

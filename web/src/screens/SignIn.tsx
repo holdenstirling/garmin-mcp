@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
+import { hapticTap } from '@/lib/haptics'
 
 const ERRORS: Record<string, string> = {
   not_allowed: "That Google account isn't on the invite list. Ask Andrew to add it.",
@@ -21,9 +22,12 @@ export function SignIn({ error }: { error: string | null }) {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
-      {redirecting
-        ? <RabbitLoader size={80} label="Signing you in…" />
-        : <RabbitLoader size={80} gentle decorative />}
+      {/* Tapping Sign in: the rabbit speeds up and does a little jump (.rb-jump). */}
+      <div className={redirecting ? 'rb-jump' : undefined}>
+        {redirecting
+          ? <RabbitLoader size={80} label="Signing you in…" />
+          : <RabbitLoader size={80} gentle decorative />}
+      </div>
       <div>
         <h1 className="font-display text-4xl text-(--brand)">Rabbit</h1>
         <p className="mt-2 text-(--text-secondary)">Your training pacer. Prep, reviews, and a nudge when you need it.</p>
@@ -36,7 +40,7 @@ export function SignIn({ error }: { error: string | null }) {
       <Button asChild variant="primary" className="h-11 px-6 text-sm">
         <a href="/app/auth/google/start" onClick={(e) => {
           // A modified click opens a new tab; only a plain click leaves this page.
-          if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) setRedirecting(true)
+          if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { hapticTap(); setRedirecting(true) }
         }}>Sign in with Google</a>
       </Button>
     </div>

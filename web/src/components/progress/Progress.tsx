@@ -9,6 +9,7 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { HopPrints } from '@/components/fx/HopPrints'
 import { StreakFlame } from '@/components/fx/StreakFlame'
 import { celebrate } from '@/components/fx/motion'
+import { CountUp, RabbitHop } from '@/components/anim'
 import { markProgressSeen, nextQuest, type Progress, type Quest, type QuestId } from '@/lib/progress'
 
 /** Round level badge. */
@@ -22,7 +23,9 @@ export function LevelBadge({ level, size = 'md' }: { level: number; size?: 'sm' 
   )
 }
 
-export function XpBar({ p, className }: { p: Progress; className?: string }) {
+/** ``rabbit``: the rabbit mark sits at the fill's end and hops along when XP rises (needs
+ *  ~12px of room above the bar). */
+export function XpBar({ p, className, rabbit }: { p: Progress; className?: string; rabbit?: boolean }) {
   const pct = Math.max(2, Math.min(100, Math.round((100 * p.level_xp) / Math.max(1, p.level_span))))
   return (
     <span className={cn('fx-bar w-full', className)}>
@@ -31,6 +34,7 @@ export function XpBar({ p, className }: { p: Progress; className?: string }) {
         <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${pct}%` }} />
       </span>
       <HopPrints pct={pct} value={p.xp} storeKey="xp" />
+      {rabbit && <RabbitHop pct={pct} value={p.xp} storeKey="xp" />}
     </span>
   )
 }
@@ -114,8 +118,8 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
         <LevelBadge level={p.level} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="font-display text-[1.25rem] leading-tight text-(--brand)">{p.name}</p>
-          <p className="text-[0.6471rem] text-(--text-muted)">Level {p.level} · {p.xp.toLocaleString()} XP</p>
-          <XpBar p={p} className="mt-2" />
+          <p className="text-[0.6471rem] text-(--text-muted)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
+          <XpBar p={p} className="mt-3" rabbit />
           <p className="mt-1 text-[0.6471rem] text-(--text-muted)">
             {p.to_next.toLocaleString()} XP to level {p.level + 1}{p.next_name ? ` (${p.next_name})` : ''}
           </p>
@@ -129,7 +133,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan }: {
           </span>
           <span className="min-w-0">
             <span className="flex items-baseline gap-1">
-              <span className="font-display text-[1.3rem] leading-none text-(--text)">{s.current}</span>
+              <CountUp value={s.current} storeKey="streak" className="font-display text-[1.3rem] leading-none text-(--text)" />
               <span className="text-[0.7059rem] text-(--text-secondary)">day streak</span>
             </span>
             <span className="block text-[0.6471rem] text-(--text-muted)">Best {s.best}</span>
@@ -164,7 +168,7 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
   return (
     <Screen title="Get set up" subtitle={`${p.setup.done} of ${p.setup.total} done · earn XP for each step`} closing={closing} onClose={close}>
       <div className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-        <div className="flex items-center justify-between text-[0.7059rem]">
+        <div className="mb-1 flex items-center justify-between text-[0.7059rem]">
           <span className="font-medium text-(--text)">{pct === 100 ? 'All set. Nice work!' : 'Your setup'}</span>
           <span className="text-(--text-muted)">{pct}%</span>
         </div>
@@ -173,6 +177,7 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
             <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-700" style={{ width: `${Math.max(3, pct)}%` }} />
           </span>
           <HopPrints pct={pct} value={p.setup.done} storeKey="setup" />
+          <RabbitHop pct={Math.max(3, pct)} value={p.setup.done} storeKey="setup" />
         </span>
       </div>
       <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
@@ -184,13 +189,44 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
   )
 }
 
+// Quests seen done (localStorage): one that's newly done draws its check and gets a small burst.
+const QUESTS_SEEN = 'rabbit.fx.quests.done'
+function useNewlyDone(quests: Quest[]): Set<QuestId> {
+  const [fresh] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(QUESTS_SEEN)
+      if (raw == null) return new Set<QuestId>() // first look: nothing to celebrate
+      const seen = JSON.parse(raw) as QuestId[]
+      return new Set(quests.filter((q) => q.done && !seen.includes(q.id)).map((q) => q.id))
+    } catch { return new Set<QuestId>() }
+  })
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(QUESTS_SEEN)
+      const seen = raw ? (JSON.parse(raw) as QuestId[]) : []
+      window.localStorage.setItem(QUESTS_SEEN, JSON.stringify([...new Set([...seen, ...quests.filter((q) => q.done).map((q) => q.id)])]))
+    } catch { /* private mode */ }
+  }, [quests])
+  return fresh
+}
+
 function QuestList({ quests, onAction }: { quests: Quest[]; onAction: (q: QuestId) => void }) {
+  const fresh = useNewlyDone(quests)
+  const first = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!fresh.size) return
+    const t = window.setTimeout(() => celebrate(first.current, 'quest'), 420)
+    return () => window.clearTimeout(t)
+  }, [fresh])
+  const firstFresh = quests.find((q) => fresh.has(q.id))?.id
   return (
     <div className="divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {quests.map((q) => (
         <div key={q.id} className="flex items-center gap-3 px-4 py-3">
-          <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border',
-            q.done ? 'border-(--accent) bg-(--accent) text-white' : 'border-(--border-strong) text-transparent')}>
+          <span ref={q.id === firstFresh ? first : undefined}
+            className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border',
+              q.done ? 'border-(--accent) bg-(--accent) text-white' : 'border-(--border-strong) text-transparent',
+              fresh.has(q.id) && 'rb-pop rb-check-draw')}>
             <Check className="size-4" />
           </span>
           <span className="min-w-0 flex-1">

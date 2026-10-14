@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
 import { deleteCheckin, listCheckins, type Checkin } from '@/lib/checkins'
 import { CheckinChips } from './VoiceCheckIn'
-import { PeekingRabbit } from '@/components/fx/PeekingRabbit'
+import { EmptyRabbit } from '@/components/anim'
 
 function fmtDate(d: string): string {
   return new Date(`${d}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
@@ -28,10 +28,8 @@ export function CheckinsCard() {
       <Card>
         {error && <p className="px-4 py-3 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
         {items && items.length === 0 && (
-          <div className="flex flex-col items-center gap-2 px-4 pb-3 pt-4 text-center">
-            <PeekingRabbit size={56} />
-            <p className="text-[0.7647rem] text-(--text-muted)">None yet. Tap the mic on home after a workout and tell Rabbit how it felt.</p>
-          </div>
+          <EmptyRabbit className="px-4 pb-3 pt-4" size={44}
+            body="None yet. Tap the mic on home after a workout and tell Rabbit how it felt." />
         )}
         {items?.map((c, i) => (
           <div key={c.id} className={`flex items-start gap-2 px-4 py-3 ${i ? 'border-t border-(--border)' : ''}`}>
