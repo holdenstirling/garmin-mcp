@@ -311,6 +311,8 @@ def test_feed_includes_moments_and_coach_visibility(env, tmp_path) -> None:
             s = (await a.put("/app/api/settings", headers=h, json={"moments_push": False}))
             assert s.status_code == 200
             assert env.store.user_doc("friend", "profile").load()["moments_push"] is False
+            assert s.json()["moments_push"] is False
+            assert (await a.get("/app/api/me")).json()["settings"]["moments_push"] is False
     asyncio.run(go_())
 
 

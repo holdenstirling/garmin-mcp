@@ -377,6 +377,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "brief_enabled": p.get("brief_enabled", True),
                 "workout_feedback": p.get("workout_feedback", True),
                 "recap_enabled": p.get("recap_enabled", True),
+                "moments_push": p.get("moments_push", True) is not False,
                 "has_notes": bool(p.get("notes")),
                 # sources.py: workouts always Garmin; recovery/sleep Garmin or Oura.
                 "data_sources": prefs_for(store, user_id, bool(auth.oura and auth.oura.connected(user_id)))[0]

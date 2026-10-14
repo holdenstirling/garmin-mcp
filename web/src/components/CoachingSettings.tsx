@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarCheck, Clock, FlaskConical, Sparkles, Sunrise, Watch } from 'lucide-react'
+import { Bell, CalendarCheck, Clock, FlaskConical, Sparkles, Sunrise, Watch } from 'lucide-react'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { postJSON, putSettings, type CoachSettings, type Me } from '@/lib/api'
 import { MotionLab } from '@/components/fx/MotionLab'
@@ -86,6 +86,8 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
         )}
         <Row icon={<Icon><CalendarCheck /></Icon>} title="Weekly recap (Sundays)" subtitle="Your week in review at 6 pm"
           trailing={<Switch label="Weekly recap" checked={s.recap_enabled !== false} onChange={(v) => void save({ recap_enabled: v })} />} />
+        <Row icon={<Icon><Bell /></Icon>} title="Rabbit nudges" subtitle="Streak at risk and race countdown alerts (max 2 a day, never 9 pm–7 am). Updates still show in chat."
+          trailing={<Switch label="Rabbit nudges" checked={s.moments_push !== false} onChange={(v) => void save({ moments_push: v })} />} />
       </Group>
       {me.dev.tools.length > 0 && (
         <Group label="Dev">

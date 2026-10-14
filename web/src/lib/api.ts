@@ -10,6 +10,8 @@ export type CoachSettings = {
   brief_enabled: boolean
   workout_feedback: boolean
   recap_enabled?: boolean
+  /** phone notifications for Rabbit updates (streak at risk, race countdown) */
+  moments_push?: boolean
   has_notes: boolean
   /** which device Rabbit trusts for what (workouts are always Garmin) */
   data_sources?: DataSources
