@@ -49,7 +49,8 @@ GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 PENDING_TTL = 600
-MAX_PENDING = 50
+MAX_PENDING = 50  # per table (sign-in vs calendar/Oura connect); when full the oldest is evicted
+MAX_SESSION_AGE = 180 * 86400  # absolute session lifetime, however active the session is
 LAST_SEEN_WRITE_INTERVAL = 3600  # persist last_seen at most hourly per session
 
 
@@ -87,7 +88,8 @@ class WebAuth:
         self._http = http
         self._clock = clock
         self._lock = threading.Lock()
-        self._pending: dict[str, _Pending] = {}
+        self._pending: dict[str, _Pending] = {}          # sign-in
+        self._connect_pending: dict[str, _Pending] = {}  # calendar / Oura connect
         self._store = store
         self._sessions_doc = store.global_doc("sessions")
         self._identities_doc = store.global_doc("identities")
@@ -113,6 +115,23 @@ class WebAuth:
         resp.set_cookie(name, value, max_age=max_age, path="/", secure=self._secure,
                         httponly=True, samesite="lax")
 
+    def _add_pending(self, state: str, pending: _Pending) -> None:
+        """Remember a pending OAuth state. Sign-in and connect flows use separate tables, and a
+        full table evicts its oldest entry, so nobody can lock others out by spamming /start."""
+        table = self._pending if pending.kind == "login" else self._connect_pending
+        with self._lock:
+            for k in [k for k, v in table.items() if pending.created - v.created >= PENDING_TTL]:
+                del table[k]
+            while len(table) >= MAX_PENDING:
+                del table[min(table, key=lambda k: table[k].created)]
+            table[state] = pending
+
+    def _pop_pending(self, state: str) -> _Pending | None:
+        if not state:
+            return None
+        with self._lock:
+            return self._pending.pop(state, None) or self._connect_pending.pop(state, None)
+
     def _fail(self, reason: str) -> RedirectResponse:
         resp = RedirectResponse(f"/app/?auth_error={reason}", status_code=302)
         resp.delete_cookie(self.state_cookie, path="/", secure=self._secure, httponly=True,
@@ -123,13 +142,7 @@ class WebAuth:
     async def start(self, request: Request) -> Response:
         state = secrets.token_urlsafe(32)
         verifier, challenge = _pkce_pair()
-        now = self._clock()
-        with self._lock:
-            self._pending = {k: v for k, v in self._pending.items()
-                             if now - v.created < PENDING_TTL}
-            if len(self._pending) >= MAX_PENDING:
-                return self._fail("busy")
-            self._pending[state] = _Pending(verifier, now)
+        self._add_pending(state, _Pending(verifier, self._clock()))
         query = urlencode({
             "client_id": self.s.google_client_id,
             "redirect_uri": self.s.google_callback_url,
@@ -153,12 +166,7 @@ class WebAuth:
             return self._fail("not_allowed")
         state = secrets.token_urlsafe(32)
         verifier, challenge = _pkce_pair()
-        now = self._clock()
-        with self._lock:
-            self._pending = {k: v for k, v in self._pending.items() if now - v.created < PENDING_TTL}
-            if len(self._pending) >= MAX_PENDING:
-                return self._fail("busy")
-            self._pending[state] = _Pending(verifier, now, kind="calendar", user_id=user_id)
+        self._add_pending(state, _Pending(verifier, self._clock(), kind="calendar", user_id=user_id))
         query = urlencode({
             "client_id": self.s.google_client_id, "redirect_uri": self.s.google_callback_url,
             "response_type": "code", "scope": f"openid email {CALENDAR_SCOPE}", "state": state,
@@ -197,12 +205,7 @@ class WebAuth:
         if user_id is None or self.oura is None:
             return self._fail("not_allowed")
         state = secrets.token_urlsafe(32)
-        now = self._clock()
-        with self._lock:
-            self._pending = {k: v for k, v in self._pending.items() if now - v.created < PENDING_TTL}
-            if len(self._pending) >= MAX_PENDING:
-                return self._fail("busy")
-            self._pending[state] = _Pending("", now, kind="oura", user_id=user_id)
+        self._add_pending(state, _Pending("", self._clock(), kind="oura", user_id=user_id))
         resp = RedirectResponse(self.oura.authorize_url(state), status_code=302)
         self._cookie(resp, self.state_cookie, state, PENDING_TTL)
         return resp
@@ -211,8 +214,7 @@ class WebAuth:
         state = request.query_params.get("state", "")
         code = request.query_params.get("code", "")
         cookie_state = request.cookies.get(self.state_cookie, "")
-        with self._lock:
-            pending = self._pending.pop(state, None) if state else None
+        pending = self._pop_pending(state)
         if (pending is None or pending.kind != "oura" or self._clock() - pending.created > PENDING_TTL
                 or not secrets.compare_digest(state, cookie_state) or self.oura is None):
             return RedirectResponse("/app/?oura=failed", status_code=302)
@@ -232,8 +234,7 @@ class WebAuth:
         state = request.query_params.get("state", "")
         code = request.query_params.get("code", "")
         cookie_state = request.cookies.get(self.state_cookie, "")
-        with self._lock:
-            pending = self._pending.pop(state, None) if state else None
+        pending = self._pop_pending(state)
         if (pending is None or self._clock() - pending.created > PENDING_TTL
                 or not secrets.compare_digest(state, cookie_state)):
             return self._fail("expired")
@@ -333,12 +334,15 @@ class WebAuth:
             rec = self._sessions.get(key)
             if rec is None or rec["expires"] <= now:
                 return None
+            if now - rec.get("created", now) >= MAX_SESSION_AGE:
+                return None  # absolute lifetime: sign in again
             if rec["user_id"] not in self._allowed_user_ids() \
                     and not self.coach_links.is_coach_user(rec["user_id"]):
                 return None  # removed from the allowlist (or every athlete removed the coach)
             if now - rec["last_seen"] > LAST_SEEN_WRITE_INTERVAL:
                 rec["last_seen"] = now
-                rec["expires"] = now + self.s.app_session_ttl_seconds  # sliding
+                rec["expires"] = min(now + self.s.app_session_ttl_seconds,  # sliding, but capped
+                                     rec.get("created", now) + MAX_SESSION_AGE)
                 self._sessions_doc.save(self._sessions)
             return str(rec["user_id"])
 

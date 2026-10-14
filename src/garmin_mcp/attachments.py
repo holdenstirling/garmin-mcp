@@ -24,6 +24,8 @@ MAX_PDF = 10 * 1024 * 1024
 MAX_TEXT = 200 * 1024
 MAX_UPLOAD = MAX_PDF
 MAX_PER_MESSAGE = 4
+MAX_ATTACHMENTS_PER_USER = 200
+MAX_BYTES_PER_USER = 300 * 1024 * 1024
 _ID = re.compile(r"at[0-9a-f]{16}")
 
 TEXT_EXTS = (".txt", ".md", ".csv", ".json", ".tcx", ".gpx")
@@ -72,6 +74,17 @@ class AttachmentStore:
             raise AttachmentError(f"That {kind} is too large (max {limit // 1024 // 1024 or 0.2} MB).")
         if not data:
             raise AttachmentError("That file is empty.")
+
+        def reserve(u: dict[str, Any]) -> bool:
+            count, used = int(u.get("count", 0)), int(u.get("bytes", 0))
+            if count >= MAX_ATTACHMENTS_PER_USER or used + len(data) > MAX_BYTES_PER_USER:
+                return False
+            u.update(count=count + 1, bytes=used + len(data))
+            return True
+        if not self._s.user_doc(user_id, "att-usage").update(reserve):
+            raise AttachmentError(
+                f"You've reached the attachment limit ({MAX_ATTACHMENTS_PER_USER} files or "
+                f"{MAX_BYTES_PER_USER // 1024 // 1024} MB). Ask the admin to clear old ones.")
         meta = {"id": "at" + secrets.token_hex(8), "name": name, "kind": kind, "mime": mime,
                 "size": len(data), "created": int(self._clock())}
         self._s.user_doc(user_id, f"att-{meta['id']}").save(

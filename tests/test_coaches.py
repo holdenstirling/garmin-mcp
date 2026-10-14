@@ -148,7 +148,7 @@ def test_coach_api_end_to_end(env, tmp_path) -> None:
             # Not invited yet: the coach sees nothing and can't open the athlete.
             assert (await c.get("/app/api/coach/athletes")).json()["athletes"] == []
             assert (await c.get("/app/api/coach/athletes/friend")).status_code == 400
-            r = await a.post("/app/api/coaches", headers=h, json={"email": COACH})
+            r = await a.post("/app/api/coaches", headers=h, json={"email": COACH, "can_edit_plan": True})
             assert r.status_code == 201 and r.json()["coaches"][0]["can_edit_plan"] is True
             me = (await c.get("/app/api/me")).json()
             assert me["role"] == "coach" and me["coaching"] == 1

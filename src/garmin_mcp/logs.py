@@ -31,6 +31,7 @@ _NOISY_LOGGERS = {
     "garminconnect.client": logging.WARNING,
     "urllib3": logging.WARNING,
     "httpx": logging.WARNING,
+    "httpx2": logging.WARNING,
     "httpcore": logging.WARNING,
     "curl_cffi": logging.WARNING,
     "uvicorn.access": logging.WARNING,
