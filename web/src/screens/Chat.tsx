@@ -786,7 +786,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && !typing && stripFirst(intents) && (
         <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
-          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : showScreen(t)} />
+          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
       )}
       {isCoach && today && (today.garmin || !!goal) && !typing && (
         <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
@@ -794,7 +794,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && !typing && !stripFirst(intents) && intents.length > 1 && (
         <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
-          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : showScreen(t)} />
+          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
       )}
 
       {pending ? (
