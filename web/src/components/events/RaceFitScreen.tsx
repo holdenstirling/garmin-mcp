@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, RefreshCw, Sparkles, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { timeAgo } from '@/lib/coach'
@@ -26,7 +26,7 @@ export function RaceFitScreen({ eventId, onClose }: { eventId: string; onClose: 
 
   return (
     <Screen title="Race fit" subtitle={v ? `${v.event.name} · ${countdown(v.event.date)}` : undefined} closing={closing} onClose={close} onBack={close}>
-      {!v && !error && <div className="flex justify-center py-16"><RabbitLogo size={56} thinking className="text-(--brand) opacity-60" /></div>}
+      {!v && !error && <RabbitLoader className="py-16" label="Checking your race fit" cycle={['Sizing up the course…', 'Checking your fitness…', 'Crunching the numbers…']} />}
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {v && (
         <>

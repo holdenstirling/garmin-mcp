@@ -1,6 +1,5 @@
 // Fitness, fatigue and form over the last 90 days and (with a plan) forward to race day.
 import { useEffect, useMemo, useState } from 'react'
-import { Activity } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
 import { getLoad, type Load } from '@/lib/load'
 
@@ -15,7 +14,7 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
     <section className="flex flex-col gap-2">
       <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h3>
       <Card className="p-4">
-        {!l ? <div className="flex h-[170px] items-center justify-center"><Activity className="size-6 animate-pulse text-(--text-muted)" /></div> : <Chart l={l} />}
+        {!l ? <div className="skeleton h-[170px]" role="status" aria-label="Loading fitness chart" /> : <Chart l={l} />}
         {l && (
           <>
             <div className="mt-2 grid grid-cols-3 gap-2 text-center">

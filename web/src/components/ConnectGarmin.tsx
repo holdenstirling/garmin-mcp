@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { getJSON, postRaw } from '@/lib/api'
 
 type Job = {
@@ -127,10 +128,7 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
 
   if (job?.state === 'pending') {
     return (
-      <div className="flex items-center gap-2 text-sm text-(--text-secondary)">
-        <span className="thinking-dots flex shrink-0 items-center gap-[3px]"><span /><span /><span /></span>
-        Connecting to Garmin… this can take up to a minute.
-      </div>
+      <RabbitLoader inline className="text-sm text-(--text-secondary)" label="Connecting to Garmin… this can take up to a minute." />
     )
   }
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
@@ -54,8 +54,10 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           onClick={() => setEditing('new')}>
           <CalendarPlus className="size-4" /> Add an event</Button>}>
         {events === null && !error ? (
-          <div className="flex justify-center py-16" role="status" aria-label="Loading events">
-            <RabbitLogo size={56} thinking className="text-(--brand) opacity-60" />
+          <div className="flex flex-col gap-2.5">
+            <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your races…']} />
+            <div className="skeleton h-16" aria-hidden="true" />
+            <div className="skeleton h-16" aria-hidden="true" />
           </div>
         ) : error ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)">

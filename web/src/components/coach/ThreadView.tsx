@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dumbbell, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
 import { timeAgo, type ChatApi, type Thread } from '@/lib/coach'
 
@@ -48,6 +49,7 @@ export function ThreadView({ api, threadId, me, otherName }: {
         </div>
       )}
       <div className="flex min-h-[200px] flex-col gap-2">
+        {!t && !pollError && <RabbitLoader className="py-12" label="Loading messages…" />}
         {t && t.messages.length === 0 && (
           <p className="py-8 text-center text-[0.7647rem] text-(--text-muted)">No messages yet. Say hi to {otherName}.</p>
         )}

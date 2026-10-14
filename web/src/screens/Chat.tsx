@@ -25,6 +25,7 @@ import { TodayCard } from '@/components/today/TodayCard'
 import { RecapPill, RecapSheet } from '@/components/recap/RecapSheet'
 import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
 import { CoachHeader, DiscussButton, ThreadLinkCard } from '@/components/chat/CoachCards'
@@ -599,8 +600,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         </div>
       ) : !ready && !isCoach ? (
         // Opening a chat: Rabbit hops while its messages load.
-        <div className="chat-loading flex flex-1 items-center justify-center" role="status" aria-label="Loading chat">
-          <RabbitLogo size={64} thinking className="text-(--brand) opacity-60" />
+        <div className="chat-loading flex flex-1 items-center justify-center">
+          <RabbitLoader size={56} label="Loading chat" />
         </div>
       ) : loadError && items.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-[0.8235rem] text-muted-foreground" role="alert">

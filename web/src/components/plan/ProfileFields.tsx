@@ -8,6 +8,7 @@ import {
   type AthleteFull, type PastRace,
 } from '@/lib/plan'
 import { Button } from '@/components/ui/button'
+import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Choice, Field, MultiChoice, NumberStepper, OptionCard, areaCls, inputCls } from './ui'
 
 type Props = { a: Partial<AthleteFull>; setA: (p: Partial<AthleteFull>) => void; sports: Sport[] }
@@ -227,8 +228,12 @@ export function GarminFill({ busy, onClick }: { busy: boolean; onClick: () => vo
   return (
     <button type="button" onClick={onClick} disabled={busy}
       className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-left disabled:opacity-60">
-      <Watch className="size-4 shrink-0 text-(--accent)" />
-      <span className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)">{busy ? 'Asking Garmin…' : 'Fill in from Garmin'}</span>
+      {busy
+        ? <RabbitLoader inline size={18} className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)" label="Asking Garmin…" />
+        : <>
+          <Watch className="size-4 shrink-0 text-(--accent)" />
+          <span className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)">Fill in from Garmin</span>
+        </>}
     </button>
   )
 }
