@@ -15,6 +15,7 @@ import { CoachInbox } from '@/components/coach/CoachInbox'
 import { CoachesScreen } from '@/components/coach/CoachesScreen'
 import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
+import { getAdjust } from '@/lib/adjust'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SettingsPanels } from '@/components/SettingsPanels'
 import { ThreadsSheet } from '@/components/ThreadsSheet'
@@ -94,6 +95,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
+  const [adjustHint, setAdjustHint] = useState(false)
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState<{ text: string; n: number } | null>(null)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -188,6 +190,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setPlanScreen(null)
   }
   const builtPlan = goal?.plan_source === 'builder'
+  // A suggested plan adjustment shows as a banner on the home screen.
+  useEffect(() => {
+    if (!builtPlan || planScreen) return
+    getAdjust().then((p) => setAdjustHint(p.status === 'suggest'), () => {})
+  }, [builtPlan, planScreen])
   const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
   const startSetup = () => showScreen('setup')
   const openPlan = () => (builtPlan ? setPlanScreen('planner') : open('plan'))
@@ -428,6 +435,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <button onClick={() => open('settings')}
           className="mx-4 mt-3 rounded-(--radius) border border-(--warning)/30 bg-(--warning-subtle) px-3 py-2 text-left text-xs text-(--warning)">
           Garmin isn't connected yet. Tap to connect so Rabbit can see your training.
+        </button>
+      )}
+      {isCoach && adjustHint && (
+        <button onClick={() => showScreen('planner')}
+          className="mx-4 mt-3 flex items-center gap-2 rounded-(--radius) border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2 text-left text-xs text-(--accent)">
+          <Sparkles className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1">Rabbit suggests adjusting this week. Tap to review.</span>
+          <ChevronRight className="size-4 shrink-0" />
         </button>
       )}
       {isCoach && (!goal ? items.length > 0 : !goal.plan) && (

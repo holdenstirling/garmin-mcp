@@ -339,6 +339,51 @@ class PlanService:
             recompute_week(w)
         return self._edit(user_id, fn)
 
+    # ------------------------------------------------------------ adjust --
+    def apply_adjustment(self, user_id: str, changes: list[dict[str, Any]]) -> dict[str, Any]:
+        """Apply a proposal from adjust.propose (already verified by id by the caller)."""
+        def fn(plan: dict[str, Any], today: date) -> None:
+            swim_pace = plan.get("swim_pace", 125.0)
+            for c in changes:
+                to = c["to"]
+                if c["action"] == "move":
+                    w = week_for(plan, date.fromisoformat(c["date"]))
+                    if w is None or c["date"] < today.isoformat():
+                        continue
+                    new = make_session(to["sport"], to.get("kind") or "easy", int(to.get("minutes") or 45),
+                                       swim_pace=swim_pace, phase=w["phase"])
+                    new["edited"] = True
+                    new["detail"] = f"Moved from a missed day, shortened. {new.get('detail', '')}".strip()[:400]
+                    w["days"][c["date"]] = [x for x in w["days"].get(c["date"], []) if x["sport"] != "rest"] + [new]
+                    recompute_week(w)
+                    continue
+                try:
+                    w, day, i = self._find(plan, c["session_id"])
+                except PlanError:
+                    continue
+                if day < today.isoformat():
+                    continue
+                cur = w["days"][day][i]
+                if c["action"] == "rest":
+                    self._orphan(plan, cur)
+                    rest = make_session("rest", "rest", 0)
+                    rest["detail"] = "Recovery day (plan adjusted for low recovery)."
+                    w["days"][day][i] = rest
+                    w["days"][day] = [x for x in w["days"][day] if x["sport"] != "rest"] or [rest]
+                else:
+                    upd = dict(cur, kind=to.get("kind") or cur.get("kind"), minutes=to.get("minutes") or cur.get("minutes"))
+                    upd.pop("legs", None)
+                    upd = rebuild_session(upd, swim_pace=swim_pace, phase=w["phase"])
+                    upd["edited"], upd["adjusted"] = True, True
+                    w["days"][day][i] = upd
+                recompute_week(w)
+        return self._edit(user_id, fn)
+
+    def dismiss_adjustment(self, user_id: str, pid: str) -> None:
+        goal = self._goal(user_id)
+        self._update_plan(user_id, goal, lambda p: p.__setitem__(
+            "adjust_dismissed", (p.get("adjust_dismissed", []) + [pid])[-20:]))
+
     # ------------------------------------------------------------ travel --
     def add_travel(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Travel mode: rework sessions on days away for what the athlete has there, and

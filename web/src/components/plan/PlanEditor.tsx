@@ -17,6 +17,8 @@ import { PhaseStrip, SessionLine, fmtDay, todayStr, weekPhaseLabel } from './Pla
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
 import { TravelSheet } from './TravelSheet'
+import { AdjustCard } from './AdjustCard'
+import { getAdjust, type Proposal } from '@/lib/adjust'
 import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/lib/calendar'
 
 type Editing = { session: PlanSession | null; date: string }
@@ -52,6 +54,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [cal, setCal] = useState<CalendarSummary | null>(null)
   const [travel, setTravel] = useState<{ start: string; end: string; label: string } | 'new' | null>(null)
   const [travelClosing, setTravelClosing] = useState(false)
+  const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  useEffect(() => {
+    if (coachMode) return
+    getAdjust().then(setProposal, () => {})
+  }, [coachMode])
   useEffect(() => {
     if (coachMode || !me.calendar?.connected) return
     getCalendar(56).then(setCal, () => {})
@@ -162,6 +170,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
         </p>
       </div>
+      {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
+      {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
       {!coachMode && suggestions.map((t) => (
         <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
           <Plane className="size-4 shrink-0 text-(--accent)" />

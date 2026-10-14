@@ -35,6 +35,7 @@ from .events import TYPE_DISTANCES, TYPES
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
+from .adjust import propose as propose_adjustment
 from .planbuilder import iter_sessions
 from .providers import GarminError, ReauthRequired
 from .tokens import TokenStore, TokenStoreError
@@ -1087,6 +1088,39 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _err(400, "bad host")
         return await auth.oura_callback(request)
 
+    async def _proposal(user_id: str) -> dict[str, Any]:
+        assert plans is not None and chat is not None
+        plan = plans.get(user_id)
+        if plan is None:
+            return {"status": "none"}
+        today, acts = await _plan_call(lambda: chat.agent.stats.activities(user_id))
+        recovery = None
+        if auth.oura is not None and auth.oura.connected(user_id):
+            try:
+                recovery = await auth.oura.recovery(user_id, today, 28)
+            except OuraError:
+                recovery = None
+        load_now = (await _plan_call(lambda: chat.agent.stats.load(user_id))).get("now") or {}
+        return propose_adjustment(plan, acts, today, recovery=recovery, tsb=load_now.get("tsb"),
+                                  dismissed=plan.get("adjust_dismissed"))
+
+    async def adjust_get(request: Request, user_id: str) -> Response:
+        return JSONResponse(await _proposal(user_id))
+
+    async def adjust_post(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or body.get("action") not in ("apply", "dismiss"):
+            raise ValueError("body")
+        prop = await _proposal(user_id)
+        if prop.get("id") != body.get("id"):
+            return _err(409, "Your plan changed since this suggestion. Take another look.")
+        if body["action"] == "dismiss":
+            await _plan_call(lambda: plans.dismiss_adjustment(user_id, prop["id"]))
+            return _plan_resp(user_id, plans.get(user_id), applied=0)
+        plan = await _plan_call(lambda: plans.apply_adjustment(user_id, prop["changes"]))
+        return _plan_resp(user_id, plan, applied=len(prop["changes"]))
+
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
         body = await read_json(request)
@@ -1198,6 +1232,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/oura/start", oura_start, methods=["GET"]),
         Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/adjust", _plan_api(adjust_get, mutating=False), methods=["GET"]),
+        Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
         Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),
