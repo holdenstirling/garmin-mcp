@@ -1572,6 +1572,81 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             raise _UserError("The strategy didn't work just now. Try again in a minute.", 502) from None
         return JSONResponse(await _plan_call(lambda: _race_view(user_id, eid)))
 
+    # ------------------------------------------------------------ explore --
+    # Race discovery (explore.py): RunSignup search with fit hints, "Find more with Rabbit"
+    # (web research, daily allowance, never any Oura data), and "Add to my races".
+    from . import explore as _explore
+
+    def _explore_today(uid: str) -> date:
+        assert chat is not None
+        return chat.agent._now(uid).date()
+
+    def _explore_filters(raw: dict[str, Any], uid: str) -> dict[str, Any]:
+        try:
+            return _explore.parse_filters(raw, _explore_today(uid))
+        except _explore.ExploreError as e:
+            raise _UserError(e.message, e.status) from None
+
+    def _explore_hinted(uid: str, races: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        main = next((e for e in _events().list(uid) if e["main"]), None)
+        athlete, today = _coach().athlete(uid), _explore_today(uid)
+        return [dict(r, hints=_explore.fit_hints(r, main, athlete, today)) for r in races]
+
+    async def explore_get(request: Request, user_id: str) -> Response:
+        f = _explore_filters(dict(request.query_params), user_id)
+        try:
+            res = await _explore.default_search().search(f)
+        except _explore.ExploreError as e:
+            raise _UserError(e.message, e.status) from None
+        races = await _plan_call(lambda: _explore_hinted(user_id, res["races"]))
+        return JSONResponse({**res, "races": races, "query": f})
+
+    async def explore_defaults(request: Request, user_id: str) -> Response:
+        athlete = await _plan_call(lambda: _coach().athlete(user_id))
+        return JSONResponse(_explore.defaults(athlete))
+
+    async def explore_ai(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        f = _explore_filters(body, user_id)
+        finder = _explore.default_web()
+        races = finder.cached(f)
+        if races is None:
+            research = getattr(chat.agent._backend, "research", None)
+            if research is None:
+                raise _UserError("Web search isn't available on this server.", 503)
+            today = _explore_today(user_id)
+            await _plan_call(lambda: _events().take_allowance(
+                user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
+                message="That's today's Rabbit race searches used up. Try again tomorrow."))
+            try:
+                races = await finder.find(research, f, today)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "explore_ai_failed", user_id=user_id, error=type(e).__name__)
+                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
+            log_event(logger, logging.INFO, "explore_ai", user_id=user_id, found=len(races))
+        found = races
+        hinted = await _plan_call(lambda: _explore_hinted(user_id, found))
+        return JSONResponse({"races": hinted, "query": f})
+
+    async def explore_add(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        try:
+            fields = _explore.event_fields(body.get("race"), body.get("event_index"), body.get("priority"))
+        except _explore.ExploreError as e:
+            raise _UserError(e.message, e.status) from None
+
+        def run() -> tuple[dict[str, Any], bool]:
+            same = next((e for e in _events().list(user_id) if e["date"] == fields["date"]
+                         and e["name"].strip().lower() == fields["name"].strip().lower()), None)
+            return (same, True) if same else (_events().create(user_id, fields), False)
+        ev, already = await _plan_call(run)
+        return _events_resp(user_id, 200 if already else 201, event=ev, already=already)
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -1651,6 +1726,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/profile/photo", _api(photo_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/coach/athletes/{athlete_id}/photo",
               _photo_cache(_plan_api(coach_athlete_photo, mutating=False)), methods=["GET"]),
+        Route("/app/api/explore", _plan_api(explore_get, mutating=False), methods=["GET"]),
+        Route("/app/api/explore/defaults", _plan_api(explore_defaults, mutating=False), methods=["GET"]),
+        Route("/app/api/explore/ai", _plan_api(explore_ai, mutating=True), methods=["POST"]),
+        Route("/app/api/explore/add", _plan_api(explore_add, mutating=True), methods=["POST"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/strategy", _plan_api(event_strategy_post, mutating=True), methods=["POST"]),
         Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),

@@ -2,7 +2,7 @@
 // Mileage comes from the server (workouts since each item was added, or Garmin's own
 // total for imported gear); this screen lists, adds, edits, retires and imports.
 import { useCallback, useEffect, useState } from 'react'
-import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, Plus, RefreshCw, Trash2, Watch, Waves, Zap } from 'lucide-react'
+import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, MessageCircle, Plus, RefreshCw, Trash2, Watch, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Card, Choice, Field, MultiChoice, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -18,7 +18,11 @@ const KIND_ICON: Record<GearKind, typeof Bike> = {
 }
 const STATUS_LABEL = { soon: 'Retire soon', retire: 'Time to retire' } as const
 
-export function GearScreen({ onClose, imperial }: { onClose: () => void; imperial: boolean }) {
+export function GearScreen({ onClose, imperial, onAsk }: {
+  onClose: () => void; imperial: boolean
+  /** pre-fills Rabbit's composer ("Ask Rabbit" on an item) */
+  onAsk?: (text: string) => void
+}) {
   const [items, setItems] = useState<GearItem[] | null>(null)
   const [catalog, setCatalog] = useState<GearCatalog | null>(null)
   const [statsOk, setStatsOk] = useState(true)
@@ -121,7 +125,7 @@ export function GearScreen({ onClose, imperial }: { onClose: () => void; imperia
       </Screen>
       {editing && catalog && (
         <GearEditor item={editing === 'new' ? null : editing} catalog={catalog} imperial={imperial}
-          onClose={() => setEditing(null)} onSaved={apply} />
+          onClose={() => setEditing(null)} onSaved={apply} onAsk={onAsk} />
       )}
     </>
   )
@@ -186,9 +190,9 @@ type Form = {
   start: string; alert: string; notes: string
 }
 
-function GearEditor({ item, catalog, imperial, onClose, onSaved }: {
+function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
   item: GearItem | null; catalog: GearCatalog; imperial: boolean
-  onClose: () => void; onSaved: (r: GearList) => void
+  onClose: () => void; onSaved: (r: GearList) => void; onAsk?: (text: string) => void
 }) {
   const unit = imperial ? 'mi' : 'km'
   const toUnit = (km: number) => String(Math.round((imperial ? km / KM_PER_MI : km) * 10) / 10)
@@ -329,6 +333,13 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved }: {
           {fmtDist(item.total_km, imperial)} over {item.activities} workout{item.activities === 1 ? '' : 's'}
           {item.source === 'garmin' ? ' (from Garmin Connect)' : ''} · added {new Date(`${item.added}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>
+      )}
+      {item && onAsk && (
+        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"
+          onClick={() => onAsk(`My ${gearName(item)} has ${fmtDist(item.total_km, imperial)}. `
+            + 'When should I replace it and what should I consider next?')}>
+          <MessageCircle className="size-4" /> Ask Rabbit
+        </Button>
       )}
       {item && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'retire'}
