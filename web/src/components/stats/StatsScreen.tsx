@@ -17,6 +17,7 @@ import { SPORT_COLOR, SPORT_NAME, climb, dist, getStats, hours, type Sport, type
 import { fmtDuration } from '@/lib/format'
 import { MainRaceGrade } from '@/components/events/Readiness'
 import { RaceFitScreen } from '@/components/events/RaceFitScreen'
+import { ChallengesCard } from '@/components/challenges/ChallengesCard'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -68,7 +69,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap }: {
       {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => load(true)} compact={!!s} />}
       {s && <MainRaceGrade onOpen={setFitId} />}
       {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} loadBase="/api" loadKey={loadKey}
-        recovery={<Recovery />} more={<CheckinsCard />} />}
+        recovery={<><ChallengesCard imperial={s.units === 'imperial'} /><Recovery /></>} more={<CheckinsCard />} />}
       {fitId && <RaceFitScreen eventId={fitId} onClose={() => setFitId(null)} />}
     </Screen>
   )

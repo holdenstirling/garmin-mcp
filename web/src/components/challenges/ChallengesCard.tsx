@@ -1,0 +1,330 @@
+// Challenges on the Progress tab: this week's and month's joined challenges with live
+// progress, a small celebration when one is done, friend invites and the group leaderboard.
+// "Pick a challenge" opens a sheet with 3 personal suggestions per period (easy, stretch, fun).
+import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { Check, Flame, Mountain, Plus, Sparkles, Target, Trophy, UserPlus, X } from 'lucide-react'
+import { Card } from '@/components/plan/ui'
+import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/ui/ErrorState'
+import { RabbitLoader } from '@/components/RabbitLoader'
+import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { cn } from '@/lib/utils'
+import {
+  acceptInvite, daysLeft, declineInvite, getChallenges, inviteFriends, joinChallenge, leaveChallenge, progressLine,
+  targetLine, type ChallengePeriod, type ChallengesView, type Joined, type Suggestion,
+} from '@/lib/challenges'
+import { getPeople, type PersonEdge } from '@/lib/social'
+
+const SEEN_KEY = 'rabbit.challenges.celebrated'
+const KIND_LABEL: Record<Suggestion['kind'], string> = { easy: 'Easy', stretch: 'Stretch', fun: 'Fun' }
+
+function celebratedIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]') as string[] } catch { return [] }
+}
+function markCelebrated(ids: string[]) {
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...celebratedIds(), ...ids])].slice(-60))) } catch { /* private mode */ }
+}
+
+export function ChallengesCard({ imperial = false }: { imperial?: boolean }) {
+  const [v, setV] = useState<ChallengesView | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [picking, setPicking] = useState<ChallengePeriod | null>(null)
+  const [inviting, setInviting] = useState<Joined | null>(null)
+  const [party, setParty] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const load = useCallback(() => {
+    getChallenges().then((r) => {
+      setV(r); setError(null)
+      const seen = celebratedIds()
+      const fresh = r.joined.filter((c) => c.done && !seen.includes(c.id))
+      if (fresh.length) { setParty(fresh[0]!.id); markCelebrated(fresh.map((c) => c.id)) }
+    }, (e) => setError((e as Error).message))
+  }, [])
+  useEffect(() => load(), [load])
+  useEffect(() => {
+    if (!party) return
+    const t = window.setTimeout(() => setParty(null), 2600)
+    return () => window.clearTimeout(t)
+  }, [party])
+
+  async function act(key: string, fn: () => Promise<unknown>) {
+    setBusy(key)
+    try { await fn(); load() } catch (e) { setError((e as Error).message) } finally { setBusy(null) }
+  }
+
+  if (!v) {
+    return (
+      <section className="flex flex-col gap-2">
+        <Label />
+        {error ? <ErrorState message={`Couldn't load challenges: ${error}`} onRetry={load} compact />
+          : <div className="skeleton h-20" aria-hidden="true" />}
+      </section>
+    )
+  }
+
+  const weekly = v.joined.filter((c) => c.period === 'week')
+  const monthly = v.joined.filter((c) => c.period === 'month')
+  const canAdd = (p: ChallengePeriod) => v.periods[p].joined < v.periods[p].limit
+  const streak = v.streak.week
+
+  return (
+    <section className="flex flex-col gap-2">
+      <Label streak={streak} />
+      {error && <p className="px-1 text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
+      {v.invites.map((inv) => (
+        <Card key={inv.id} className="flex items-center gap-3 px-4 py-3">
+          <UserPlus className="size-5 shrink-0 text-(--accent)" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.8235rem] font-medium leading-snug text-(--text)">{inv.from.name} challenged you: {inv.name}</p>
+            <p className="text-[0.7059rem] text-(--text-muted)">{targetLine(inv, imperial)} · +{inv.xp} XP</p>
+          </div>
+          <button type="button" aria-label="No thanks" disabled={busy !== null}
+            onClick={() => void act(`d${inv.id}`, () => declineInvite(inv.id))}
+            className="hit-44 flex size-9 items-center justify-center rounded-full text-(--text-muted) hover:bg-(--bg-inset)">
+            <X className="size-4" />
+          </button>
+          <Button className="hit-44" disabled={busy !== null} onClick={() => void act(`a${inv.id}`, () => acceptInvite(inv.id))}>Join</Button>
+        </Card>
+      ))}
+      {v.joined.length > 0 && (
+        <Card className="relative overflow-hidden">
+          {[...weekly, ...monthly].map((c, i) => (
+            <JoinedRow key={c.id} c={c} first={i === 0} imperial={imperial} party={party === c.id}
+              canInvite={v.can_invite && !c.done}
+              onInvite={() => setInviting(c)}
+              onLeave={() => { if (window.confirm(`Leave "${c.name}"?`)) void act(`l${c.id}`, () => leaveChallenge(c.id)) }} />
+          ))}
+        </Card>
+      )}
+      {(canAdd('week') || canAdd('month')) && (
+        <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
+          className="hit-44 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) py-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+          {weekly.length === 0 ? <><Target className="size-4" /> Pick this week's challenge</> : <><Plus className="size-4" /> Add a challenge</>}
+        </button>
+      )}
+      {v.recent.length > 0 && v.joined.length === 0 && (
+        <p className="px-1 text-[0.6471rem] text-(--text-muted)">Last done: {v.recent[0]!.name} · {new Date(v.recent[0]!.completed_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+      )}
+      {picking && (
+        <PickSheet v={v} initial={picking} imperial={imperial} onClose={() => setPicking(null)}
+          onJoined={(r) => { setV(r); setPicking(null) }} />
+      )}
+      {inviting && <InviteSheet c={inviting} onClose={() => setInviting(null)} onSent={() => { setInviting(null); load() }} />}
+    </section>
+  )
+}
+
+function Label({ streak }: { streak?: number }) {
+  return (
+    <div className="flex items-center justify-between px-1">
+      <h3 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Challenges</h3>
+      {!!streak && streak > 0 && (
+        <span className="inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
+          <Flame className="size-3" /> {streak}-week challenge streak
+        </span>
+      )}
+    </div>
+  )
+}
+
+function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: {
+  c: Joined; first: boolean; imperial: boolean; party: boolean; canInvite: boolean
+  onInvite: () => void; onLeave: () => void
+}) {
+  const board = c.leaderboard && c.leaderboard.length > 1 ? c.leaderboard : null
+  return (
+    <div className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
+      {party && <Confetti />}
+      <div className="flex items-start gap-3">
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
+          c.done ? 'bg-(--brand) text-white' : 'bg-(--bg-elevated) text-(--accent)', party && 'celebrate')}>
+          {c.done ? <Check className="size-5" /> : c.metric === 'climb_m' ? <Mountain className="size-4" /> : <Target className="size-4" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.8235rem] font-medium leading-snug text-(--text)">{c.name}</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">{targetLine(c, imperial)}</p>
+        </div>
+        <span className={cn('shrink-0 text-[0.7059rem] font-medium', c.done ? 'text-(--brand)' : 'text-(--text-muted)')}>
+          {c.done ? `+${c.xp} XP` : `${c.pct}%`}
+        </span>
+      </div>
+      <span className="block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.pct} aria-label={`${c.name} progress`}>
+        <span className={cn('block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none', c.done ? 'bg-(--brand)' : 'bg-(--accent)')}
+          style={{ width: `${Math.max(2, c.pct)}%` }} />
+      </span>
+      <div className="flex items-center gap-2 text-[0.7059rem] text-(--text-muted)">
+        <span className="min-w-0 flex-1">{c.done ? 'Done. Nice work.' : `${progressLine(c, imperial)} · ${daysLeft(c.days_left)}`}</span>
+        {canInvite && (
+          <button type="button" onClick={onInvite} className="hit-44 inline-flex items-center gap-1 font-medium text-(--accent)">
+            <UserPlus className="size-3.5" /> Invite
+          </button>
+        )}
+        {!c.done && (
+          <button type="button" onClick={onLeave} className="hit-44 inline-flex items-center font-medium text-(--text-muted)">Leave</button>
+        )}
+      </div>
+      {board && (
+        <ol className="flex flex-col gap-1.5 rounded-lg bg-(--bg-inset) px-3 py-2" aria-label="Leaderboard">
+          {board.map((r, i) => (
+            <li key={r.user_id} className="flex items-center gap-2 text-[0.7059rem]">
+              <span className="w-4 text-(--text-muted)">{i === 0 && (r.pct ?? 0) > 0 ? <Trophy className="size-3.5 text-(--accent)" /> : i + 1}</span>
+              <span className={cn('w-20 truncate', r.me ? 'font-semibold text-(--text)' : 'text-(--text-secondary)')}>{r.me ? 'You' : r.name}</span>
+              <span className="block h-1 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)">
+                <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.max(2, r.pct ?? 0)}%` }} />
+              </span>
+              <span className="w-9 text-right text-(--text-muted)">{r.pct == null ? '–' : `${r.pct}%`}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
+}
+
+/** A short burst of dots. Hidden entirely for reduced motion (the check pop is enough). */
+function Confetti() {
+  const dots = Array.from({ length: 14 }, (_, i) => i)
+  const colors = ['var(--accent)', 'var(--brand)', 'var(--warning-text)']
+  return (
+    <span className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden" aria-hidden="true">
+      <style>{`@keyframes chal-pop{0%{transform:translate(0,0) scale(.6);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}`}</style>
+      {dots.map((i) => {
+        const a = (i / dots.length) * Math.PI * 2
+        return (
+          <span key={i} className="absolute left-[34px] top-[30px] block size-1.5 rounded-full"
+            style={{
+              background: colors[i % colors.length], animation: 'chal-pop 900ms ease-out forwards',
+              ['--dx' as string]: `${Math.round(Math.cos(a) * (40 + (i % 3) * 14))}px`,
+              ['--dy' as string]: `${Math.round(Math.sin(a) * (30 + (i % 4) * 10))}px`,
+            }} />
+        )
+      })}
+    </span>
+  )
+}
+
+// ------------------------------------------------------------------ sheets --
+const own = (e: SyntheticEvent) => e.stopPropagation()
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const [closing, setClosing] = useState(false)
+  const drag = useSheetDrag(onClose)
+  const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
+  return createPortal(
+    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`}
+      onClick={(e) => { e.stopPropagation(); close() }}
+      onTouchStart={own} onTouchMove={own} onTouchEnd={own} onTouchCancel={own} onKeyDown={own}>
+      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag} aria-label={title}>
+        <div className="sheet-handle" />
+        <div className="modal-header">
+          <h2 className="modal-title">{title}</h2>
+          <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
+        </div>
+        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">{children}</div>
+      </div>
+    </div>, document.body)
+}
+
+function PickSheet({ v, initial, imperial, onClose, onJoined }: {
+  v: ChallengesView; initial: ChallengePeriod; imperial: boolean; onClose: () => void
+  onJoined: (r: ChallengesView) => void
+}) {
+  const [tab, setTab] = useState<ChallengePeriod>(initial)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const p = v.periods[tab]
+  const full = p.joined >= p.limit
+  async function join(s: Suggestion) {
+    setBusy(s.template); setError(null)
+    try { onJoined(await joinChallenge(s.template, s.period)) } catch (e) { setError((e as Error).message) } finally { setBusy(null) }
+  }
+  return (
+    <Sheet title="Pick a challenge" onClose={onClose}>
+      <div className="flex gap-1 rounded-lg bg-(--bg-inset) p-1" role="tablist">
+        {(['week', 'month'] as const).map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+            className={cn('hit-44 flex-1 rounded-md py-2 text-[0.7647rem] font-medium',
+              tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+            {t === 'week' ? 'This week' : 'This month'}
+          </button>
+        ))}
+      </div>
+      <p className="text-[0.7059rem] text-(--text-muted)">
+        {tab === 'week' ? `${daysLeft(p.days_left)} this week` : `${daysLeft(p.days_left)} this month`} · join up to {p.limit}
+        {full ? ' (you have)' : ''}. Every workout this {tab} counts, even ones before you join.
+      </p>
+      {p.notice && <p className="rounded-lg bg-(--bg-inset) px-3 py-2 text-[0.7647rem] text-(--text-secondary)">{p.notice}</p>}
+      {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
+      {p.suggestions.length === 0 && !p.notice && (
+        <p className="py-4 text-center text-[0.7647rem] text-(--text-muted)">Nothing new to pick right now.</p>
+      )}
+      {p.suggestions.map((s) => (
+        <Card key={s.template} className="flex flex-col gap-2 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className={cn('rounded-full px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wide',
+              s.kind === 'stretch' ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
+              {KIND_LABEL[s.kind]}
+            </span>
+            <span className="ml-auto inline-flex items-center gap-1 text-[0.7059rem] font-medium text-(--brand)"><Sparkles className="size-3" /> +{s.xp} XP</span>
+          </div>
+          <p className="text-[0.8824rem] font-semibold leading-snug text-(--text)">{s.name}</p>
+          <p className="text-[0.7647rem] text-(--text-secondary)">{targetLine(s, imperial)}</p>
+          <p className="text-[0.6471rem] text-(--text-muted)">{s.why}</p>
+          <Button className="hit-44 self-start" disabled={full || busy !== null} onClick={() => void join(s)}>
+            {busy === s.template ? 'Joining…' : 'Join'}
+          </Button>
+        </Card>
+      ))}
+    </Sheet>
+  )
+}
+
+function InviteSheet({ c, onClose, onSent }: { c: Joined; onClose: () => void; onSent: () => void }) {
+  const [people, setPeople] = useState<PersonEdge[] | null>(null)
+  const [picked, setPicked] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    getPeople().then((r) => setPeople(r.following.filter((p) => p.user_id && p.user)), (e) => setError((e as Error).message))
+  }, [])
+  const already = new Set((c.leaderboard ?? []).map((r) => r.user_id))
+  async function send() {
+    setBusy(true); setError(null)
+    try { await inviteFriends(c.id, picked); onSent() } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  return (
+    <Sheet title="Challenge a friend" onClose={onClose}>
+      <p className="text-[0.7647rem] text-(--text-secondary)">
+        Friends you follow can join "{c.name}" with the same target. Only people in the challenge see the leaderboard (progress %, nothing else).
+      </p>
+      {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
+      {!people && !error && <RabbitLoader className="py-6" label="Finding your friends" />}
+      {people && people.length === 0 && (
+        <p className="py-4 text-center text-[0.7647rem] text-(--text-muted)">Follow a friend first (Me → Friends), then invite them here.</p>
+      )}
+      {people?.map((p) => {
+        const id = p.user_id!
+        const on = picked.includes(id)
+        const inIt = already.has(id)
+        return (
+          <button key={id} type="button" disabled={inIt} aria-pressed={on}
+            onClick={() => setPicked((x) => (on ? x.filter((y) => y !== id) : [...x, id].slice(0, 10)))}
+            className={cn('hit-44 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
+              on ? 'border-(--accent) bg-(--bg-inset)' : 'border-(--border) bg-(--bg-surface)', inIt && 'opacity-50')}>
+            <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{p.user!.name}</span>
+            {inIt ? <span className="text-[0.6471rem] text-(--text-muted)">In it</span>
+              : on && <Check className="size-4 text-(--accent)" />}
+          </button>
+        )
+      })}
+      {people && people.length > 0 && (
+        <Button disabled={!picked.length || busy} onClick={() => void send()}>
+          {busy ? 'Sending…' : picked.length ? `Invite ${picked.length}` : 'Pick friends'}
+        </Button>
+      )}
+    </Sheet>
+  )
+}
