@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"
 
-git pull --ff-only -q || true
+git pull --ff-only -q || { echo "!! git pull failed (local changes?). Nothing deployed."; exit 1; }
 
 if [[ ! -f infra/config.env ]]; then
   echo "==> Writing infra/config.env"
@@ -21,12 +21,15 @@ DISK_SIZE=30GB
 IMAGE_FAMILY=debian-12
 BEHIND_CLOUDFLARE=false
 DOMAIN=34-45-18-209.sslip.io
+APP_DOMAIN=rabbit.holdenottolini.com
 GITHUB_CLIENT_ID=Ov23liWUsK5Ksw2XDvKj
 ALLOWED_GITHUB_USERS=unused-for-rabbit-deploys
 TRAININGPEAKS_ENABLED=true
 TRAININGPEAKS_ALLOW_WRITES=true
 ENV
 fi
+# shellcheck disable=SC1091
+source infra/config.env
 gcloud config set project training-project-511604 >/dev/null 2>&1 || true
 # APIs Rabbit calls for the athlete (idempotent; quiet when already on).
 gcloud services enable calendar-json.googleapis.com --project training-project-511604 --quiet >/dev/null 2>&1 \
@@ -44,11 +47,17 @@ if ! (cd web && bun install --frozen-lockfile && bun run build) >"$LOG" 2>&1; th
 fi
 echo "    ok"
 
+if ! command -v uv >/dev/null; then
+  echo "==> Installing uv (needed for the test gate)"
+  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1 || true
+fi
 if command -v uv >/dev/null; then
   echo "==> Running the full test suite (nothing deploys if a test fails)"
   if ! uv run -q pytest -q -x 2>&1 | tail -25; then
     [[ "${SKIP_TESTS:-}" == 1 ]] || { echo "!! tests failed. Nothing deployed."; exit 1; }
   fi
+else
+  [[ "${SKIP_TESTS:-}" == 1 ]] || { echo "!! uv not available, so tests can't run. Nothing deployed (SKIP_TESTS=1 to override)."; exit 1; }
 fi
 
 # Contact email for /app/privacy and /app/terms: the Cloud Shell account (set once).
@@ -63,4 +72,4 @@ fi
 
 ./deploy.sh --rabbit
 echo
-echo "==> Done. Open https://34-45-18-209.sslip.io/app/"
+echo "==> Done. Open https://${APP_DOMAIN:-$DOMAIN}/app/"

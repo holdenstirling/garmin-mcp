@@ -36,7 +36,7 @@ PRIVACY = """
 <li>To build and adjust your training plan, show your stats and progress, and power the AI coach.</li>
 <li>Chats with the AI coach are processed by Anthropic's API. <b>Oura data is never sent to the AI coach</b>: it is only shown in the app and used by fixed rules (for example, easing your plan after poor recovery).</li>
 <li>Coaches you invite can see your plan, races, stats and anything you share with them. Your chats with the AI coach stay private unless you turn on sharing.</li>
-<li>Rabbit does not sell your data, show ads, or share it with anyone else.</li>
+<li>Rabbit does not sell your data or show ads. To work, it sends the minimum needed to a few services: race searches to RunSignup, a rounded location (about 1 km) to OpenStreetMap for your city and nearby places, and your city to Open-Meteo for weather. Nothing else about you is shared.</li>
 </ul>
 <h2>Storage and security</h2>
 <p>Data is stored encrypted on a private Google Cloud server. Connection tokens for Garmin, Oura and Google Calendar are encrypted and used only to read your data (and, for Garmin, to send planned workouts you ask for).</p>
