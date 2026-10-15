@@ -265,6 +265,8 @@ class Moments:
         self.on_milestone: Callable[[str, dict[str, Any]], list[dict[str, Any]] | None] | None = None
         # Called after new workouts were handled (personal bests, race finished).
         self.after_workouts: Callable[[str], None] | None = None
+        # Called with the fresh activities after their moments (reward.py: post-workout reward).
+        self.on_workouts: Callable[[str, list[dict[str, Any]]], Any] | None = None
         # Called from tick outside quiet hours (club meetup reminders).
         self.on_tick: Callable[[str], Any] | None = None
 
@@ -436,6 +438,11 @@ class Moments:
             n += self.post(uid, m) == "posted"
         if ms is not None:
             self.post(uid, ms)
+        if self.on_workouts is not None:
+            try:
+                self.on_workouts(uid, fresh)
+            except Exception as e:  # the reward never breaks the workout moment
+                log_event(logger, logging.WARNING, "on_workouts_failed", user_id=uid, error=type(e).__name__)
         if self.after_workouts is not None:
             try:
                 self.after_workouts(uid)

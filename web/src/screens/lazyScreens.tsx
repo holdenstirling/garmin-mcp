@@ -63,3 +63,5 @@ export const WorkoutDayScreen = split(() => import('@/components/workout/Workout
 export const SettingsPanels = split(() => import('@/components/SettingsPanels').then((m) => m.SettingsPanels), 'tab')
 export const DataSourcesSheet = split(() => import('@/components/settings/DataSourcesSheet').then((m) => m.DataSourcesSheet))
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
+export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))
+export const MonthRecapSheet = split(() => import('@/components/reward/MonthRecapSheet').then((m) => m.MonthRecapSheet))
