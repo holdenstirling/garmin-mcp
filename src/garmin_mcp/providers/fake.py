@@ -97,9 +97,12 @@ def _activity(day: date, idx: int) -> dict[str, Any] | None:
 _SIMULATED: list[dict[str, Any]] = []  # dev "simulate workout" additions, newest last
 
 
-def simulate_activity() -> dict[str, Any]:
-    """Add a just-finished tempo run (dev only), so the poller sees a new activity."""
-    now = datetime.now()
+def simulate_activity(now: datetime | None = None) -> dict[str, Any]:
+    """Add a just-finished tempo run (dev only), so the poller sees a new activity.
+
+    ``now``: the athlete's local time (defaults to the machine clock, which can be a day
+    ahead of the athlete in UTC, making the run look like it's in the future)."""
+    now = now or datetime.now()
     r = _rng("sim", len(_SIMULATED), now.isoformat())
     dur = r.uniform(40, 55) * 60
     pace = r.uniform(4.6, 4.9)

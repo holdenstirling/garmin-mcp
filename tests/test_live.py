@@ -91,7 +91,7 @@ def test_stats_invalidate_drops_activity_cache(env) -> None:
     try:
         _, before = agent.stats.activities("friend")
         agent.stats.get("friend")
-        simulate_activity()
+        simulate_activity(agent._now("friend"))
         assert agent.stats.activities("friend")[1] is before  # still cached
         agent.stats.invalidate("friend", activities=True)
         _, after = agent.stats.activities("friend")
