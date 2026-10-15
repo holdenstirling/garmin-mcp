@@ -39,6 +39,7 @@ PRIVACY = """
 <li>Chats with the AI coach are processed by Anthropic's API. <b>Oura data is never sent to the AI coach</b>: it is only shown in the app and used by fixed rules (for example, easing your plan after poor recovery).</li>
 <li>Coaches you invite can see your plan, races, stats and anything you share with them. Your chats with the AI coach stay private unless you turn on sharing.</li>
 <li>Rabbit does not sell your data or show ads. To work, it sends the minimum needed to a few services: race searches to RunSignup, a rounded location (about 1 km) to OpenStreetMap for your city and nearby places, and your city to Open-Meteo for weather. Nothing else about you is shared.</li>
+<li><b>Clubs &amp; leagues directory</b>: Community lists run clubs, group rides, tri clubs, swims and adult leagues built from the public web. Rabbit searches the web with only a city and state, then its crawler, RabbitBot, reads the public pages it finds (it obeys robots.txt, goes slowly, and never reads social networks like Facebook, Instagram, Strava or Meetup, which are only linked). The directory holds public facts about groups (name, schedule, meeting place, cost, link), never anything about you or other athletes. Suggestions and "outdated" reports you send are stored with your account to limit abuse.</li>
 </ul>
 <h2>Storage and security</h2>
 <p>Data is stored encrypted on a private Google Cloud server. Connection tokens for Garmin, Oura and Google Calendar are encrypted and used only to read your data (and, for Garmin, to send planned workouts you ask for).</p>
@@ -69,6 +70,24 @@ TERMS = """
 """
 
 
+ABOUT = """
+<p><b>RabbitBot</b> is the web crawler of Rabbit, a small private training app. It builds a directory of local run clubs, group rides, triathlon clubs, masters swims and adult sports leagues so athletes can find people to train with.</p>
+<h2>How it behaves</h2>
+<ul>
+<li>User agent: <code>RabbitBot/1.0</code>. It obeys <code>robots.txt</code> (use <code>User-agent: RabbitBot</code>).</li>
+<li>At most one request per second per site, about 25 pages per city per month, HTML pages only.</li>
+<li>It reads only public pages that web search links to a city's clubs and leagues, and keeps public facts about groups: name, schedule, meeting place, cost and a link back to your page.</li>
+<li>It never logs in, submits forms or reads social networks.</li>
+</ul>
+<h2>Opt out or correct something</h2>
+<p>Disallow RabbitBot in robots.txt, or contact {CONTACT} and we'll remove or fix a listing.</p>
+"""
+
+
+def about(contact: str = "") -> str:
+    return _page("RabbitBot", ABOUT, contact)
+
+
 def privacy(contact: str = "") -> str:
     return _page("Privacy policy", PRIVACY, contact)
 
@@ -77,4 +96,4 @@ def terms(contact: str = "") -> str:
     return _page("Terms of service", TERMS, contact)
 
 
-__all__ = ["privacy", "terms"]
+__all__ = ["about", "privacy", "terms"]

@@ -171,11 +171,12 @@ class AnthropicBackend:
             return await stream.get_final_message()
 
     async def structured(self, system: str, prompt: str | list[dict[str, Any]], tool: dict[str, Any],
-                         *, max_tokens: int = 2000) -> dict[str, Any]:
+                         *, max_tokens: int = 2000, model: str | None = None) -> dict[str, Any]:
         """One forced tool call: returns the tool input (structured output). ``prompt`` may be
-        content blocks (a file plus text, for plan imports)."""
+        content blocks (a file plus text, for plan imports); ``model`` overrides the backend's
+        (the clubs directory extracts with a cheaper one)."""
         msg = await self._client.messages.create(
-            model=self.model, max_tokens=max_tokens, system=system, tools=[tool],
+            model=model or self.model, max_tokens=max_tokens, system=system, tools=[tool],
             tool_choice={"type": "tool", "name": tool["name"]},
             messages=[{"role": "user", "content": prompt}])
         for b in msg.content:
@@ -380,6 +381,8 @@ class Agent:
         self.coach = CoachStore(store, clock=clock)
         self.attachments = AttachmentStore(store, clock=clock)
         self._backend = backend
+        # (user_id, kind, weekday) -> directory rows for the local_clubs tool (set by webapp).
+        self.club_directory: Callable[[str, str | None, str | None], dict[str, Any]] | None = None
         # Briefs and workout notes are read cold, with no chance to ask back, so they
         # can run on a stronger model than chat.
         self._proactive_backend = proactive_backend or backend
@@ -684,6 +687,13 @@ class Agent:
             return {"ok": True, "replaced_previous": bool(g and replace),
                     "goal": {k: goal.get(k) for k in
                              ("title", "event", "date", "distance", "target", "priorities")}}
+        if name == "local_clubs":
+            if self.club_directory is None:
+                raise GarminError("The clubs directory isn't available on this server.")
+            kind, day = args.get("kind"), args.get("weekday")
+            return self.club_directory(
+                user_id, kind if kind in ("run", "trail", "tri", "ride", "swim", "leagues") else None,
+                day if day in ("mon", "tue", "wed", "thu", "fri", "sat", "sun") else None)
         if name == "render_chart":
             return _ChartResult(normalize_chart(args))
         if name == "read_file":

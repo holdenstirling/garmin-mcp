@@ -94,6 +94,15 @@ CHART_DESC = (
     "it, add a sentence or two on what the chart shows, but don't repeat every number."
 )
 
+CLUBS_DESC = (
+    "Run clubs, trail groups, tri clubs, group rides, masters swims and adult social sports "
+    "leagues near the athlete's home city, from Rabbit's directory of public club and league web "
+    "pages. Filter by kind and weekday (e.g. 'run clubs on Tuesdays'). Returns name, weekly "
+    "sessions (weekday + 24h time), meet spot, pace, cost, link and last-verified date. Times can "
+    "change, so tell them to check the link. If the note says the directory is still being built, "
+    "say so; don't invent groups."
+)
+
 AGENT_TOOLS: list[dict] = [
     {
         "name": "recent_activities",
@@ -239,6 +248,17 @@ AGENT_TOOLS: list[dict] = [
             "type": "object",
             "properties": {"attachment_id": {"type": "string", "description": "e.g. at1a2b3c..."}},
             "required": ["attachment_id"],
+        },
+    },
+    {
+        "name": "local_clubs",
+        "description": CLUBS_DESC,
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "kind": {"type": "string", "enum": ["run", "trail", "tri", "ride", "swim", "leagues"]},
+                "weekday": {"type": "string", "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]},
+            },
         },
     },
     {

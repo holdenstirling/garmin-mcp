@@ -8,6 +8,8 @@ calls, a body size cap, and a generic error for anything unexpected.
 from __future__ import annotations
 
 import asyncio
+import functools
+import inspect
 import json
 import logging
 import re
@@ -1804,7 +1806,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}
         if not host_ok(request):
             return HTMLResponse("Not found", status_code=404, headers=headers)
-        fn = legal.privacy if request.url.path.endswith("/privacy") else legal.terms
+        path = request.url.path
+        fn = legal.privacy if path.endswith("/privacy") else legal.about if path.endswith("/about") else legal.terms
         return HTMLResponse(fn(settings.contact_email), headers=headers)
 
     async def garmin_numbers(request: Request, user_id: str) -> Response:
@@ -2932,6 +2935,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # reminder moments) and club challenges (challenges.py groups). Athletes only.
     from . import clubs as _clubs, community as _cmm, community_web as _cmw
     community_routes: list[BaseRoute] = []
+    directory_routes: list[BaseRoute] = []
     if soc is not None and chat is not None and plans is not None and store is not None:
         _ag = chat.agent
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
@@ -2975,6 +2979,48 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             home=_cm_home, local_groups=_local_finder.cached, chal=chal, chal_error=_chal.ChallengeError,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
             host_ok=host_ok, origin=settings.public_base_url)
+
+        # Clubs & leagues directory (clubdir.py, routes in clubdir_web.py): per metro ("City, ST"
+        # only) web search for candidate pages + our polite RabbitBot crawler (robots.txt, 1 req/s
+        # per host, SSRF guard, social sites link-only) + cheap-model extraction; monthly,
+        # background, one metro at a time. Rabbit's local_clubs tool reads it.
+        from . import clubdir as _cd, clubdir_web as _cdw
+        _cd_struct = getattr(_ag._backend, "structured", None)
+        _cd_extract = None if _cd_struct is None else (
+            functools.partial(_cd_struct, model=settings.directory_model)
+            if "model" in inspect.signature(_cd_struct).parameters else _cd_struct)
+        directory = _cd.Directory(store, research=getattr(_ag._backend, "research", None), extract=_cd_extract,
+                                  crawler=_cd.Crawler(user_agent=_cd.user_agent(settings.public_base_url)))
+
+        def _cd_wrap(h: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
+            async def inner(request: Request, user_id: str) -> Response:
+                try:
+                    cm.require(user_id)
+                except _cmm.CommunityError as e:
+                    return JSONResponse({"error": e.message}, status_code=e.status)
+                return await h(request, user_id)
+            return _plan_api(inner, mutating=mutating)
+
+        def _cd_role(uid: str, cid: str) -> str | None:
+            try:
+                return clb.get(uid, cid).get("role")
+            except _clubs.ClubError:
+                return None
+
+        def _cd_lookup(uid: str, kind: str | None, weekday: str | None) -> dict[str, Any]:
+            m = _cd.metro(**_cm_home(uid))
+            if m is None:
+                return {"listings": [], "note": "No home city saved. Ask them to add it in their training profile."}
+            if directory.state(m) == "idle" and directory.due(m):
+                try:  # we're on a worker thread of the turn: start the refresh on the event loop
+                    anyio.from_thread.run_sync(lambda: directory.kick(m, uid=uid))
+                except Exception:
+                    pass
+            return directory.lookup(m, now_local=_ag._now(uid), kind=kind, weekday=weekday)
+        _ag.club_directory = _cd_lookup
+        directory_routes = _cdw.make_routes(
+            directory=directory, wrap=_cd_wrap, home=_cm_home, now=_ag._now, today=lambda u: _ag._now(u).date(),
+            local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json)
 
     # ------------------------------------------------- invites + passkeys --
     # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).
@@ -3161,8 +3207,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
         Route("/app/s/{token}", share_page, methods=["GET"]),
         *race_routes,
+        *directory_routes,
         *community_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
+        Route("/app/about", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),

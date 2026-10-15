@@ -36,6 +36,7 @@ export function toolLabel(toolName: string, params: Record<string, unknown>): st
     return `Reviewed your last ${weeks} weeks of training`
   }
   if (toolName === 'search') return 'Looked up what Garmin data is available'
+  if (toolName === 'local_clubs') return 'Checked clubs and leagues near you'
   if (toolName === 'update_notes') return 'Updated my coach notes'
   if (toolName === 'update_athlete_profile') return 'Noted something about you'
   if (toolName === 'save_plan') return 'Saved your plan'

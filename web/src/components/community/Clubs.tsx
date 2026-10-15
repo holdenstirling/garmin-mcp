@@ -1,9 +1,9 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
-// local groups Rabbit's Explore found on the web, create / join by code, and a club page
+// "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Check, ChevronRight, Copy, ExternalLink, Flag, LogOut, MapPin, Plus, Repeat, Search, Trash2, Trophy, UserPlus, X,
+  Check, ChevronRight, Copy, Flag, LogOut, MapPin, Plus, Repeat, Search, Trash2, Trophy, UserPlus, X,
 } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, burst } from '@/components/anim'
@@ -21,7 +21,9 @@ import {
   removeMember, rsvpMeetup, setMemberRole, startClubChallenge, updateClub,
   type ClubDetail, type ClubInput, type ClubSummary, type ClubsView, type Level, type Meetup, type Sport,
 } from '@/lib/community'
+import { clubSport, linkListing, type DirListing } from '@/lib/clubdir'
 import { Choice } from './Choice'
+import { ClubDirectory } from './Directory'
 import { CommunityFeed, PersonAvatar } from './Feed'
 
 const LOADING = ['Rounding up the crew…', 'Finding clubs near you…', 'Lacing up…']
@@ -44,6 +46,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
   const [data, setData] = useState<ClubsView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [startFrom, setStartFrom] = useState<DirListing | null>(null)
   const [code, setCode] = useState('')
   const [q, setQ] = useState('')
   const [found, setFound] = useState<ClubSummary[] | null>(null)
@@ -157,15 +160,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
         )}
       </section>
 
-      {data.local.length > 0 && !found && (
-        <Group label="Local groups Rabbit found" footer="From the web, via Explore. Not on Rabbit: check their page for times.">
-          {data.local.map((g) => (
-            <Row key={g.id} title={g.name} subtitle={[g.when, g.where].filter(Boolean).join(' · ') || g.organizer || undefined}
-              trailing={<ExternalLink className="size-4 text-(--text-muted)" />}
-              onClick={() => window.open(g.url, '_blank', 'noopener,noreferrer')} />
-          ))}
-        </Group>
-      )}
+      {!found && <ClubDirectory onStartGroup={setStartFrom} />}
 
       <Card>
         <Field label="Have a club code?">
@@ -178,7 +173,15 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
           </div>
         </Field>
       </Card>
-      {creating && <ClubSheet home={data.home} onClose={() => setCreating(false)} onSaved={(c) => { setCreating(false); void load(); onOpen(c.id) }} />}
+      {(creating || startFrom) && (
+        <ClubSheet home={data.home}
+          prefill={startFrom ? { name: startFrom.name.slice(0, 40), sport: clubSport(startFrom.kind), description: startFrom.description.slice(0, 300) } : undefined}
+          onClose={() => { setCreating(false); setStartFrom(null) }}
+          onSaved={(c) => {
+            if (startFrom) void linkListing(startFrom.id, c.id).catch(() => undefined)
+            setCreating(false); setStartFrom(null); void load(); onOpen(c.id)
+          }} />
+      )}
       {openId && <ClubPage id={openId} imperial={imperial} onClose={() => { onOpen(null); void load() }} />}
     </>
   )
@@ -200,12 +203,12 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
-function ClubSheet({ initial, home, onClose, onSaved }: {
-  initial?: ClubSummary; home?: { city: string; state: string }; onClose: () => void; onSaved: (c: ClubSummary) => void
+function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
+  initial?: ClubSummary; prefill?: ClubInput; home?: { city: string; state: string }; onClose: () => void; onSaved: (c: ClubSummary) => void
 }) {
   const [f, setF] = useState<Required<ClubInput>>({
-    name: initial?.name ?? '', sport: initial?.sport ?? 'running', city: initial?.city ?? home?.city ?? '',
-    state: initial?.state ?? home?.state ?? '', description: initial?.description ?? '', emoji: initial?.emoji || '🐇',
+    name: initial?.name ?? prefill?.name ?? '', sport: initial?.sport ?? prefill?.sport ?? 'running', city: initial?.city ?? home?.city ?? '',
+    state: initial?.state ?? home?.state ?? '', description: initial?.description ?? prefill?.description ?? '', emoji: initial?.emoji || '🐇',
     privacy: initial?.privacy ?? 'open',
   })
   const [busy, setBusy] = useState(false)
