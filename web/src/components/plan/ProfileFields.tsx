@@ -1,6 +1,7 @@
 // The athlete-profile fields shared by the setup wizard and Settings > Training profile:
 // about you, training numbers, and your week.
 import { useEffect, useState } from 'react'
+import { DurationInput } from '@/components/ui/DurationInput'
 import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
@@ -254,15 +255,14 @@ export function PaceInput({ seconds, onChange, placeholder }: { seconds: number 
   useEffect(() => { setText(seconds != null ? fmtPace(seconds) : '') }, [seconds])
   return (
     <div className="flex flex-col gap-1">
-      <input className={inputCls} inputMode="numeric" placeholder={placeholder} value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          if (!text.trim()) { setBad(false); onChange(null); return }
-          const s = parsePace(text)
+      <DurationInput label="Pace" withHours={false} placeholder={placeholder} value={text} onChange={setText}
+        onBlur={(v) => {
+          if (!v.trim()) { setBad(false); onChange(null); return }
+          const s = parsePace(v)
           setBad(s == null)
           if (s != null) onChange(s)
         }} />
-      {bad && <span className="text-[0.7059rem] text-(--danger)">Use minutes:seconds, like {placeholder}.</span>}
+      {bad && <span role="alert" className="text-[0.7059rem] text-(--danger)">Enter minutes and seconds, like {placeholder}.</span>}
     </div>
   )
 }

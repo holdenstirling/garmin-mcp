@@ -1,6 +1,7 @@
 // Profile > Goals: every upcoming event (main first, then B and C races) with its goal and
 // target time, editable in place, plus a one-line season goal. Full editing lives in Events.
 import { useCallback, useEffect, useState } from 'react'
+import { DurationInput } from '@/components/ui/DurationInput'
 import { CalendarDays, ChevronRight, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -63,10 +64,10 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
     finally { setBusy(false) }
   }
 
-  function saveTarget() {
-    const t = target.trim()
+  function saveTarget(v: string = target) {
+    const t = v.trim()
     if (t === (e.target_time ?? '')) return
-    if (t && !TIME_RE.test(t)) { setMsg({ text: 'Use h:mm:ss or mm:ss, like 5:30:00.', ok: false }); return }
+    if (t && !TIME_RE.test(t)) { setMsg({ text: 'Enter hours, minutes and seconds, like 5 : 30 : 00.', ok: false }); return }
     void save({ target_time: t || null })
   }
 
@@ -84,8 +85,8 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
         <Choice value={e.goal_type ?? 'finish'} options={GOAL_TYPES}
           onChange={(v) => v && v !== e.goal_type && void save(v === 'time' ? { goal_type: v } : { goal_type: v, target_time: null })} />
         {e.goal_type === 'time' && (
-          <input className={inputCls} inputMode="numeric" placeholder="Target time, e.g. 5:30:00" aria-label={`Target time for ${e.name}`}
-            value={target} onChange={(ev) => setTarget(ev.target.value)} onBlur={saveTarget} disabled={busy} />
+          <DurationInput label={`Target time for ${e.name}`} value={target} onChange={setTarget}
+            onBlur={(v) => saveTarget(v)} disabled={busy} />
         )}
         {msg && <span className={cn('text-[0.7059rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</span>}
       </div>

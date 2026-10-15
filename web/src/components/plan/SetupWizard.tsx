@@ -2,6 +2,7 @@
 // builds a periodized plan and (optionally) puts the next sessions on your Garmin.
 // Answers are kept as a local draft so leaving halfway loses nothing.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { DurationInput } from '@/components/ui/DurationInput'
 import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -152,7 +153,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
       if (g.date <= todayIso()) return 'The race date needs to be in the future.'
     }
     if (step === 'goal' && g.goal_type === 'time' && !TIME_RE.test((g.target_time ?? '').trim())) {
-      return 'Enter your target time like 5:30:00 or 45:00.'
+      return 'Enter your target time in hours, minutes and seconds.'
     }
     if (step === 'week') {
       if (!a.weekly_hours) return 'How many hours a week do you train now?'
@@ -340,8 +341,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
           <Card>
             {g.goal_type === 'time' && (
               <Field label="Target time" hint="Hours:minutes:seconds, or minutes:seconds for short races.">
-                <input className={inputCls} inputMode="numeric" placeholder="5:30:00" value={g.target_time ?? ''}
-                  onChange={(e) => setG({ target_time: e.target.value })} />
+                <DurationInput label="Target time" value={g.target_time} onChange={(v) => setG({ target_time: v })} />
               </Field>
             )}
             {sports.length > 1 && (

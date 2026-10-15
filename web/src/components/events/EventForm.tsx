@@ -3,6 +3,7 @@
 // distance, date, where, how important, goal, course and notes. Race-only fields are hidden
 // for other kinds; group activities, trips and life events get their own few fields.
 import { useState } from 'react'
+import { DurationInput } from '@/components/ui/DurationInput'
 import { CalendarDays, ExternalLink, Flag, Globe, PartyPopper, Search, Tent, Trophy, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, Choice, Field, NumberStepper, OptionCard, areaCls, inputCls } from '@/components/plan/ui'
@@ -260,8 +261,7 @@ export function EventGoal({ value, onChange, hidePriority, imperial, raceOnly = 
       </Field>
       {value.goal_type === 'time' && (
         <Field label="Target time" className="border-t border-(--border)" hint="Hours:minutes:seconds, or minutes:seconds.">
-          <input className={inputCls} inputMode="numeric" placeholder="5:30:00" value={value.target_time ?? ''}
-            onChange={(e) => onChange({ target_time: e.target.value })} />
+          <DurationInput label="Target time" value={value.target_time} onChange={(v) => onChange({ target_time: v })} />
         </Field>
       )}
       <Field label="Course notes" className="border-t border-(--border)" hint="Hilly, hot, altitude, wetsuit…">
