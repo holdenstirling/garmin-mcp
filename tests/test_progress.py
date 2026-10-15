@@ -60,6 +60,9 @@ def test_quests_and_week_goal() -> None:
     qs = quests_view({"garmin": True}, {"oura": False, "calendar": True, "notify": True})
     ids = [q["id"] for q in qs]
     assert "oura" not in ids and "calendar" in ids and qs[0]["done"]
+    # every quest carries a short label for the header pill (one or two words)
+    assert all(q["short"] and len(q["short"]) <= 12 for q in qs)
+    assert next(q for q in qs if q["id"] == "sync")["short"] == "Watch sync"
     s = compute([act(TODAY - timedelta(days=1))], TODAY)
     assert week_goal(s) == {"kind": "active", "done": 1, "target": 3, "label": "workouts"}
 

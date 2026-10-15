@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AuthError, getMe, signOut, type Me } from './lib/api'
-import { CoachApp } from './components/coach/CoachApp'
+import { CoachApp } from './screens/lazyScreens'
 import { isIOS, isStandalone } from './lib/push'
 import { Chat } from './screens/Chat'
 import { InstallPrompt } from './screens/InstallPrompt'

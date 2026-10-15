@@ -56,6 +56,13 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
     ("interests", "Tell Rabbit what you're into", "Personal race picks", 50, True),
 ]
 
+# One-word labels for the compact header progress pill (fits a 390px phone).
+QUEST_SHORT: dict[str, str] = {
+    "garmin": "Garmin", "sports": "Sports", "goal": "Goal", "plan": "Plan", "sync": "Watch sync",
+    "notify": "Alerts", "calendar": "Calendar", "oura": "Oura", "coach": "Coach", "coach_status": "Coach",
+    "gear": "Gear", "friend": "Friends", "interests": "Interests",
+}
+
 
 def workout_xp(minutes: float) -> int:
     return 10 + int(min(max(minutes, 0), 180) // 2)
@@ -96,7 +103,7 @@ def level_view(xp: int) -> dict[str, Any]:
 def quests_view(state: dict[str, bool], available: dict[str, bool], intents: Any = None) -> list[dict[str, Any]]:
     """Quests the athlete can do here (optional ones only when the integration exists),
     ordered and flagged core/optional for the athlete's ``intents`` (intent.quest_layout)."""
-    return quest_layout([{"id": qid, "title": t, "hint": h, "xp": xp, "optional": opt, "done": bool(state.get(qid))}
+    return quest_layout([{"id": qid, "title": t, "short": QUEST_SHORT.get(qid, t), "hint": h, "xp": xp, "optional": opt, "done": bool(state.get(qid))}
                          for qid, t, h, xp, opt in QUESTS if available.get(qid, True)], intents)
 
 
@@ -217,5 +224,5 @@ class Progress:
         self._doc(user_id).update(apply)
 
 
-__all__ = ["Progress", "QUESTS", "GEAR_XP", "level_of", "level_floor", "level_view", "quests_view", "week_goal",
+__all__ = ["Progress", "QUESTS", "QUEST_SHORT", "GEAR_XP", "level_of", "level_floor", "level_view", "quests_view", "week_goal",
            "workout_xp", "tier_name", "week_key"]

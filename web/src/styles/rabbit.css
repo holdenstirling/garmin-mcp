@@ -10,6 +10,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 /* Conversation text reads like iMessage: the proportional system font, not DM Mono. */
 .chat-text, .chat-text .prose { font-family: var(--font); letter-spacing: normal; }
+/* Body text is the system sans (globals.css). Small uppercase tracked labels/badges keep
+   DM Mono as a brand accent; numbers that line up use font-mono / tabular-nums. */
+.uppercase:is(.tracking-wide, .tracking-wider, .tracking-widest) { font-family: var(--font-mono); }
+.font-mono { font-variant-numeric: tabular-nums; }
 /* Settings: system font like iOS Settings; section labels stay in DM Mono. */
 .settings { font-family: var(--font); letter-spacing: normal; }
 .settings-group > * + * { border-top: 1px solid var(--border); }
