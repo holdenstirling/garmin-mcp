@@ -12,8 +12,16 @@ Posts
   up, badge, challenge completed, firsts (first ultra, marathon, 70.3, century...). They are
   **drafts**, never posted on their own, unless the athlete turned on auto-share for that
   type: Rabbit posts a moment "🎉 ... Share it?" [Share] [Not now] and the drafts tray shows them.
-* **Shared workouts**: only from the reaction card, on request: sport, distance, time and a
+* **Shared workouts**: from the reaction card, on request: sport, distance, time and a
   highlight line. Never maps, heart rate, power or any health/Oura data.
+* **Auto-shared workouts** ("Share my workouts with friends", ``share_workouts``): each newly
+  synced workout (today/yesterday, dated on or after the day sharing started) is posted once
+  to ``friends`` as the same compact card, with the title replaced by the sport ("Run") since
+  Garmin names often carry a place. Unset + the one-time prompt shown = on (the default);
+  never asked = nothing posted; declined = private.
+
+Unread (``unread``): new reactions/comments on my posts (per post), cleared when I open the
+post or Community (``mark_seen``); feeds the app icon badge (``unread.py``).
 
 Audience per post: ``friends`` (people with an active follow edge to the author),
 ``club:<id>`` (members of that club or race group), ``public`` (every allowlisted athlete on
@@ -93,6 +101,12 @@ FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First h
 RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight")
+# Auto-shared workouts are titled by sport (Garmin's names often include the city).
+SPORT_TITLE = {"run": "Run", "bike": "Ride", "swim": "Swim", "brick": "Brick", "strength": "Strength",
+               "hike": "Hike", "ski": "Ski", "climb": "Climb", "paddle": "Paddle"}
+AUTO_DAYS = 1             # auto-share workouts from today and yesterday only
+AUTO_PER_SYNC = 3
+MAX_UNREAD_POSTS = 200
 EVENT_FIELDS = ("id", "name", "date", "type", "distance")
 _PID = re.compile(r"^p[0-9a-f]{16}$")
 _ID = re.compile(r"^[a-z][0-9a-f]{12,16}$")
@@ -278,6 +292,20 @@ def workout_card(acts: list[dict[str, Any]], aid: int, today: date) -> dict[str,
             "highlight": hl}
 
 
+def workout_label(w: dict[str, Any] | None) -> str:
+    """"10K", "half marathon", "ride": how a cheer push names a workout."""
+    if not w:
+        return "post"
+    sport, km = w.get("sport"), w.get("km") or 0
+    if sport == "run" and km:
+        for target, name in ((42.2, "marathon"), (21.1, "half marathon"), (10, "10K"), (5, "5K")):
+            if abs(km - target) <= max(0.25, target * 0.03):
+                return name
+        if km >= 1:
+            return f"{round(km):d} km run"
+    return {"run": "run", "bike": "ride", "swim": "swim", "hike": "hike"}.get(str(sport), "workout")
+
+
 def from_moment_text(m: dict[str, Any]) -> tuple[str, str] | None:
     """(milestone type, post text) for a moment that may become a draft."""
     t, key, text = m.get("type"), str(m.get("key") or ""), str(m.get("text") or "")
@@ -348,9 +376,20 @@ class Community:
     def _settings_of(d: dict[str, Any]) -> dict[str, Any]:
         s = d.get("settings") or {}
         aud = norm_audience(s.get("audience") or s.get("visibility"))
+        sw = s.get("share_workouts")
         return {"milestones": {t: bool((s.get("milestones") or {}).get(t, True)) for t in MILESTONES},
                 "auto_share": {t: bool((s.get("auto_share") or {}).get(t, False)) for t in MILESTONES},
-                "audience": aud if aud in AUDIENCES else "friends"}
+                "audience": aud if aud in AUDIENCES else "friends",
+                # None = never answered; the prompt (shown once) defaults to on.
+                "share_workouts": sw if isinstance(sw, bool) else None,
+                "share_prompted": bool(s.get("share_prompted")),
+                "share_since": s.get("share_since") if isinstance(s.get("share_since"), str) else None}
+
+    @staticmethod
+    def sharing_workouts(s: dict[str, Any]) -> bool:
+        """Effective "Share my workouts with friends": on when chosen, or when unanswered
+        after the one-time prompt was shown (the default); never before it was shown."""
+        return s["share_workouts"] is True or (s["share_workouts"] is None and s["share_prompted"])
 
     def settings(self, uid: str) -> dict[str, Any]:
         self.require(uid)
@@ -372,13 +411,24 @@ class Community:
             if a not in AUDIENCES:
                 raise CommunityError("audience must be friends, public or private")
             clean["audience"] = a
+        if "share_workouts" in patch:
+            if not isinstance(patch["share_workouts"], bool):
+                raise CommunityError("share_workouts must be true or false")
+            clean["share_workouts"] = patch["share_workouts"]
+        if patch.get("share_prompted") is True:
+            clean["share_prompted"] = True
+        today = self._now(uid).date().isoformat()
 
         def apply(d: dict[str, Any]) -> dict[str, Any]:
             cur = self._settings_of(d)
+            was = self.sharing_workouts(cur)
             for k in ("milestones", "auto_share"):
                 cur[k] = {**cur[k], **clean.get(k, {})}
-            if "audience" in clean:
-                cur["audience"] = clean["audience"]
+            for k in ("audience", "share_workouts", "share_prompted"):
+                if k in clean:
+                    cur[k] = clean[k]
+            if self.sharing_workouts(cur) and not was:
+                cur["share_since"] = today  # nothing from before sharing started
             d["settings"] = cur
             return cur
         return self._mine(uid).update(apply)
@@ -630,6 +680,7 @@ class Community:
         _, post = self._load(viewer, pid)
         if pid in self._hidden(viewer):
             raise CommunityError("post not found", 404)
+        self.mark_seen(viewer, pid)
         return self.view(viewer, post, all_comments=True)
 
     # ------------------------------------------------------------- feed --
@@ -703,7 +754,10 @@ class Community:
             return p, new
         post, new = self._touch(owner, pid, fn)
         if new and owner != viewer:
-            self._notify(owner, pid, f"{self._name(viewer)} cheered your post", post.get("text") or "Your post")
+            self._bump_unread(owner, pid)
+            what = workout_label(post.get("workout")) if post.get("workout") else "post"
+            self._notify(owner, pid, f"{self._name(viewer)} cheered your {what}",
+                         post.get("text") or ("Tap to see who's cheering." if post.get("workout") else "Your post"))
         return self.view(viewer, post)
 
     def unreact(self, viewer: str, pid: Any) -> dict[str, Any]:
@@ -743,8 +797,10 @@ class Community:
             return p, to
         _, to = self._touch(owner, pid, fn)
         if owner != viewer:
+            self._bump_unread(owner, pid)
             self._notify(owner, pid, f"{self._name(viewer)} commented", body)
         if to and to not in (viewer, owner):
+            self._bump_unread(to, pid)
             self._notify(to, pid, f"{self._name(viewer)} replied", body)
         return {**c, "mine": True, "can_delete": True}
 
@@ -788,6 +844,77 @@ class Community:
             del r[: max(0, len(r) - MAX_REPORTS)]
         self._g.update(log)
         log_event(logger, logging.WARNING, "community_report", user_id=viewer, post=pid, author=owner)
+
+    # ----------------------------------------------------------- unread --
+    def _bump_unread(self, uid: str, pid: str) -> None:
+        """One more new reaction/comment on ``pid`` for ``uid`` (before the push, so the push
+        carries the new badge count)."""
+        def apply(d: dict[str, Any]) -> None:
+            u = d.setdefault("unread", {})
+            u[pid] = int(u.get(pid) or 0) + 1
+            if len(u) > MAX_UNREAD_POSTS:
+                for k in list(u)[: len(u) - MAX_UNREAD_POSTS]:
+                    del u[k]
+        try:
+            self._mine(uid).update(apply)
+        except Exception as e:  # the badge is best effort
+            log_event(logger, logging.WARNING, "community_unread_failed", error=type(e).__name__)
+
+    def unread_count(self, uid: str) -> int:
+        """New reactions/comments on posts I'm in, on posts I can still see."""
+        u = self._mine(uid).load().get("unread") or {}
+        return sum(int(n) for n in u.values() if isinstance(n, int))
+
+    def mark_seen(self, uid: str, pid: str | None = None) -> None:
+        """Clear one post's unread, or all of them (Community opened)."""
+        if not (self._mine(uid).load().get("unread") or {}):
+            return
+
+        def apply(d: dict[str, Any]) -> None:
+            u = d.get("unread") or {}
+            if pid is None:
+                u.clear()
+            else:
+                u.pop(pid, None)
+            d["unread"] = u
+        self._mine(uid).update(apply)
+
+    # ----------------------------------------------------- auto-sharing --
+    def auto_share_workouts(self, uid: str, acts: list[dict[str, Any]], today: date) -> list[str]:
+        """Post each newly synced workout (today/yesterday, on or after ``share_since``) to
+        friends, once per activity, when "Share my workouts with friends" is on. Returns the
+        new post ids. Same compact card as "Share this workout"; title = the sport."""
+        if uid.startswith("coach_") or not self.social.is_athlete(uid):
+            return []
+        s = self._settings_of(self._mine(uid).load())
+        if not self.sharing_workouts(s):
+            return []
+        since = s["share_since"] or today.isoformat()
+        rows = [r for r in _rows(acts) if isinstance(r["id"], int) and not isinstance(r["id"], bool)
+                and 0 <= (today - r["date"]).days <= AUTO_DAYS and r["date"].isoformat() >= since]
+        rows.sort(key=lambda r: r["id"])
+        out: list[str] = []
+        for r in rows[-AUTO_PER_SYNC:]:
+            key = f"auto:{r['id']}"
+
+            def claim(d: dict[str, Any], key: str = key) -> bool:
+                if self._seen(d, key, today, None):
+                    return False
+                keys = d.setdefault("keys", {})
+                keys[key] = today.isoformat()
+                if len(keys) > MAX_KEYS:
+                    for k in sorted(keys, key=lambda k: keys[k])[: len(keys) - MAX_KEYS]:
+                        del keys[k]
+                return True
+            if not self._mine(uid).update(claim):
+                continue
+            card = workout_card(acts, r["id"], today)
+            if card is None:
+                continue
+            card["title"] = SPORT_TITLE.get(card["sport"], "Workout")
+            post = self.create(uid, {"text": "", "category": "other", "audience": "friends"}, workout=card, limited=False)
+            out.append(post["id"])
+        return out
 
     # ------------------------------------------------------------- push --
     def _notify(self, to: str, pid: str, title: str, body: str) -> None:
@@ -1145,4 +1272,5 @@ __all__ = [
     "pb_text",
     "valid_pid",
     "workout_card",
+    "workout_label",
 ]

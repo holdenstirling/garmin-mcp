@@ -2941,6 +2941,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     from . import clubs as _clubs, community as _cmm, community_web as _cmw
     community_routes: list[BaseRoute] = []
     directory_routes: list[BaseRoute] = []
+    friends_routes: list[BaseRoute] = []
     if soc is not None and chat is not None and plans is not None and store is not None:
         _ag = chat.agent
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
@@ -2954,6 +2955,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             acts: list[dict[str, Any]] = []
             if workouts:
                 _, acts = _ag.stats.activities(uid)
+                cm.auto_share_workouts(uid, acts, today)  # "Share my workouts with friends"
                 cm.scan_bests(uid, acts, today, imperial=_ag.coach.athlete(uid).get("units") == "imperial")
             # The raw doc, not events.list: this runs inside an events write (list may write).
             evs = list((store.user_doc(uid, "events").load().get("events") or {}).values())
@@ -2984,6 +2986,19 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             home=_cm_home, local_groups=_local_finder.cached, chal=chal, chal_error=_chal.ChallengeError,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
             host_ok=host_ok, origin=settings.public_base_url)
+
+        # App icon badge + one-tap home actions (unread.py, quickactions.py, friends_web.py):
+        # every push carries the unread total as `badge` (sw.js sets the app badge).
+        from . import friends_web as _fw, quickactions as _qa, unread as _unr
+        _unread = _unr.Unread(store, community=cm, social=soc, clubs=clb, coach_chat=coach_chat)
+        if push is not None:
+            push.badge_for = _unread.total
+        _quick = _qa.QuickActions(
+            now=_ag._now, clock=time.time, activities=lambda u: _ag.stats.activities(u),
+            checkins=lambda u: _ag.checkins.list(u, 3), meetups=lambda u, n: clb.my_meetups(u, n, days=7),
+            friend_posts=lambda u: cm.feed(u, scope="friends")["items"], name=_soc_name,
+            plan=plans.get, garmin=_garmin_connected)
+        friends_routes = _fw.make_routes(unread=_unread, quick=_quick, api=_api, read_json=read_json)
 
         # Clubs & leagues directory (clubdir.py, routes in clubdir_web.py): per metro ("City, ST"
         # only) web search for candidate pages + our polite RabbitBot crawler (robots.txt, 1 req/s
@@ -3281,6 +3296,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *race_routes,
         *directory_routes,
         *community_routes,
+        *friends_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
         Route("/app/about", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { AccessScreen } from '@/components/settings/AccessScreen'
+import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
@@ -51,6 +52,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
         <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
         <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="In Community, with your clubs" onClick={() => onOpen('friends')} />
+        {me.role === 'athlete' && <ShareWorkoutsRow />}
       </Group>
 
       {coachStatus === 'looking' && me.coaches === 0 && (

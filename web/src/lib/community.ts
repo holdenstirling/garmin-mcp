@@ -70,7 +70,14 @@ export type Draft = {
 export type CommunitySettings = {
   milestones: Record<MilestoneType, boolean>; auto_share: Record<MilestoneType, boolean>
   audience: 'friends' | 'public' | 'private'
+  /** "Share my workouts with friends": null = not answered (on once the one-time prompt was shown) */
+  share_workouts?: boolean | null
+  share_prompted?: boolean
+  share_since?: string | null
 }
+/** Effective "Share my workouts with friends" (community.py `sharing_workouts`). */
+export const sharingWorkouts = (s: CommunitySettings) =>
+  s.share_workouts === true || (s.share_workouts == null && !!s.share_prompted)
 export type Usage = { photos: number; bytes: number; max_photos: number; max_bytes: number }
 export type Sport = 'running' | 'trail' | 'cycling' | 'triathlon' | 'swimming' | 'walking' | 'multisport' | 'other'
 export const SPORTS: [Sport, string][] = [

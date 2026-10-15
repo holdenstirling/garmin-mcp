@@ -14,6 +14,7 @@ import base64
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
@@ -96,6 +97,7 @@ class WebPush:
         self._vapid = Vapid02.from_string(vapid_private_key)
         self._subject = subject
         self._http = http or httpx2.Client(timeout=10, follow_redirects=False)
+        self.badge_for: Callable[[str], int | None] | None = None
 
     @property
     def public_key(self) -> str:
@@ -124,8 +126,18 @@ class WebPush:
     # ---------------------------------------------------------------- send --
     def send(self, user_id: str, title: str, body: str, url: str = "/app/",
              ttl: int = 24 * 3600) -> list[SendResult]:
-        """Send one notification to every subscription of ``user_id``."""
-        payload = json.dumps({"title": title[:120], "body": body[:500], "url": url}).encode()
+        """Send one notification to every subscription of ``user_id``. With ``badge_for``
+        set (``unread.Unread.total``), the payload carries ``badge`` (the app icon count; the
+        service worker calls ``setAppBadge``)."""
+        data: dict[str, Any] = {"title": title[:120], "body": body[:500], "url": url}
+        if self.badge_for is not None:
+            try:
+                n = self.badge_for(user_id)
+                if isinstance(n, int):
+                    data["badge"] = max(0, min(n, 999))
+            except Exception as e:  # the notification still goes out
+                log_event(logger, logging.WARNING, "push_badge_failed", error=type(e).__name__)
+        payload = json.dumps(data).encode()
         if len(payload) > MAX_PAYLOAD:
             raise ValueError("push payload too large")
         results: list[SendResult] = []

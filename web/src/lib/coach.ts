@@ -3,6 +3,7 @@
 import { getJSON, sendJSON, type Athlete, type Goal } from '@/lib/api'
 import type { RaceEvent } from '@/lib/events'
 import type { Stats } from '@/lib/stats'
+import { syncAppBadge } from '@/lib/unread'
 
 export type CoachLink = {
   email: string; status: 'invited' | 'active'; can_edit_plan: boolean; can_see_rabbit_chats: boolean
@@ -44,7 +45,11 @@ export function chatApi(base: string) {
   return {
     list: () => getJSON<{ threads: ThreadSummary[]; coaches?: CoachLink[] }>(base),
     open: (b: { coach?: string; session_id?: string; event_id?: string }) => sendJSON<{ thread: Thread }>('POST', base, b),
-    get: (id: string) => getJSON<{ thread: Thread }>(`${base}/${id}`),
+    // Opening a thread marks it read: refresh the app icon badge (athlete side).
+    get: (id: string) => getJSON<{ thread: Thread }>(`${base}/${id}`).then((r) => {
+      if (base === '/api/coachchat') void syncAppBadge()
+      return r
+    }),
     post: (id: string, text: string) => sendJSON<{ message: Message }>('POST', `${base}/${id}/messages`, { text }),
   }
 }

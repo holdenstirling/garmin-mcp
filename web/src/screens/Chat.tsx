@@ -14,6 +14,8 @@ import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
+import { QuickActions } from '@/components/home/QuickActions'
+import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
 import { useTopInsight } from '@/lib/insights'
@@ -325,6 +327,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const timer = window.setInterval(() => void run(), 60_000)
     return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
   }, [overlayFree, me.garmin.connected, loadToday]) // eslint-disable-line react-hooks/exhaustive-deps
+  // App icon badge (lib/unread.ts): unread cheers, requests, invites, coach messages.
+  useEffect(() => (me.role === 'athlete' ? startBadgeSync() : undefined), [me.role])
   // Moments that arrived while the app was open: refresh the log without a reload.
   useEffect(() => {
     if (feedTick && status === 'idle' && thread?.kind === 'coach') void reload()
@@ -773,6 +777,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
           onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={loadToday}
           hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+      )}
+      {isCoach && !typing && me.role === 'athlete' && (
+        <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
+          skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} />
       )}
       {isCoach && !typing && (
         <FirstVisitCard connected={me.garmin.connected} onConnect={() => open('settings')}
