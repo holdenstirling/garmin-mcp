@@ -58,7 +58,7 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
       headerExtra={p ? (
         <div className="mx-auto mt-2 flex max-w-xl justify-center">
           <button type="button" onClick={() => setFit(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">
+            className="hit-44 inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">
             <Gauge className="size-3.5" /> {race ? 'Readiness, race fit and strategy' : 'Event prep and game plan'}
           </button>
         </div>

@@ -1,8 +1,9 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Settings. Friends live in Community.
 import { useState } from 'react'
-import { Brain, ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { AccessScreen } from '@/components/settings/AccessScreen'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -15,7 +16,7 @@ export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inb
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
-    <span className="min-w-5 rounded-full bg-(--accent) px-1.5 text-center text-[0.7059rem] font-semibold leading-5 text-white" aria-label={label}>{n}</span>
+    <span className="min-w-5 rounded-full bg-(--accent) px-1.5 text-center text-[0.7059rem] font-semibold leading-5 text-(--on-fill)" aria-label={label}>{n}</span>
   </span>
 )
 
@@ -47,7 +48,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
 
       <Group label="You">
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
-        <Row icon={<Icon><Brain /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
+        <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
         <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="In Community, with your clubs" onClick={() => onOpen('friends')} />
       </Group>

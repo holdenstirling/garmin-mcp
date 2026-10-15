@@ -93,10 +93,10 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             onEdit={goal ? () => setEditing('goal') : undefined}>
             {editing === 'goal' && goal ? (
               <div className="flex flex-col gap-2">
-                <Input className="text-base" placeholder="Title" value={g.title} onChange={(e) => setG({ ...g, title: e.target.value })} />
-                <Input className="text-base" type="date" value={g.date ?? ''} onChange={(e) => setG({ ...g, date: e.target.value })} />
-                <Input className="text-base" placeholder="Target" value={g.target} onChange={(e) => setG({ ...g, target: e.target.value })} />
-                <textarea className={area} placeholder="Priorities or worries" value={g.priorities} onChange={(e) => setG({ ...g, priorities: e.target.value })} />
+                <Input aria-label="Title" className="text-base" placeholder="Title" value={g.title} onChange={(e) => setG({ ...g, title: e.target.value })} />
+                <Input aria-label="Race date" className="text-base" type="date" value={g.date ?? ''} onChange={(e) => setG({ ...g, date: e.target.value })} />
+                <Input aria-label="Target" className="text-base" placeholder="Target" value={g.target} onChange={(e) => setG({ ...g, target: e.target.value })} />
+                <textarea aria-label="Priorities or worries" className={area} placeholder="Priorities or worries" value={g.priorities} onChange={(e) => setG({ ...g, priorities: e.target.value })} />
                 {saveBar(() => void save(() => updateGoal(goal.id, { ...g, date: g.date || null })))}
               </div>
             ) : goal ? (
@@ -116,7 +116,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             <Section title="Your plan" onEdit={goal.plan ? () => setEditing('plan') : undefined}>
               {editing === 'plan' ? (
                 <>
-                  <textarea className={`${area} min-h-[220px] font-mono text-[0.7647rem]`} value={plan} onChange={(e) => setPlan(e.target.value)} />
+                  <textarea aria-label="Your plan" className={`${area} min-h-[220px] font-mono text-[0.7647rem]`} value={plan} onChange={(e) => setPlan(e.target.value)} />
                   {saveBar(() => void save(() => updateGoal(goal.id, { plan })))}
                 </>
               ) : goal.plan ? (
@@ -127,7 +127,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to Rabbit.</Empty>
               )}
               {goal.plan && editing !== 'plan' && goal.plan.length > 280 && (
-                <button className="self-start text-xs text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
+                <button className="hit-44 self-start text-xs text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
                   {showFullPlan ? 'Show less' : 'Show all'}
                 </button>
               )}
@@ -153,16 +153,16 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             onEdit={() => setEditing('about')}>
             {editing === 'about' ? (
               <div className="flex flex-col gap-2">
-                <Input className="text-base" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
+                <Input aria-label="Experience" className="text-base" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input className="text-base" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
-                  <select className="h-9 rounded-md border border-input bg-transparent px-2 text-base" value={a.units ?? 'metric'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
+                  <Input aria-label="Hours / week" className="text-base" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
+                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-base" value={a.units ?? 'metric'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
                     <option value="metric">Metric</option><option value="imperial">Imperial</option>
                   </select>
                 </div>
-                <Input className="text-base" placeholder="Training days" value={a.training_days ?? ''} onChange={(e) => setA({ ...a, training_days: e.target.value })} />
-                <textarea className={area} placeholder="Injuries or limits" value={a.injuries ?? ''} onChange={(e) => setA({ ...a, injuries: e.target.value })} />
-                <textarea className={area} placeholder="Preferences" value={a.preferences ?? ''} onChange={(e) => setA({ ...a, preferences: e.target.value })} />
+                <Input aria-label="Training days" className="text-base" placeholder="Training days" value={a.training_days ?? ''} onChange={(e) => setA({ ...a, training_days: e.target.value })} />
+                <textarea aria-label="Injuries or limits" className={area} placeholder="Injuries or limits" value={a.injuries ?? ''} onChange={(e) => setA({ ...a, injuries: e.target.value })} />
+                <textarea aria-label="Preferences" className={area} placeholder="Preferences" value={a.preferences ?? ''} onChange={(e) => setA({ ...a, preferences: e.target.value })} />
                 {saveBar(() => void save(() => putAthlete(a)))}
               </div>
             ) : athleteRows.length ? (
@@ -182,7 +182,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             <Section title="Coach notes" onEdit={() => setEditing('notes')}>
               {editing === 'notes' ? (
                 <>
-                  <textarea className={area} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  <textarea aria-label="Coach notes" className={area} value={notes} onChange={(e) => setNotes(e.target.value)} />
                   {saveBar(() => void save(() => updateGoal(goal.id, { notes })))}
                 </>
               ) : goal.notes ? (
@@ -195,7 +195,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
 
           {msg && <p className="text-xs text-(--danger)">{msg}</p>}
           {goal && (
-            <button className="mt-1 text-xs text-muted-foreground underline"
+            <button className="hit-44 mt-1 text-xs text-muted-foreground underline"
               onClick={() => onTell("I'm starting a new goal: ")}>
               Training for something new? Tell Rabbit
             </button>

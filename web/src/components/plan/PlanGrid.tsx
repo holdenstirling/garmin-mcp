@@ -205,16 +205,16 @@ function QuickAdd({ sports, initial, onSave, onCancel, onDelete }: {
       <ChipRow>
         {sports.map((sp) => <Chip key={sp} selected={s.sport === sp} onClick={() => setS({ ...s, sport: sp })}>{SPORT_LABEL[sp]}</Chip>)}
       </ChipRow>
-      <input className={inputCls} placeholder={`Title (e.g. ${s.sport === 'run' ? 'Hill repeats' : s.sport === 'bike' ? 'Sweet spot 3x12' : 'Easy session'})`}
+      <input className={inputCls} aria-label="Session title" placeholder={`Title (e.g. ${s.sport === 'run' ? 'Hill repeats' : s.sport === 'bike' ? 'Sweet spot 3x12' : 'Easy session'})`}
         maxLength={60} value={s.title} onChange={(e) => setS({ ...s, title: e.target.value })} />
       <ChipRow>
         {QUICK_INTENSITY.map((it) => <Chip key={it} selected={s.intensity === it} onClick={() => setS({ ...s, intensity: it })}>{INTENSITY_LABEL[it]}</Chip>)}
       </ChipRow>
       {!isRace && <NumberStepper label="minutes" value={s.minutes} onChange={(v) => setS({ ...s, minutes: v })} step={5} min={10} max={600} suffix="min" />}
-      <input className={inputCls} placeholder="Notes (optional): intervals, targets, cues" maxLength={400}
+      <input className={inputCls} aria-label="Notes" placeholder="Notes (optional): intervals, targets, cues" maxLength={400}
         value={s.notes} onChange={(e) => setS({ ...s, notes: e.target.value })} />
       <div className="flex gap-2">
-        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-[0.7647rem]" onClick={onDelete}><Trash2 className="size-4" /></Button>}
+        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-[0.7647rem]" aria-label="Delete session" onClick={onDelete}><Trash2 className="size-4" /></Button>}
         <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" className="h-11 flex-1 gap-1 text-[0.7647rem]" disabled={!isRace && !s.minutes}
           onClick={() => onSave({ ...s, title: s.title.trim(), minutes: isRace ? null : s.minutes })}>

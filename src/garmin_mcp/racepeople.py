@@ -597,10 +597,6 @@ class RacePeople:
         with self._lock:
             self._doc.update(apply)
 
-    def drop_event(self, uid: str, eid: str) -> None:
-        with self._lock:
-            self._doc.update(lambda d: self._drop_race(d, _key(uid, eid)))
-
 
 # ------------------------------------------------------------- share page --
 def _e(v: Any) -> str:

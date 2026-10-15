@@ -25,7 +25,7 @@ export function CoachHeader({ label, ts }: { label: 'brief' | 'workout' | 'note'
 export function DiscussButton({ onClick, busy }: { onClick: () => void; busy: boolean }) {
   return (
     <button onClick={onClick} disabled={busy}
-      className="mt-1 ml-1 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[0.6471rem] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50">
+      className="hit-44 mt-1 ml-1 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[0.6471rem] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50">
       <MessagesSquare className="size-3" /> Discuss
     </button>
   )

@@ -40,15 +40,6 @@ export const predictCoachEvent = (athleteId: string, eventId: string) =>
   cached(`c:${athleteId}:${eventId}`, () => getJSON<PredictResult>(
     `/api/coach/athletes/${encodeURIComponent(athleteId)}/events/${encodeURIComponent(eventId)}/predict`))
 
-export function predictGeneric(q: { type?: string; distanceKm: number; climbM?: number; elevationM?: number; date?: string }) {
-  const p = new URLSearchParams({ distance_km: String(q.distanceKm) })
-  if (q.type) p.set('type', q.type)
-  if (q.climbM != null) p.set('climb_m', String(Math.round(q.climbM)))
-  if (q.elevationM != null) p.set('elevation_m', String(Math.round(q.elevationM)))
-  if (q.date) p.set('date', q.date)
-  return getJSON<PredictResult>(`/api/predict?${p.toString()}`)
-}
-
 /** Race clock: "1:52:30" at or above an hour, "47:30" under. */
 export function fmtClock(s: number): string {
   const t = Math.round(s)

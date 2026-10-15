@@ -2,7 +2,6 @@
 // shown to the athlete only (marked uses_oura); coaches and Rabbit never get them.
 import { useEffect, useState } from 'react'
 import { getJSON, sendJSON } from '@/lib/api'
-import { coachBase } from '@/lib/coach'
 
 export type Impact = 'positive' | 'watch' | 'action'
 export type InsightActionKind = 'apply_adjust' | 'open_plan' | 'open_session' | 'ask_rabbit' | 'ask_coach' | 'open_gear' | 'none'
@@ -19,7 +18,6 @@ export type Insight = {
 export type Insights = { today: string; insights: Insight[]; total?: number }
 
 export const getInsights = (fresh = false) => getJSON<Insights>(`/api/insights${fresh ? '?fresh=1' : ''}`)
-export const getAthleteInsights = (aid: string) => getJSON<Insights>(`${coachBase(aid)}/insights`)
 export const dismissInsight = (id: string, days?: number) =>
   sendJSON<{ ok: boolean; until: string }>('POST', `/api/insights/${encodeURIComponent(id)}/dismiss`, days ? { days } : {})
 

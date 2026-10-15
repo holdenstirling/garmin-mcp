@@ -64,7 +64,7 @@ export function DayDot({ day }: { day: WeekDay }) {
       <span aria-hidden className={cn('text-[0.6471rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
         {day.weekday.charAt(0)}
       </span>
-      <span className={cn('flex size-[18px] items-center justify-center rounded-full border text-white',
+      <span className={cn('flex size-[18px] items-center justify-center rounded-full border text-(--on-fill)',
         day.today && 'ring-2 ring-(--accent)/30 ring-offset-1 ring-offset-(--bg-surface)',
         st === 'done' || st === 'extra' ? 'border-(--accent) bg-(--accent)'
           : st === 'partial' ? 'border-(--accent) bg-(--accent)/45'
@@ -133,7 +133,7 @@ export function DayRow({ day, openKey, onToggle, onAsk, imperial = false }: {
                       {it.detail && <span className="text-[0.7059rem] leading-snug text-muted-foreground">{it.detail}</span>}
                       <button type="button" tabIndex={expanded ? 0 : -1}
                         onClick={() => onAsk(day, it.session)}
-                        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.6471rem] font-medium text-(--accent) active:opacity-70">
+                        className="hit-44 inline-flex w-fit items-center gap-1.5 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.6471rem] font-medium text-(--accent) active:opacity-70">
                         <MessageCircle className="size-3.5" /> Ask Rabbit
                       </button>
                     </span>
@@ -235,7 +235,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
                 {Array.from({ length: 7 }, (_, i) => (
                   <span key={i} className="flex flex-col items-center gap-1">
                     <span className="h-2.5 w-2 rounded bg-(--bg-elevated)" />
-                    <span className="size-[18px] animate-pulse rounded-full bg-(--bg-elevated)" />
+                    <span className="size-[18px] animate-pulse motion-reduce:animate-none rounded-full bg-(--bg-elevated)" />
                   </span>
                 ))}
               </span>

@@ -81,7 +81,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
               <p className="break-all rounded-lg bg-(--bg-inset) px-3 py-2 font-mono text-[0.7059rem] text-(--text)">{newLink}</p>
               <p className="text-[0.7059rem] text-(--text-muted)">Share it now: for safety Rabbit keeps only a fingerprint of it and can't show it again.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className={btn + ' bg-(--accent) text-white'}
+                <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'}
                   onClick={() => void shareLink(newLink).then(setCopied)}><Share2 className="size-4" aria-hidden />Share</button>
                 <button type="button" className={btn + ' border border-(--border) text-(--text)'}
                   onClick={() => void copyLink(newLink).then(setCopied)}>
@@ -112,7 +112,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                   </select>
                 </label>
               </div>
-              <button type="button" className={btn + ' bg-(--accent) text-white'} disabled={!!busy}
+              <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'} disabled={!!busy}
                 onClick={() => void run('invite', async () => { const r = await createInvite(uses, days); setNewLink(r.url); setCopied(null) })}>
                 <UserPlus className="size-4" aria-hidden />{busy === 'invite' ? 'Creating…' : 'Create invite link'}
               </button>

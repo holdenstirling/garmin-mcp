@@ -1,6 +1,6 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Sparkles, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upload, X } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
@@ -595,6 +595,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <ChevronLeft className="size-5" />
           </Button>
         )}
+        <h1 className="sr-only">{isLog ? 'Rabbit' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
         <button className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
           aria-label={isLog ? 'Rabbit' : 'Back to Rabbit'} onClick={isLog ? goBack : slideBack}>
           {/* App-icon tile, like the Home Screen icon (hops while Rabbit is replying) */}
@@ -703,14 +704,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Plan from your coach or app" subtitle={planLine(week, goal)}
                 onClick={() => open('plan')} />
-              <SettingsRow icon={<Icon><Sparkles /></Icon>} title="Build my plan in Rabbit"
+              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in Rabbit"
                 subtitle="Editable sessions you can send to your Garmin" onClick={startSetup} />
             </Group>
           ) : (
             <>
               <button type="button" onClick={startSetup}
                 className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-white"><Sparkles className="size-5" /></span>
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[0.9412rem] font-semibold text-(--accent)">Build my plan</span>
                   <span className="block text-[0.7059rem] text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
@@ -740,7 +741,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     return (
       <TabScreen key="overview" title="Progress" top={seg} action={meButton}>
-        <StatsScreen onClose={noop} oura={me.oura.connected} onOpenPlan={builtPlan ? openPlan : undefined}
+        <StatsScreen onClose={noop} onOpenPlan={builtPlan ? openPlan : undefined}
           onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
@@ -790,7 +791,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && today && (today.garmin || !!goal) && !typing && (
         <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
-          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={openProgress} />
+          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={openProgress}
+          hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
       )}
       {isCoach && !typing && !stripFirst(intents) && intents.length > 1 && (
         <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
@@ -847,7 +849,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </div>
             <button type="button" onClick={startSetup}
               className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-white"><Sparkles className="size-5" /></span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[0.9412rem] font-semibold text-(--accent)">Build my plan</span>
                 <span className="block text-[0.7059rem] text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
@@ -903,7 +905,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <ReplyChips chips={chips} disabled={busy} onPick={(t) => void (isCoach ? sendFromLog(t, []) : send(t))} />
             {thinking && (
               <div className="flex items-center gap-2 pl-1 text-sm text-muted-foreground">
-                <div className="thinking-dots flex items-center gap-[3px]"><span /><span /><span /></div>
+                <div className="thinking-dots flex items-center gap-[3px]" role="status" aria-label="Rabbit is thinking"><span /><span /><span /></div>
               </div>
             )}
           </div>
@@ -963,7 +965,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <DataSourcesSheet me={me} onClose={() => { setSourcesAsk(false); onChange() }}
           onSaved={(msg) => { setSourcesAsk(false); showToast(msg); onChange() }} />
       )}
-      {toast && <div key={toast.n} className="rabbit-toast" role="status">{toast.msg}</div>}
+      <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
       {sheet === 'threads' && (

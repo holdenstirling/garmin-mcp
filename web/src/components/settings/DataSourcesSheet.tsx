@@ -1,12 +1,13 @@
 // "How should Rabbit use your data?": asked once after Oura connects (and once for athletes
 // who connected Oura before this existed), and from Settings -> Data sources. Workouts are
 // always Garmin's; the athlete picks where recovery and sleep come from.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { putSettings, type Me } from '@/lib/api'
 import { defaultSources, type DataSource } from '@/lib/sources'
 import { Switch } from '@/components/settings/Grouped'
 import { cn } from '@/lib/utils'
+import { useDialog } from '@/hooks/useDialog'
 
 const CHOICES: { id: DataSource; title: string; sub: string }[] = [
   { id: 'oura', title: 'Oura', sub: 'Recommended if you wear it nightly' },
@@ -42,10 +43,12 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
     }
     onClose()
   }
+  const box = useRef<HTMLDivElement>(null)
+  useDialog(box, () => void dismiss())
 
   return (
     <div className="modal-overlay" onClick={() => void dismiss()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="ds-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="ds-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="ds-title" className="modal-title">How should Rabbit use your data?</h2>
@@ -76,7 +79,7 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
                   </span>
                   <span aria-hidden="true"
                     className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border',
-                      on ? 'border-(--accent) bg-(--accent) text-white' : 'border-(--border-strong)')}>
+                      on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
                     {on && <Check className="size-3" />}
                   </span>
                 </label>
@@ -99,7 +102,7 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
           </p>
           {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
           <button type="button" disabled={busy} onClick={() => void save()}
-            className="min-h-11 rounded-xl bg-(--accent) px-4 text-[0.9412rem] font-medium text-white disabled:opacity-50">
+            className="min-h-11 rounded-xl bg-(--accent) px-4 text-[0.9412rem] font-medium text-(--on-fill) disabled:opacity-50">
             {busy ? 'Saving…' : 'Save'}
           </button>
         </div>

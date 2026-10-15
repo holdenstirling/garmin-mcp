@@ -41,6 +41,7 @@ html, body { overflow: hidden; }
 
 .rabbit-logo { color: var(--brand); }
 .logo-tile .rabbit-logo { color: var(--bg); } /* cream mark on the brand tile */
+.rabbit-logo.rabbit-logo--current { color: currentColor; } /* inline icon for Rabbit */
 
 /* "Thinking" state: a small hop, the counterpart to Dolly's head tilt. */
 @keyframes rabbit-hop {
@@ -239,7 +240,7 @@ html.kb-open .tab-bar { display: none; }
 .plan-chip::after { content: ''; position: absolute; inset: -4px 0; }
 .plan-chip:active { transform: scale(0.97); }
 .plan-chip:disabled { opacity: 0.45; cursor: default; }
-.plan-chip--on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.plan-chip--on { border-color: var(--accent); background: var(--accent); color: var(--on-fill); }
 @media (prefers-color-scheme: dark) {
   :root:not(.light) .plan-chip--on { background: var(--accent-subtle); color: var(--accent); }
 }

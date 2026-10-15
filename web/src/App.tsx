@@ -74,7 +74,7 @@ function MainApp() {
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <RabbitLogo size={40} />
           <p className="text-(--text-secondary)">Something went wrong: {state.message}</p>
-          <button className="underline" onClick={() => void load()}>Try again</button>
+          <button className="hit-44 underline" onClick={() => void load()}>Try again</button>
         </div>
       )}
       <FxHost />

@@ -585,7 +585,7 @@ function SaveDraftTemplate({ api, id, name, flush }: { api: ImportApi; id: strin
   return (
     <Card className="flex flex-col gap-2 px-4 py-3">
       <p className="text-[0.7647rem] leading-snug text-(--text-muted)">Kept as weeks 1, 2, 3… so you can start it on any date for any of your athletes.</p>
-      <input className={inputCls} placeholder="Template name" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+      <input aria-label="Template name" className={inputCls} placeholder="Template name" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
       {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
       <div className="flex gap-2">
         <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={() => setOpen(false)}>Cancel</Button>

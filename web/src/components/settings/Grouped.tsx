@@ -56,7 +56,7 @@ export function Switch({ checked, onChange, label, disabled }: {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn('relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50',
+      className={cn('hit-44 relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50',
         checked ? 'bg-(--accent)' : 'bg-(--bg-inset)')}>
       <span className={cn('absolute top-[2px] left-[2px] size-[27px] rounded-full bg-white shadow-md transition-transform duration-200',
         checked && 'translate-x-[20px]')} />

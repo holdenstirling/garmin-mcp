@@ -6,7 +6,8 @@
 // the first row. Search with no filters uses your location, 50 mi, all types; with no location
 // it's nationwide and says so. Places and groups live in For you's "Near you" only.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Search, Sparkles } from 'lucide-react'
+import { Activity, Search } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -25,9 +26,6 @@ import { EstimateLine } from './Estimate'
 import { LocationPrompt } from './LocationPrompt'
 import { LetRabbitExplore } from './RabbitExplore'
 import type { RaceX } from '@/lib/explore2'
-
-/** The nav icon for Explore (exported so the home nav needs no extra icon import). */
-export const ExploreIcon = Search
 
 type Mode = 'foryou' | 'search'
 const MODE_KEY = 'rabbit.explore.mode'
@@ -184,7 +182,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
         Not seeing your race? Big ones like Ironman or Leadville aren't listed here.
       </p>
       <Button variant="default" className="h-9 gap-1.5 text-[0.7647rem]" loading={webBusy} onClick={() => void askWeb()}>
-        <Sparkles className="size-4" /> Ask Rabbit to search the web
+        <RabbitLogo size={16} current /> Ask Rabbit to search the web
       </Button>
       {webError && <p className="text-[0.7059rem] text-(--danger)" role="alert">{webError}</p>}
     </div>

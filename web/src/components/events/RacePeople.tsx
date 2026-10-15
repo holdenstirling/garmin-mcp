@@ -80,7 +80,7 @@ function Tabs<T extends string>({ value, options, onChange }: { value: T; option
           className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
             value === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
           {name}
-          {!!badge && <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-white">{badge}</span>}
+          {!!badge && <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{badge}</span>}
         </button>
       ))}
     </div>
@@ -462,7 +462,7 @@ function FollowedCard({ r, onLeave }: { r: FollowedRace; onLeave: () => void }) 
   return (
     <div className="overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {n === 0 && (
-        <div className="flex flex-col gap-1 bg-(--accent) px-3.5 py-2.5 text-white">
+        <div className="flex flex-col gap-1 bg-(--accent) px-3.5 py-2.5 text-(--on-fill)">
           <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold"><Flag className="size-4" /> Race day!</p>
           <p className="text-[0.7059rem] leading-snug opacity-90">
             Rabbit doesn't do live tracking. {link ? 'Follow along on the ' : ''}

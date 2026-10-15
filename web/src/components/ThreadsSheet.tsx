@@ -1,7 +1,8 @@
 // Ported from Dolly's ConversationList (web-mcp): same rows, relative times and delete
 // confirmation; the pinned Rabbit thread (briefs, workout notes) sits on top. No virtualization needed at this size.
 import { useSheetDrag } from '@/hooks/useSheetDrag'
-import { useState } from 'react'
+import { useDialog } from '@/hooks/useDialog'
+import { useRef, useState } from 'react'
 import { MessageSquarePlus, Pin, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { goalCountdown, type Goal, type Thread } from '@/lib/api'
@@ -57,7 +58,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
               </div>
               {t.kind === 'topic' && (
                 <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t) }}
-                  className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
+                  className="hit-44 mt-0.5 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
                   title="Delete" aria-label="Delete chat">
                   <Trash2 className="size-3.5" />
                 </button>
@@ -66,20 +67,31 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
           ))}
         </div>
         {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
-            <div className="relative z-10 mx-4 w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">
-              <h3 className="text-sm font-semibold text-foreground">Delete chat?</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{deleteTarget.title || 'New chat'}</span> will be permanently deleted.
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
-              </div>
-            </div>
-          </div>
+          <ConfirmDelete title={deleteTarget.title || 'New chat'} onCancel={() => setDeleteTarget(null)}
+            onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }} />
         )}
+      </div>
+    </div>
+  )
+}
+
+/** "Delete chat?" A small alert dialog: focus in, Escape cancels, focus returns. */
+function ConfirmDelete({ title, onCancel, onConfirm }: { title: string; onCancel: () => void; onConfirm: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  useDialog(box, onCancel)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="del-chat-title" aria-describedby="del-chat-desc"
+        className="relative z-10 mx-4 w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">
+        <h3 id="del-chat-title" className="text-sm font-semibold text-foreground">Delete chat?</h3>
+        <p id="del-chat-desc" className="mt-1.5 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{title}</span> will be permanently deleted.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" className="h-11" onClick={onCancel}>Cancel</Button>
+          <Button variant="destructive" className="h-11" onClick={onConfirm}>Delete</Button>
+        </div>
       </div>
     </div>
   )

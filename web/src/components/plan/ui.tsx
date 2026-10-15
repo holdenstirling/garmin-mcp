@@ -126,14 +126,26 @@ export function StepIntro({ eyebrow, title, children }: { eyebrow: string; title
 }
 
 /** A labeled block inside a card. */
+/** A labelled field. The label names the group, and any text control inside that has no
+ *  accessible name of its own is labelled by it (and described by the hint). */
 export function Field({ label, hint, children, className }: {
   label: string; hint?: React.ReactNode; children: React.ReactNode; className?: string
 }) {
+  const id = useId()
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    box.current?.querySelectorAll<HTMLElement>('input:not([type=hidden]):not([type=file]), textarea, select').forEach((el) => {
+      if (el.hasAttribute('aria-label') || (el.getAttribute('aria-labelledby') ?? id) !== id) return
+      if (el.id && box.current?.querySelector(`label[for="${CSS.escape(el.id)}"]`)) return
+      el.setAttribute('aria-labelledby', id)
+      if (hint) el.setAttribute('aria-describedby', `${id}-hint`)
+    })
+  })
   return (
-    <div className={cn('flex flex-col gap-2 px-4 py-3.5', className)}>
-      <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
+    <div ref={box} role="group" aria-labelledby={id} className={cn('flex flex-col gap-2 px-4 py-3.5', className)}>
+      <span id={id} className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
       {children}
-      {hint && <span className="text-[0.7059rem] leading-snug text-(--text-muted)">{hint}</span>}
+      {hint && <span id={`${id}-hint`} className="text-[0.7059rem] leading-snug text-(--text-muted)">{hint}</span>}
     </div>
   )
 }
@@ -232,7 +244,7 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
             const n = Number(text)
             if (Number.isFinite(n)) onChange(clamp(n))
           }}
-          className="w-20 bg-transparent text-center font-display text-[1.6471rem] leading-none text-(--text) outline-none placeholder:text-(--text-muted)" />
+          className="w-20 bg-transparent text-center font-display text-[1.6471rem] leading-none text-(--text) placeholder:text-(--text-muted)" />
         {suffix && <span className="text-[0.7647rem] text-(--text-muted)">{suffix}</span>}
       </div>
       <button type="button" className="plan-step-btn" aria-label={`More ${label}`} onClick={() => bump(step)}><Plus className="size-4" /></button>

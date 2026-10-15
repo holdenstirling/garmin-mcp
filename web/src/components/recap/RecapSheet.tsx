@@ -1,7 +1,7 @@
 // Weekly recap (server: recap.py): workouts and plan adherence first, then XP, streak, badges,
 // best workout and next week's focus, for any of the last 8 weeks.
 import { useEffect, useState } from 'react'
-import { Award, CalendarCheck, ChevronLeft, ChevronRight, Flame, MessageCircle, Sparkles, Trophy, X } from 'lucide-react'
+import { Award, Carrot, ChevronLeft, ChevronRight, Flame, MessageCircle, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, Screen } from '@/components/plan/ui'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -92,7 +92,7 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
 
       <div className="grid grid-cols-2 gap-2">
         <Tile label={`XP · ${r.level.to_next.toLocaleString()} to level ${r.level.level + 1}`} value={`+${r.xp.toLocaleString()}`}
-          icon={<Sparkles className="size-5 text-(--accent)" />} tip={<InfoTip term="xp" />}>
+          icon={<Carrot className="size-5 text-(--accent)" aria-hidden />} tip={<InfoTip term="xp" />}>
           <span className="mt-0.5 block h-1 w-full max-w-16 overflow-hidden rounded-full bg-(--bg-elevated)">
             <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${pct}%` }} />
           </span>
@@ -129,7 +129,7 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
       {r.best && (
         <Card>
           <div className="flex items-center gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--brand) text-white"><Trophy className="size-4" /></span>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--brand) text-(--on-fill)"><Trophy className="size-4" /></span>
             <span className="min-w-0 flex-1">
               <Label>Best workout</Label>
               <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{r.best.name}</span>
@@ -184,19 +184,4 @@ function Tile({ label, value, icon, tip, children }: {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</span>
-}
-
-/** Small home pill: Sunday noon through Monday, dismissible per week. */
-export function RecapPill({ onOpen, onDismiss }: { onOpen: () => void; onDismiss: () => void }) {
-  return (
-    <div className="coach-pins mx-4 mt-2.5 flex shrink-0 items-center gap-2 rounded-full border border-(--accent)/30 bg-(--accent-subtle) py-1 pl-3 pr-1 text-[0.7059rem] text-(--accent)">
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-1.5 text-left font-medium">
-        <CalendarCheck className="size-3.5 shrink-0" /><span className="truncate">Your week in review</span>
-        <ChevronRight className="size-3.5 shrink-0" />
-      </button>
-      <button type="button" onClick={onDismiss} aria-label="Dismiss weekly recap" className="hit-44 rounded-full p-1 text-(--text-muted)">
-        <X className="size-3.5" />
-      </button>
-    </div>
-  )
 }

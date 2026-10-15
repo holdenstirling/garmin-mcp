@@ -3,8 +3,7 @@
 // watch status and a pre-run checklist ticked per day on this device.
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Activity, Bike, Check, CloudSun, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon,
-  Repeat, Sparkles, Utensils, Watch, Waves, Wind,
+  Activity, Bike, Check, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Repeat, Utensils, Watch, Waves, Wind,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -91,7 +90,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
       )}
       {data?.state === 'free' && (
         <>
-          <Hero icon={Sparkles} title={data.has_plan ? 'Nothing planned today' : 'Your call today'} meta="30-45 min · easy"
+          <Hero icon={Compass} title={data.has_plan ? 'Nothing planned today' : 'Your call today'} meta="30-45 min · easy"
             line={data.free.purpose} />
           <TargetChips targets={data.free.main_targets} />
           <CueCard cue={data.free.cue} />
@@ -107,7 +106,7 @@ function Hero({ icon: Icon, title, meta, line, done }: { icon: typeof Bike; titl
   return (
     <div className="celebrate flex flex-col gap-3 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-4">
       <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)">
           <Icon className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
@@ -115,7 +114,7 @@ function Hero({ icon: Icon, title, meta, line, done }: { icon: typeof Bike; titl
           <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{meta}</p>
         </div>
         {done && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent) px-2 py-1 text-[0.6471rem] font-semibold text-white">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent) px-2 py-1 text-[0.6471rem] font-semibold text-(--on-fill)">
             <Check className="size-3.5" strokeWidth={3} /> Done
           </span>
         )}
@@ -342,7 +341,7 @@ function Checklist({ day, sport }: { day: string; sport: string }) {
                 <button type="button" onClick={() => toggle(i)} aria-pressed={on}
                   className="flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left active:opacity-70">
                   <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors',
-                    on ? 'border-(--accent) bg-(--accent) text-white' : 'border-(--border)')}>
+                    on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border)')}>
                     {on && <Check className="size-3.5" strokeWidth={3} />}
                   </span>
                   <span className={cn('text-[0.8235rem]', on ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{t}</span>

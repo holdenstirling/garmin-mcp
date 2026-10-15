@@ -3,7 +3,7 @@
 // "Pick a challenge" opens a sheet with 3 personal suggestions per period (easy, stretch, fun).
 import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Sparkles, Target, Trophy, UserPlus, X } from 'lucide-react'
+import { Carrot, Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Target, Trophy, UserPlus, X } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -205,7 +205,7 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
     <div data-challenge={c.id} className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
       <div className="flex items-start gap-3">
         <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
-          c.done ? 'bg-(--brand) text-white' : 'bg-(--bg-elevated) text-(--accent)', party && 'celebrate')}>
+          c.done ? 'bg-(--brand) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--accent)', party && 'celebrate')}>
           {c.done ? <Check className="size-5" /> : c.metric === 'climb_m' ? <Mountain className="size-4" /> : <Target className="size-4" />}
         </span>
         <div className="min-w-0 flex-1">
@@ -314,10 +314,10 @@ function PickSheet({ v, initial, imperial, onClose, onJoined }: {
         <Card key={s.template} className="flex flex-col gap-2 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className={cn('rounded-full px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wide',
-              s.kind === 'stretch' ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
+              s.kind === 'stretch' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
               {KIND_LABEL[s.kind]}
             </span>
-            <span className="ml-auto inline-flex items-center gap-1 text-[0.7059rem] font-medium text-(--brand)"><Sparkles className="size-3" /> +{s.xp} XP</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-[0.7059rem] font-medium text-(--brand)"><Carrot className="size-3" aria-hidden /> +{s.xp} XP</span>
           </div>
           <p className="text-[0.8824rem] font-semibold leading-snug text-(--text)">{s.name}</p>
           <p className="text-[0.7647rem] text-(--text-secondary)">{targetLine(s, imperial)}</p>

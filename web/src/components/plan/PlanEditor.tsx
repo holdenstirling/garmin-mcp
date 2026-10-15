@@ -266,7 +266,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                   {canAdd && (
                     <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`}
                       onClick={() => setEditing({ session: null, date: d.date })}
-                      className="mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
+                      className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
                       <Plus className="size-3.5" />
                     </button>
                   )}

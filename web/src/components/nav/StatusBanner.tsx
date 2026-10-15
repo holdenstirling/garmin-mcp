@@ -1,6 +1,6 @@
 // Rabbit's one status slot: a single row (at most 44px) for the most important thing to
 // fix or see right now. Chat decides which one; this only draws it.
-import { CalendarCheck, ChevronRight, ListChecks, Sparkles, Target, TriangleAlert, Watch, X } from 'lucide-react'
+import { CalendarCheck, ChevronRight, ListChecks, Route, Target, TriangleAlert, Watch, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type Banner =
@@ -13,7 +13,7 @@ export type Banner =
 const LOOK = {
   error: { icon: TriangleAlert, cls: 'border-(--danger)/30 bg-(--danger-subtle) text-(--danger)' },
   garmin: { icon: Watch, cls: 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning)' },
-  plan: { icon: Sparkles, cls: 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' },
+  plan: { icon: Route, cls: 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' },
   quest: { icon: ListChecks, cls: 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' },
   recap: { icon: CalendarCheck, cls: 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' },
 } as const

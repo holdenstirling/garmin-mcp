@@ -138,7 +138,7 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
         <p className="text-sm text-(--text-secondary)">
           Garmin sent you a verification code (email or text). Enter it here.
         </p>
-        <Input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8}
+        <Input aria-label="Verification code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8}
           placeholder="123456" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           className="text-base tracking-widest" autoFocus />
         {message && <p className="text-xs text-(--danger)">{message}</p>}
@@ -152,9 +152,9 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
 
   return (
     <form onSubmit={submitLogin} className="flex flex-col gap-2">
-      <Input type="email" autoComplete="username" inputMode="email" placeholder="Garmin email"
+      <Input aria-label="Garmin email" type="email" autoComplete="username" inputMode="email" placeholder="Garmin email"
         value={email} onChange={(e) => setEmail(e.target.value)} className="text-base" required />
-      <Input type="password" autoComplete="current-password" placeholder="Garmin password"
+      <Input aria-label="Garmin password" type="password" autoComplete="current-password" placeholder="Garmin password"
         value={password} onChange={(e) => setPassword(e.target.value)} className="text-base" required />
       {message && <p className={`text-xs ${coolingDown ? 'text-(--warning-text)' : 'text-(--danger)'}`}>{message}</p>}
       {coolingDown && !message && (

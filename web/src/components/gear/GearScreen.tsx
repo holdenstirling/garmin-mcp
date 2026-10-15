@@ -100,7 +100,7 @@ export function GearScreen({ onClose, imperial, onAsk }: {
             {retired.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowRetired((v) => !v)} aria-expanded={showRetired}
-                  className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                  className="hit-44 flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
                   Retired ({retired.length}) <ChevronRight className={cn('size-3.5 transition-transform', showRetired && 'rotate-90')} />
                 </button>
                 {showRetired && retired.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}

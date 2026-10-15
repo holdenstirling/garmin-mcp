@@ -80,7 +80,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           </div>
         ) : error ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)">
-            {error} <button type="button" className="underline" onClick={() => void load()}>Retry</button>
+            {error} <button type="button" className="hit-44 underline" onClick={() => void load()}>Retry</button>
           </p>
         ) : (
           <>
@@ -114,7 +114,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             {past.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowPast((v) => !v)}
-                  className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                  className="hit-44 flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
                   Past events ({past.length}) <ChevronRight className={cn('size-3.5 transition-transform', showPast && 'rotate-90')} />
                 </button>
                 {showPast && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
@@ -183,7 +183,7 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
       className={cn('flex w-full items-center gap-3 bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)',
         !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && n < 0 && 'opacity-70')}>
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
-        e.main ? 'bg-(--accent) text-white' : 'bg-(--accent-subtle) text-(--accent)')}>
+        e.main ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
         <Icon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">

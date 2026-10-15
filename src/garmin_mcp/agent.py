@@ -573,9 +573,6 @@ class Agent:
     def history(self, user_id: str, thread_id: str) -> list[dict[str, Any]]:
         return self.coach.turns(user_id, thread_id)
 
-    def clear_history(self, user_id: str, thread_id: str) -> None:
-        self.coach.clear_thread(user_id, thread_id)
-
     def _context_messages(self, user_id: str, thread_id: str) -> list[dict[str, Any]]:
         msgs: list[dict[str, Any]] = []
         for t in self.history(user_id, thread_id)[-CONTEXT_TURNS:]:

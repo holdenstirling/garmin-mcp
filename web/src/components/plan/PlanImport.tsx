@@ -81,7 +81,7 @@ export function AddPlanButton({ hasPlan, onClick }: { hasPlan: boolean; onClick:
   return (
     <button type="button" onClick={onClick}
       className="flex min-h-20 w-full items-center gap-3 rounded-2xl border border-(--accent) bg-(--accent-subtle) px-4 py-4 text-left shadow-sm active:opacity-80">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-white"><Plus className="size-6" /></span>
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><Plus className="size-6" /></span>
       <span className="min-w-0 flex-1">
         <span className="block text-[1.0588rem] font-semibold text-(--accent)">Add a plan</span>
         <span className="block text-[0.7059rem] leading-snug text-(--text-muted)">
@@ -115,7 +115,7 @@ function SaveAsTemplate({ api }: { api: ImportApi }) {
   return (
     <Card className="flex flex-col gap-2 px-4 py-3">
       <p className="text-[0.7647rem] leading-snug text-(--text-muted)">Sessions from today on, kept as weeks 1, 2, 3… Use it for any athlete from any start date.</p>
-      <input className={inputCls} placeholder="Template name (e.g. 12-week half block)" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <input aria-label="Template name" className={inputCls} placeholder="Template name (e.g. 12-week half block)" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
       <div className="flex gap-2">
         <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={() => setOpen(false)}>Cancel</Button>

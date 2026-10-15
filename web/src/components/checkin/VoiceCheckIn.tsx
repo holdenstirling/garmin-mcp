@@ -209,7 +209,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
                   <textarea id="checkin-text" rows={3} maxLength={TEXT_MAX} value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="e.g. felt heavy, left calf a bit tight, slept badly, legs 6 out of 10"
-                    className="w-full resize-none rounded-xl border border-(--border-strong) bg-(--bg-surface) px-3 py-2.5 text-[0.8824rem] leading-snug text-(--text) placeholder:text-(--text-muted)/70 focus:border-(--accent) focus:outline-none" />
+                    className="w-full resize-none rounded-xl border border-(--border-strong) bg-(--bg-surface) px-3 py-2.5 text-[0.8824rem] leading-snug text-(--text) placeholder:text-(--text-muted) focus:border-(--accent) focus:outline-none" />
                 </div>
               )}
 
@@ -339,7 +339,7 @@ function Result({ saved, onDone, onEdited }: {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"><Check className="size-5" /></span>
+        <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{c.summary || 'Checked in.'}</p>
           <p className="text-[0.7059rem] text-(--text-muted)">Saved. Rabbit will use it for your next days.</p>

@@ -45,7 +45,7 @@ export function KindPicker({ value, onChange }: { value: EventKind | null; onCha
               <button key={k} type="button" role="radio" aria-checked={on} onClick={() => onChange(k)}
                 className={cn('flex min-h-16 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-[0.8235rem] font-medium transition-colors',
                   on ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) bg-(--bg-surface) text-(--text) active:bg-(--bg-inset)')}>
-                <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', on ? 'bg-(--accent) text-white' : 'bg-(--accent-subtle) text-(--accent)')}>
+                <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
                   <Icon className="size-4.5" />
                 </span>
                 {label}

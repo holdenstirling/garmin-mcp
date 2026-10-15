@@ -2,7 +2,7 @@
 // line of detail, up to 3 signal chips, one primary action and an "Ask Rabbit" link.
 // Open the first time you see it each day, then collapsed to one line with the week's dots.
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, Flag, Lightbulb, Moon, Sparkles, Waves, Zap } from 'lucide-react'
+import { Check, ChevronDown, Flag, Lightbulb, Moon, Route, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import type { Term } from '@/lib/glossary'
@@ -22,7 +22,7 @@ const SIGNAL_TERM: Record<string, Term> = {
 const TONE: Record<TodayTone, { icon: typeof Zap; color: string; border: string; bg: string }> = {
   go: { icon: Zap, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
   done: { icon: Check, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
-  plan: { icon: Sparkles, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
+  plan: { icon: Route, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
   easy: { icon: Waves, color: 'text-(--accent)', border: 'border-(--accent)/30', bg: 'bg-(--accent)' },
   rest: { icon: Moon, color: 'text-(--text-secondary)', border: 'border-(--border-strong)', bg: 'bg-(--text-muted)' },
   race: { icon: Flag, color: 'text-(--brand)', border: 'border-(--brand)/30', bg: 'bg-(--brand)' },
@@ -33,7 +33,7 @@ function seenToday(day: string): boolean {
   try { return window.localStorage.getItem(KEY) === day } catch { return false }
 }
 
-export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight, onOpenInsight }: {
+export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight, onOpenInsight, hideStreak }: {
   today: Today; onAction: (kind: TodayActionKind) => void; onAsk: (text: string) => void
   /** this plan week's days: dots in the collapsed row */
   week?: WeekDay[] | null
@@ -41,8 +41,11 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
   onOpenWorkout?: (sessionId: string) => void
   /** top "do this" insight from Progress -> What your data says (one line, optional) */
   insight?: string | null; onOpenInsight?: () => void
+  /** the home streak strip already shows the streak: drop the duplicate signal */
+  hideStreak?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(() => seenToday(today.date))
+  const signals = hideStreak ? today.signals.filter((s) => s.label !== 'Streak') : today.signals
   // First show of the day: the card hops in (anim kit, .rb-hop-in). The primary button squishes
   // on press (.press on Button variant="primary").
   const [firstShow] = useState(() => !collapsed)
@@ -61,7 +64,7 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
       {play && fx && <TodayFx tone={fx} />}
       <button type="button" onClick={toggle} aria-expanded={!collapsed}
         className="flex w-full items-center gap-2.5 px-3 pt-2.5 text-left" style={{ paddingBottom: collapsed ? 10 : 0 }}>
-        <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-white', t.bg, play && fx === 'easy' && 'fx-sway')}>
+        <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full text-(--on-fill)', t.bg, play && fx === 'easy' && 'fx-sway')}>
           <Icon className="size-4" />
         </span>
         <span className="min-w-0 flex-1">
@@ -74,9 +77,9 @@ export function TodayCard({ today, week, onAction, onAsk, onOpenWorkout, insight
       {!collapsed && (
         <div className="flex flex-col gap-2 px-3 pb-2.5 pt-1.5">
           <p className="text-[0.7647rem] leading-snug text-(--text)">{today.detail}</p>
-          {today.signals.length > 0 && (
+          {signals.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {today.signals.map((s) => (
+              {signals.map((s) => (
                 <span key={s.label}
                   className={cn('inline-flex items-center gap-1 rounded-full border py-0.5 pl-2 text-[0.7059rem] font-medium',
                     SIGNAL_TERM[s.label] ? 'pr-1' : 'pr-2',

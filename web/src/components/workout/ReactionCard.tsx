@@ -2,7 +2,7 @@
 // workout. Verdict badge and planned vs actual first, then XP and streak, PR ribbon, gear mileage, a
 // "How did it feel?" check-in and tomorrow's session. Deterministic, no AI.
 import { useEffect, useRef, useState } from 'react'
-import { Award, Check, ChevronRight, Flame, Footprints, Moon, Shuffle, Sparkles, Target, X } from 'lucide-react'
+import { Award, CalendarClock, Check, ChevronRight, CirclePlus, Flame, Footprints, Moon, Shuffle, Target, X } from 'lucide-react'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -15,10 +15,10 @@ import { fmtDist, getReaction, type CheckInRequest, type Reaction, type Verdict 
 
 const LOADING = ['Studying your splits…', 'Comparing to plan…', 'Counting your XP…']
 const BADGE: Record<Verdict, { label: string; icon: typeof Check; cls: string }> = {
-  nailed: { label: 'Nailed it', icon: Check, cls: 'bg-(--accent) text-white' },
+  nailed: { label: 'Nailed it', icon: Check, cls: 'bg-(--accent) text-(--on-fill)' },
   close: { label: 'Close', icon: Target, cls: 'bg-(--accent-subtle) text-(--accent) border border-(--accent)/40' },
   different: { label: 'Swapped it', icon: Shuffle, cls: 'bg-(--warning-subtle) text-(--warning-text) border border-(--warning)/40' },
-  bonus: { label: 'Bonus workout', icon: Sparkles, cls: 'bg-(--brand) text-white' },
+  bonus: { label: 'Bonus workout', icon: CirclePlus, cls: 'bg-(--brand) text-(--on-fill)' },
 }
 
 export function ReactionCard({ activityId, imperial, onClose, onCheckIn, onOpenSession }: {
@@ -80,7 +80,7 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
     <>
       <div className="celebrate relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface) px-4 pb-4 pt-5 text-center">
         {best && (
-          <span className="absolute right-[-34px] top-[14px] rotate-45 bg-(--brand) px-10 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-widest text-white"
+          <span className="absolute right-[-34px] top-[14px] rotate-45 bg-(--brand) px-10 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--on-fill)"
             aria-hidden="true">PR</span>
         )}
         <span ref={badge} className={cn('rb-pop inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.9412rem] font-semibold', b.cls)}
@@ -148,7 +148,7 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
         <button type="button" disabled={!r.tomorrow.id || !onOpenSession}
           onClick={() => r.tomorrow?.id && onOpenSession?.(r.tomorrow.id)}
           className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5 text-left enabled:active:bg-(--bg-inset)">
-          {r.tomorrow.rest ? <Moon className="size-4 shrink-0 text-(--text-muted)" /> : <Sparkles className="size-4 shrink-0 text-(--accent)" />}
+          {r.tomorrow.rest ? <Moon className="size-4 shrink-0 text-(--text-muted)" /> : <CalendarClock className="size-4 shrink-0 text-(--accent)" />}
           <span className="min-w-0 flex-1">
             <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
               Tomorrow · {fmtDay(r.tomorrow.date, { weekday: 'long' })}

@@ -1,7 +1,7 @@
 // Coach side: your athletes, and for each one an overview, their plan, messages, notes,
 // stats and (only if the athlete allowed it) their Rabbit chats.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, ChevronRight, Eye, Lock, Map as MapIcon, MessageSquare, Pin, Plus, StickyNote, Trash2, Users } from 'lucide-react'
+import { CalendarDays, ChevronRight, Eye, Lock, Map as MapIcon, MessageSquare, Pin, Plus, StickyNote, Trash2, Users } from 'lucide-react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Avatar } from '@/components/Avatar'
@@ -63,7 +63,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
               {a.goal ? `${a.goal.title}${a.goal.date ? ` · ${countdown(a.goal.date)}` : ''}` : 'No goal set'}
             </span>
           </span>
-          {a.unread > 0 && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-[0.6471rem] font-semibold text-white">{a.unread}</span>}
+          {a.unread > 0 && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--on-fill)">{a.unread}</span>}
           <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />
         </button>
       ))}
@@ -131,7 +131,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
           <div className="no-scrollbar mx-auto mt-2.5 flex max-w-xl gap-1 overflow-x-auto rounded-lg bg-(--bg-elevated) p-1">
             {tabs.map(([t, l]) => (
               <button key={t} type="button" onClick={() => { setTab(t); setThread(null) }} aria-pressed={tab === t}
-                className={cn('h-8 shrink-0 flex-1 rounded-md px-2 text-[0.7059rem] font-medium', tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+                className={cn('hit-44 h-8 shrink-0 flex-1 rounded-md px-2 text-[0.7059rem] font-medium', tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
                 {l}{t === 'messages' && o?.unread ? ` (${o.unread})` : ''}
               </button>
             ))}
@@ -258,7 +258,7 @@ function AthleteStats({ aid }: { aid: string }) {
   const [error, setError] = useState<string | null>(null)
   useEffect(() => { getAthleteStats(aid).then(setS, (e) => setError((e as Error).message)) }, [aid])
   if (error) return <p className="px-1 text-[0.7647rem] text-(--danger)">{error}</p>
-  if (!s) return <div className="flex justify-center py-16"><BarChart3 className="size-8 animate-pulse text-(--text-muted)" /></div>
+  if (!s) return <RabbitLoader className="py-16" label="Loading their stats" />
   return <StatsBody s={s} loadBase={coachBase(aid)} />
 }
 

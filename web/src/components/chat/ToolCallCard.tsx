@@ -9,20 +9,20 @@ import type { ToolCall } from '@/hooks/useCoach'
 function StatusIcon({ status }: { status: ToolCall['status'] }) {
   if (status === 'executing') {
     return (
-      <svg className="animate-spin text-muted-foreground/80" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <svg aria-hidden="true" className="animate-spin motion-reduce:animate-none text-muted-foreground/80" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
       </svg>
     )
   }
   if (status === 'error') {
     return (
-      <svg className="text-[#dc2626]" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" className="text-(--danger)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
       </svg>
     )
   }
   return (
-    <svg className="text-[#16a34a]" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" className="text-(--success)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   )
@@ -32,10 +32,11 @@ function StatusDot({ status }: { status: ToolCall['status'] }) {
   return (
     <div className={cn(
       'flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full border border-border shadow-sm transition-colors',
-      status === 'done' ? 'border-[#16a34a]/30 bg-[#16a34a]/10'
-        : status === 'error' ? 'border-[#dc2626]/30 bg-[#dc2626]/10' : 'bg-background',
+      status === 'done' ? 'border-(--success)/30 bg-(--success-subtle)'
+        : status === 'error' ? 'border-(--danger)/30 bg-(--danger-subtle)' : 'bg-background',
     )}>
       <StatusIcon status={status} />
+      <span className="sr-only">{status === 'executing' ? 'Running: ' : status === 'error' ? 'Failed: ' : 'Done: '}</span>
     </div>
   )
 }
@@ -44,11 +45,13 @@ export const ToolCallCard = memo(function ToolCallCard({ toolCall }: { toolCall:
   const [expanded, setExpanded] = useState(false)
   const Wrapper = expanded ? Card : 'div'
   const hasDetails = toolCall.result != null || toolCall.error || Object.keys(toolCall.params).length > 0
+  const Head = hasDetails ? 'button' : 'div'
   return (
     <Wrapper className={cn('w-full overflow-hidden transition-all duration-200',
       expanded ? 'my-1 gap-0 border-border bg-background py-0 shadow-sm' : 'border-transparent bg-transparent')}>
-      <div
-        className={cn('flex w-max max-w-[85%] cursor-pointer select-none items-center gap-2 rounded-(--radius) px-2 py-1.5 transition-colors',
+      <Head {...(hasDetails ? { type: 'button' as const, 'aria-expanded': expanded } : {})}
+        className={cn('flex w-max max-w-[85%] select-none items-center gap-2 rounded-(--radius) px-2 py-1.5 text-left transition-colors',
+          hasDetails && 'cursor-pointer',
           expanded ? 'w-full max-w-full rounded-b-none border-b border-border/50 bg-secondary/50' : 'border border-transparent hover:bg-secondary/50')}
         onClick={() => hasDetails && setExpanded((p) => !p)}
       >
@@ -56,9 +59,9 @@ export const ToolCallCard = memo(function ToolCallCard({ toolCall }: { toolCall:
         <span className={cn('truncate text-xs font-semibold', expanded ? 'text-foreground' : 'text-muted-foreground')}>
           {toolLabel(toolCall.toolName, toolCall.params)}
         </span>
-        {hasDetails && <span className="ml-1 text-[0.6471rem] text-muted-foreground/50">{expanded ? '▾' : '▸'}</span>}
-      </div>
-      <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        {hasDetails && <span aria-hidden="true" className="ml-1 text-[0.6471rem] text-muted-foreground/50">{expanded ? '▾' : '▸'}</span>}
+      </Head>
+      <div inert={!expanded} className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-3 bg-secondary/20 p-3">
             {Object.keys(toolCall.params).length > 0 && (
@@ -94,15 +97,16 @@ export const ToolCallGroup = memo(function ToolCallGroup({ toolCalls }: { toolCa
   const status: ToolCall['status'] = running ? 'executing' : failed ? 'error' : 'done'
   return (
     <div className="w-full">
-      <div className="flex w-max max-w-[85%] cursor-pointer select-none items-center gap-2 rounded-(--radius) border border-transparent px-2 py-1.5 transition-colors hover:bg-secondary/50"
+      <button type="button" aria-expanded={expanded}
+        className="hit-44 flex w-max max-w-[85%] cursor-pointer select-none items-center gap-2 rounded-(--radius) border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-secondary/50"
         onClick={() => setExpanded((p) => !p)}>
         <StatusDot status={status} />
         <span className="truncate text-xs font-semibold text-muted-foreground">
           {running ? 'Checking your Garmin data…' : `Checked ${toolCalls.length} things in Garmin`}
         </span>
-        <span className="ml-1 text-[0.6471rem] text-muted-foreground/50">{expanded ? '▾' : '▸'}</span>
-      </div>
-      <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <span aria-hidden="true" className="ml-1 text-[0.6471rem] text-muted-foreground/50">{expanded ? '▾' : '▸'}</span>
+      </button>
+      <div inert={!expanded} className={`grid transition-[grid-template-rows] duration-200 ease-out ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="min-h-0 overflow-hidden">
           <div className="space-y-1 pl-4 pt-1">
             {toolCalls.map((tc) => <ToolCallCard key={tc.id} toolCall={tc} />)}
