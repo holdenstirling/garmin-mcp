@@ -3,6 +3,8 @@
 #
 #   scripts/dev-rabbit.sh mac     Mac only: http://localhost:5173/app/ (Vite hot reload),
 #                                 no Google sign-in (DEV_NO_AUTH_USER=holden).
+#   scripts/dev-rabbit.sh cloudshell   Google Cloud Shell: built app on :8080 with demo Garmin data,
+#                                 signed in as a demo user; open it with Web Preview (port 8080).
 #   scripts/dev-rabbit.sh phone   Phone over HTTPS through a Cloudflare Tunnel to
 #                                 $RABBIT_DEV_URL (e.g. https://rabbit-dev.example.com):
 #                                 real Google sign-in + Web Push; frontend rebuilds on save.
@@ -59,6 +61,14 @@ case "$MODE" in
     cloudflared tunnel --no-autoupdate run --url http://127.0.0.1:8001 "$CLOUDFLARE_TUNNEL" & pids+=($!)
     echo "==> Rabbit: $RABBIT_DEV_URL/app/  (frontend rebuilds on save; refresh the phone; Ctrl-C to stop)"
     ;;
-  *) echo "usage: $0 mac|phone"; exit 2 ;;
+  cloudshell)
+    : "${WEB_HOST:?run this inside Google Cloud Shell}"
+    export PORT=8080 PUBLIC_BASE_URL="https://8080-$WEB_HOST" DEV_NO_AUTH_USER="${DEV_NO_AUTH_USER:-demo}"
+    export RABBIT_FAKE_GARMIN=1 RABBIT_DEV_TOOLS=1 ALLOWED_GOOGLE_USERS="${ALLOWED_GOOGLE_USERS:-demo@example.com:demo}"
+    (cd web && bun run build >/dev/null)
+    echo "==> Rabbit preview: $PUBLIC_BASE_URL/app/  (demo data, no sign-in; Ctrl-C to stop)"
+    uv run garmin-mcp & pids+=($!)
+    ;;
+  *) echo "usage: $0 mac|phone|cloudshell"; exit 2 ;;
 esac
 wait
