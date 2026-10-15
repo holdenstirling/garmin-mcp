@@ -22,6 +22,8 @@ import { InsightsCard } from '@/components/insights/InsightsCard'
 import { PullToRefresh } from '@/components/fx/PullToRefresh'
 import { hopIn } from '@/components/anim'
 import { useRefreshGroup, useTrackRefresh } from './refresh'
+import { GarminEmpty } from '@/components/garmin/GarminEmpty'
+import { isGarminMissing } from '@/lib/upnext'
 
 type Period = 'week' | 'month' | 'year'
 
@@ -35,6 +37,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
   const [s, setS] = useState<Stats | null>(null)
   const [p, setP] = useState<Progress | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [noGarmin, setNoGarmin] = useState(false) // 409 garmin_not_connected: friendly empty state
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [loadKey, setLoadKey] = useState(0)
@@ -46,7 +49,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
     return getStats(fresh).then((r) => {
       setS(r); setError(null)
       return getProgress().then(setP, () => {})
-    }, (e) => setError((e as Error).message)).finally(() => setBusy(false))
+    }, (e) => { setNoGarmin(isGarminMissing(e)); setError((e as Error).message) }).finally(() => setBusy(false))
   }, [])
   useEffect(() => { void load() }, [load])
   // Refresh = stats + every card below; resolves when all of them have landed (pull rabbit).
@@ -79,7 +82,8 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
             <div className="skeleton h-40" aria-hidden="true" />
           </div>
         )}
-        {error && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => void refresh()} compact={!!s} />}
+        {noGarmin && !s && <GarminEmpty what="progress" />}
+        {error && !(noGarmin && !s) && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => void refresh()} compact={!!s} />}
         {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
           race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
           insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}

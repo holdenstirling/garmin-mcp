@@ -16,6 +16,7 @@ import {
   CHECKLIST, fmtTemp, getWorkoutToday, readChecklist, writeChecklist,
   type CheckInRequest, type Target, type Weather, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
 } from '@/lib/workout'
+import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 
 const ICON: Record<string, typeof Bike> = {
   swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
@@ -171,7 +172,9 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
           {d.weather && <WeatherChip w={d.weather} imperial={imperial} />}
         </div>
       )}
-      {s.id && s.garmin.syncable && <WatchRow s={s} onSynced={onSynced} />}
+      {s.id && s.garmin.syncable && (d.garmin_connected === false
+        ? <GarminEmpty what="workout" compact />
+        : <WatchRow s={s} onSynced={onSynced} />)}
       {s.status !== 'done' && d.date === d.today && <Checklist day={d.today} sport={s.sport} />}
     </>
   )

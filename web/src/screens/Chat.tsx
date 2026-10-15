@@ -28,11 +28,13 @@ import { CoachApp } from '@/components/coach/CoachApp'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
-import { TodayCard } from '@/components/today/TodayCard'
+import { UpNextCard } from '@/components/home/UpNextCard'
+import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
+import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
 import { useTopInsight } from '@/lib/insights'
 import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { RecapSheet } from '@/components/recap/RecapSheet'
-import { getToday, localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
+import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { WorkoutDayScreen } from '@/components/workout/WorkoutDayScreen'
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
@@ -136,7 +138,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [pending, setPending] = useState<{ seed?: { thread_id: string; turn_id: string }; seedMsg?: ChatMessage } | null>(null)
   const { items, ready, status, send, stop, decide, reload, loadError, retry } =
     useCoach(threadId, { turn: me.chat.active_turn, thread: me.chat.active_thread }, queued, () => setQueued(null))
-  const [sheet, setSheet] = useState<Sheet | null>(me.garmin.connected ? null : 'settings')
+  const [sheet, setSheet] = useState<Sheet | null>(null)
   const [closing, setClosing] = useState(false)
   const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
   const [addPlan, setAddPlan] = useState(false)
@@ -292,7 +294,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Today card (today.py): one recommendation; it replaces the race-soon and adjust banners.
   const [today, setToday] = useState<Today | null>(null)
   const topInsight = useTopInsight(today?.date)
-  const loadToday = useCallback(() => { getToday().then(setToday, () => {}) }, [])
+  // Up next (upnext.py) wraps the Today card: one fetch for both.
+  const [upnext, setUpNext] = useState<UpNext | null>(null)
+  const loadToday = useCallback(() => { getUpNext().then((u) => { setUpNext(u); setToday(u.today) }, () => {}) }, [])
+  useEffect(() => {
+    const onConnect = () => open('settings') // GarminEmpty / any screen: "Connect Garmin"
+    window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
+    return () => window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Workout day: the pre-workout screen (from Today / the plan) and the post-workout reaction.
   const [workout, setWorkout] = useState<{ sessionId?: string } | null>(null)
   const [reaction, setReaction] = useState<number | null>(null)
@@ -546,7 +555,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       shareDraft(a.draft_id).then(() => showToast('Shared in Community 🎉'), (e) => showToast((e as Error).message))
     } else if (a.id === 'community_later' && a.draft_id) {
       dismissDraft(a.draft_id).then(() => showToast('Okay, kept it to yourself.'), () => showToast('Okay.'))
-    } else if (a.id === 'community') { if (a.club_id) openCommunity('clubs', a.club_id); else openCommunity() }
+    } else if (a.id === 'community') { if (a.club_id) openCommunity('clubs', a.club_id); else openCommunity(a.view === 'people' ? 'people' : 'feed') }
     else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
     else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
   }
@@ -562,7 +571,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const quest = progress ? nextQuest(progress) : null
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
-    : !me.garmin.connected ? { kind: 'garmin' }
+    : !me.garmin.connected && firstVisitHidden() ? { kind: 'garmin' }
     : isCoach && wantsPlan(intents) && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
     : isCoach && quest && progress ? { kind: 'quest', title: quest.title, done: progress.setup.done, total: progress.setup.total }
     : isCoach && recapReady ? { kind: 'recap' }
@@ -780,6 +789,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
+      {isCoach && upnext && !typing && (
+        <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
+          onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
+          onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={loadToday}
+          hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+      )}
+      {isCoach && !typing && (
+        <FirstVisitCard connected={me.garmin.connected} onConnect={() => open('settings')}
+          onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
+      )}
 
       {banner && !typing && (
         <StatusBanner banner={banner} onTap={tapBanner}
@@ -788,11 +807,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {isCoach && !typing && stripFirst(intents) && (
         <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
           onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
-      )}
-      {isCoach && today && (today.garmin || !!goal) && !typing && (
-        <TodayCard key={today.date} today={today} week={goal ? week?.days : null} onAction={todayAction} onAsk={tellRabbit}
-          onOpenWorkout={(id) => setWorkout({ sessionId: id })} insight={topInsight} onOpenInsight={openProgress}
-          hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
       )}
       {isCoach && !typing && !stripFirst(intents) && intents.length > 1 && (
         <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}

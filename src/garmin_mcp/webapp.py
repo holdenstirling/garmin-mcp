@@ -16,7 +16,7 @@ import re
 import secrets
 import threading
 import time
-from datetime import date
+from datetime import date, datetime
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
@@ -924,6 +924,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     async def load_get(request: Request, user_id: str) -> Response:
         assert chat is not None
+        if (empty := _no_garmin(user_id)) is not None:
+            return empty
         return JSONResponse(await _plan_call(lambda: chat.agent.stats.load(user_id)))
 
     async def coach_athlete_load(request: Request, user_id: str) -> Response:
@@ -933,6 +935,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     async def stats_get(request: Request, user_id: str) -> Response:
         assert chat is not None
+        if (empty := _no_garmin(user_id)) is not None:
+            return empty
         fresh = request.query_params.get("fresh") == "1"
         return JSONResponse(await _plan_call(lambda: chat.agent.stats.get(user_id, fresh=fresh)))
 
@@ -1099,7 +1103,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         sid = request.query_params.get("session_id") or None
         if sid is not None and (len(sid) > 40 or not sid.isalnum()):
             raise ValueError("session_id")
-        return JSONResponse(await _workout_day().today(user_id, sid))
+        return JSONResponse({**await _workout_day().today(user_id, sid), "garmin_connected": _garmin_connected(user_id)})
 
     async def workout_reaction_get(request: Request, user_id: str) -> Response:
         raw = request.query_params.get("activity_id") or ""
@@ -3036,10 +3040,63 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
             going=_cd_going)
 
+    # ------------------------------------------ up next + first visit --
+    # upnext.py: the one "Up next" card on Rabbit home (wraps the Today card; a group run from
+    # RSVP'd club meetups / the clubs directory for people with no plan or goal). Invite joins:
+    # mutual follow with the inviter (social.connect_invited, blocks respected) + their moment
+    # and push. First visit without Garmin: /app/api/firstvisit, and Garmin-only reads
+    # (stats, load) answer 409 {code: "garmin_not_connected"} for a friendly empty state.
+    from . import upnext as _upnext
+
+    def _upnext_group(uid: str, now: datetime) -> dict[str, Any] | None:
+        if not community_routes:
+            return None
+        meetups = clb.my_meetups(uid, now, days=2)
+        listings: list[dict[str, Any]] = []
+        m = _cd.metro(**_cm_home(uid)) if directory_routes else None
+        if m is not None:
+            listings = directory.view(m, now_local=now.replace(tzinfo=None), uid=uid)["listings"]
+        return _upnext.pick_group(meetups, listings, now)
+
+    async def upnext_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        svc = _upnext.UpNextService(chat.agent, auth.oura, group=_upnext_group, garmin=_garmin_connected)
+        return JSONResponse(await svc.get(user_id))
+
+    async def firstvisit_get(request: Request, user_id: str) -> Response:
+        inviter = auth.access.inviter_of(user_id)
+        connected = _garmin_connected(user_id)
+        name = _soc_name(inviter) if inviter and soc is not None and soc.follows(user_id, inviter) else None
+        return JSONResponse(_upnext.first_visit(garmin=connected, inviter=name))
+
+    def _no_garmin(user_id: str) -> Response | None:
+        """Garmin-only reads: a friendly empty state instead of a reconnect error."""
+        if _garmin_connected(user_id):
+            return None
+        return JSONResponse(_upnext.NO_GARMIN, status_code=409)
+
+    def _invite_joined(new_uid: str, inviter: str, name: str) -> None:
+        if soc is None or not soc.connect_invited(inviter, new_uid):
+            return
+        first = (name.split() or ["A friend"])[0][:30]
+        quiet = False
+        if chat is not None:
+            chat.agent.moments.friend_joined(inviter, first, new_uid)
+            quiet = chat.agent.moments.quiet(chat.agent._now(inviter))
+        if not quiet:
+            _social_push(inviter, f"invite-joined:{inviter}:{new_uid}", 86400, "New friend on Rabbit",
+                         f"{first} joined Rabbit from your invite.")
+
+    home_routes: list[BaseRoute] = [
+        Route("/app/api/upnext", _plan_api(upnext_get, mutating=False), methods=["GET"]),
+        Route("/app/api/firstvisit", _api(firstvisit_get, mutating=False), methods=["GET"]),
+    ]
+
     # ------------------------------------------------- invites + passkeys --
     # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).
     from . import passkey_web as _pkw
-    passkey_routes = _pkw.make_routes(auth=auth, api=_api, host_ok=host_ok, read_json=read_json)
+    passkey_routes = _pkw.make_routes(auth=auth, api=_api, host_ok=host_ok, read_json=read_json,
+                                      on_join=_invite_joined)
 
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
@@ -3072,6 +3129,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/google/callback", google_callback, methods=["GET"]),
         Route("/app/auth/logout", logout, methods=["POST"]),
         *passkey_routes,
+        *home_routes,
         Route("/app/api/me", _api(me, mutating=False), methods=["GET"]),
         Route("/app/api/push/subscribe", _api(push_subscribe, mutating=True), methods=["POST"]),
         Route("/app/api/push/unsubscribe", _api(push_unsubscribe, mutating=True),

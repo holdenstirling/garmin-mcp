@@ -25,6 +25,8 @@ export type WorkoutSession = {
 }
 export type WorkoutToday = {
   date: string; today: string; units: 'metric' | 'imperial'; has_plan: boolean
+  /** false: "Send to watch" becomes Connect Garmin (no error) */
+  garmin_connected?: boolean
   readiness: { tone: string; line: string; signals: { label: string; value: string; good: boolean }[] } | null
   others: { id: string | null; title: string; sport: string; minutes: number | null; status: string }[]
   weather: Weather | null

@@ -69,8 +69,9 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   if (r.status === 401) throw new AuthError('not signed in')
   if (!r.ok) {
     let msg = `HTTP ${r.status}`
-    try { msg = (await r.json()).error ?? msg } catch { /* not JSON */ }
-    throw new Error(msg)
+    let code: string | undefined
+    try { const d = await r.json(); msg = d.error ?? msg; code = typeof d.code === 'string' ? d.code : undefined } catch { /* not JSON */ }
+    throw Object.assign(new Error(msg), { status: r.status, code })
   }
   return r
 }

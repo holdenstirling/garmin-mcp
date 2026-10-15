@@ -13,7 +13,7 @@ People join without Google and without being added to ``ALLOWED_GOOGLE_USERS``:
 * Any athlete (Google or member) can register passkeys and sign in with them.
 
 Storage (global docs, Fernet-encrypted like everything in ``AppStore``):
-``invites`` ``{id: {hash, created_by, created, expires, max_uses, uses: [{user_id, at}],
+``invites`` ``{id: {hash, created_by, created, expires, max_uses, uses: [{user_id, at, inviter}],
 revoked}}``, ``members`` ``{user_id: {name, email, invited_by, invite_id, joined}}``,
 ``passkeys`` ``{"creds": {cred_id: {user_id, public_key, sign_count, alg, name, created,
 last_used, transports}}, "handles": {user_id: user_handle}}``.
@@ -197,16 +197,19 @@ class Access:
                 return iid, inv
         return None
 
-    def _use_invite(self, iid: str, user_id: str) -> None:
+    def _use_invite(self, iid: str, user_id: str) -> str:
+        """Record the use (with who made the invite, for the auto-follow). Returns the inviter."""
         now = self._clock()
 
-        def use(data: dict[str, Any]) -> None:
+        def use(data: dict[str, Any]) -> str:
             inv = data.get(iid)
             if (inv is None or inv.get("revoked") or inv["expires"] <= now
                     or len(inv.get("uses", [])) >= inv["max_uses"]):
                 raise AccessError("This invite link has expired or is used up. Ask for a new one.", 410)
-            inv.setdefault("uses", []).append({"user_id": user_id, "at": int(now)})
-        self._invites.update(use)
+            inviter = str(inv.get("created_by") or "")
+            inv.setdefault("uses", []).append({"user_id": user_id, "at": int(now), "inviter": inviter})
+            return inviter
+        return str(self._invites.update(use))
 
     # ------------------------------------------------------------- members --
     def is_member(self, user_id: str) -> bool:
@@ -228,21 +231,27 @@ class Access:
         return sorted(out, key=lambda m: -(m["joined"] or 0))
 
     def add_member(self, *, invite_id: str, user_id: str, name: str, email: str,
-                   taken: Callable[[str], bool]) -> None:
-        """Consume one use of the invite and register the member (atomically re-checked)."""
+                   taken: Callable[[str], bool]) -> str:
+        """Consume one use of the invite and register the member (atomically re-checked).
+        Returns the inviter's user id (``""`` if unknown)."""
         with self._lock:
             if taken(email):
                 raise AccessError("That email already has a Rabbit account. Sign in with your passkey instead.",
                                   409, signin=True)
-            inv = self._invites.load().get(invite_id) or {}
-            self._use_invite(invite_id, user_id)
+            inviter = self._use_invite(invite_id, user_id)
             now = int(self._clock())
 
             def add(data: dict[str, Any]) -> None:
-                data[user_id] = {"name": name, "email": email, "invited_by": inv.get("created_by", ""),
+                data[user_id] = {"name": name, "email": email, "invited_by": inviter,
                                  "invite_id": invite_id, "joined": now}
             self._members_doc.update(add)
             self._member_ids.add(user_id)
+            return inviter
+
+    def inviter_of(self, user_id: str) -> str | None:
+        """Who made the invite link this member joined with (None for Google athletes)."""
+        m = self._members_doc.load().get(user_id) or {}
+        return str(m["invited_by"]) if m.get("invited_by") else None
 
     def remove_member(self, user_id: str) -> None:
         def rm(data: dict[str, Any]) -> None:

@@ -240,6 +240,35 @@ class Social:
                     "by_email": e_addr is not None}
         return self._update(apply)
 
+    def connect_invited(self, inviter: str, joiner: str) -> bool:
+        """Invite-link join (``access.py``): a mutual, active follow between the person who
+        made the invite and the new member, marked ``via: "invite"``. Nothing happens (False)
+        for coach accounts, non-athletes, the same id, or a block either way."""
+        if not inviter or inviter == joiner or not (self.is_athlete(inviter) and self.is_athlete(joiner)):
+            return False
+        now = int(self._clock())
+
+        def apply(d: dict[str, Any]) -> bool:
+            self._materialize(d)
+            users = d.get("users") or {}
+            if joiner in ((users.get(inviter) or {}).get("blocked") or []) \
+                    or inviter in ((users.get(joiner) or {}).get("blocked") or []):
+                return False
+            edges = d.setdefault("edges", {})
+            for a, b in ((inviter, joiner), (joiner, inviter)):
+                e = next((x for x in edges.values() if x["follower"] == a and x.get("followee") == b), None)
+                if e is None:
+                    e = {"id": "f" + secrets.token_hex(6), "follower": a, "followee": b, "email": None,
+                         "status": "pending", "ts": now}
+                    edges[e["id"]] = e
+                if e["status"] != "active":
+                    e["status"], e["accepted"] = "active", now
+                e.pop("hidden", None)
+                e["via"] = "invite"
+                self._user(d, a)["ever_followed"] = True
+            return True
+        return bool(self._update(apply))
+
     def _edge_action(self, uid: str, edge_id: Any, role: str,
                      fn: Callable[[dict[str, Any], dict[str, Any]], Any]) -> Any:
         """Run ``fn(doc, edge)`` on an edge where ``uid`` plays ``role`` (follower/followee)."""
