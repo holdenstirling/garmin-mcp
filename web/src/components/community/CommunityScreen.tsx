@@ -17,6 +17,7 @@ import {
 import { ClubsTab } from './Clubs'
 import { CommunityFeed } from './Feed'
 import { PeopleSection } from './People'
+import { markSeen } from '@/lib/unread'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -27,6 +28,8 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
 }) {
   const [settings, setSettings] = useState(false)
   const openClub = (id: string) => { onClub(id); onView('clubs') }
+  // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
+  useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
     <Screen title="Community" onClose={() => {}}
       headerExtra={<Segmented label="Community" value={view} onChange={onView}

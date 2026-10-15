@@ -505,6 +505,12 @@ class Social:
     def mark_seen(self, uid: str) -> None:
         self._s.user_doc(uid, "social_seen").save({"ts": int(self._clock())})
 
+    def requests_since(self, uid: str, since: float) -> int:
+        """Pending follow requests to ``uid`` newer than ``since`` (app icon badge)."""
+        return sum(1 for e in (self._doc.load().get("edges") or {}).values()
+                   if e.get("followee") == uid and e["status"] == "pending" and not e.get("hidden")
+                   and e.get("ts", 0) > since and not self.blocked_between(uid, e.get("follower") or ""))
+
 
 # ------------------------------------------------------------------- feed ---
 def normalize(acts: list[dict[str, Any]], today: date, days: int = FEED_DAYS) -> list[dict[str, Any]]:

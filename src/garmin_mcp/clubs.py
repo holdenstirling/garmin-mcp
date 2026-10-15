@@ -259,6 +259,15 @@ class Clubs:
         return {"clubs": races + clubs, "invites": invites,
                 "discover": self.discover(uid, city=city, state=state, q=q, d=d), "max": MAX_CLUBS}
 
+    def invites_since(self, uid: str, since: float) -> int:
+        """Open club invites to ``uid`` newer than ``since`` (app icon badge)."""
+        n = 0
+        for c in (self._doc.load().get("clubs") or {}).values():
+            inv = (c.get("invites") or {}).get(uid)
+            if uid not in c["members"] and inv and inv.get("ts", 0) > since and not self._blocked(uid, inv["by"]):
+                n += 1
+        return n
+
     def discover(self, uid: str, *, city: str = "", state: str = "", q: str = "",
                  d: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Clubs to join: matching ``q`` (name/city), else in my city, then my state."""

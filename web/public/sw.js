@@ -8,13 +8,24 @@ self.addEventListener('push', (event) => {
   const title = typeof data.title === 'string' ? data.title : 'Rabbit'
   const body = typeof data.body === 'string' ? data.body : ''
   const url = typeof data.url === 'string' && data.url.startsWith('/app/') ? data.url : '/app/'
-  event.waitUntil(self.registration.showNotification(title, {
-    body,
-    icon: '/app/icons/icon-192.png',
-    badge: '/app/icons/icon-192.png',
-    data: { url },
-  }))
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, {
+      body,
+      icon: '/app/icons/icon-192.png',
+      badge: '/app/icons/icon-192.png',
+      data: { url },
+    }),
+    setBadge(data.badge),
+  ]))
 })
+
+// App icon badge (Badging API, feature-detected): the server sends the unread count
+// (cheers/comments, friend requests, club invites, coach messages) as `badge`.
+function setBadge(n) {
+  const nav = self.navigator
+  if (typeof n !== 'number' || !nav || !('setAppBadge' in nav)) return Promise.resolve()
+  return (n > 0 ? nav.setAppBadge(Math.min(n, 999)) : nav.clearAppBadge()).catch(() => {})
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
