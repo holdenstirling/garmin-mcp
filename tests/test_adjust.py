@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from garmin_mcp.adjust import propose
+from garmin_mcp.adjust import QUALITY, propose
 from garmin_mcp.planbuilder import build_plan, iter_sessions
 from tests.test_agent import env  # noqa: F401  (fixture)
-from garmin_mcp.adjust import QUALITY
 from tests.test_plans import _setup
 from tests.test_stats import act
 
