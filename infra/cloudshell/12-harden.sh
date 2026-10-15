@@ -71,7 +71,7 @@ if g alpha monitoring policies list --filter='displayName="Rabbit or MCP down"' 
 elif [[ -n "$CH" ]]; then
   cat > "$TMP/policy.json" <<JSON
 {"displayName": "Rabbit or MCP down", "combiner": "OR", "notificationChannels": ["$CH"],
- "documentation": {"content": "Uptime check failing from 2+ regions for 10 min. Check: bash infra/cloudshell/9-audit.sh"},
+ "documentation": {"mimeType": "text/markdown", "content": "Uptime check failing from 2+ regions for 10 min. Check: bash infra/cloudshell/9-audit.sh"},
  "conditions": [{"displayName": "uptime check failing",
    "conditionThreshold": {
      "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\"",
