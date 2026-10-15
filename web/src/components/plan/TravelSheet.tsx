@@ -1,13 +1,13 @@
 // Travel mode: mark days away and what you'll have there; the plan swaps sessions to
 // fit and moves long sessions to home days of the same week. Undo any time.
 import { useState } from 'react'
-import { Plane, X } from 'lucide-react'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { Plane } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Row, Switch } from '@/components/settings/Grouped'
 import type { TripOptions } from '@/lib/calendar'
 import { Card, Field, inputCls } from './ui'
 import { todayStr } from './PlanParts'
+import { Sheet } from '@/components/ui/Sheet'
 
 export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, onClose, onDismissed, closing }: {
   initial?: { start: string; end: string; label: string }
@@ -17,7 +17,6 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
   onApply: (b: { start: string; end: string; label: string } & TripOptions) => Promise<void>
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
-  const drag = useSheetDrag(onDismissed)
   const [start, setStart] = useState(initial?.start ?? today)
   const [end, setEnd] = useState(initial?.end ?? today)
   const [label, setLabel] = useState(initial?.label ?? '')
@@ -34,14 +33,7 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
   }
 
   return (
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">Travel mode</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="Travel mode" onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">
             Rabbit reworks the sessions on those days for what you'll have, keeps them under 75 minutes, and moves long sessions to home days that week.
           </p>
@@ -68,8 +60,6 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
           <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void apply()}>
             <Plane className="size-4" /> Plan around this trip
           </Button>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

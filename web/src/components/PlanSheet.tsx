@@ -1,9 +1,8 @@
 // The plan, opened from the coach log's pinned plan bar: where you are in it, Rabbit's
 // summary, the original files, and a way to ask about it. Edits live in "What Rabbit knows".
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { FileText, MessageCircle, Pencil, X } from 'lucide-react'
+import { FileText, MessageCircle, Pencil } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -11,27 +10,20 @@ import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import { planLine } from '@/components/chat/PlanPins'
 import { attachmentUrl, formatFileSize } from '@/lib/attachments'
 import type { Goal, PlanWeek } from '@/lib/api'
+import { Sheet } from '@/components/ui/Sheet'
 
 export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, onClose, onDismissed, closing }: {
   goal: Goal; week: PlanWeek | null
   onAsk: () => void; onUploadPlan: () => void; onEdit: () => void; onBuild: () => void
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
-  const drag = useSheetDrag(onDismissed)
   const files = goal.plan_files ?? []
   const raceDay = goal.date
     ? new Date(`${goal.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
     : null
 
   return (
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">Your plan</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body settings flex flex-col gap-5 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="Your plan" onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-5 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <div className="px-1">
             <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">{goal.title}</p>
             <p className="mt-1 text-[0.7647rem] text-(--text-muted)">
@@ -80,8 +72,6 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
               </p>
             )}
           </Group>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

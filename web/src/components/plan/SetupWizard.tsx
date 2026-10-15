@@ -21,6 +21,7 @@ import { PhaseStrip, SPORT_ICON, WeekPreview } from './PlanParts'
 import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
 import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
+import { track } from '@/lib/usage'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
@@ -143,6 +144,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
   const setG = (p: Partial<GoalFull>) => setDraft((d) => ({ ...d, goal: { ...d.goal, ...p } }))
   const setA = (p: Partial<AthleteFull>) => setDraft((d) => ({ ...d, athlete: { ...d.athlete, ...p } }))
   const idx = STEPS.indexOf(step)
+  useEffect(() => { if (step !== 'done') track('setup_step', { step }) }, [step]) // lib/usage: setup funnel
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   // ------------------------------------------------------- validation ---
@@ -204,6 +206,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
       setPlan(r.plan)
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
       setStep('done')
+      track('setup_complete')
       onDone()
     } catch (e) {
       setError((e as Error).message)

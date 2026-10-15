@@ -2,14 +2,12 @@
 // to share (life events, races, PRs) and milestones as drafts until you tap Share, never
 // every workout. Clubs: local run clubs and crews with meetups and challenges.
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
 import { Choice } from './Choice'
 import { Screen } from '@/components/plan/ui'
 import { Segmented } from '@/components/nav/Segmented'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import {
   MILESTONE_LABEL, getCommunitySettings, putCommunitySettings,
   type CommunitySettings, type MilestoneType, type Usage,
@@ -17,6 +15,7 @@ import {
 import { ClubsTab } from './Clubs'
 import { CommunityFeed } from './Feed'
 import { PeopleSection } from './People'
+import { Sheet } from '@/components/ui/Sheet'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -45,7 +44,6 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const drag = useSheetDrag(onClose)
   useEffect(() => { getCommunitySettings().then((r) => { setS(r.settings); setUsage(r.usage) }, (e) => setError((e as Error).message)) }, [])
   async function put(patch: Partial<CommunitySettings>, optimistic: CommunitySettings) {
     const prev = s
@@ -53,14 +51,7 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
     try { const r = await putCommunitySettings(patch); setS(r.settings) } catch (e) { setS(prev); setError((e as Error).message) }
   }
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">Sharing</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="Sharing" onClose={onClose} bodyClassName="flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {error && <ErrorState compact message={error} />}
           {!s && !error && <RabbitLoader className="py-6" label="Loading" />}
           {s && (
@@ -93,8 +84,6 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
               )}
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

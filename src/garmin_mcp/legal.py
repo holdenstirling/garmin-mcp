@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from html import escape
 
-UPDATED = "October 14, 2026"
+UPDATED = "October 15, 2026"
 
 
 def _page(title: str, body: str, contact: str) -> str:
@@ -40,6 +40,7 @@ PRIVACY = """
 <li>Coaches you invite can see your plan, races, stats and anything you share with them. Your chats with the AI coach stay private unless you turn on sharing.</li>
 <li>Rabbit does not sell your data or show ads. To work, it sends the minimum needed to a few services: race searches to RunSignup, a rounded location (about 1 km) to OpenStreetMap for your city and nearby places, and your city to Open-Meteo for weather. Nothing else about you is shared.</li>
 <li><b>Clubs &amp; leagues directory</b>: Community lists run clubs, group rides, tri clubs, swims and adult leagues built from the public web. Rabbit searches the web with only a city and state, then its crawler, RabbitBot, reads the public pages it finds (it obeys robots.txt, goes slowly, and never reads social networks like Facebook, Instagram, Strava or Meetup, which are only linked). The directory holds public facts about groups (name, schedule, meeting place, cost, link), never anything about you or other athletes. Suggestions and "outdated" reports you send are stored with your account to limit abuse.</li>
+<li><b>Usage counts</b>: to see which parts of the app help, Rabbit counts a few anonymous actions on its own server (no outside analytics): opening the app, which tab you view, taps on the Up next, weekly ring, race grade, reward and quick-action cards, setup steps reached, joining by invite, sharing, cheering, RSVPs and opening a notification. Only fixed names are counted (never free text, health or training data, or location), and only as daily totals. To count daily, weekly and monthly users, your account is turned into a code that changes every day and can't be linked across days; your account itself keeps just two dates (first and last day you used the app) for the weekly and returning-user numbers. No individual event is stored. Only the app's owner sees the totals. Turn on "Don't count my usage" in Settings (or Do Not Track / Global Privacy Control in your browser) and nothing is counted.</li>
 </ul>
 <h2>Storage and security</h2>
 <p>Data is stored encrypted on a private Google Cloud server. Connection tokens for Garmin, Oura and Google Calendar are encrypted and used only to read your data (and, for Garmin, to send planned workouts you ask for).</p>

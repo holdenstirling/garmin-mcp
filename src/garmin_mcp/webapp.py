@@ -212,6 +212,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "user_id": user_id,
             "role": "coach" if user_id.startswith("coach_") else "athlete",
             "can_invite": auth.can_invite(user_id),
+            "owner": auth.is_owner(user_id),
             "coaching": len(auth.coach_links.athletes_of(user_id)),
             "coaches": len(auth.coach_links.coaches_of(user_id)),
             "oura": {"available": auth.oura is not None,
@@ -386,6 +387,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "workout_feedback": p.get("workout_feedback", True),
                 "recap_enabled": p.get("recap_enabled", True),
                 "moments_push": p.get("moments_push", True) is not False,
+                "usage_off": p.get("usage_off") is True,  # usage.py: "Don't count my usage"
                 "has_notes": bool(p.get("notes")),
                 # sources.py: workouts always Garmin; recovery/sleep Garmin or Oura.
                 "data_sources": prefs_for(store, user_id, bool(auth.oura and auth.oura.connected(user_id)))[0]
@@ -413,7 +415,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if not isinstance(bt, str) or not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", bt):
                 return _err(400, "brief_time must be HH:MM")
             upd["brief_time"] = bt
-        for key in ("brief_enabled", "workout_feedback", "recap_enabled", "data_sources_asked", "moments_push"):
+        for key in ("brief_enabled", "workout_feedback", "recap_enabled", "data_sources_asked", "moments_push", "usage_off"):
             if key in body:
                 if not isinstance(body[key], bool):
                     return _err(400, f"{key} must be true or false")
@@ -431,6 +433,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 cur = p.get("data_sources") if isinstance(p.get("data_sources"), dict) else {}
                 p["data_sources"] = {**cur, **sources_patch}
         store.user_doc(user_id, "profile").update(apply)
+        if upd.get("usage_off") is True:
+            store.user_doc(user_id, "usage").delete()  # usage.py: forget your first/last dates too
         return JSONResponse(_settings_view(user_id))
 
     async def dev_action(request: Request, user_id: str) -> Response:
@@ -3090,6 +3094,38 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     home_routes: list[BaseRoute] = [
         Route("/app/api/upnext", _plan_api(upnext_get, mutating=False), methods=["GET"]),
         Route("/app/api/firstvisit", _api(firstvisit_get, mutating=False), methods=["GET"]),
+    ]
+
+    # ------------------------------------------------------------ usage --
+    # usage.py: privacy-first usage counts. POST /app/api/usage batches whitelisted events
+    # (daily counters only; DNT / GPC / "Don't count my usage" drop them); GET
+    # /app/api/usage/summary is owners only (access owners), last 30 days.
+    from . import usage as _usage
+    usage_svc = _usage.Usage(store) if store is not None else None
+
+    async def usage_post(request: Request, user_id: str) -> Response:
+        if usage_svc is None or store is None:
+            return JSONResponse({"counted": 0})
+        raw = await request.body()
+        if len(raw) > _usage.MAX_BODY:
+            return _err(413, "too many events")
+        if request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1" \
+                or store.user_doc(user_id, "profile").load().get("usage_off") is True:
+            return JSONResponse({"counted": 0})
+        body = json.loads(raw or b"null")
+        n = await anyio.to_thread.run_sync(lambda: usage_svc.record(user_id, body))
+        return JSONResponse({"counted": n})
+
+    async def usage_summary(request: Request, user_id: str) -> Response:
+        if not auth.is_owner(user_id):
+            return _err(403, "Only the app's owners can see usage.")
+        if usage_svc is None:
+            return _err(503, "Usage isn't available on this server.")
+        return JSONResponse(await anyio.to_thread.run_sync(usage_svc.summary))
+
+    home_routes += [
+        Route("/app/api/usage", _api(usage_post, mutating=True), methods=["POST"]),
+        Route("/app/api/usage/summary", _api(usage_summary, mutating=False), methods=["GET"]),
     ]
 
     # ------------------------------------------------- invites + passkeys --

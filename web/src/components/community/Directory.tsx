@@ -7,7 +7,7 @@
 // city, Explore's cached local groups show meanwhile.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Mountain, Plus, Users, Volleyball, Waves, X,
+  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Mountain, Plus, Users, Volleyball, Waves,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Segmented } from '@/components/nav/Segmented'
@@ -18,12 +18,12 @@ import { HopIn } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Chip, Field, inputCls } from '@/components/plan/ui'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { cn } from '@/lib/utils'
 import {
   DIR_CHIPS, calendarUrl, getDirectory, markGoing, nextLabel, reportListing, suggestClub,
   type DirChip, type DirGoing, type DirKind, type DirListing, type DirView,
 } from '@/lib/clubdir'
+import { Sheet } from '@/components/ui/Sheet'
 
 const ICON: Record<DirKind, typeof Bike> = {
   run_club: Footprints, trail: Mountain, tri: Medal, ride: Bike, swim: Waves, league: Volleyball, other: Users,
@@ -131,7 +131,6 @@ function ListingCard({ l, onStart, onReport, onGoing, busy }: {
 }
 
 function SuggestSheet({ city, state, onClose }: { city: string; state: string; onClose: () => void }) {
-  const drag = useSheetDrag(onClose)
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -145,14 +144,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
     } catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setBusy(false) }
   }
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">Suggest a club or league</h2>
-          <button className="modal-close hit-44" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="Suggest a club or league" onClose={onClose}>
           <p className="text-[0.7647rem] text-(--text-secondary)">
             Rabbit reads the club's public page on its next update for {city}, {state} and adds it here.
           </p>
@@ -165,9 +157,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
           <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!name.trim() || !url.trim()} onClick={() => void send()}>
             Send suggestion
           </Button>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }
 

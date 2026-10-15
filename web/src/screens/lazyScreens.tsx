@@ -63,3 +63,5 @@ export const WorkoutDayScreen = split(() => import('@/components/workout/Workout
 export const SettingsPanels = split(() => import('@/components/SettingsPanels').then((m) => m.SettingsPanels), 'tab')
 export const DataSourcesSheet = split(() => import('@/components/settings/DataSourcesSheet').then((m) => m.DataSourcesSheet))
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
+// Me -> Usage (owners only)
+export const UsageScreen = split(() => import('@/components/settings/UsageScreen').then((m) => m.UsageScreen))

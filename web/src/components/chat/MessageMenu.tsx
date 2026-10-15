@@ -1,9 +1,9 @@
 // iMessage-style context menu for a message: the pressed bubble lifts above a blurred,
 // dimmed backdrop and a menu pops out from its edge.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Copy, MessagesSquare, Share, TextSelect, X } from 'lucide-react'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { Copy, MessagesSquare, Share, TextSelect } from 'lucide-react'
 import type { ChatMessage } from '@/hooks/useCoach'
+import { Sheet } from '@/components/ui/Sheet'
 
 export type MenuTarget = { item: ChatMessage; el: HTMLElement; canDiscuss: boolean }
 
@@ -95,19 +95,9 @@ function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: stri
 /** Plain selectable text, for copying part of a message. */
 function SelectSheet({ text, onClose }: { text: string; onClose: () => void }) {
   // Drag-to-dismiss from the handle/header only: in the body, drags extend the selection.
-  const drag = useSheetDrag(onClose, { bodyDrags: false })
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">Select text</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body selectable overflow-y-auto whitespace-pre-wrap p-4 pb-[max(16px,env(safe-area-inset-bottom))] text-[0.8824rem] leading-relaxed">
+    <Sheet title="Select text" onClose={onClose} bodyDrags={false} bodyClassName="selectable overflow-y-auto whitespace-pre-wrap p-4 pb-[max(16px,env(safe-area-inset-bottom))] text-[0.8824rem] leading-relaxed">
           {text}
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

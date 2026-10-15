@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row } from '@/components/settings/Grouped'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { getChallenges, targetLine, type Suggestion } from '@/lib/challenges'
 import { getPeople, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
@@ -25,6 +24,7 @@ import { clubSport, linkListing, type DirListing } from '@/lib/clubdir'
 import { Choice } from './Choice'
 import { ClubDirectory } from './Directory'
 import { CommunityFeed, PersonAvatar } from './Feed'
+import { Sheet } from '@/components/ui/Sheet'
 
 const LOADING = ['Rounding up the crew…', 'Finding clubs near you…', 'Lacing up…']
 const EMOJIS = ['🐇', '🏃', '🏃‍♀️', '🚴', '🏊', '⛰️', '🏔️', '🌅', '🔥', '🏁', '💪', '🌲', '☕', '🍻']
@@ -184,22 +184,6 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
       )}
       {openId && <ClubPage id={openId} imperial={imperial} onClose={() => { onOpen(null); void load() }} />}
     </>
-  )
-}
-
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const drag = useSheetDrag(onClose)
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">{title}</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">{children}</div>
-      </div>
-    </div>
   )
 }
 

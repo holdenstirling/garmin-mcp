@@ -1,9 +1,9 @@
 // Ported from Dolly's ConversationList (web-mcp): same rows, relative times and delete
 // confirmation; the pinned Rabbit thread (briefs, workout notes) sits on top. No virtualization needed at this size.
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useDialog } from '@/hooks/useDialog'
 import { useRef, useState } from 'react'
-import { MessageSquarePlus, Pin, Trash2, X } from 'lucide-react'
+import { MessageSquarePlus, Pin, Trash2 } from 'lucide-react'
+import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { goalCountdown, type Goal, type Thread } from '@/lib/api'
 
@@ -25,24 +25,24 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
   onEditGoal: () => void; onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
   const [deleteTarget, setDeleteTarget] = useState<Thread | null>(null)
-  const drag = useSheetDrag(onDismissed)
   return (
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <button className="min-w-0 text-left" onClick={onEditGoal}>
-            <h2 className="modal-title truncate">{goal?.title ?? 'No goal yet'}</h2>
-            <p className="text-xs text-muted-foreground">{goal ? goalCountdown(goal) || 'Edit goal' : 'Tap to set what you’re training for'}</p>
-          </button>
-          <div className="flex shrink-0 items-center gap-1">
-            <button className="modal-close" aria-label="New chat" title="New chat" onClick={onNew}>
-              <MessageSquarePlus className="size-4" />
-            </button>
-            <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-          </div>
-        </div>
-        <div className="modal-body min-h-0 flex-1 overflow-y-auto pb-[max(12px,env(safe-area-inset-bottom))]">
+    <Sheet closing={closing} onClose={onClose} onDismissed={onDismissed}
+      bodyClassName="min-h-0 flex-1 gap-0 p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
+      header={
+        <button className="min-w-0 text-left" onClick={onEditGoal}>
+          <h2 className="modal-title truncate">{goal?.title ?? 'No goal yet'}</h2>
+          <p className="text-xs text-muted-foreground">{goal ? goalCountdown(goal) || 'Edit goal' : 'Tap to set what you’re training for'}</p>
+        </button>
+      }
+      actions={
+        <button className="modal-close" aria-label="New chat" title="New chat" onClick={onNew}>
+          <MessageSquarePlus className="size-4" />
+        </button>
+      }
+      extra={deleteTarget && (
+        <ConfirmDelete title={deleteTarget.title || 'New chat'} onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }} />
+      )}>
           {threads.map((t) => (
             <div key={t.id} role="button" tabIndex={0} onClick={() => onSelect(t.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(t.id) } }}
@@ -65,13 +65,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
               )}
             </div>
           ))}
-        </div>
-        {deleteTarget && (
-          <ConfirmDelete title={deleteTarget.title || 'New chat'} onCancel={() => setDeleteTarget(null)}
-            onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }} />
-        )}
-      </div>
-    </div>
+    </Sheet>
   )
 }
 

@@ -1,14 +1,13 @@
 // Challenges on the Progress tab: this week's and month's joined challenges with live
 // progress, a small celebration when one is done, friend invites and the group leaderboard.
 // "Pick a challenge" opens a sheet with 3 personal suggestions per period (easy, stretch, fun).
-import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { Carrot, Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Target, Trophy, UserPlus, X } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { Sheet as UISheet } from '@/components/ui/Sheet'
 import { cn } from '@/lib/utils'
 import {
   acceptInvite, daysLeft, declineInvite, getChallenges, inviteFriends, joinChallenge, leaveChallenge, progressLine,
@@ -256,25 +255,8 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
 
 /** A short burst of dots. Hidden entirely for reduced motion (the check pop is enough). */
 // ------------------------------------------------------------------ sheets --
-const own = (e: SyntheticEvent) => e.stopPropagation()
-
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const [closing, setClosing] = useState(false)
-  const drag = useSheetDrag(onClose)
-  const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
-  return createPortal(
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`}
-      onClick={(e) => { e.stopPropagation(); close() }}
-      onTouchStart={own} onTouchMove={own} onTouchEnd={own} onTouchCancel={own} onKeyDown={own}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag} aria-label={title}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">{title}</h2>
-          <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">{children}</div>
-      </div>
-    </div>, document.body)
+  return <UISheet portal title={title} label={title} onClose={onClose}>{children}</UISheet>
 }
 
 function PickSheet({ v, initial, imperial, onClose, onJoined }: {

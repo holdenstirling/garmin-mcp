@@ -4,9 +4,9 @@
 // runs one web search (sport + city only), labelled as not verified. The athlete contacts
 // coaches directly (email, phone, website); Rabbit takes no cut. "Invite as my coach" only
 // for coaches who already use Rabbit.
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useDialog } from '@/hooks/useDialog'
-import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Target, UserPlus, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Sheet } from '@/components/ui/Sheet'
+import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Target, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -219,17 +219,8 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
   }
   const askText = `Would ${c.name} (${c.business}, ${c.location}; ${c.specialties.join(', ')}) be a good coach for me${race?.name ? ` for ${race.name}` : ''}? `
   const contactCls = 'h-11 flex-1 gap-1.5 text-[0.7647rem]'
-  const box = useRef<HTMLDivElement>(null)
-  useDialog(box, onClose)
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="coach-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 id="coach-title" className="modal-title">{c.name}</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title={c.name} onClose={onClose} bodyClassName="gap-4">
           <div className="flex items-center gap-3">
             <Initials name={c.name} size={56} />
             <div className="min-w-0">
@@ -323,8 +314,6 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
             </div>
           )}
           {msg && <p className={`text-[0.7647rem] ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

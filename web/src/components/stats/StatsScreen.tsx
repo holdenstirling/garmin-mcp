@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
-import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Screen } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
@@ -76,11 +75,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
       <group.Provider value={group.track}>
         <PullToRefresh onRefresh={() => (busy ? undefined : refresh())} />
         {!s && !error && (
-          <div className="flex flex-col gap-3">
-            <RabbitLoader className="py-8" label="Loading your progress" cycle={['Counting your miles…', 'Tallying your streak…', 'Crunching the numbers…']} />
-            <div className="skeleton h-28" aria-hidden="true" />
-            <div className="skeleton h-40" aria-hidden="true" />
-          </div>
+          <ProgressSkeleton />
         )}
         {noGarmin && !s && <GarminEmpty what="progress" />}
         {error && !(noGarmin && !s) && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => void refresh()} compact={!!s} />}
@@ -398,6 +393,7 @@ function BadgesCard({ s }: { s: Stats }) {
 // Garmin, mixed sources or "Show both" render RecoveryCompare.
 import { RecoveryCompare, RecoveryRow } from './RecoveryCompare'
 import { useDataSources } from '@/lib/sources'
+import { ProgressSkeleton } from '@/components/ui/Skeleton'
 
 function Recovery({ loadKey = 0 }: { loadKey?: number }) {
   const src = useDataSources()

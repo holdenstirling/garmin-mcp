@@ -161,7 +161,7 @@ export function MainRaceGrade({ onOpen, className, loadKey = 0 }: {
   if (error && !g) return <ErrorState compact message="Couldn't load your race grade." onRetry={load} className={className} />
   if (!g) return null
   return (
-    <button type="button" onClick={() => onOpen(g.event_id)}
+    <button type="button" onClick={() => onOpen(g.event_id)} data-usage-card="race_grade"
       className={cn('flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)', className)}>
       <GradeBadge grade={g.grade} size="md" />
       <span className="min-w-0 flex-1">

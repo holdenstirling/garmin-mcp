@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -23,6 +22,7 @@ import { FinishChip } from './FinishEstimate'
 import { listReadiness, type RaceGrade } from '@/lib/readiness'
 import { getPeopleSummary, type PeopleSummary } from '@/lib/racepeople'
 import { FollowingRaces, PeopleRow, PeopleSheet, RaceInvitesInbox } from './RacePeople'
+import { EventsSkeleton } from '@/components/ui/Skeleton'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
@@ -73,11 +73,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           <CalendarPlus className="size-4" /> Add an event</Button>}>
         <PullToRefresh onRefresh={load} disabled={events === null && !error} />
         {events === null && !error ? (
-          <div className="flex flex-col gap-2.5">
-            <RabbitLoader className="py-8" label="Loading events" cycle={['Checking your calendar…', 'Finding your events…']} />
-            <div className="skeleton h-16" aria-hidden="true" />
-            <div className="skeleton h-16" aria-hidden="true" />
-          </div>
+          <EventsSkeleton />
         ) : error ? (
           <p className="px-1 text-[0.8235rem] text-(--danger)">
             {error} <button type="button" className="hit-44 underline" onClick={() => void load()}>Retry</button>

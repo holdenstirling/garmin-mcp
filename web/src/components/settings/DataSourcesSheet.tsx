@@ -1,13 +1,13 @@
 // "How should Rabbit use your data?": asked once after Oura connects (and once for athletes
 // who connected Oura before this existed), and from Settings -> Data sources. Workouts are
 // always Garmin's; the athlete picks where recovery and sleep come from.
-import { useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { useState } from 'react'
+import { Check } from 'lucide-react'
 import { putSettings, type Me } from '@/lib/api'
 import { defaultSources, type DataSource } from '@/lib/sources'
 import { Switch } from '@/components/settings/Grouped'
 import { cn } from '@/lib/utils'
-import { useDialog } from '@/hooks/useDialog'
+import { Sheet } from '@/components/ui/Sheet'
 
 const CHOICES: { id: DataSource; title: string; sub: string }[] = [
   { id: 'oura', title: 'Oura', sub: 'Recommended if you wear it nightly' },
@@ -43,18 +43,9 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
     }
     onClose()
   }
-  const box = useRef<HTMLDivElement>(null)
-  useDialog(box, () => void dismiss())
 
   return (
-    <div className="modal-overlay" onClick={() => void dismiss()}>
-      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="ds-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 id="ds-title" className="modal-title">How should Rabbit use your data?</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={() => void dismiss()}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="How should Rabbit use your data?" onClose={() => void dismiss()} dismissible={!busy} bodyClassName="gap-4">
           <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
             Workouts come from Garmin only. Oura workouts are never added, so nothing is counted twice.
           </p>
@@ -105,8 +96,6 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
             className="min-h-11 rounded-xl bg-(--accent) px-4 text-[0.9412rem] font-medium text-(--on-fill) disabled:opacity-50">
             {busy ? 'Saving…' : 'Save'}
           </button>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

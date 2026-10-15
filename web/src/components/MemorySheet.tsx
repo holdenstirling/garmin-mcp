@@ -1,16 +1,16 @@
 // "What Rabbit knows": a readable view of the goal, plan, profile and coach notes that
 // Rabbit picked up in conversation. Nothing to fill in up front: you tell Rabbit, and fix
 // any section here (inline) or by asking Rabbit to change it.
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { FileText, MessageCircle, Pencil, X } from 'lucide-react'
+import { FileText, MessageCircle, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { goalCountdown, putAthlete, updateGoal, type Athlete, type Goal } from '@/lib/api'
 import { attachmentUrl, formatFileSize } from '@/lib/attachments'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
+import { Sheet } from '@/components/ui/Sheet'
 
 const area = 'min-h-[96px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
@@ -61,7 +61,6 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [showFullPlan, setShowFullPlan] = useState(false)
-  const drag = useSheetDrag(onDismissed)
 
   async function save(fn: () => Promise<unknown>) {
     setBusy(true); setMsg(null)
@@ -77,14 +76,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
   const athleteRows = ATHLETE_LABELS.filter(([k]) => athlete[k] !== undefined && athlete[k] !== null && athlete[k] !== '')
 
   return (
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">What Rabbit knows</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="What Rabbit knows" onClose={onClose} closing={closing} onDismissed={onDismissed}>
           <p className="text-xs text-(--text-muted)">
             Rabbit fills this in as you chat. Tell it about changes anytime, or fix anything here.
           </p>
@@ -200,8 +192,6 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
               Training for something new? Tell Rabbit
             </button>
           )}
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

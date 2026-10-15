@@ -26,10 +26,13 @@ self.addEventListener('notificationclick', (event) => {
       // navigating, which iOS Home Screen apps don't reliably do.
       if (new URL(w.url).pathname.startsWith('/app/')) {
         await w.focus()
-        w.postMessage({ type: 'open', url })
+        w.postMessage({ type: 'open', url, push: true })
         return
       }
     }
-    await self.clients.openWindow(url)
+    // from=push: the app counts the open (lib/usage.ts push_open; nothing else about it).
+    const u = new URL(url, self.location.origin)
+    u.searchParams.set('from', 'push')
+    await self.clients.openWindow(u.pathname + u.search + u.hash)
   })())
 })

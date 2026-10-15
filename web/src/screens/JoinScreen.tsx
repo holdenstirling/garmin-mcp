@@ -7,6 +7,7 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { inputCls } from '@/components/plan/ui'
 import { joinInfo, joinWithPasskey, passkeyError, PasskeyApiError, supportsPasskeys } from '@/lib/passkey'
 import { hapticTap } from '@/lib/haptics'
+import { flushUsage, track } from '@/lib/usage'
 
 type Phase = { kind: 'loading' } | { kind: 'bad'; message: string } | { kind: 'form'; inviter: string; signedIn: boolean }
 
@@ -31,6 +32,7 @@ export function JoinScreen({ token }: { token: string }) {
     setBusy(true); setError(null)
     try {
       await joinWithPasskey(token, name.trim(), email.trim())
+      track('invite_join'); flushUsage(true) // counted as the new account (lib/usage)
       window.location.replace('/app/')
     } catch (err) {
       setError({ text: passkeyError(err), signin: err instanceof PasskeyApiError && err.signin })

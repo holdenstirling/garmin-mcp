@@ -1,15 +1,15 @@
 // Bottom sheet for one plan session: see its structure, change sport/type/length/day,
 // rename it, add notes, or delete it. In add mode it creates a new session on a day.
 import { useEffect, useState } from 'react'
-import { MessageCircle, Mic, Send, Trash2, X, Zap } from 'lucide-react'
+import { MessageCircle, Mic, Send, Trash2, Zap } from 'lucide-react'
 import { CheckinChips, VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { listCheckins, type Checkin } from '@/lib/checkins'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { Button } from '@/components/ui/button'
 import type { Sport } from '@/lib/api'
 import { KIND_LABEL, ZONE_LABEL, fmtMin, stepText, type PlanSession, type Step } from '@/lib/plan'
 import { Card, Choice, Field, NumberStepper, areaCls, inputCls } from './ui'
 import { SPORT_LABEL, fmtDay, todayStr } from './PlanParts'
+import { Sheet } from '@/components/ui/Sheet'
 
 export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }
 
@@ -35,7 +35,6 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
   onOpenWorkout?: () => void
   onClose: () => void; onDismissed: () => void; closing: boolean
 }) {
-  const drag = useSheetDrag(onDismissed)
   const adding = !session
   const initial: SessionDraft = {
     date,
@@ -85,14 +84,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     : []
 
   return (
-    <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={onClose}>
-      <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title">{session ? session.title : 'Add a session'}</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title={session ? session.title : 'Add a session'} onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <p className="px-1 text-[0.7647rem] text-(--text-muted)">
             {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}
             {session?.synced && ' · on your Garmin calendar'}
@@ -221,9 +213,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
               </Button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }
 

@@ -26,7 +26,10 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { setCurrentSources } from '@/lib/sources'
 import { Group, Icon, Row as SettingsRow } from '@/components/settings/Grouped'
 import { WeekList } from '@/components/week/WeekStrip'
-import { TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@/components/nav/TabBar'
+import { TAB_IDS, TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@/components/nav/TabBar'
+import { useTabSwipe } from '@/hooks/useTabSwipe'
+import { HomeCardSkeleton } from '@/components/ui/Skeleton'
+import { setUsageOff, track, trackAppOpen } from '@/lib/usage'
 import { PullToRefresh, celebrate, signalReplyDone } from '@/components/fx'
 import { Segmented } from '@/components/nav/Segmented'
 import type { MeRow } from '@/components/nav/MePage'
@@ -275,7 +278,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const topInsight = useTopInsight(today?.date)
   // Up next (upnext.py) wraps the Today card: one fetch for both.
   const [upnext, setUpNext] = useState<UpNext | null>(null)
-  const loadToday = useCallback(() => { getUpNext().then((u) => { setUpNext(u); setToday(u.today) }, () => {}) }, [])
+  const [upnextTried, setUpNextTried] = useState(false) // first load done (skeleton until then)
+  const loadToday = useCallback(() => { getUpNext().then((u) => { setUpNext(u); setToday(u.today) }, () => {}).finally(() => setUpNextTried(true)) }, [])
   useEffect(() => {
     const onConnect = () => open('settings') // GarminEmpty / any screen: "Connect Garmin"
     window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
@@ -654,6 +658,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     setTab(t)
   }
+  // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
+  const shell = useRef<HTMLDivElement>(null)
+  useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !meOpen && !typing && !inChat && !pending, onSwipe: setTab })
+  useEffect(() => { setUsageOff(me.settings.usage_off === true); trackAppOpen() }, [me.settings.usage_off])
+  useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
     races: soonRace && 'race soon',
@@ -753,7 +762,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
 
   return (
-    <div className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${typing ? '' : 'with-tabbar'}`}>
+    <div ref={shell} className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${typing ? '' : 'with-tabbar'}`}>
       {/* Rabbit stays mounted under the other tabs (its chat, scroll and stream live on). */}
       <div className={`relative min-h-0 flex-1 flex-col overflow-hidden ${tab === 'rabbit' ? 'flex' : 'hidden'}`}>
       {inChat && (
@@ -768,6 +777,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
+      {isCoach && !upnext && !upnextTried && me.garmin.connected && !typing && <HomeCardSkeleton />}
       {isCoach && upnext && !typing && (
         <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
           onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
@@ -893,7 +903,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
           }}>
           <div className="mx-auto max-w-2xl space-y-4 py-4">
-            <PullToRefresh onRefresh={() => { void refreshThreads(); loadToday(); getProgress().then(setProgress, () => {}) }} />
+            <PullToRefresh onRefresh={() => { loadToday(); return Promise.all([refreshThreads(), getProgress().then(setProgress, () => {})]) }} />
             {renderRows(shownRows, isCoach)}
             <ReplyChips chips={chips} disabled={busy} onPick={(t) => void (isCoach ? sendFromLog(t, []) : send(t))} />
             {thinking && (

@@ -1,8 +1,9 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Settings. Friends live in Community.
 import { useState } from 'react'
-import { ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { ChartColumn, ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { AccessScreen } from '@/components/settings/AccessScreen'
+import { UsageScreen } from '@/screens/lazyScreens'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
@@ -27,6 +28,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
   const countdown = goalCountdown(goal)
   const coachStatus = me.athlete.coach_status ?? null
   const [access, setAccess] = useState(false)
+  const [usage, setUsage] = useState(false) // owners: anonymous usage counts
   return (
     <Screen title="Me" onClose={onClose}>
       <button type="button" onClick={() => onOpen('profile')}
@@ -88,8 +90,10 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
           onClick={() => onOpen('settings')} />
         <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title={me.can_invite ? 'Sign-in and invites' : 'Sign-in'}
           subtitle={me.can_invite ? 'Passkeys, invite links, members' : 'Passkeys on your devices'} onClick={() => setAccess(true)} />
+        {me.owner && <Row icon={<Icon tone="muted"><ChartColumn /></Icon>} title="Usage" subtitle="Anonymous counts, last 30 days" onClick={() => setUsage(true)} />}
       </Group>
       {access && <AccessScreen onClose={() => setAccess(false)} />}
+      {usage && <UsageScreen onClose={() => setUsage(false)} />}
     </Screen>
   )
 }
