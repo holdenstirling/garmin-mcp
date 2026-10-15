@@ -59,7 +59,6 @@ export const saveDeviceLocation = (lat: number, lon: number) =>
 export const saveZipLocation = (zip: string) => sendJSON<LocationState>('POST', '/api/location', { zip })
 export const setUseForLocal = (on: boolean) => sendJSON<LocationState>('POST', '/api/location/prefs', { use_for_local: on })
 export const forgetLocation = () => sendJSON<LocationState>('DELETE', '/api/location')
-export const letRabbitExplore = () => sendJSON<RabbitExploreResult>('POST', '/api/explore/rabbit')
 /** One part of "Let Rabbit explore". The app asks for both in parallel with the same ``tap``
  *  id (one tap = one web search on the daily allowance) and shows each as it lands. */
 export type RabbitRaces = Pick<RabbitExploreResult, 'intro' | 'races' | 'total' | 'web' | 'partial' | 'nationwide' | 'inferred' | 'location'>
@@ -103,14 +102,6 @@ export function toFinish(r: Record<string, unknown> | null | undefined): Finish 
     low_s: low, mid_s: mid, high_s: high, confidence: typeof conf === 'string' ? conf : '',
     basis: Array.isArray(basis) ? basis.filter((x): x is string => typeof x === 'string') : typeof basis === 'string' ? [basis] : [],
   }
-}
-
-export function predictFor(q: { eventId?: string; distanceKm?: number; type?: string }) {
-  const p = new URLSearchParams()
-  if (q.eventId) p.set('event_id', q.eventId)
-  if (q.distanceKm != null) p.set('distance_km', String(q.distanceKm))
-  if (q.type) p.set('type', q.type)
-  return getJSON<{ estimate: Estimate | null; reason?: string }>(`/api/predict?${p.toString()}`)
 }
 
 /** Browser location, only ever after the athlete taps (never on page load). */

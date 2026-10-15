@@ -26,7 +26,7 @@ export function InstallPrompt({ onSkip }: { onSkip: () => void }) {
       <p className="max-w-sm text-xs text-(--text-muted)">
         Notifications only work from the Home Screen app, so sign in from there rather than in Safari.
       </p>
-      <button className="text-xs text-(--text-muted) underline" onClick={onSkip}>Continue in the browser anyway</button>
+      <button className="hit-44 text-xs text-(--text-muted) underline" onClick={onSkip}>Continue in the browser anyway</button>
     </div>
   )
 }

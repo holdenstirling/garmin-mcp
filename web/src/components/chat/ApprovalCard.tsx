@@ -52,7 +52,7 @@ export function ApprovalCard({ item, onDecide }: {
       )}
       {pending && declining && (
         <div className="mt-3 flex flex-col gap-2">
-          <Input className="text-base" placeholder="Why not? (optional)" value={reason}
+          <Input aria-label="Why not?" className="text-base" placeholder="Why not? (optional)" value={reason}
             onChange={(e) => setReason(e.target.value)} autoFocus />
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1" onClick={() => setDeclining(false)}>Back</Button>

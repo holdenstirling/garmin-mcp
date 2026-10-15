@@ -26,7 +26,7 @@ import { useRefreshGroup, useTrackRefresh } from './refresh'
 type Period = 'week' | 'month' | 'year'
 
 export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGear, onOpenSession, onOpenSetup }: {
-  onClose: () => void; onOpenPlan?: () => void; oura?: boolean; onOpenRecap?: () => void
+  onClose: () => void; onOpenPlan?: () => void; onOpenRecap?: () => void
   /** insight actions ("What your data says") */
   onAsk?: (text: string) => void; onOpenGear?: () => void; onOpenSession?: (sessionId: string) => void
   /** the setup checklist (one line in the hero until core setup is done) */
@@ -67,7 +67,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
           )}
           <button type="button" onClick={() => void refresh()} disabled={busy} aria-label="Refresh"
             className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
-            <RefreshCw className={cn('size-3', busy && 'animate-spin')} /> Refresh
+            <RefreshCw className={cn('size-3', busy && 'animate-spin motion-reduce:animate-none')} /> Refresh
           </button>
         </div>) : undefined}>
       <group.Provider value={group.track}>
@@ -149,7 +149,7 @@ function StreakHero({ s }: { s: Stats }) {
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-4 py-5 text-center">
       <div className="flex items-end gap-6">
         <div className="flex flex-col items-center">
-          <span className={cn('flex size-16 items-center justify-center rounded-full', st.current ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-muted)')}>
+          <span className={cn('flex size-16 items-center justify-center rounded-full', st.current ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
             <Flame className="size-8" />
           </span>
           <span className="mt-2 font-display text-[2.2rem] leading-none text-(--brand)">{st.current}</span>
@@ -370,7 +370,7 @@ function BadgesCard({ s }: { s: Stats }) {
           <div key={b.id} title={b.description}
             {...hopIn(i, cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
               b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)'))}>
-            <span className={cn('flex size-9 items-center justify-center rounded-full', b.earned ? 'bg-(--accent) text-white' : 'bg-(--bg-elevated) text-(--text-muted)')}>
+            <span className={cn('flex size-9 items-center justify-center rounded-full', b.earned ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
               {b.earned ? <Award className="size-5" /> : <Lock className="size-4" />}
             </span>
             <span className={cn('text-[0.7059rem] font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>

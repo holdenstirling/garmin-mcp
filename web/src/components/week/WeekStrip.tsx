@@ -31,7 +31,7 @@ export function WeekDots({ days, className }: { days: WeekDay[]; className?: str
             <span className={cn('text-[0.6471rem] leading-none', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
               {d.weekday.charAt(0)}
             </span>
-            <span className={cn('flex size-3 items-center justify-center rounded-full border text-white',
+            <span className={cn('flex size-3 items-center justify-center rounded-full border text-(--on-fill)',
               st === 'done' || st === 'extra' ? 'border-(--accent) bg-(--accent)'
                 : st === 'partial' ? 'border-(--accent) bg-(--accent)/45'
                 : st === 'missed' ? 'border-(--danger)/50 bg-(--danger)/10'

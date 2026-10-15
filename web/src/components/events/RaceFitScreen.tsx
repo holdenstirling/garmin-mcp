@@ -3,7 +3,8 @@
 // default), your coach's race notes, and Rabbit's AI race strategy with "Ask your coach"
 // (a race-tied coach thread) or, without a coach, a "Find a coach" link.
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, MessageSquare, RefreshCw, Search, Sparkles, StickyNote } from 'lucide-react'
+import { ChevronDown, MessageSquare, RefreshCw, Search, StickyNote } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -178,7 +179,7 @@ function StrategyCard({ eventId, strategy, onUpdated, extra, race }: {
       <Field label={race ? 'Race strategy' : 'Game plan'} hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : `Rabbit writes a plan for the day from your profile, this ${race ? 'race' : 'event'} and your training phase.`}>
         {!strategy ? (
           <Button variant="primary" className="h-10 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void run()}>
-            <Sparkles className="size-4" /> {race ? 'Get AI race strategy' : 'Get AI game plan'}
+            <RabbitLogo size={16} current /> {race ? 'Ask Rabbit for a race strategy' : 'Ask Rabbit for a game plan'}
           </Button>
         ) : (
           <div className="flex flex-col gap-2.5 text-[0.7647rem] leading-snug">

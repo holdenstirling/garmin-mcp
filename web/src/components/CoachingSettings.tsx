@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, CalendarCheck, Clock, FlaskConical, Sparkles, Sunrise, Watch } from 'lucide-react'
+import { Bell, CalendarCheck, Clock, FlaskConical, Play, Sunrise, Watch } from 'lucide-react'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { postJSON, putSettings, type CoachSettings, type Me } from '@/lib/api'
 import { MotionLab } from '@/components/fx/MotionLab'
@@ -99,7 +99,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
             <Row icon={<Icon tone="muted"><FlaskConical /></Icon>} title="Send brief now" disabled={busy}
               onClick={() => void dev('brief_now', 'Morning brief')} />
           )}
-          <Row icon={<Icon tone="muted"><Sparkles /></Icon>} title="Motion lab" subtitle={lab ? 'Tap to close' : 'Try each animation'}
+          <Row icon={<Icon tone="muted"><Play /></Icon>} title="Motion lab" subtitle={lab ? 'Tap to close' : 'Try each animation'}
             onClick={() => setLab((v) => !v)} />
           {lab && <MotionLab />}
         </Group>

@@ -133,7 +133,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
 
       <section className="flex flex-col gap-2" aria-label="Clubs near you">
         <div className="flex items-center gap-2">
-          <input className={inputCls} placeholder="Search clubs by name or city" value={q} maxLength={40}
+          <input aria-label="Search clubs by name or city" className={inputCls} placeholder="Search clubs by name or city" value={q} maxLength={40}
             onChange={(e) => { setQ(e.target.value); if (!e.target.value.trim()) setFound(null) }}
             onKeyDown={(e) => { if (e.key === 'Enter') void search() }} />
           <Button variant="default" className="h-11 w-11 shrink-0 p-0" aria-label="Search" loading={busy === 'search'} onClick={() => void search()}>
@@ -287,7 +287,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
     <div role="tablist" aria-label="Club" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
       {tabs.map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-10 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
           {label}{v === 'members' && c?.pending.length ? ` · ${c.pending.length}` : ''}
         </button>
       ))}

@@ -1,7 +1,7 @@
 // Settings > Training profile: everything the plan builder and coach use about you,
 // editable any time. Saving doesn't touch the plan; rebuild it to apply the changes.
 import { useMemo, useState } from 'react'
-import { ChevronRight, Footprints, Sparkles } from 'lucide-react'
+import { ChevronRight, Compass, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { putAthlete, type Me, type Sport } from '@/lib/api'
 import { getGarminNumbers, sportsFor, type AthleteFull } from '@/lib/plan'
@@ -108,7 +108,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
           <TraitsFields a={a} setA={setA} sports={sports} />
           <button type="button" onClick={() => setEditInterests(true)}
             className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
-            <Sparkles className="size-5 shrink-0 text-(--accent)" />
+            <Compass className="size-5 shrink-0 text-(--accent)" aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block text-[0.8824rem] font-medium text-(--text)">Race interests</span>
               <span className="block truncate text-[0.6471rem] text-(--text-muted)">{interestsSummary(interests).join(' · ') || 'What you like to race: powers your picks in Explore'}</span>

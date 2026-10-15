@@ -17,7 +17,7 @@ import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { InviteToRaceSheet } from '@/components/events/RacePeople'
 import { cn } from '@/lib/utils'
 import {
-  acceptRequest, addCheer, blockUser, declineRequest, deleteCheer, follow, friendPhotoUrl, getBadge, getFeed, getFriend,
+  acceptRequest, addCheer, blockUser, declineRequest, deleteCheer, follow, friendPhotoUrl, getFeed, getFriend,
   getPeople, giveKudos, markSocialSeen, newInviteCode, putSocialSettings, relativeDay, removeFollower, takeKudos,
   unblockUser, unfollow, workoutLine,
   type FeedItem, type FriendCard as FriendCardData, type People, type PersonEdge, type SocialSettings, type SocialUser,
@@ -29,22 +29,6 @@ const SPORT_ICON: Record<string, typeof Bike> = {
 }
 const LOADING = ['Finding your crew…', 'Lacing up…', 'Checking who trained today…']
 const SEEN_EVENT = 'rabbit:social-seen'
-
-/** Small dot for the home "Friends" button: pending requests or new kudos since last open. */
-export function FriendsDot() {
-  const [on, setOn] = useState(false)
-  useEffect(() => {
-    let live = true
-    const check = () => { getBadge().then((b) => { if (live) setOn(b.pending + b.new_kudos > 0) }, () => { /* no dot */ }) }
-    const seen = () => setOn(false)
-    const vis = () => { if (document.visibilityState === 'visible') check() }
-    check()
-    window.addEventListener(SEEN_EVENT, seen)
-    document.addEventListener('visibilitychange', vis)
-    return () => { live = false; window.removeEventListener(SEEN_EVENT, seen); document.removeEventListener('visibilitychange', vis) }
-  }, [])
-  return on ? <span className="-mr-0.5 ml-0.5 size-1.5 rounded-full bg-(--accent)" aria-label="New" /> : null
-}
 
 function FriendAvatar({ u, size = 36 }: { u: SocialUser; size?: number }) {
   return <Avatar name={u.name} picture={u.picture} photo={friendPhotoUrl(u)} size={size} />
@@ -80,7 +64,7 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
             tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
           {t === 'feed' ? 'Feed' : 'People'}
           {t === 'people' && pending > 0 && (
-            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-white">{pending}</span>
+            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{pending}</span>
           )}
         </button>
       ))}
@@ -233,7 +217,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
       )}
       {open && (
         <div className="mt-2 flex items-center gap-2">
-          <input className={cn(inputCls, 'h-9 text-[0.8235rem]')} maxLength={140} autoFocus placeholder="Nice work!"
+          <input aria-label="Cheer" className={cn(inputCls, 'h-9 text-[0.8235rem]')} maxLength={140} autoFocus placeholder="Nice work!"
             value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send() }} />
           <Button variant="primary" className="h-9 w-9 shrink-0 p-0" aria-label="Send cheer" loading={busy} disabled={!text.trim()} onClick={() => void send()}>
             <Send className="size-4" />
@@ -314,7 +298,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
             <Button variant="default" className="h-10 w-10 p-0" aria-label="Share code" onClick={() => void share()}><Share2 className="size-4" /></Button>
           )}
         </div>
-        <button type="button" className="mt-2 text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline" disabled={busy === 'code'}
+        <button type="button" className="hit-44 mt-2 text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline" disabled={busy === 'code'}
           onClick={() => void run('code', newInviteCode, 'New code made. The old one no longer works.')}>Make a new code</button>
       </Card>
 

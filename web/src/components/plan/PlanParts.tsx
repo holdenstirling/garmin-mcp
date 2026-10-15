@@ -74,7 +74,7 @@ export function SessionLine({ s, onClick, unread }: { s: PlanSession; onClick?: 
     <button type="button" onClick={onClick} disabled={!onClick}
       className="flex w-full items-center gap-2.5 py-1.5 text-left disabled:cursor-default">
       <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg',
-        rest ? 'bg-(--bg-elevated) text-(--text-muted)' : s.kind === 'race' ? 'bg-(--brand) text-white' : 'bg-(--accent-subtle) text-(--accent)')}>
+        rest ? 'bg-(--bg-elevated) text-(--text-muted)' : s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
         <Icon className="size-3.5" />
       </span>
       <span className="min-w-0 flex-1">

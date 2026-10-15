@@ -64,7 +64,7 @@ export function MotionLab() {
         {today && (
           <span key={today.n} className="relative flex h-10 w-full items-center gap-2 rounded-xl border border-(--border) px-3">
             <TodayFx tone={today.tone} />
-            <span className={cn('flex size-7 items-center justify-center rounded-full bg-(--accent) text-white', today.tone === 'easy' && 'fx-sway')}>
+            <span className={cn('flex size-7 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)', today.tone === 'easy' && 'fx-sway')}>
               <Waves className="size-4" />
             </span>
             <span className="text-[0.7059rem] text-(--text-muted)">Today · {today.tone}</span>

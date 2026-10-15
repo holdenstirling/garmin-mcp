@@ -51,11 +51,6 @@ def _pace(sec_per_km: float, imperial: bool) -> str:
     return f"{s // 60}:{s % 60:02d}/{'mi' if imperial else 'km'}"
 
 
-def _hhmm(hours: float) -> str:
-    h = int(hours)
-    return f"{h}h{int(round((hours - h) * 60)):02d}"
-
-
 def _altitude(event: dict[str, Any]) -> bool:
     blob = " ".join(str(x) for x in [event.get("name"), event.get("location"), event.get("course"),
                                      *(event.get("info") or {}).values()])

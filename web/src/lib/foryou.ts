@@ -32,7 +32,7 @@ export const DISTANCES: [InterestDistance, string][] = [
 ]
 export const VIBES: [Vibe, string, string][] = [
   ['competitive', 'Competitive', '🏆'], ['scenic', 'Scenic', '🏔️'], ['fun_social', 'Fun & social', '🎉'],
-  ['charity', 'Charity', '💚'], ['bucket_list', 'Bucket list', '✨'], ['low_key', 'Low-key', '🌿'],
+  ['charity', 'Charity', '💚'], ['bucket_list', 'Bucket list', '⭐'], ['low_key', 'Low-key', '🌿'],
 ]
 export const GOALS: [Goal12, string][] = [
   ['first_race', 'First race'], ['pr', 'Set a PR'], ['first_ultra', 'First ultra'], ['qualify', 'Qualify'],

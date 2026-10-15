@@ -4,7 +4,7 @@
 // the app shell sets it from /me), e.g. Events opens on Explore for "events" people.
 import { useSyncExternalStore } from 'react'
 import { getFeed } from '@/lib/social'
-import { getJSON, postJSON, type Me } from '@/lib/api'
+import { postJSON, type Me } from '@/lib/api'
 
 export type Intent = 'train' | 'consistent' | 'community' | 'events' | 'coach' | 'explore'
 export type WelcomeMode = 'full' | 'lite' | null
@@ -24,7 +24,6 @@ export const INTENT_OPTIONS: { id: Intent; title: string; help: string }[] = [
 ]
 const IDS = new Set<string>(INTENT_OPTIONS.map((o) => o.id))
 
-export const getIntent = () => getJSON<IntentView>('/api/intent')
 export const saveIntents = (intents: Intent[]) => postJSON<IntentView>('/api/intent', { intents })
 export const skipWelcome = () => postJSON<IntentView>('/api/intent', { skip: true })
 
@@ -39,9 +38,6 @@ export const welcomeOf = (me: Me): WelcomeMode => (me as Me & { welcome?: Welcom
 export const primaryIntent = (intents: readonly Intent[] | null | undefined): Intent | null => intents?.[0] ?? null
 /** Plan building stays front and center unless they told us training isn't why they're here. */
 export const wantsPlan = (intents: readonly Intent[]) => intents.length === 0 || intents.includes('train')
-/** Events screen's first segment: Explore for people who came to find events. */
-export const defaultEventsSegment = (intents: readonly Intent[]): 'explore' | 'mine' =>
-  primaryIntent(intents) === 'events' ? 'explore' : 'mine'
 
 // ------------------------------------------------- shared current value ---
 let current: Intent[] = []

@@ -39,7 +39,7 @@ export function CheckinsCard() {
               <CheckinChips c={c} />
             </div>
             <button type="button" aria-label="Delete check-in" onClick={() => void remove(c.id)}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-muted) hover:bg-(--bg-inset) hover:text-(--danger)">
+              className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-muted) hover:bg-(--bg-inset) hover:text-(--danger)">
               <Trash2 className="size-4" />
             </button>
           </div>

@@ -7,8 +7,9 @@
 // in ends in the editable review (PlanReview).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  CalendarRange, ChevronDown, ChevronUp, ClipboardPaste, Download, FileSpreadsheet, LayoutGrid, Link2, Sparkles, Trash2, Upload, X,
+  CalendarRange, ChevronDown, ChevronUp, ClipboardPaste, Download, FileSpreadsheet, LayoutGrid, Link2, ScanText, Trash2, Upload, X,
 } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -219,12 +220,12 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
 
         {typing && !busy && (
           <Card className="flex flex-col gap-2.5 px-4 py-3.5">
-            <textarea className={cn(areaCls, 'min-h-36')} autoFocus value={text} onChange={(e) => setText(e.target.value)}
+            <textarea aria-label="Plan text" className={cn(areaCls, 'min-h-36')} autoFocus value={text} onChange={(e) => setText(e.target.value)}
               placeholder={'Paste the plan: an email, notes, copied spreadsheet cells, or a Google Sheets/Docs link.\nWeek 1: Mon rest, Tue 6x400 at 5K pace, Thu 40\' easy, Sat long run 90\''} />
             {linkTyped && <LinkHint text={linkTyped} />}
             {googleTyped && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Rabbit opens Google links that are published to the web or shared with “anyone with the link”.</p>}
             <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" disabled={!text.trim() || !!linkTyped} onClick={() => sendText(text)}>
-              {googleTyped ? <><Link2 className="size-4" /> Open the link</> : <><Sparkles className="size-4" /> Read it</>}
+              {googleTyped ? <><Link2 className="size-4" /> Open the link</> : <><ScanText className="size-4" aria-hidden /> Read it</>}
             </Button>
             {status.ai_per_day > 0 && !googleTyped && <p className="text-[0.6471rem] text-(--text-muted)">Rabbit reads text, PDFs and photos: {status.ai_left} of {status.ai_per_day} reads left today. Spreadsheets and workout files don't count.</p>}
           </Card>
@@ -451,7 +452,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
       {error && <ErrorState compact message={error} />}
       {aiLeft > 0 && (
         <button type="button" disabled={busy} onClick={onAi} className="flex min-h-11 items-center gap-1.5 self-start px-1 text-[0.7647rem] font-medium text-(--accent) disabled:opacity-50">
-          <Sparkles className="size-4" /> Let Rabbit read it instead
+          <RabbitLogo size={16} current /> Let Rabbit read it instead
         </button>
       )}
     </Screen>

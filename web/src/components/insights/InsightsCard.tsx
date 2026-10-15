@@ -2,7 +2,7 @@
 // Each row: impact icon + title + one line; tap to expand the numbers, a tiny chart, why it
 // matters, one action and "Not now" (snoozes 7 days). Nothing changes the plan without a tap.
 import { useCallback, useEffect, useState } from 'react'
-import { TriangleAlert, ChevronDown, Lightbulb, Sparkles, TrendingUp } from 'lucide-react'
+import { ChevronDown, Lightbulb, TrendingUp, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -19,7 +19,7 @@ const TERM: Record<string, Term> = {
   ramp: 'ramp_rate', long: 'long_session', intensity: 'eighty_twenty', recovery: 'readiness', fitness: 'fitness',
 }
 
-const IMPACT: Record<Impact, { icon: typeof Sparkles; color: string; bg: string; label: string }> = {
+const IMPACT: Record<Impact, { icon: typeof Lightbulb; color: string; bg: string; label: string }> = {
   action: { icon: Lightbulb, color: 'text-(--accent)', bg: 'bg-(--accent-subtle)', label: 'Do this' },
   watch: { icon: TriangleAlert, color: 'text-(--warning-text)', bg: 'bg-(--warning-subtle)', label: 'Keep an eye on' },
   positive: { icon: TrendingUp, color: 'text-(--accent)', bg: 'bg-(--accent-subtle)', label: 'Going well' },

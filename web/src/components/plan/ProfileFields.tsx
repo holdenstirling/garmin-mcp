@@ -199,7 +199,7 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
               <div className="flex gap-2">
                 <input className={inputCls} value={r.name} maxLength={60} placeholder="Race name" aria-label="Race name"
                   onChange={(e) => set(i, { name: e.target.value })} />
-                <button type="button" aria-label="Remove race" className="shrink-0 rounded p-2 text-(--danger)"
+                <button type="button" aria-label="Remove race" className="hit-44 shrink-0 rounded p-2 text-(--danger)"
                   onClick={() => onChange(races.filter((_, j) => j !== i))}><Trash2 className="size-4" /></button>
               </div>
               <div className="flex gap-2">

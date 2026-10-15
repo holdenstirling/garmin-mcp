@@ -181,7 +181,7 @@ export function Chart({ spec }: { spec: ChartSpec }) {
         </ul>
       )}
       <button type="button" onClick={() => setShowData((v) => !v)}
-        className="mt-2 text-[0.6471rem] font-medium uppercase tracking-widest text-(--text-muted) hover:text-(--text)">
+        className="hit-44 mt-2 text-[0.6471rem] font-medium uppercase tracking-widest text-(--text-muted) hover:text-(--text)">
         {showData ? "Hide data" : "Show data"}
       </button>
       {showData && <DataTable spec={spec} labels={labels} />}

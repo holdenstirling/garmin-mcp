@@ -157,10 +157,6 @@ export function mondayOf(iso: string): string {
 export function shiftRows<T extends { date: string }>(rows: T[], n: number): T[] {
   return n ? rows.map((r) => ({ ...r, date: addDays(r.date, n) })) : rows
 }
-/** Whole days from a to b (YYYY-MM-DD). */
-export function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 86_400_000)
-}
 /** A Google Sheets/Docs link Rabbit can fetch (published to the web, or shared with anyone). */
 export function isGoogleDocLink(text: string): boolean {
   return /^https:\/\/docs\.google\.com\/(spreadsheets|document)\/d\/(e\/)?[A-Za-z0-9_-]{10,}/.test(text.trim()) && !/\s/.test(text.trim())

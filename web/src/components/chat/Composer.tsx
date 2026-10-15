@@ -123,10 +123,10 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
           {files.map((f) => f.isImage && f.preview ? (
             <div key={f.localId} className="relative size-16 overflow-hidden rounded-lg border border-border bg-secondary">
               <img src={f.preview} alt={f.name} className={cn('size-full object-cover', f.status === 'uploading' && 'opacity-50')} />
-              {f.status === 'uploading' && <span className="absolute inset-0 flex items-center justify-center"><span className="thinking-dots flex gap-[3px]"><span /><span /><span /></span></span>}
-              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-[0.6471rem] text-white" title={f.error}>Failed</span>}
+              {f.status === 'uploading' && <span className="absolute inset-0 flex items-center justify-center"><span className="thinking-dots flex gap-[3px]" role="status" aria-label="Uploading"><span /><span /><span /></span></span>}
+              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-[0.6471rem] text-(--on-fill)" title={f.error}>Failed</span>}
               <button aria-label="Remove" onClick={() => remove(f.localId)}
-                className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white">
+                className="hit-44 absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white">
                 <X className="size-3" />
               </button>
             </div>
@@ -140,7 +140,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
                 {f.status === 'uploading' ? '…' : f.status === 'error' ? 'failed' : formatFileSize(f.size)}
               </span>
               <button aria-label="Remove" onClick={() => remove(f.localId)}
-                className="flex size-[18px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                className="hit-44 flex size-[18px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                 <X className="size-2.5" />
               </button>
             </div>
@@ -156,7 +156,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
       <div style={{ ['--row' as string]: 'max(36px, 1.375rem + 10px)' }} className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border-strong) bg-(--bg-surface) py-1.5 pl-1.5 pr-1.5 shadow-sm focus-within:border-(--accent)">
         <button type="button" aria-label="Attach" onClick={() => picker.current?.click()} style={{ marginBottom: 'calc((var(--row) - 32px) / 2)' }}
           disabled={files.length >= MAX_FILES}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40">
+          className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40">
           <Paperclip className="size-[18px]" />
         </button>
         {/* id lets "Upload my plan" buttons elsewhere open this picker via <label htmlFor>,
@@ -165,6 +165,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
           onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />}
         <textarea
           ref={ref}
+          aria-label="Message Rabbit"
           rows={1}
           value={input}
           enterKeyHint="send"
@@ -177,28 +178,28 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() }
           }}
           placeholder={placeholder}
-          className="chat-text max-h-[calc(1.375em*5+36px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((36px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
+          className="chat-text max-h-[calc(1.375em*5+36px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((36px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
           style={{ overflowY: 'auto' }}
         />
         {onMic && !input.trim() && (
           <button type="button" aria-label="Voice check-in" title="How did it feel? (voice check-in)" onClick={onMic}
             style={{ marginBottom: 'calc((var(--row) - 32px) / 2)' }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+            className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
             <Mic className="size-[18px]" />
           </button>
         )}
         {streaming ? (
           <button type="button" aria-label="Stop" onClick={onStop} style={{ marginBottom: 'calc((var(--row) - 36px) / 2)' }}
-            className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-destructive text-white shadow-sm transition-all hover:opacity-90 active:scale-95">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" /></svg>
+            className="hit-44 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-destructive text-(--on-fill) shadow-sm transition-all hover:opacity-90 active:scale-95">
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" /></svg>
           </button>
         ) : (
           <button type="button" aria-label="Send" onClick={submit} disabled={!canSend} style={{ marginBottom: 'calc((var(--row) - 36px) / 2)' }}
-            className={cn('flex size-9 shrink-0 items-center justify-center rounded-full border-none shadow-sm transition-all',
+            className={cn('hit-44 flex size-9 shrink-0 items-center justify-center rounded-full border-none shadow-sm transition-all',
               canSend
                 ? 'cursor-pointer bg-[var(--btn-approve-bg)] text-[var(--btn-approve-text)] hover:scale-105 hover:opacity-90 active:scale-95'
                 : 'cursor-not-allowed bg-[var(--bg-elevated)] text-muted-foreground shadow-none')}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
+            <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
           </button>
         )}
       </div>

@@ -1,4 +1,5 @@
-// Keyboard basics for sheets and full-screen pages: on open, focus moves into the dialog;
+// Keyboard basics for sheets and full-screen pages: role=dialog + aria-modal, named by its
+// title (.modal-title / h1 / h2) unless labelled; on open, focus moves into the dialog;
 // Tab cycles within it; Escape closes it; on close, focus returns to where it was.
 // Listeners sit on the dialog itself, so a dialog opened inside another one handles its
 // own keys first; it marks them handled (preventDefault) so the outer one skips them.
@@ -21,6 +22,14 @@ export function useDialog(ref: RefObject<HTMLElement | null>, onClose: () => voi
     if (!el.hasAttribute('tabindex')) el.tabIndex = -1
     if (!el.hasAttribute('role')) el.setAttribute('role', 'dialog')
     if (!el.hasAttribute('aria-modal')) el.setAttribute('aria-modal', 'true')
+    // Name it by its title when it has no label of its own.
+    if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) {
+      const title = el.querySelector<HTMLElement>('.modal-title, h1, h2')
+      if (title) {
+        if (!title.id) title.id = `dlg-${Math.random().toString(36).slice(2, 9)}`
+        el.setAttribute('aria-labelledby', title.id)
+      }
+    }
     if (!el.contains(document.activeElement)) el.focus({ preventScroll: true })
 
     const onKey = (e: KeyboardEvent) => {

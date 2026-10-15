@@ -4,8 +4,9 @@
 // runs one web search (sport + city only), labelled as not verified. The athlete contacts
 // coaches directly (email, phone, website); Rabbit takes no cut. "Invite as my coach" only
 // for coaches who already use Rabbit.
-import { useCallback, useEffect, useState } from 'react'
-import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Sparkles, UserPlus, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDialog } from '@/hooks/useDialog'
+import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Target, UserPlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -183,7 +184,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
         </span>
       </span>
       <span className="flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
-        <Sparkles className="mt-0.5 size-3.5 shrink-0" /> {c.match.why}
+        <Target className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {c.match.why}
       </span>
       <span className="flex flex-wrap gap-1.5">
         {c.specialties.map((s) => (
@@ -218,9 +219,11 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
   }
   const askText = `Would ${c.name} (${c.business}, ${c.location}; ${c.specialties.join(', ')}) be a good coach for me${race?.name ? ` for ${race.name}` : ''}? `
   const contactCls = 'h-11 flex-1 gap-1.5 text-[0.7647rem]'
+  const box = useRef<HTMLDivElement>(null)
+  useDialog(box, onClose)
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="coach-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="coach-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="coach-title" className="modal-title">{c.name}</h2>
@@ -232,7 +235,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
             <div className="min-w-0">
               <p className="text-[0.8824rem] font-medium text-(--text)">{c.business}</p>
               <p className="text-[0.7647rem] text-(--text-muted)">{c.location}</p>
-              <p className="mt-0.5 flex items-start gap-1 text-[0.7059rem] text-(--accent)"><Sparkles className="mt-0.5 size-3 shrink-0" /> {c.match.why}</p>
+              <p className="mt-0.5 flex items-start gap-1 text-[0.7059rem] text-(--accent)"><Target className="mt-0.5 size-3 shrink-0" aria-hidden /> {c.match.why}</p>
             </div>
           </div>
           <p className="text-[0.8235rem] leading-snug text-(--text)">{c.bio}</p>

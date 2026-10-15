@@ -60,7 +60,7 @@ export function ThreadView({ api, threadId, me, otherName, draft }: {
           return (
             <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
               <div className={cn('max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[0.8824rem] leading-snug',
-                mine ? 'rounded-br-sm bg-(--accent) text-white dark:bg-(--accent-subtle) dark:text-(--text)' : 'rounded-bl-sm border border-(--border) bg-(--bg-surface) text-(--text)')}>
+                mine ? 'rounded-br-sm bg-(--accent) text-(--on-fill) dark:bg-(--accent-subtle) dark:text-(--text)' : 'rounded-bl-sm border border-(--border) bg-(--bg-surface) text-(--text)')}>
                 {m.text}
               </div>
               <span className="mt-0.5 px-1 text-[0.6471rem] text-(--text-muted)">{mine ? 'You' : otherName} · {timeAgo(m.ts)}</span>

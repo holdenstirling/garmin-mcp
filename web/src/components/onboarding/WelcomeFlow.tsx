@@ -13,6 +13,7 @@
 // (1) wins: it names all three things Rabbit does (training, social support, events) in the
 // owner's order, and the sub-line maps them to coach / crew / calendar.
 import { useEffect, useRef, useState } from 'react'
+import { useDialog } from '@/hooks/useDialog'
 import { CalendarDays, Check, ChevronRight, Compass, Flame, Target, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -47,6 +48,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const cta = useRef<HTMLButtonElement>(null)
+  const box = useRef<HTMLDivElement>(null)
 
   const toggle = (id: Intent) => setPicks((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
   const skip = () => {
@@ -54,6 +56,8 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     void skipWelcome().catch(() => {}) // best effort: seen either way on this device
     onFinish({ saved: true, intents: null, next: null })
   }
+  // Escape = Skip (not on the last step, which has its own button).
+  useDialog(box, () => { if (!saving && step !== 'yours') skip() })
   async function save() {
     setSaving(true); setErr(null)
     try {
@@ -112,7 +116,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
                 className={cn('flex min-h-[64px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors active:scale-[0.99]',
                   on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                 <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
-                  on ? 'bg-(--accent) text-white' : 'bg-(--bg-inset) text-(--text-secondary)')}>
+                  on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
                   <Icon className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -120,7 +124,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
                   <span className="block text-[0.7647rem] leading-snug text-(--text-muted)">{o.help}</span>
                 </span>
                 <span aria-hidden="true" className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border text-[0.7647rem] font-bold',
-                  on ? 'rb-pop border-(--accent) bg-(--accent) text-white' : 'border-(--border-strong)')} key={on ? `on${at}` : 'off'}>
+                  on ? 'rb-pop border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')} key={on ? `on${at}` : 'off'}>
                   {on ? at + 1 : ''}
                 </span>
               </button>
@@ -143,7 +147,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       <ul className="flex flex-col gap-2.5">
         {plan.bullets.map((b, i) => (
           <HopIn as="li" key={b} index={i + 1} className="flex items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-white"><Check className="size-3.5" /></span>
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-3.5" /></span>
             <span className="text-[0.8824rem] leading-snug text-(--text)">{b}</span>
           </HopIn>
         ))}
@@ -192,7 +196,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
 
   if (mode === 'full') {
     return (
-      <div className="fixed inset-0 flex flex-col bg-(--bg) pt-[max(10px,env(safe-area-inset-top))]" style={{ zIndex: 65 }}
+      <div ref={box} className="fixed inset-0 flex flex-col bg-(--bg) pt-[max(10px,env(safe-area-inset-top))]" style={{ zIndex: 65 }}
         role="dialog" aria-modal="true" aria-label="Welcome to Rabbit">
         <div className="flex items-center justify-between px-2">
           <span className="w-11" />
@@ -210,11 +214,11 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   }
   return (
     <div className="modal-overlay" style={{ zIndex: 65 }} onClick={() => { if (!saving && step !== 'yours') skip() }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="wf-title" onClick={(e) => e.stopPropagation()}>
+      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="wf-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="wf-title" className="modal-title">
-            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-bold uppercase text-white">New</span>Tell Rabbit how you use it</>
+            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-bold uppercase text-(--on-fill)">New</span>Tell Rabbit how you use it</>
               : 'How you use Rabbit'}
           </h2>
           <button type="button" className="modal-close" aria-label={mode === 'edit' ? 'Close' : 'Skip for now'}

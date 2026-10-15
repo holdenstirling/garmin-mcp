@@ -41,7 +41,7 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
             // Dolly's MessageFileCard
             <a key={a.id} href={attachmentUrl(a.id)} target="_blank" rel="noopener"
               className="inline-flex min-w-[140px] max-w-[220px] items-center gap-2 rounded-lg border border-border bg-background p-1.5 shadow-sm transition-colors hover:bg-secondary/50">
-              <span className="flex h-7 w-8 shrink-0 items-center justify-center rounded bg-accent font-mono text-[0.6471rem] font-bold tracking-wide text-white">
+              <span className="flex h-7 w-8 shrink-0 items-center justify-center rounded bg-accent font-mono text-[0.6471rem] font-bold tracking-wide text-(--on-fill)">
                 {a.kind === 'pdf' ? 'PDF' : <FileText className="size-3.5" />}
               </span>
               <span className="flex min-w-0 flex-col pr-2">

@@ -36,7 +36,7 @@ export function GoalsTab({ seasonGoal, onSeasonGoal, onOpenEvents }: {
         </Field>
       </Card>
       {events === null && !error && <RabbitLoader size={40} className="py-8" label="Loading events…" />}
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error} <button type="button" className="underline" onClick={load}>Retry</button></p>}
+      {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error} <button type="button" className="hit-44 underline" onClick={load}>Retry</button></p>}
       {events !== null && upcoming.length === 0 && (
         <p className="px-1 text-[0.8235rem] text-(--text-muted)">No upcoming events. Add them in Events.</p>
       )}

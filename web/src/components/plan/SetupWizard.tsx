@@ -2,7 +2,7 @@
 // builds a periodized plan and (optionally) puts the next sessions on your Garmin.
 // Answers are kept as a local draft so leaving halfway loses nothing.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, Check, HeartPulse, Sparkles, Target, Upload, User, Watch } from 'lucide-react'
+import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -231,7 +231,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
       {idx > 1 && <Button variant="default" className="h-11 px-5 text-[0.8235rem]" onClick={back}>Back</Button>}
       {step === 'review' ? (
         <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void build()}>
-          <Sparkles className="size-4" /> Build my plan
+          <Route className="size-4" aria-hidden /> Build my plan
         </Button>
       ) : (
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={next}>
@@ -435,7 +435,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
       {step === 'done' && plan && (
         <>
           <div className="flex flex-col items-center px-2 pt-2 text-center">
-            <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-(--accent) text-white"><Check className="size-6" strokeWidth={3} /></span>
+            <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-6" strokeWidth={3} /></span>
             <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Your plan is ready</h3>
             <p className="mt-1.5 text-[0.8235rem] text-(--text-secondary)">
               {plan.weeks.length} weeks to {g.title || 'race day'}, building from about {plan.start_hours} to {plan.peak_hours} hours a week.

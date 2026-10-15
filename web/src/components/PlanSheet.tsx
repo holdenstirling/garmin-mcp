@@ -3,7 +3,8 @@
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { FileText, MessageCircle, Pencil, Sparkles, X } from 'lucide-react'
+import { FileText, MessageCircle, Pencil, X } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
@@ -50,7 +51,7 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
           </div>
 
           <Group footer={goal.plan ? 'Replaces this plan with one built from your answers. You can sync it to Garmin.' : 'Answer a few questions and get a week-by-week plan you can sync to Garmin.'}>
-            <Row icon={<Icon><Sparkles /></Icon>} title="Build a plan in Rabbit" subtitle="Race, goals, you and your week" onClick={onBuild} />
+            <Row icon={<Icon><RabbitLogo current /></Icon>} title="Build a plan in Rabbit" subtitle="Race, goals, you and your week" onClick={onBuild} />
           </Group>
 
           {files.length > 0 && (

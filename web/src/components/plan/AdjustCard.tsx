@@ -1,6 +1,7 @@
 // Rabbit's suggested changes to the rest of the week, approved with one tap.
 import { useState } from 'react'
-import { ArrowRight, HeartPulse, Sparkles } from 'lucide-react'
+import { ArrowRight, HeartPulse } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { KIND_LABEL, fmtMin } from '@/lib/plan'
 import { decideAdjust, type Proposal } from '@/lib/adjust'
@@ -31,7 +32,7 @@ export function AdjustCard({ p, onDone }: { p: Proposal; onDone: (plan: BuiltPla
   }
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3.5 py-3">
-      <p className="flex items-center gap-2 text-[0.8824rem] font-medium text-(--accent)"><Sparkles className="size-4" /> Rabbit suggests adjusting your plan</p>
+      <p className="flex items-center gap-2 text-[0.8824rem] font-medium text-(--accent)"><RabbitLogo size={16} current /> Rabbit suggests adjusting your plan</p>
       <ul className="flex flex-col gap-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
         {p.reasons.map((r) => <li key={r}>• {r}</li>)}
       </ul>

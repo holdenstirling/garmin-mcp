@@ -4,8 +4,7 @@
 // composer posts to that club. Nothing is ever posted without a tap.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Ban, CalendarDays, EyeOff, Ellipsis, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Reply, Send,
-  SlidersHorizontal, Sparkles, Trash2, UserPlus, Users, X,
+  Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -14,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { areaCls, inputCls } from '@/components/plan/ui'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { useDialog } from '@/hooks/useDialog'
 import { listEvents, type RaceEvent } from '@/lib/events'
 import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
 import { blockUser, type SocialUser } from '@/lib/social'
@@ -76,7 +76,7 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setComposer('blank')}
           className="flex min-h-12 flex-1 items-center gap-2.5 rounded-2xl border border-(--border) bg-(--bg-surface) px-4 text-left text-[0.8824rem] text-(--text-muted) active:bg-(--bg-inset)">
-          <Sparkles className="size-[18px] text-(--accent)" aria-hidden />
+          <SquarePen className="size-[18px] text-(--accent)" aria-hidden />
           {clubName ? `Share with ${clubName}…` : 'Share something'}
         </button>
         {onSettings && (
@@ -106,7 +106,7 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
             <button key={v} type="button" role="radio" aria-checked={scope === v} onClick={() => setScope(v)}
               className="hit-44 inline-flex min-h-8 items-center">
               <span className={cn('rounded-full px-3 py-1 text-[0.7059rem] font-medium',
-                scope === v ? 'bg-(--accent) text-white' : 'bg-(--bg-inset) text-(--text-secondary)')}>{label}</span>
+                scope === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>{label}</span>
             </button>
           ))}
         </div>
@@ -233,7 +233,7 @@ function Composer({ clubId, clubName, template, onClose, onPosted }: {
             ))}
           </div>
           <div>
-            <textarea className={cn(areaCls, 'min-h-[110px]')} autoFocus maxLength={TEXT_LEN} value={text} onChange={(e) => setText(e.target.value)}
+            <textarea aria-label="Post text" className={cn(areaCls, 'min-h-[110px]')} autoFocus maxLength={TEXT_LEN} value={text} onChange={(e) => setText(e.target.value)}
               placeholder={category === 'race' ? 'How did it go?' : category === 'gratitude' ? 'Who are you thankful for?' : 'What happened?'} />
             <p className="mt-0.5 text-right text-[0.6471rem] text-(--text-muted)">{text.length}/{TEXT_LEN}</p>
           </div>
@@ -481,7 +481,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
 
       {editing ? (
         <div className="mt-2.5 flex flex-col gap-2">
-          <textarea className={cn(areaCls, 'min-h-[80px]')} maxLength={TEXT_LEN} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
+          <textarea aria-label="Edit post" className={cn(areaCls, 'min-h-[80px]')} maxLength={TEXT_LEN} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
           <div className="flex justify-end gap-2">
             <Button variant="default" className="h-11 px-3 text-[0.7647rem]" onClick={() => setEditing(false)}>Cancel</Button>
             <Button variant="primary" className="h-11 px-3 text-[0.7647rem]" loading={busy}
@@ -542,7 +542,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
             </span>
           )}
           <div className="flex items-center gap-2">
-            <input ref={input} className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={COMMENT_LEN}
+            <input ref={input} aria-label={replyTo ? 'Reply' : 'Comment'} className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={COMMENT_LEN}
               placeholder={replyTo ? 'Write a reply…' : 'Say something kind…'}
               value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send() }} />
             <Button variant="primary" className="h-11 w-11 shrink-0 p-0" aria-label="Send comment" loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
@@ -595,13 +595,7 @@ function PhotoGrid({ urls }: { urls: string[] }) {
           </button>
         ))}
       </div>
-      {open != null && (
-        <div className="modal-overlay flex items-center justify-center bg-black/85" onClick={() => setOpen(null)} role="dialog" aria-label="Photo">
-          <img src={urls[open]} alt="" className="max-h-[90vh] max-w-full object-contain" />
-          <button type="button" aria-label="Close" className="hit-44 absolute right-3 top-[max(12px,env(safe-area-inset-top))] flex size-10 items-center justify-center rounded-full bg-black/60 text-white"
-            onClick={() => setOpen(null)}><X className="size-5" /></button>
-        </div>
-      )}
+      {open != null && <PhotoViewer url={urls[open]!} label={`Photo ${open + 1} of ${urls.length}`} onClose={() => setOpen(null)} />}
     </>
   )
 }
@@ -614,6 +608,19 @@ function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperia
       <p className="truncate text-[0.8235rem] font-medium text-(--text)">{w.title}</p>
       {parts.length > 0 && <p className="text-[0.7059rem] tabular-nums text-(--text-secondary)">{parts.join(' · ')}</p>}
       {w.highlight && <p className="mt-0.5 text-[0.7059rem] font-medium text-(--accent)">{w.highlight}</p>}
+    </div>
+  )
+}
+
+/** Full-screen photo: a keyboard dialog (focus in, Escape closes, focus returns). */
+function PhotoViewer({ url, label, onClose }: { url: string; label: string; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  useDialog(box, onClose)
+  return (
+    <div ref={box} className="modal-overlay flex items-center justify-center bg-black/85" onClick={onClose} role="dialog" aria-modal="true" aria-label={label}>
+      <img src={url} alt="" className="max-h-[90vh] max-w-full object-contain" />
+      <button type="button" aria-label="Close" className="hit-44 absolute right-3 top-[max(12px,env(safe-area-inset-top))] flex size-10 items-center justify-center rounded-full bg-black/60 text-white"
+        onClick={onClose}><X className="size-5" /></button>
     </div>
   )
 }

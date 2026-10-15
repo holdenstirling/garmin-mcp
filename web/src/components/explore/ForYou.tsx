@@ -6,7 +6,8 @@
 // location it shows races coming up across the US (labelled) and asks for a zip or "Use my
 // location" inline. "Near you" (places + groups) follows the races.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Carrot, Pencil, RefreshCw, Sparkles, Users, X } from 'lucide-react'
+import { Activity, Carrot, MountainSnow, Pencil, RefreshCw, Users, X } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -116,7 +117,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
       ) : null}
       {feed.inferred && !hideChip && (
         <div className="-mb-3 flex items-center gap-1 self-start rounded-full bg-(--accent-subtle) py-0.5 pl-3 text-[0.7059rem] text-(--accent)">
-          <Sparkles className="size-3.5 shrink-0" />
+          <Activity className="size-3.5 shrink-0" aria-hidden />
           <button type="button" className="min-h-11 text-left font-medium" onClick={onEdit}>
             Based on your training. <span className="underline underline-offset-2">Tune your interests</span>
           </button>
@@ -140,7 +141,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
       {feed.bucket.due && !bucketBusy && (
         <button type="button" onClick={findBucket}
           className="flex min-h-11 items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <Sparkles className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span className="flex shrink-0 text-(--accent)"><RabbitLogo size={16} current /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-[0.7647rem] font-medium text-(--accent)">Find bucket-list races</span>
             <span className="block text-[0.6471rem] text-(--text-muted)">Rabbit searches the web · uses 1 of 5 daily searches</span>
@@ -175,7 +176,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
 
 function SectionTitle({ s }: { s: ForYouSection }) {
   const icon = s.id === 'friends' ? <Users className="size-3.5" /> : s.id === 'picks' ? <Carrot className="size-3.5" />
-    : s.id === 'bucket' || s.id === 'popular' ? <Sparkles className="size-3.5" /> : null
+    : s.id === 'bucket' || s.id === 'popular' ? <MountainSnow className="size-3.5" /> : null
   return (
     <h3 className={cn('flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest',
       s.id === 'picks' ? 'text-(--accent)' : 'text-(--text-muted)')}>
