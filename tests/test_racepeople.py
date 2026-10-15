@@ -236,6 +236,7 @@ def _setup(env, tmp_path):
     agent, _ = env.agent([])
     today = agent._now("ann").date()
     agent.stats.activities = lambda uid, fresh=False: (today, [act(today, 11)])
+    agent.moments.quiet = lambda local: False  # moments/pushes are asserted; independent of the hour
     for uid in ("ann", "bob", "cat"):
         env.store.user_doc(uid, "account").save({"name": f"{uid.title()} Smith", "picture": ""})
     settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,

@@ -546,6 +546,7 @@ def _setup(env, tmp_path):
     today = agent._now("ann").date()
     acts = {"ann": [act(today - timedelta(days=40), 10, km=5), act(today, 11, km=15)]}
     agent.stats.activities = lambda uid, fresh=False: (today, acts.get(uid, []))
+    agent.moments.quiet = lambda local: False  # pushes are asserted; don't depend on the hour the suite runs
     for uid in ("ann", "bob", "cat"):
         env.store.user_doc(uid, "account").save({"name": f"{uid.title()} Smith", "picture": ""})
     settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,
