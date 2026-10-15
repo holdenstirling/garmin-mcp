@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from garmin_mcp.adjust import propose
 from garmin_mcp.planbuilder import build_plan, iter_sessions
 from tests.test_agent import env  # noqa: F401  (fixture)
+from garmin_mcp.adjust import QUALITY
 from tests.test_plans import _setup
 from tests.test_stats import act
 
@@ -72,7 +73,11 @@ def test_missed_week_eases_back_in() -> None:
 def test_apply_via_service(env) -> None:
     agent, plan, today = _setup(env, distance="half marathon", weeks=12)
     rec = {"days": [{"readiness": 50}, {"readiness": 52}, {"readiness": 55}], "baseline": {}}
-    p = propose(plan, [], today, recovery=rec, tsb=-45)
+    # Propose on the first day with a session, so the 2-day horizon has something to change
+    # whatever weekday the suite runs on.
+    day = min(date.fromisoformat(d) for _, d, s in iter_sessions(plan) if date.fromisoformat(d) >= today
+              and (s.get("kind") in QUALITY or (s.get("kind") in ("long", "brick") and (s.get("minutes") or 0) > 60)))
+    p = propose(plan, [], day, recovery=rec, tsb=-45)
     assert p["status"] == "suggest"
     out = agent.plans.apply_adjustment("friend", p["changes"])
     by_id = {s["id"]: s for _, _, s in iter_sessions(out)}
