@@ -48,9 +48,9 @@ echo \"   ok: journal \$(journalctl --disk-usage | grep -o \"[0-9.]*[KMG]\" | he
 echo "==> 4. Uptime checks + alert (to $ALERT_EMAIL)"
 g services enable monitoring.googleapis.com >/dev/null 2>&1 || true
 add_uptime() {  # name host path
-  local id
-  id=$(g monitoring uptime list-configs --filter="displayName=$1" --format='value(name)' 2>/dev/null | head -1)
-  if [[ -n "$id" ]]; then skip "uptime check $1 exists"; else
+  if g monitoring uptime list-configs --format='value(displayName)' 2>/dev/null | grep -qxF "$1"; then
+    skip "uptime check $1 exists"
+  else
     g monitoring uptime create "$1" --resource-type=uptime-url \
       --resource-labels="host=$2,project_id=$PROJECT" --protocol=https --path="$3" \
       --period=5 --timeout=10 >/dev/null && ok "uptime check $1 -> https://$2$3"
@@ -61,7 +61,7 @@ add_uptime "MCP server" "$DOMAIN" /healthz
 if [[ "$code" == 200 ]]; then add_uptime "Rabbit app" "$APP_HOST" /app/privacy
 else skip "Rabbit check: https://$APP_HOST/app/privacy -> $code (run 11-domain.sh, then re-run this)"; fi
 
-CH=$(g beta monitoring channels list --filter="type=email AND labels.email_address=\"$ALERT_EMAIL\"" --format='value(name)' 2>/dev/null | head -1)
+CH=$(g beta monitoring channels list --format='value(name,labels.email_address)' 2>/dev/null | awk -v e="$ALERT_EMAIL" '$2==e{print $1; exit}')
 if [[ -z "$CH" && -n "$ALERT_EMAIL" ]]; then
   CH=$(g beta monitoring channels create --display-name="Rabbit alerts" --type=email \
         --channel-labels="email_address=$ALERT_EMAIL" --format='value(name)' 2>/dev/null) && ok "email channel $ALERT_EMAIL"
