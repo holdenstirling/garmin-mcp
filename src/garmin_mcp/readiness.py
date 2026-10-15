@@ -243,6 +243,7 @@ def compute(event: dict[str, Any], athlete: dict[str, Any] | None, *, today: dat
     prio = PRIORITY.get(event.get("priority") or "B", 0.9)
     stage = max(0.4, min(1.0, 1 - 0.04 * (weeks - (taper + 2))))
     parts, bits, worst = [], [], None
+    key_sports: dict[str, int] = {}
     for sport, (mins, km) in sports.items():
         cats = _counts(sport, etype)
         rs = [r for r in recent if r["sport"] in cats]
@@ -255,6 +256,7 @@ def compute(event: dict[str, Any], athlete: dict[str, Any] | None, *, today: dat
             ratio = max(ratio, best_km / (km * prio * stage))
         s = _curve(ratio)
         parts.append((SPORT_WEIGHT.get(sport, 1.0) if len(sports) > 1 else 1.0, s))
+        key_sports[sport] = int(round(max(0.0, min(100.0, s))))
         word = SPORT_WORD.get(sport, sport)
         have = (_dur(best_min) + (f" ({_dist(best_km, imperial)})" if km and best_km else "")) if best else "none"
         want = _dur(need_min) + (f" / {_dist(km * prio * stage, imperial)}" if km else "")
@@ -415,7 +417,8 @@ def compute(event: dict[str, Any], athlete: dict[str, Any] | None, *, today: dat
             "confidence": confidence, "headline": headline, "summary": summary,
             "components": [comps[k] for k in order], "actions": top[:3], "weeks_to_race": weeks,
             "days_to_race": days, "projected_fitness": round(projected), "current_fitness": round(cur),
-            "target_fitness": target, "forecast": bool(forecast), "updated": int(clock())}
+            "target_fitness": target, "forecast": bool(forecast), "updated": int(clock()),
+            "key_sports": key_sports}
 
 
 def compact(r: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:

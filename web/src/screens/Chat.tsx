@@ -14,6 +14,7 @@ import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
+import { WeekGoalsCard } from '@/components/home/WeekGoalsCard'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
 import { useTopInsight } from '@/lib/insights'
@@ -130,6 +131,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
   const [fitEvent, setFitEvent] = useState<string | null>(null) // race readiness from a moment
+  const [ringShown, setRingShown] = useState(false) // home week ring is up: Up next drops its dots
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
@@ -769,10 +771,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
       {isCoach && upnext && !typing && (
-        <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
+        <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal && !ringShown ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
           onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
           onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={loadToday}
           hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+      )}
+      {isCoach && !typing && (
+        <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={setFitEvent} onRing={setRingShown} />
       )}
       {isCoach && !typing && (
         <FirstVisitCard connected={me.garmin.connected} onConnect={() => open('settings')}

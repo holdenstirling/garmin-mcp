@@ -25,8 +25,8 @@ Triggers
   follow each other); webapp's ``on_join`` hook sends the push itself.
 
 Rules: quiet hours 21:00-07:00 local queue a moment until 07:00 (workout synced is exempt);
-at most ``DAILY_CAP`` moments a day besides workouts; only streak-at-risk and race countdown
-push, at most ``PUSH_CAP`` a day, never in quiet hours, and only when ``moments_push`` isn't
+at most ``DAILY_CAP`` moments a day besides workouts; only streak-at-risk, race countdown and
+the Friday week nudge (``weekring.py``) push, at most ``PUSH_CAP`` a day, never in quiet hours, and only when ``moments_push`` isn't
 off. Dedupe keys and the queue live in the per-user ``moments`` doc (bounded). Oura data is
 never read here.
 """
@@ -64,7 +64,7 @@ GRADE_EVERY_DAYS = 7
 RACE_STEPS = ((56, 3, "8w"), (28, 3, "4w"), (14, 2, "2w"), (7, 2, "week"), (1, 0, "eve"))
 GRADE_ORDER = ("F", "D", "C", "C+", "B-", "B", "B+", "A-", "A")
 WORKOUT_TYPES = frozenset({"workout"})  # exempt from the daily cap and quiet hours
-PUSH_TYPES = frozenset({"streak_risk", "race"})
+PUSH_TYPES = frozenset({"streak_risk", "race", "week_nudge"})
 MILESTONE_TYPES = frozenset({"streak", "level", "badge", "challenge"})  # may become Community drafts
 
 _EMOJI = re.compile("[\U0001F000-\U0001FAFF☀-➿⭐⏳]")

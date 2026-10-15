@@ -3092,6 +3092,46 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/firstvisit", _api(firstvisit_get, mutating=False), methods=["GET"]),
     ]
 
+    # ------------------------------------------ weekly ring + live race grade --
+    # weekring.py: this week's sessions (plan, else active-week workouts) + the Friday nudge
+    # (a Moments.tick hook); gradetrend.py: the main race's grade with a weekly snapshot,
+    # delta and reasons (also recorded by the daily grade check). Athletes only (coach 403 in _api).
+    if chat is not None and store is not None:
+        from . import gradetrend as _gt
+        from . import weekring as _wr
+        _hg = chat.agent
+        _ring = _wr.WeekRing(plan=lambda u: plans.get(u) if plans is not None else None,
+                             activities=_hg.stats.activities, checkins=lambda u: _hg.checkins.list(u, 7),
+                             profile=lambda u: store.user_doc(u, "profile").load(), now=_hg._now,
+                             moments=_hg.moments)
+        _grades = _gt.GradeTrend(store, readiness=(_readiness.get if _readiness is not None
+                                                   else lambda u, e: {}),
+                                 events=_hg.events.list, today=lambda u: _hg._now(u).date())
+        _hg.moments.grade = _grades.grade
+        _ring_tick_prev = _hg.moments.on_tick
+
+        def _ring_tick(uid: str) -> None:
+            if _ring_tick_prev is not None:
+                _ring_tick_prev(uid)
+            _ring.check_nudge(uid)
+        _hg.moments.on_tick = _ring_tick
+
+        async def weekring_get(request: Request, user_id: str) -> Response:
+            return JSONResponse({"ring": await anyio.to_thread.run_sync(lambda: _ring.get(user_id))})
+
+        async def racegrade_live(request: Request, user_id: str) -> Response:
+            try:
+                live = await anyio.to_thread.run_sync(lambda: _grades.live(user_id))
+            except Exception as e:  # Garmin busy or a bad event: the home simply hides the card
+                log_event(logger, logging.INFO, "racegrade_live_failed", user_id=user_id, error=type(e).__name__)
+                live = None
+            return JSONResponse({"race": live})
+
+        home_routes += [
+            Route("/app/api/weekring", _api(weekring_get, mutating=False), methods=["GET"]),
+            Route("/app/api/racegrade/live", _api(racegrade_live, mutating=False), methods=["GET"]),
+        ]
+
     # ------------------------------------------------- invites + passkeys --
     # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).
     from . import passkey_web as _pkw
