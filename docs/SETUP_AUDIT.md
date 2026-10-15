@@ -45,7 +45,7 @@ Effort: S = under 30 min, M = a few hours, L = a day or more.
 ## Suggested order
 
 1. Run `10-backups.sh`, then `9-audit.sh` (about 10 minutes).
-2. Set up the GCP budget, the Anthropic spend limit, and an uptime check with email (about 20 minutes).
-3. Cap journald, add `MemoryMax` to garmin-mcp, turn on deletion protection, and enable unattended reboot.
+2. Run `11-domain.sh`, then `12-harden.sh`: removes the open RDP rule, turns on deletion protection, caps journald, turns off LLMNR, adds uptime checks with an email alert and a monthly GCP budget. Set the Anthropic spend limit by hand.
+3. Add `MemoryMax` to garmin-mcp and enable unattended reboot.
 4. After the domain move, publish the OAuth consent screen and update the privacy policy.
 5. Move deploys to GitHub Actions with WIF, then add account delete and export endpoints.
