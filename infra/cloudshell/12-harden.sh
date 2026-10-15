@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cloud Shell: fix what 9-audit.sh flags. Idempotent; each step is skipped when already done.
 #   bash infra/cloudshell/12-harden.sh
-#   BUDGET_USD=40 bash infra/cloudshell/12-harden.sh     (monthly budget, default 25)
+#   BUDGET_USD=40 bash infra/cloudshell/12-harden.sh     (monthly budget, default 5)
 #   ALERT_EMAIL=you@example.com ...                       (default: your gcloud account)
 # 1. delete the GCP default firewall rule that opens RDP (3389) to the internet
 # 2. turn on VM deletion protection
@@ -15,7 +15,7 @@ cd "$(dirname "$0")/../.."
 # shellcheck disable=SC1091
 source infra/config.env
 APP_HOST=${APP_DOMAIN:-$DOMAIN}
-BUDGET_USD=${BUDGET_USD:-25}
+BUDGET_USD=${BUDGET_USD:-5}
 ALERT_EMAIL=${ALERT_EMAIL:-$(gcloud config get-value account 2>/dev/null)}
 g() { gcloud --project "$PROJECT" --quiet "$@"; }
 ok() { echo "   ok: $*"; }
