@@ -2,7 +2,7 @@
 import { getJSON, sendJSON } from '@/lib/api'
 
 export type QuestId = 'garmin' | 'sports' | 'goal' | 'plan' | 'sync' | 'notify' | 'calendar' | 'oura' | 'coach' | 'coach_status' | 'gear' | 'friend' | 'interests'
-export type Quest = { id: QuestId; title: string; hint: string; xp: number; optional: boolean; done: boolean }
+export type Quest = { id: QuestId; title: string; short?: string; hint: string; xp: number; optional: boolean; done: boolean }
 export type Progress = {
   level: number; name: string; xp: number; level_xp: number; level_span: number; to_next: number
   next_name: string | null; gained: number; level_up: boolean

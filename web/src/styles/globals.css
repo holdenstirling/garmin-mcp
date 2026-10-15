@@ -6,7 +6,10 @@
 @theme {
   /* Spacing in px so only text (rem) follows the iPhone's text size, not padding. */
   --spacing: 4px;
-  --default-font-family: 'DM Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  /* Readable system sans for body, buttons, inputs and chat; DM Mono only via font-mono
+     (numbers/stats) and small uppercase labels; DM Serif Display for headings. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --default-font-family: var(--font-sans);
   --default-mono-font-family: 'DM Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
   --font-display: 'DM Serif Display', Georgia, serif;
 
@@ -108,7 +111,7 @@
     --radius-xl: 16px;
 
     /* Typography */
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace;
     --font-display: 'DM Serif Display', Georgia, serif;
 
@@ -249,7 +252,7 @@
   }
 
   body {
-    font-family: var(--font-mono);
+    font-family: var(--font);
     font-size: 0.8235rem;
     line-height: 1.55;
     color: var(--text);
