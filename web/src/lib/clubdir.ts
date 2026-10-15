@@ -2,6 +2,7 @@
 // (clubdir.py, routes in clubdir_web.py).
 import { getJSON, postJSON } from '@/lib/api'
 import type { LocalGroup } from '@/lib/community'
+import type { SocialUser } from '@/lib/social'
 
 export type DirChip = 'run' | 'trail' | 'tri' | 'ride' | 'swim' | 'leagues'
 export type DirKind = 'run_club' | 'trail' | 'tri' | 'ride' | 'swim' | 'league' | 'other'
@@ -16,14 +17,21 @@ export const WEEKDAY_LABEL: Record<Weekday, string> = {
 }
 
 export type DirSession = { weekday: Weekday; time: string; note: string }
+/** "I'm going" for the listing's next occurrence (clubgoing.py). Friends = people you follow. */
+export type DirGoing = { date: string; count: number; me: boolean; friends: SocialUser[]; more_friends: number }
 export type DirListing = {
   id: string; name: string; kind: DirKind; kind_label: string; sports: string[]; sessions: DirSession[]
-  next: { weekday: Weekday; time: string; in_days: number } | null
+  next: { weekday: Weekday; time: string; in_days: number; date?: string } | null
   meet_spot: string; pace: string; cost: 'free' | 'paid' | 'unknown'
   join_url: string; source_url: string; source: string; description: string
   /** "Meetup", "Facebook"... when we only link to it (never read). */
   link_only: string | null
   last_verified: string; linked_club: string | null; reported: boolean
+  /** Geocoded public meet spot (3 decimals), null when unknown. */
+  lat?: number | null; lon?: number | null
+  /** Has a weekly session with a time (an .ics is available). */
+  calendar?: boolean
+  going?: DirGoing | null
 }
 export type DirView = {
   metro: { city: string; state: string; label: string } | null
@@ -32,6 +40,8 @@ export type DirView = {
   counts: Partial<Record<DirChip, number>>
   refreshed: string | null
   fallback: LocalGroup[]
+  /** Metro centre for the map. */
+  center?: { lat: number; lon: number } | null
 }
 
 const P = '/api/community/directory'
@@ -42,6 +52,21 @@ export const suggestClub = (b: { name: string; url: string; city?: string; state
   postJSON<{ ok: boolean; message: string }>(`${P}/suggest`, b)
 export const reportListing = (id: string) =>
   postJSON<{ ok: boolean; hidden: boolean; message: string }>(`${P}/${encodeURIComponent(id)}/report`, {})
+export const markGoing = (id: string, going: boolean, date?: string) =>
+  postJSON<{ going: DirGoing }>(`${P}/${encodeURIComponent(id)}/going`, { going, date })
+/** Weekly .ics download (same-origin link with the session cookie). */
+export const calendarUrl = (id: string) => `/app${P}/${encodeURIComponent(id)}/calendar.ics`
+
+/** OpenStreetMap embed (iframe; CSP frame-src allows www.openstreetmap.org) for one meet spot. */
+export function osmEmbedUrl(lat: number, lon: number): string {
+  const d = 0.006
+  const bbox = [lon - d, lat - d * 0.75, lon + d, lat + d * 0.75].map((v) => v.toFixed(4)).join(',')
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(4)},${lon.toFixed(4)}`
+}
+export function osmLink(lat: number, lon: number): string {
+  return `https://www.openstreetmap.org/?mlat=${lat.toFixed(4)}&mlon=${lon.toFixed(4)}#map=16/${lat.toFixed(4)}/${lon.toFixed(4)}`
+}
+
 export const linkListing = (id: string, clubId: string) =>
   postJSON<{ ok: boolean }>(`${P}/${encodeURIComponent(id)}/link`, { club_id: clubId })
 

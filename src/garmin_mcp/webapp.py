@@ -112,6 +112,7 @@ CSP = "; ".join([
     "object-src 'none'",
     "base-uri 'none'",
     "form-action 'self'",
+    "frame-src https://www.openstreetmap.org",  # Community -> clubs map: one OSM embed, on tap
     "frame-ancestors 'none'",
 ])
 
@@ -2990,7 +2991,19 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             functools.partial(_cd_struct, model=settings.directory_model)
             if "model" in inspect.signature(_cd_struct).parameters else _cd_struct)
         directory = _cd.Directory(store, research=getattr(_ag._backend, "research", None), extract=_cd_extract,
-                                  crawler=_cd.Crawler(user_agent=_cd.user_agent(settings.public_base_url)))
+                                  crawler=_cd.Crawler(user_agent=_cd.user_agent(settings.public_base_url)),
+                                  geocoder=_geocoder)
+        # "I'm going" per listing occurrence (clubgoing.py) + its evening-before Rabbit moment.
+        from . import clubgoing as _cgo
+        _cd_going = _cgo.Going(store, follows=soc.follows, blocked=soc.blocked_between, is_athlete=soc.is_athlete,
+                               person=_soc_person, moment=_ag.moments.post, now=_ag._now)
+        _cd_tick_prev = _ag.moments.on_tick
+
+        def _cd_tick(uid: str) -> None:
+            if _cd_tick_prev is not None:
+                _cd_tick_prev(uid)
+            _cd_going.remind(uid)
+        _ag.moments.on_tick = _cd_tick
 
         def _cd_wrap(h: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
             async def inner(request: Request, user_id: str) -> Response:
@@ -3020,7 +3033,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         _ag.club_directory = _cd_lookup
         directory_routes = _cdw.make_routes(
             directory=directory, wrap=_cd_wrap, home=_cm_home, now=_ag._now, today=lambda u: _ag._now(u).date(),
-            local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json)
+            local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
+            going=_cd_going)
 
     # ------------------------------------------------- invites + passkeys --
     # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).

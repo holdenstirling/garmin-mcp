@@ -1,12 +1,18 @@
 // Community → Clubs → "Clubs & leagues near you": Rabbit's directory of public club and league
 // pages for the athlete's city (clubdir.py). Filter chips, cards with the next session, meet
-// spot, pace and cost, "Visit site", "Start a Rabbit group" (pre-filled club; links the
-// listing), "Report outdated", and "Suggest a club or league". While Rabbit reads club pages
-// for a new city, Explore's cached local groups show meanwhile.
+// spot, pace and cost, "I'm going" for the next session (count + avatars of people you follow),
+// "Add to calendar" (weekly .ics), "Visit site", "Start a Rabbit group" (pre-filled club; links
+// the listing), "Report outdated", and "Suggest a club or league". List | Map (DirectoryMap:
+// geocoded public meet spots; the list stays primary). While Rabbit reads club pages for a new
+// city, Explore's cached local groups show meanwhile.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Bike, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Mountain, Plus, Users, Volleyball, Waves, X,
+  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Mountain, Plus, Users, Volleyball, Waves, X,
 } from 'lucide-react'
+import { Avatar } from '@/components/Avatar'
+import { Segmented } from '@/components/nav/Segmented'
+import { DirectoryMap } from '@/components/community/DirectoryMap'
+import { communityPhotoUrl } from '@/lib/community'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { HopIn } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -15,8 +21,8 @@ import { Chip, Field, inputCls } from '@/components/plan/ui'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { cn } from '@/lib/utils'
 import {
-  DIR_CHIPS, getDirectory, nextLabel, reportListing, suggestClub,
-  type DirChip, type DirKind, type DirListing, type DirView,
+  DIR_CHIPS, calendarUrl, getDirectory, markGoing, nextLabel, reportListing, suggestClub,
+  type DirChip, type DirGoing, type DirKind, type DirListing, type DirView,
 } from '@/lib/clubdir'
 
 const ICON: Record<DirKind, typeof Bike> = {
@@ -32,8 +38,41 @@ function verified(d: string): string {
   return new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-function ListingCard({ l, onStart, onReport, busy }: {
-  l: DirListing; onStart: () => void; onReport: () => void; busy: boolean
+function GoingRow({ l, onGoing }: { l: DirListing; onGoing: (g: DirGoing) => void }) {
+  const g = l.going
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  if (!g || !l.next) return null
+  async function toggle() {
+    if (!g || !l.next) return
+    setBusy(true); setErr(null)
+    try { onGoing((await markGoing(l.id, !g.me, g.date)).going) } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const names = g.friends.slice(0, 2).map((f) => f.name)
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" aria-pressed={g.me} disabled={busy} onClick={() => void toggle()}
+        className={cn('press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[0.7647rem] font-medium',
+          g.me ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text)')}>
+        {g.me ? <><Check className="size-3.5" aria-hidden /> Going</> : 'I\'m going'}
+      </button>
+      {g.friends.length > 0 && (
+        <span className="flex -space-x-1.5" aria-hidden>
+          {g.friends.slice(0, 3).map((f) => <Avatar key={f.id} name={f.name} picture={f.picture} photo={communityPhotoUrl(f)} size={22} />)}
+        </span>
+      )}
+      {g.count > 0 && (
+        <span className="text-[0.7059rem] text-(--text-secondary)">
+          {g.count} going{names.length ? ` · ${names.join(', ')}` : ''}
+        </span>
+      )}
+      {err && <span className="text-[0.7059rem] text-(--danger)" role="status">{err}</span>}
+    </div>
+  )
+}
+
+function ListingCard({ l, onStart, onReport, onGoing, busy }: {
+  l: DirListing; onStart: () => void; onReport: () => void; onGoing: (g: DirGoing) => void; busy: boolean
 }) {
   const Icon = ICON[l.kind] ?? Users
   const when = nextLabel(l.next)
@@ -61,10 +100,16 @@ function ListingCard({ l, onStart, onReport, busy }: {
       )}
       {meta && <p className="text-[0.7059rem] text-(--text-secondary)">{meta}</p>}
       {l.description && <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">{l.description}</p>}
+      <GoingRow l={l} onGoing={onGoing} />
       <div className="flex flex-wrap items-center gap-x-4">
         <a href={l.join_url} target="_blank" rel="noopener noreferrer" className={cn(linkCls, 'text-(--accent)')}>
           {l.link_only ? `See on ${l.link_only}` : 'Visit site'} <ExternalLink className="size-3.5" aria-hidden />
         </a>
+        {l.calendar && (
+          <a href={calendarUrl(l.id)} download className={cn(linkCls, 'text-(--text-secondary)')}>
+            <CalendarPlus className="size-3.5" aria-hidden /> Add to calendar
+          </a>
+        )}
         {l.linked_club ? (
           <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>
         ) : (
@@ -133,6 +178,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
+  const [view, setView] = useState<'list' | 'map'>('list')
   const polls = useRef(0)
   const load = useCallback(() => getDirectory(chip).then((d) => { setData(d); setError(null) },
     (e) => setError((e as Error).message)), [chip])
@@ -149,6 +195,14 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
     try { setMsg((await reportListing(l.id)).message); await load() } catch (e) { setMsg((e as Error).message) } finally { setBusy(null) }
   }
 
+  function setGoing(id: string, g: DirGoing) {
+    setData((d) => d && { ...d, listings: d.listings.map((x) => (x.id === id ? { ...x, going: g } : x)) })
+  }
+  const card = (l: DirListing) => (
+    <ListingCard l={l} busy={busy === l.id} onStart={() => onStartGroup(l)} onReport={() => void report(l)}
+      onGoing={(g) => setGoing(l.id, g)} />
+  )
+
   if (error && !data) return <ErrorState compact message={error} onRetry={() => void load()} />
   if (!data) return <RabbitLoader className="py-6" label="Loading clubs and leagues" cycle={CRAWLING} />
   if (data.status === 'needs_location' || !data.metro) {
@@ -160,6 +214,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
     )
   }
   const { metro, listings, fallback } = data
+  const mappable = listings.some((l) => typeof l.lat === 'number')
   return (
     <section aria-label="Clubs and leagues near you" className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2 px-1">
@@ -173,13 +228,16 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
           <Chip key={v} selected={chip === v} onClick={() => setChip(chip === v ? null : v)}>{label}</Chip>
         ))}
       </div>
+      {mappable && (
+        <Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} />
+      )}
       {msg && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{msg}</p>}
-      {listings.length > 0 ? (
+      {listings.length > 0 && mappable && view === 'map' ? (
+        <DirectoryMap listings={listings.slice(0, 30)} center={data.center} metroLabel={metro.label} renderCard={card} />
+      ) : listings.length > 0 ? (
         <div className="flex flex-col gap-2">
           {listings.slice(0, 30).map((l, i) => (
-            <HopIn key={l.id} index={i} play={i < 4}>
-              <ListingCard l={l} busy={busy === l.id} onStart={() => onStartGroup(l)} onReport={() => void report(l)} />
-            </HopIn>
+            <HopIn key={l.id} index={i} play={i < 4}>{card(l)}</HopIn>
           ))}
         </div>
       ) : crawling ? (

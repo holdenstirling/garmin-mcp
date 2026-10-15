@@ -25,6 +25,7 @@ whole process (``Throttle``), and results cached by rounded coordinates / zip fo
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 import threading
 import time
@@ -41,6 +42,7 @@ CACHE_MAX = 5000  # in memory
 DOC_MAX = 300     # in the encrypted global doc (it's rewritten whole on every put)
 MAX_WAIT_S = 5.0  # longest queue for a Nominatim/Overpass slot before "try again"
 MIN_INTERVAL_S = 1.0
+SPOT_RADIUS_KM = 50.0  # club meet spots further than this from the metro centre are not mapped
 LOC_KEYS = ("lat", "lon", "city", "state", "zip", "source", "updated")
 SOURCES = ("device", "manual")
 # Tests swap this for an httpx2.MockTransport.
@@ -336,8 +338,8 @@ class Geocoder:
     async def _aput(self, key: str, value: dict[str, str]) -> None:
         await anyio.to_thread.run_sync(self._put, key, value)
 
-    async def _get(self, url: str, params: dict[str, str]) -> Any:
-        await self._throttle.wait()
+    async def _get(self, url: str, params: dict[str, str], *, max_wait: float | None = MAX_WAIT_S) -> Any:
+        await self._throttle.wait(max_wait)
         self.requests += 1
         transport = self._transport or TRANSPORT
         client = httpx2.AsyncClient(timeout=self._timeout, transport=transport) if transport is not None \
@@ -431,6 +433,71 @@ class Geocoder:
         return None
 
 
+    async def spot(self, name: str, city: str, state: str, near: tuple[float, float], *,
+                   within_km: float = SPOT_RADIUS_KM, max_wait: float | None = MAX_WAIT_S) -> dict[str, float] | None:
+        """A public meet spot ("Wash Park boathouse") near a metro centre -> ``{"lat", "lon"}``
+        rounded to 3 decimals, ``{}`` when Nominatim has no public place within ``within_km``
+        (a known miss), None on upstream trouble (unknown: try again later). Raises ``Busy``
+        when the shared queue is longer than ``max_wait``. Cached in memory for 30 days; the
+        caller keeps its own durable copy (the club directory doc), so the shared geocache
+        doc isn't crowded out by meet spots."""
+        name = " ".join(str(name or "").split())[:80]
+        if not name or not city or not state:
+            return {}
+        key = f"s:{name.lower()}|{city.lower()}|{state.upper()}"
+        now = self._clock()
+        with self._lock:
+            hit = self._mem.get(key)
+        if hit and now - hit[0] < CACHE_S:
+            return dict(hit[1])  # type: ignore[arg-type]
+        lat0, lon0 = near
+        dlat = within_km / 111.0
+        dlon = within_km / (111.0 * max(0.2, math.cos(math.radians(lat0))))
+        try:
+            body = await self._get(SEARCH_URL, {
+                "format": "jsonv2", "q": f"{name}, {city}, {state}", "countrycodes": "us", "limit": "3",
+                "viewbox": f"{lon0 - dlon:.3f},{lat0 + dlat:.3f},{lon0 + dlon:.3f},{lat0 - dlat:.3f}",
+                "bounded": "1"}, max_wait=max_wait)
+        except Busy:
+            raise
+        except Exception:
+            return None
+        out: dict[str, float] = {}
+        for item in body if isinstance(body, list) else []:
+            if not isinstance(item, dict) or not public_place(item):
+                continue
+            try:
+                lat, lon = round(float(item["lat"]), 3), round(float(item["lon"]), 3)
+            except (KeyError, TypeError, ValueError):
+                continue
+            if -90 <= lat <= 90 and -180 <= lon <= 180 and km_between((lat0, lon0), (lat, lon)) <= within_km:
+                out = {"lat": lat, "lon": lon}
+                break
+        with self._lock:
+            self._mem[key] = (now, out)  # type: ignore[assignment]
+        return dict(out)
+
+# Nominatim results that are someone's home or just a road, never a meet spot.
+_PRIVATE = {("place", "house"), ("place", "houses"), ("building", "house"), ("building", "residential"),
+            ("building", "apartments"), ("building", "detached"), ("building", "semidetached_house"),
+            ("building", "terrace"), ("landuse", "residential")}
+
+
+def public_place(item: dict[str, Any]) -> bool:
+    """A park, shop, venue, trailhead... rather than a house, an address or a plain road."""
+    cat, typ = str(item.get("category") or item.get("class") or ""), str(item.get("type") or "")
+    if (cat, typ) in _PRIVATE or item.get("addresstype") == "house":
+        return False
+    return not (cat == "highway" and typ != "trailhead")
+
+
+def km_between(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Great-circle distance in km."""
+    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
+    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
+    return 2 * 6371.0 * math.asin(min(1.0, math.sqrt(h)))
+
+
 def _coords(item: Any) -> dict[str, Any]:
     """Nominatim "lat"/"lon" strings -> rounded floats (or {})."""
     try:
@@ -449,10 +516,12 @@ __all__ = [
     "LocationError",
     "Throttle",
     "forget",
+    "km_between",
     "label",
     "load_saved",
     "parse_home",
     "parse_place",
+    "public_place",
     "resolve",
     "round2",
     "save_location",

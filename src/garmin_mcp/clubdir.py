@@ -19,7 +19,11 @@ Pipeline (``Directory.refresh``, one metro at a time process-wide):
    cheaper directory model; ``clean_listings`` validates everything (the name must appear on the
    page, the join link must be a link on the page, weekday/HH:MM sessions, meet spot without a
    street address unless it's a public venue, cost free|paid|unknown, <= 160-char description).
-4. **Store**: encrypted global doc ``clubdir-<city>-<st>`` per metro: listings keyed by
+4. **Map**: each distinct meet spot is geocoded once (``Geocoder.spot``: Nominatim, the shared
+   1 req/s throttle, public places only, within ``geo.SPOT_RADIUS_KM`` of the metro centre,
+   3 decimals) and kept in the metro doc's ``spots`` for ``GEO_TTL_S`` (misses too), at most
+   ``GEOCODE_PER_RUN`` lookups per refresh.
+5. **Store**: encrypted global doc ``clubdir-<city>-<st>`` per metro: listings keyed by
    normalized name + registrable domain (``dedupe_key``), ``first_seen``/``last_verified``,
    ``source``; refreshed at most every ``REFRESH_S`` (30 days; a failed or empty run may retry
    after a day), listings not re-verified for ``STALE_S`` (90 days) are hidden.
@@ -43,7 +47,7 @@ import time
 import urllib.robotparser
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urljoin, urlsplit
@@ -77,6 +81,10 @@ REPORTS_TO_HIDE = 2
 SUGGEST_PER_DAY = 5
 SUGGEST_QUEUE = 30
 KICKS_PER_DAY = 3
+GEOCODE_PER_RUN = 40
+GEO_TTL_S = 30 * 86400
+SPOTS_MAX = 300
+GEO_WAIT_S = 15.0
 QUEUE_MAX = 20
 MAX_SEARCHES = 4
 CANDIDATES_PER_QUERY = 20
@@ -567,6 +575,15 @@ def next_session(sessions: list[dict[str, str]], now: datetime) -> dict[str, Any
     return {"weekday": best[2]["weekday"], "time": best[2]["time"], "in_days": best[0]}
 
 
+def occurrence_date(nxt: dict[str, Any] | None, now: datetime) -> str | None:
+    """The calendar date (YYYY-MM-DD) of a ``next_session`` result."""
+    return (now.date() + timedelta(days=int(nxt["in_days"]))).isoformat() if nxt else None
+
+
+def spot_key(spot: Any) -> str:
+    return _norm(spot)[:80] if isinstance(spot, str) else ""
+
+
 # -------------------------------------------------------------- directory --
 Research = Callable[..., Awaitable[Any]]
 Extract = Callable[..., Awaitable[Any]]
@@ -574,8 +591,9 @@ Extract = Callable[..., Awaitable[Any]]
 
 class Directory:
     def __init__(self, store: Any, *, research: Research | None, extract: Extract | None, crawler: Crawler,
-                 clock: Callable[[], float] = time.time) -> None:
+                 clock: Callable[[], float] = time.time, geocoder: Any = None) -> None:
         self._store = store
+        self._geocoder = geocoder
         self._research = research
         self._extract = extract
         self.crawler = crawler
@@ -778,8 +796,58 @@ class Directory:
             d["last_run"] = {"ts": now, "candidates": len(cands), "pages": pages, "listings": len(found) + len(link_only)}
             return d["last_run"]
         summary = await anyio.to_thread.run_sync(lambda: self._doc(m).update(merge))
+        try:
+            summary = {**summary, "geocoded": await self.geocode(m)}
+        except Exception as e:  # the map is optional
+            log_event(logger, logging.WARNING, "clubdir_geocode_failed", metro=m.slug, error=type(e).__name__)
         log_event(logger, logging.INFO, "clubdir_refresh", metro=m.slug, **summary)
         return summary
+
+    async def geocode(self, m: Metro, *, limit: int = GEOCODE_PER_RUN) -> int:
+        """Geocode meet spots not looked up in ``GEO_TTL_S`` (see the module docstring).
+        Returns how many lookups went out. Coordinates are only ever for public places."""
+        g = self._geocoder
+        if g is None:
+            return 0
+        d = await anyio.to_thread.run_sync(self.load, m)
+        now = self._clock()
+        center = d.get("center") if isinstance(d.get("center"), dict) else None
+        if center is None or now - float(center.get("ts") or 0) >= GEO_TTL_S:
+            place = await g.city_place(m.city, m.state)
+            if not isinstance(place.get("lat"), int | float) or not isinstance(place.get("lon"), int | float):
+                return 0
+            center = {"lat": float(place["lat"]), "lon": float(place["lon"]), "ts": now}
+        old = d.get("spots") if isinstance(d.get("spots"), dict) else {}
+        todo: list[tuple[str, str]] = []
+        for x in self.visible(d):
+            k = spot_key(x.get("meet_spot"))
+            if not k or x.get("link_only") or any(k == t[0] for t in todo):
+                continue
+            hit = old.get(k)
+            if isinstance(hit, dict) and now - float(hit.get("ts") or 0) < GEO_TTL_S:
+                continue
+            todo.append((k, str(x["meet_spot"])))
+        got: dict[str, dict[str, Any]] = {}
+        for k, name in todo[:limit]:
+            try:
+                r = await g.spot(name, m.city, m.state, (center["lat"], center["lon"]), max_wait=GEO_WAIT_S)
+            except geo.Busy:
+                break
+            if r is None:
+                continue  # upstream trouble: unknown, try next refresh
+            got[k] = {"ts": now, **({"lat": r["lat"], "lon": r["lon"]} if r else {"miss": True})}
+
+        def put(doc: dict[str, Any]) -> None:
+            doc["center"] = center
+            sp = {k: v for k, v in (doc.get("spots") or {}).items()
+                  if isinstance(v, dict) and now - float(v.get("ts") or 0) < GEO_TTL_S}
+            sp.update(got)
+            if len(sp) > SPOTS_MAX:
+                for k in sorted(sp, key=lambda k: float(sp[k].get("ts") or 0))[: len(sp) - SPOTS_MAX]:
+                    del sp[k]
+            doc["spots"] = sp
+        await anyio.to_thread.run_sync(lambda: self._doc(m).update(put))
+        return len(got)
 
     # -------------------------------------------------------------- views --
     def visible(self, d: dict[str, Any]) -> list[dict[str, Any]]:
@@ -789,32 +857,53 @@ class Directory:
                 and len(set(x.get("reports") or [])) < REPORTS_TO_HIDE]
 
     @staticmethod
-    def public(x: dict[str, Any], now_local: datetime | None, uid: str | None = None) -> dict[str, Any]:
+    def public(x: dict[str, Any], now_local: datetime | None, uid: str | None = None,
+               spots: dict[str, Any] | None = None) -> dict[str, Any]:
+        nxt = next_session(x.get("sessions") or [], now_local) if now_local else None
+        if nxt is not None and now_local is not None:
+            nxt = {**nxt, "date": occurrence_date(nxt, now_local)}
+        pt = (spots or {}).get(spot_key(x.get("meet_spot"))) if x.get("meet_spot") else None
+        has_pt = isinstance(pt, dict) and isinstance(pt.get("lat"), int | float)
         return {
             "id": x["id"], "name": x["name"], "kind": x["kind"], "kind_label": KIND_LABEL.get(x["kind"], "Group"),
             "sports": x.get("sports") or [], "sessions": x.get("sessions") or [],
-            "next": next_session(x.get("sessions") or [], now_local) if now_local else None,
+            "next": nxt,
             "meet_spot": x.get("meet_spot") or "", "pace": x.get("pace") or "", "cost": x.get("cost") or "unknown",
             "join_url": x.get("join_url"), "source_url": x.get("source_url"), "source": x.get("source") or "",
             "description": x.get("description") or "", "link_only": x.get("link_only"),
             "last_verified": time.strftime("%Y-%m-%d", time.gmtime(float(x.get("last_verified") or 0))),
             "linked_club": x.get("linked_club"), "reported": bool(uid and uid in (x.get("reports") or [])),
+            "lat": pt["lat"] if has_pt else None, "lon": pt["lon"] if has_pt else None,  # type: ignore[index]
+            "calendar": any(s.get("time") for s in x.get("sessions") or []) and not x.get("link_only"),
         }
 
     def view(self, m: Metro, *, now_local: datetime | None, chip: str | None = None, weekday: str | None = None,
              uid: str | None = None) -> dict[str, Any]:
         d = self.load(m)
         kinds = CHIPS.get(chip or "")
-        rows = [self.public(x, now_local, uid) for x in self.visible(d) if not kinds or x.get("kind") in kinds]
+        spots = d.get("spots") if isinstance(d.get("spots"), dict) else {}
+        rows = [self.public(x, now_local, uid, spots) for x in self.visible(d) if not kinds or x.get("kind") in kinds]
         if weekday in WEEKDAYS:
             rows = [r for r in rows if any(s["weekday"] == weekday for s in r["sessions"])]
         rows.sort(key=lambda r: (r["link_only"] is not None, r["next"]["in_days"] if r["next"] else 8,
                                  (r["next"] or {}).get("time") or "99", r["name"].lower()))
         counts = {c: sum(1 for x in self.visible(d) if x.get("kind") in ks) for c, ks in CHIPS.items()}
         refreshed = float(d.get("refreshed") or 0)
+        c = d.get("center") if isinstance(d.get("center"), dict) else None
         return {"metro": {"city": m.city, "state": m.state, "label": m.label}, "listings": rows, "counts": counts,
+                "center": {"lat": c["lat"], "lon": c["lon"]} if c else None,
                 "refreshed": time.strftime("%Y-%m-%d", time.gmtime(refreshed)) if refreshed else None,
                 "due": self.due(m, d), "state": self.state(m)}
+
+    def get(self, m: Metro, lid: Any, *, now_local: datetime | None, uid: str | None = None) -> dict[str, Any]:
+        """One visible listing (public shape) and its raw sessions, else 404."""
+        if not isinstance(lid, str) or not _LID.match(lid):
+            raise DirectoryError("not found", 404)
+        d = self.load(m)
+        x = next((x for x in self.visible(d) if x.get("id") == lid), None)
+        if x is None:
+            raise DirectoryError("not found", 404)
+        return self.public(x, now_local, uid, d.get("spots") if isinstance(d.get("spots"), dict) else {})
 
     def lookup(self, m: Metro, *, now_local: datetime | None, kind: str | None, weekday: str | None) -> dict[str, Any]:
         """Compact rows for Rabbit's ``local_clubs`` tool."""
@@ -904,5 +993,5 @@ def weekday_of(v: Any) -> str | None:
 __all__ = [
     "CHIPS", "KINDS", "LINK_ONLY", "Crawler", "Directory", "DirectoryError", "Metro", "Page",
     "clean_candidates", "clean_listings", "crawlable", "dedupe_key", "ip_ok", "link_only_label", "metro",
-    "next_session", "read_html", "registrable", "user_agent", "weekday_of",
+    "next_session", "occurrence_date", "read_html", "registrable", "user_agent", "weekday_of",
 ]

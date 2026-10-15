@@ -10,6 +10,13 @@ allowlisted athlete).
     POST /app/api/community/directory/{lid}/report
     POST /app/api/community/directory/{lid}/link     {club_id} (you own/admin that club)
     POST /app/api/community/directory/refresh        {city?, state?} owners only: force a refresh
+    POST /app/api/community/directory/{lid}/going    {going: bool, date?} -> {going: {date, count, me,
+         friends, more_friends}} for the listing's next occurrence (409 when ``date`` moved on)
+    GET  /app/api/community/directory/{lid}/calendar.ics   weekly .ics (text/calendar, attachment)
+
+Listing rows also carry ``lat``/``lon`` (geocoded public meet spot or null), ``calendar`` (has a
+weekly time), ``next.date`` and ``going`` (null without a session); the view has ``center``.
+All additive: older clients ignore them.
 """
 
 from __future__ import annotations
@@ -23,6 +30,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
+from . import clubics
 from .clubdir import CHIPS, Directory, DirectoryError, Metro, metro, weekday_of
 
 Handler = Callable[[Request, str], Awaitable[Response]]
@@ -32,7 +40,7 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                 now: Callable[[str], datetime], today: Callable[[str], date],
                 local_groups: Callable[[str, str, date], list[dict[str, Any]] | None],
                 is_owner: Callable[[str], bool], club_role: Callable[[str, str], str | None],
-                read_json: Callable[[Request], Awaitable[Any]]) -> list[BaseRoute]:
+                read_json: Callable[[Request], Awaitable[Any]], going: Any = None) -> list[BaseRoute]:
     """``wrap(handler, mutating=)`` is community_web's guard; ``club_role(uid, cid)`` the
     athlete's role in a club or None."""
 
@@ -68,6 +76,8 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                                  "refreshed": None, "fallback": []})
         local_now = await run(lambda: now(user_id))
         v = await run(lambda: directory.view(m, now_local=local_now, chip=chip, weekday=wd, uid=user_id))
+        if going is not None:
+            await run(lambda: going.attach(user_id, m, v["listings"]))
         status = v.pop("state")
         due = v.pop("due")
         if status == "idle":
@@ -113,6 +123,32 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         await run(lambda: directory.link(m, lid, cid))
         return JSONResponse({"ok": True})
 
+    async def mark_going(request: Request, user_id: str) -> Response:
+        if going is None:
+            raise DirectoryError("not found", 404)
+        b = await body_of(request)
+        m = await my_metro(user_id)
+        if m is None:
+            raise DirectoryError("not found", 404)
+        local_now = await run(lambda: now(user_id))
+        row = await run(lambda: directory.get(m, request.path_params["listing_id"], now_local=local_now, uid=user_id))
+        out = await run(lambda: going.set(user_id, m, row, b.get("going"), day=b.get("date"), today=local_now.date()))
+        return JSONResponse({"going": out})
+
+    async def ics(request: Request, user_id: str) -> Response:
+        m = await my_metro(user_id)
+        if m is None:
+            raise DirectoryError("not found", 404)
+        local_now = await run(lambda: now(user_id))
+        row = await run(lambda: directory.get(m, request.path_params["listing_id"], now_local=local_now, uid=user_id))
+        try:
+            text = clubics.listing_ics(row, local_now, host=request.url.hostname or "rabbit")
+        except ValueError:
+            raise DirectoryError("This group has no weekly time to add.", 404) from None
+        return Response(text.encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
+            "Content-Disposition": f'attachment; filename="{clubics.filename(row["name"])}"',
+            "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+
     async def refresh(request: Request, user_id: str) -> Response:
         if not is_owner(user_id):
             raise DirectoryError("Only the app owner can do that.", 403)
@@ -129,6 +165,8 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         Route(f"{P}/refresh", guarded(refresh, mutating=True), methods=["POST"]),
         Route(f"{P}/{{listing_id}}/report", guarded(report, mutating=True), methods=["POST"]),
         Route(f"{P}/{{listing_id}}/link", guarded(link, mutating=True), methods=["POST"]),
+        Route(f"{P}/{{listing_id}}/going", guarded(mark_going, mutating=True), methods=["POST"]),
+        Route(f"{P}/{{listing_id}}/calendar.ics", guarded(ics, mutating=False), methods=["GET"]),
     ]
 
 

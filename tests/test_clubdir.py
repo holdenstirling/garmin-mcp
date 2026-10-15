@@ -304,7 +304,7 @@ def test_refresh_discovers_crawls_extracts_and_gates_monthly(tmp_path, fernet_ke
     names = [r["name"] for r in v["listings"]]
     assert names[:2] == ["Wash Park Runners", "Volo Kickball League"]   # soonest session first (tonight, then Wed)
     wp = next(r for r in v["listings"] if r["name"] == "Wash Park Runners")
-    assert wp["next"] == {"weekday": "tue", "time": "18:00", "in_days": 0} and wp["source"] == "washpark.example"
+    assert wp["next"] == {"weekday": "tue", "time": "18:00", "in_days": 0, "date": "2026-10-13"} and wp["source"] == "washpark.example"
     assert wp["join_url"] == "https://washpark.example/join" and wp["cost"] == "free"
     meet = next(r for r in v["listings"] if r["link_only"] == "Meetup")
     assert meet["name"] == "Denver Trail Crew" and meet["sessions"] == []
