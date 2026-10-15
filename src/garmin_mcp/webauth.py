@@ -34,6 +34,7 @@ import httpx2
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
+from .access import Access
 from .appstore import AppStore
 from .config import Settings
 from .coaches import CoachLinks
@@ -94,6 +95,8 @@ class WebAuth:
         self._sessions_doc = store.global_doc("sessions")
         self._identities_doc = store.global_doc("identities")
         self._sessions: dict[str, dict[str, Any]] = self._sessions_doc.load()
+        # Invite links, invited members and passkeys (access.py; routes in passkey_web.py).
+        self.access = Access(store, clock=clock)
         # Human coaches invited by an allowlisted athlete may sign in too (see coaches.py).
         self.calendar: GoogleCalendar | None = (
             GoogleCalendar(store, settings.google_client_id, google_client_secret, http=http, clock=clock)
@@ -109,7 +112,44 @@ class WebAuth:
 
     # ------------------------------------------------------------- helpers --
     def _allowed_user_ids(self) -> set[str]:
-        return set(self.s.allowed_google_users.values())
+        return set(self.s.allowed_google_users.values()) | self.access.member_ids()
+
+    def is_athlete(self, user_id: str) -> bool:
+        """Allowlisted Google user or invited member (never a coach-only account)."""
+        return not user_id.startswith("coach_") and user_id in self._allowed_user_ids()
+
+    def athlete_emails(self) -> dict[str, str]:
+        """Lower-case email -> athlete id: the allowlist plus invited members (whose emails
+        are unverified, so this must never decide who may sign in)."""
+        out = self.access.member_emails()
+        out.update({k.lower(): v for k, v in self.s.allowed_google_users.items()})
+        return out
+
+    def is_owner(self, user_id: str) -> bool:
+        owners = set(self.s.owner_user_ids) or set(self.s.allowed_google_users.values())
+        return user_id in owners and not user_id.startswith("coach_")
+
+    def can_invite(self, user_id: str) -> bool:
+        return self.is_owner(user_id) or (self.s.members_can_invite and self.is_athlete(user_id))
+
+    @property
+    def rp_id(self) -> str:
+        return urlparse(self.s.public_base_url).hostname or ""
+
+    def mint_session(self, user_id: str) -> str:
+        """New session for ``user_id`` (Google and passkey sign-in); returns the cookie value."""
+        token = secrets.token_urlsafe(32)
+        now = int(self._clock())
+        rec = {"user_id": user_id, "created": now, "last_seen": now,
+               "expires": now + self.s.app_session_ttl_seconds}
+        with self._lock:
+            self._sessions = {k: v for k, v in self._sessions.items() if v["expires"] > now}
+            self._sessions[_hash(token)] = rec
+            self._sessions_doc.save(self._sessions)
+        return token
+
+    def set_session_cookie(self, resp: Response, token: str) -> None:
+        self._cookie(resp, self.session_cookie, token, self.s.app_session_ttl_seconds)
 
     def _cookie(self, resp: Response, name: str, value: str, max_age: int) -> None:
         resp.set_cookie(name, value, max_age=max_age, path="/", secure=self._secure,
@@ -260,19 +300,12 @@ class WebAuth:
             return self._fail("not_allowed")
 
         self._store.user_doc(user_id, "account").save(profile)
-        token = secrets.token_urlsafe(32)
-        now = int(self._clock())
-        rec = {"user_id": user_id, "created": now, "last_seen": now,
-               "expires": now + self.s.app_session_ttl_seconds}
-        with self._lock:
-            self._sessions = {k: v for k, v in self._sessions.items() if v["expires"] > now}
-            self._sessions[_hash(token)] = rec
-            self._sessions_doc.save(self._sessions)
+        token = self.mint_session(user_id)
         log_event(logger, logging.INFO, "app_login_ok", user_id=user_id)
         resp = RedirectResponse("/app/", status_code=302)
         resp.delete_cookie(self.state_cookie, path="/", secure=self._secure, httponly=True,
                            samesite="lax")
-        self._cookie(resp, self.session_cookie, token, self.s.app_session_ttl_seconds)
+        self.set_session_cookie(resp, token)
         return resp
 
     def _bind_identity(self, sub: str, user_id: str) -> bool:
@@ -338,7 +371,7 @@ class WebAuth:
                 return None  # absolute lifetime: sign in again
             if rec["user_id"] not in self._allowed_user_ids() \
                     and not self.coach_links.is_coach_user(rec["user_id"]):
-                return None  # removed from the allowlist (or every athlete removed the coach)
+                return None  # removed from the allowlist / members (or every athlete removed the coach)
             if now - rec["last_seen"] > LAST_SEEN_WRITE_INTERVAL:
                 rec["last_seen"] = now
                 rec["expires"] = min(now + self.s.app_session_ttl_seconds,  # sliding, but capped

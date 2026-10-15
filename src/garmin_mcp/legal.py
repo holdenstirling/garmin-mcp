@@ -25,7 +25,9 @@ PRIVACY = """
 <p>Rabbit is a small, private training app used by invited athletes and their coaches. This page explains what it stores and why.</p>
 <h2>What Rabbit collects</h2>
 <ul>
-<li><b>Your Google account</b>: name, email and profile picture, to sign you in. Only invited accounts can use Rabbit.</li>
+<li><b>How you sign in</b>: with Google (name, email and profile picture) or with a passkey. Only invited people can use Rabbit.</li>
+<li><b>Passkeys</b>: Rabbit stores only each passkey's public key and a usage counter. The private key and your fingerprint or face data never leave your device or password manager.</li>
+<li><b>Joining with an invite link</b>: your first name, and an email address that is used only to contact you about your account. It isn't verified, isn't shown to other athletes and isn't used for marketing.</li>
 <li><b>Garmin Connect</b> (when you connect it): workouts, heart rate, sleep and similar training data, and the planned workouts Rabbit sends to your watch.</li>
 <li><b>Oura</b> (when you connect it): readiness, sleep, heart rate variability, resting heart rate and daily activity summaries. Oura workouts are not imported; workouts come from Garmin only.</li>
 <li><b>Google Calendar</b> (when you connect it, read-only): event times, used to spot busy days and travel.</li>

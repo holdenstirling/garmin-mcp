@@ -318,9 +318,10 @@ def build_rabbit(settings: Settings, fernet_key: str, token_store: EncryptedFile
     parts = RabbitParts([])
     proactive = None
     if chat is not None and service is not None and not settings.mcp_enabled:
-        users = sorted(set(settings.allowed_google_users.values()) | ({dev_user} if dev_user else set()))
-        proactive = Proactive(
-            service=service, store=store, token_store=token_store, users=lambda: users,
+        base_users = set(settings.allowed_google_users.values()) | ({dev_user} if dev_user else set())
+        proactive = Proactive(  # invited members (access.py) too, read live so new joiners count
+            service=service, store=store, token_store=token_store,
+            users=lambda: sorted(base_users | auth.access.member_ids()),
             deliver=AgentDelivery(chat, push, lambda: parts.loop_holder.get("loop")),
             notify=(lambda u, t, b: push.send(u, t, b)) if push else (lambda u, t, b: None),
             schedule=Schedule.parse(settings.poll_timezone, settings.poll_fast_hours,

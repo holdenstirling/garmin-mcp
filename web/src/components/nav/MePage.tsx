@@ -1,6 +1,8 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Settings. Friends live in Community.
-import { Brain, ClipboardList, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { useState } from 'react'
+import { Brain, ClipboardList, KeyRound, Mail, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { AccessScreen } from '@/components/settings/AccessScreen'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -23,6 +25,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
   const name = me.profile.name || me.user_id
   const countdown = goalCountdown(goal)
   const coachStatus = me.athlete.coach_status ?? null
+  const [access, setAccess] = useState(false)
   return (
     <Screen title="Me" onClose={onClose}>
       <button type="button" onClick={() => onOpen('profile')}
@@ -82,7 +85,10 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
       <Group>
         <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Garmin, calendar, Oura, notifications, account"
           onClick={() => onOpen('settings')} />
+        <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title={me.can_invite ? 'Sign-in and invites' : 'Sign-in'}
+          subtitle={me.can_invite ? 'Passkeys, invite links, members' : 'Passkeys on your devices'} onClick={() => setAccess(true)} />
       </Group>
+      {access && <AccessScreen onClose={() => setAccess(false)} />}
     </Screen>
   )
 }

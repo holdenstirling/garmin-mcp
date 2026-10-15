@@ -118,6 +118,9 @@ class Settings:
     # verified Google email (lowercase) -> internal user_id
     allowed_google_users: dict[str, str] = field(default_factory=dict)
     app_session_ttl_seconds: int = 90 * 24 * 3600
+    # Invite links + passkeys (access.py): owners create invites; empty = every allowlisted user
+    owner_user_ids: tuple[str, ...] = ()
+    members_can_invite: bool = False
     vapid_private_key_secret_name: str = ""
     vapid_subject: str = ""  # mailto: contact sent to push services
     oura_client_id: str = ""            # Oura developer app (optional)
@@ -236,6 +239,8 @@ class Settings:
             ),
             allowed_google_users=_parse_email_map(_list("ALLOWED_GOOGLE_USERS")),
             app_session_ttl_seconds=_int("APP_SESSION_TTL_SECONDS", 90 * 24 * 3600),
+            owner_user_ids=tuple(_list("OWNER_USER_IDS")),
+            members_can_invite=_bool("MEMBERS_CAN_INVITE", False),
             vapid_private_key_secret_name=os.environ.get(
                 "VAPID_PRIVATE_KEY_SECRET_NAME", "garmin-mcp-vapid-private-key"
             ),

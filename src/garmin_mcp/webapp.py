@@ -208,6 +208,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return JSONResponse({
             "user_id": user_id,
             "role": "coach" if user_id.startswith("coach_") else "athlete",
+            "can_invite": auth.can_invite(user_id),
             "coaching": len(auth.coach_links.athletes_of(user_id)),
             "coaches": len(auth.coach_links.coaches_of(user_id)),
             "oura": {"available": auth.oura is not None,
@@ -2105,7 +2106,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     from . import social as _social
     from .progress import level_of as _level_of
 
-    soc = (_social.Social(store, athletes=lambda: {k.lower(): v for k, v in settings.allowed_google_users.items()})
+    soc = (_social.Social(store, athletes=auth.athlete_emails)
            if store is not None else None)
 
     def _soc_name(uid: str) -> str:
@@ -2913,7 +2914,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         rp = _rpm.RacePeople(
             store, create_event=lambda uid, f: chat.agent.events.create(uid, f),
             related=lambda a, b: soc.follows(a, b) or soc.follows(b, a), is_athlete=soc.is_athlete,
-            athletes=lambda: dict(settings.allowed_google_users), code_owner=soc.code_owner,
+            athletes=auth.athlete_emails, code_owner=soc.code_owner,
             coach_emails=links.coach_emails, first_name=_soc_name)
         chat.agent._store.on_user_write(lambda uid, name: rp.sync(uid) if name == "events" else None)
         race_routes = _rpw.make_routes(
@@ -2975,6 +2976,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
             host_ok=host_ok, origin=settings.public_base_url)
 
+    # ------------------------------------------------- invites + passkeys --
+    # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).
+    from . import passkey_web as _pkw
+    passkey_routes = _pkw.make_routes(auth=auth, api=_api, host_ok=host_ok, read_json=read_json)
+
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
@@ -3005,6 +3011,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/google/start", google_start, methods=["GET"]),
         Route("/app/auth/google/callback", google_callback, methods=["GET"]),
         Route("/app/auth/logout", logout, methods=["POST"]),
+        *passkey_routes,
         Route("/app/api/me", _api(me, mutating=False), methods=["GET"]),
         Route("/app/api/push/subscribe", _api(push_subscribe, mutating=True), methods=["POST"]),
         Route("/app/api/push/unsubscribe", _api(push_unsubscribe, mutating=True),
@@ -3210,6 +3217,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return HTMLResponse(html, headers={"Cache-Control": "no-cache",
                                                "Content-Security-Policy": CSP})
         routes += [Route("/app/", index, methods=["GET", "HEAD"]),
+                   Route("/app/join/{token}", index, methods=["GET", "HEAD"]),  # SPA join page
                    Route("/app/index.html", index, methods=["GET", "HEAD"]),
                    Mount("/app", app=_Static(directory=WEB_DIST, html=True))]
     else:

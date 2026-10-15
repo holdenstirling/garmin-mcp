@@ -5,6 +5,7 @@ import { isIOS, isStandalone } from './lib/push'
 import { Chat } from './screens/Chat'
 import { InstallPrompt } from './screens/InstallPrompt'
 import { SignIn } from './screens/SignIn'
+import { JoinScreen } from './screens/JoinScreen'
 import { RabbitLogo } from './components/RabbitLogo'
 import { RabbitLoader } from './components/RabbitLoader'
 import { FxHost } from './components/fx/CarrotBurst'
@@ -18,7 +19,15 @@ type State =
   | { kind: 'home'; me: Me }
   | { kind: 'error'; message: string }
 
+// /app/join/<token>: invite link (passkey sign-up), shown before the iOS install prompt.
+const JOIN_TOKEN = /^\/app\/join\/([A-Za-z0-9_-]{20,100})\/?$/.exec(window.location.pathname)?.[1] ?? null
+
 export function App() {
+  if (JOIN_TOKEN) return <div className="app-shell"><JoinScreen token={JOIN_TOKEN} /><FxHost /></div>
+  return <MainApp />
+}
+
+function MainApp() {
   const [state, setState] = useState<State>({ kind: 'loading' })
   const [skipInstall, setSkipInstall] = useState(false)
   // Only the newest /api/me request may update state (refreshes can overlap).

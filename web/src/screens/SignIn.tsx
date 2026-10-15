@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { hapticTap } from '@/lib/haptics'
+import { PasskeySignIn } from '@/components/settings/PasskeySignIn'
 
 const ERRORS: Record<string, string> = {
   not_allowed: "That Google account isn't on the invite list. Ask Andrew to add it.",
@@ -33,7 +34,7 @@ export function SignIn({ error }: { error: string | null }) {
         <p className="mt-2 text-(--text-secondary)">Your training pacer. Prep, reviews, and a nudge when you need it.</p>
       </div>
       {error && (
-        <p className="max-w-sm rounded-(--radius) bg-(--danger-subtle) px-3 py-2 text-sm text-(--danger)">
+        <p role="alert" className="max-w-sm rounded-(--radius) bg-(--danger-subtle) px-3 py-2 text-sm text-(--danger)">
           {ERRORS[error] ?? 'Sign-in failed. Please try again.'}
         </p>
       )}
@@ -43,6 +44,7 @@ export function SignIn({ error }: { error: string | null }) {
           if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { hapticTap(); setRedirecting(true) }
         }}>Sign in with Google</a>
       </Button>
+      <PasskeySignIn />
     </div>
   )
 }

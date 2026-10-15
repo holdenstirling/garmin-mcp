@@ -38,6 +38,8 @@ export async function putSettings(patch: Partial<Omit<CoachSettings, 'data_sourc
 export type Me = {
   user_id: string
   role: 'athlete' | 'coach'
+  /** may create invite links (owner, or members when MEMBERS_CAN_INVITE) */
+  can_invite?: boolean
   coaching: number        // athletes this user coaches
   coaches: number         // coaches this athlete has
   coach_unread: number
