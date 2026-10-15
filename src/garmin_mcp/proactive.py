@@ -335,9 +335,16 @@ class AgentDelivery:
         if not text:
             return FireResult(FireOutcome.FAILED)  # model unreachable: nothing was delivered
         if self._push is not None:
-            title = "Morning brief" if kind == "brief" else "Rabbit"
+            title, url = ("Morning brief" if kind == "brief" else "Rabbit"), "/app/?open=coach"
+            rewards = getattr(self._runner.agent, "rewards", None) if kind == "workout" else None
+            try:  # reward.py: the workout note's push leads with the reward headline and opens it
+                hit = rewards.claim_push(user_id) if rewards is not None else None
+            except Exception:
+                hit = None
+            if hit:
+                title, url = hit
             try:
-                self._push.send(user_id, title, push_preview(text), url="/app/?open=coach")
+                self._push.send(user_id, title, push_preview(text), url=url)
             except Exception as e:  # the message is already in chat history
                 log_event(logger, logging.WARNING, "proactive_push_failed", user_id=user_id,
                           error=type(e).__name__)

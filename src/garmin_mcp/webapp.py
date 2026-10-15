@@ -3092,6 +3092,68 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/firstvisit", _api(firstvisit_get, mutating=False), methods=["GET"]),
     ]
 
+    # ---------------------------------------- workout reward + month recap --
+    # reward.py: one headline insight per new workout (records, streak, week closed, plan
+    # nailed), shown once on the next open / from the workout note's push; the monthly recap
+    # totals the app draws as a share image, plus a moment on the 1st. Athletes only (_api).
+    from . import reward as _rw
+    rewards: Any = None
+    if chat is not None and store is not None:
+        _rw_agent = chat.agent
+        rewards = _rw.Rewards(store, now=_rw_agent._now,
+                              context=lambda u, aid: _rw.agent_context(_rw_agent, u, aid))
+        _rw_agent.rewards = rewards  # proactive.AgentDelivery: the workout push's title + link
+        _rw_agent.moments.on_workouts = rewards.on_workouts
+        _rw_tick_prev = _rw_agent.moments.on_tick
+
+        def _rw_tick(uid: str) -> None:
+            if _rw_tick_prev is not None:
+                _rw_tick_prev(uid)
+            rewards.check_month(uid, acts=_rw_agent.stats.activities, post=_rw_agent.moments.post)
+        _rw_agent.moments.on_tick = _rw_tick
+
+    async def reward_get(request: Request, user_id: str) -> Response:
+        if rewards is None:
+            return _err(503, "Rewards aren't configured on this server.")
+        raw = request.query_params.get("activity_id")
+        if raw:
+            if not raw.isdigit():
+                raise ValueError("activity_id")
+            return JSONResponse({"reward": await anyio.to_thread.run_sync(lambda: rewards.get(user_id, int(raw)))})
+        return JSONResponse({"reward": await anyio.to_thread.run_sync(lambda: rewards.pending(user_id))})
+
+    async def reward_seen(request: Request, user_id: str) -> Response:
+        if rewards is None:
+            return _err(503, "Rewards aren't configured on this server.")
+        raw = str(request.path_params["activity_id"])
+        if not raw.isdigit():
+            raise ValueError("activity_id")
+        await anyio.to_thread.run_sync(lambda: rewards.seen(user_id, int(raw)))
+        return JSONResponse({"ok": True})
+
+    async def month_recap_get(request: Request, user_id: str) -> Response:
+        assert chat is not None
+        if (empty := _no_garmin(user_id)) is not None:
+            return empty
+        agent = chat.agent
+        try:
+            start = _rw.parse_month(request.query_params.get("month"), agent._now(user_id).date())
+        except ValueError as e:
+            return _err(400, str(e))
+
+        def build() -> dict[str, Any]:
+            today, acts = agent.stats.activities(user_id)
+            club = _rw.top_club_of(store, clb, user_id, start, _rw.month_end(start)) if community_routes else None
+            return _rw.month_recap(acts, start, today, imperial=agent.coach.athlete(user_id).get("units") == "imperial",
+                                   top_club=club)
+        return JSONResponse(await _plan_call(build))
+
+    reward_routes: list[BaseRoute] = [
+        Route("/app/api/reward", _plan_api(reward_get, mutating=False), methods=["GET"]),
+        Route("/app/api/reward/{activity_id}/seen", _plan_api(reward_seen, mutating=True), methods=["POST"]),
+        Route("/app/api/recap/month", _plan_api(month_recap_get, mutating=False), methods=["GET"]),
+    ]
+
     # ------------------------------------------------- invites + passkeys --
     # Invite links, joining with a passkey, passkey sign-in (access.py, passkey_web.py).
     from . import passkey_web as _pkw
@@ -3130,6 +3192,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/logout", logout, methods=["POST"]),
         *passkey_routes,
         *home_routes,
+        *reward_routes,
         Route("/app/api/me", _api(me, mutating=False), methods=["GET"]),
         Route("/app/api/push/subscribe", _api(push_subscribe, mutating=True), methods=["POST"]),
         Route("/app/api/push/unsubscribe", _api(push_unsubscribe, mutating=True),

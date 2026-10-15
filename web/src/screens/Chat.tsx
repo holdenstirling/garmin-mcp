@@ -21,6 +21,9 @@ import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
+import { MonthRecapSheet, RewardSheet } from '@/screens/lazyScreens'
+import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
+import { getReward, lastMonth, type Reward } from '@/lib/reward'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { setCurrentSources } from '@/lib/sources'
@@ -284,6 +287,31 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Workout day: the pre-workout screen (from Today / the plan) and the post-workout reaction.
   const [workout, setWorkout] = useState<{ sessionId?: string } | null>(null)
   const [reaction, setReaction] = useState<number | null>(null)
+  // Post-workout reward (reward.py): once per workout, on the next open, after a sync or from
+  // the workout push (?open=reward&activity=<id>); the monthly share card (Progress, moment).
+  const [reward, setReward] = useState<{ id: number; data?: Reward | null } | null>(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('activity'))
+    return openParam === 'reward' && id > 0 ? { id } : null
+  })
+  const [monthCard, setMonthCard] = useState<string | null>(null)
+  const showReward = (r: Reward) => { markReactionShown(r.activity_id); setReward({ id: r.activity_id, data: r }) }
+  const rewardChecked = useRef(false)
+  useEffect(() => {
+    if (openParam === 'reward') window.history.replaceState(null, '', '/app/')
+    const onMsg = (e: MessageEvent) => {
+      const url = String(e.data?.url ?? '')
+      if (e.data?.type !== 'open' || !url.includes('open=reward')) return
+      const id = Number(new URL(url, window.location.origin).searchParams.get('activity'))
+      if (id > 0) setReward({ id })
+    }
+    navigator.serviceWorker?.addEventListener('message', onMsg)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (rewardChecked.current || !overlayFree || !me.garmin.connected || reward) return
+    rewardChecked.current = true
+    getReward().then((x) => { if (x.reward) showReward(x.reward) }, () => { /* offline or a coach account */ })
+  }, [overlayFree, me.garmin.connected]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (homeInView) loadToday() }, [homeInView, me, loadToday])
   const todayAction = (kind: TodayActionKind) => {
     if (kind === 'open_racepack') { openRaces(); setPlanScreen('racepack') }
@@ -311,6 +339,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         loadToday()
         loadWeek()
         const a = r.new[r.new.length - 1]
+        const rw = a?.id != null && !reactionShown(a.id) ? (await getReward().catch(() => null))?.reward : null
+        if (rw) { showReward(rw); return }
         if (a?.id != null && !reactionShown(a.id)) { markReactionShown(a.id); setReaction(a.id); return }
         const xp = p && p.gained > 0 ? ` · +${p.gained} XP` : ''
         if (p && p.gained > 0) celebrate({ x: window.innerWidth / 2, y: window.innerHeight - 120 }, 'xp')
@@ -537,6 +567,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     } else if (a.id === 'community') { if (a.club_id) openCommunity('clubs', a.club_id); else openCommunity(a.view === 'people' ? 'people' : 'feed') }
     else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
     else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
+    else if (a.id === 'month_recap') setMonthCard(a.month ?? lastMonth().month)
   }
   // Quick replies under Rabbit's latest message when it asks something (max 3).
   const lastRow = shownRows[shownRows.length - 1]
@@ -728,7 +759,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="overview" title="Progress" top={seg} action={meButton}>
+      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={<MonthRecapEntry onOpen={setMonthCard} />}>
         <StatsScreen onClose={noop} onOpenPlan={builtPlan ? openPlan : undefined}
           onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
@@ -1014,6 +1045,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <WorkoutDayScreen key={workout.sessionId ?? 'today'} sessionId={workout.sessionId} imperial={imperial}
           onClose={() => setWorkout(null)} onAsk={(t) => { setWorkout(null); tellRabbit(t) }} onCheckIn={(c) => setVoice(c)} />
       )}
+      {reward && (
+        <RewardSheet key={reward.id} activityId={reward.id} initial={reward.data} onClose={() => setReward(null)}
+          onBreakdown={(id) => setReaction(id)} onCheckIn={(c) => setVoice(c)}
+          onFeel={(xp) => { if (xp) getProgress().then(setProgress, () => {}) }} />
+      )}
+      {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}
           onClose={() => setReaction(null)} onOpenSession={(id) => setWorkout({ sessionId: id })}

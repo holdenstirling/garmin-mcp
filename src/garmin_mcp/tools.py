@@ -364,6 +364,9 @@ def compact_activity(a: dict[str, Any]) -> dict[str, Any]:
     elif any(k in key for k in ("run", "walk", "hik")):
         out["avg_pace_per_km"] = _pace(speed, 1000)
         out["avg_cadence"] = _round(a.get("averageRunningCadenceInStepsPerMinute"), 0)
+        # Garmin's fastest rolling splits (seconds), when the summary has them: post-workout PBs.
+        out["fastest_5k_s"] = _round(a.get("fastestSplit_5000"), 0)
+        out["fastest_10k_s"] = _round(a.get("fastestSplit_10000"), 0)
     else:
         out["avg_speed_kmh"] = _round(speed * 3.6) if isinstance(speed, int | float) else None
         out["avg_cadence"] = _round(a.get("averageBikingCadenceInRevPerMinute"), 0)
