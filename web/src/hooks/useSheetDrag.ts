@@ -24,12 +24,13 @@ const SNAP = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
 type Sample = { y: number; t: number }
 
-export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolean } = {}) {
+export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolean; onEscape?: () => void } = {}) {
   const bodyDrags = opts.bodyDrags ?? true
   const ref = useRef<HTMLDivElement | null>(null)
   const g = useRef<{ startY: number; active: boolean; samples: Sample[]; dy: number } | null>(null)
   const done = useRef(false)
-  useDialog(ref, onDismissed)
+  // Escape: `onEscape` when given (components/ui/Sheet animates its exit), else dismiss now.
+  useDialog(ref, opts.onEscape ?? onDismissed)
 
   const overlay = () => ref.current?.parentElement as HTMLElement | null | undefined
 

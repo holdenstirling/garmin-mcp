@@ -7,7 +7,6 @@ import {
   Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
-import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -26,8 +25,8 @@ import {
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
   type ReactionKind,
 } from '@/lib/community'
+import { FeedSkeleton } from '@/components/ui/Skeleton'
 
-const LOADING = ['Gathering the good news…', 'Checking in with your crew…', 'Hopping through the feed…']
 
 export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
   return <Avatar name={u?.name ?? '?'} picture={u?.picture ?? ''} photo={u ? communityPhotoUrl(u) : null} size={size} />
@@ -112,7 +111,7 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
         </div>
       )}
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
-      {items == null ? (error ? null : <RabbitLoader className="py-10" label="Loading the feed" cycle={LOADING} />) : (
+      {items == null ? (error ? null : <FeedSkeleton />) : (
         <>
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={clubId ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"

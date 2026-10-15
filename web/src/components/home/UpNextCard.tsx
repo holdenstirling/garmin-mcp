@@ -83,7 +83,7 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const g = up.group
   const headline = s && up.kind === 'session' ? [s.title, fmtDuration(s.minutes)].filter(Boolean).join(' · ') : up.headline
   return (
-    <section aria-label="Up next"
+    <section aria-label="Up next" data-usage-card="upnext"
       className={cn('relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface) px-3 pb-3 pt-2.5 shadow-sm',
         up.tone === 'race' ? 'border-(--brand)/30' : rest ? 'border-(--border-strong)' : 'border-(--accent)/30', hop && 'rb-hop-in')}>
       <div className="flex items-center gap-2.5">

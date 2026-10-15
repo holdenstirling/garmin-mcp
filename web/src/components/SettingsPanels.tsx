@@ -5,6 +5,7 @@ import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
 import { LocationRow } from '@/components/settings/LocationRow'
+import { PrivacyRows } from '@/components/settings/PrivacyRows'
 import { DataSourcesSheet } from '@/components/settings/DataSourcesSheet'
 import { defaultSources, sourcesSummary } from '@/lib/sources'
 import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
@@ -183,6 +184,8 @@ export function SettingsPanels({ me, onChange, onDevDone, onToast }: {
             onClick={() => void onTestPush()} trailing={<span />} />
         )}
       </Group>
+
+      <PrivacyRows me={me} onChange={onChange} />
 
       <Group label="Account">
         <Row icon={<Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />}

@@ -3,6 +3,7 @@
 import { getJSON, postJSON } from '@/lib/api'
 import type { LocalGroup } from '@/lib/community'
 import type { SocialUser } from '@/lib/social'
+import { counted } from '@/lib/usage'
 
 export type DirChip = 'run' | 'trail' | 'tri' | 'ride' | 'swim' | 'leagues'
 export type DirKind = 'run_club' | 'trail' | 'tri' | 'ride' | 'swim' | 'league' | 'other'
@@ -53,7 +54,8 @@ export const suggestClub = (b: { name: string; url: string; city?: string; state
 export const reportListing = (id: string) =>
   postJSON<{ ok: boolean; hidden: boolean; message: string }>(`${P}/${encodeURIComponent(id)}/report`, {})
 export const markGoing = (id: string, going: boolean, date?: string) =>
-  postJSON<{ going: DirGoing }>(`${P}/${encodeURIComponent(id)}/going`, { going, date })
+  going ? counted(postJSON<{ going: DirGoing }>(`${P}/${encodeURIComponent(id)}/going`, { going, date }), 'rsvp', { kind: 'group' })
+    : postJSON<{ going: DirGoing }>(`${P}/${encodeURIComponent(id)}/going`, { going, date })
 /** Weekly .ics download (same-origin link with the session cookie). */
 export const calendarUrl = (id: string) => `/app${P}/${encodeURIComponent(id)}/calendar.ics`
 

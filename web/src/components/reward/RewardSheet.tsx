@@ -49,7 +49,7 @@ export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheck
   return (
     <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>
       <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}
-        role="dialog" aria-modal aria-labelledby="reward-title">
+        role="dialog" aria-modal aria-labelledby="reward-title" data-usage-card="reward">
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="reward-title" className="modal-title">Nice work</h2>

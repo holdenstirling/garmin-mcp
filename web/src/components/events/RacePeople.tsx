@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Switch } from '@/components/settings/Grouped'
 import { Card, Field, areaCls, inputCls } from '@/components/plan/ui'
-import { useSheetDrag } from '@/hooks/useSheetDrag'
+import { Sheet as UISheet } from '@/components/ui/Sheet'
 import { cn } from '@/lib/utils'
 import { countdown, daysUntil, listEvents, type RaceEvent } from '@/lib/events'
 import { friendPhotoUrl, getPeople, type SocialUser } from '@/lib/social'
@@ -56,20 +56,7 @@ export function PeopleRow({ s, onOpen, className }: { s?: PeopleSummary; onOpen:
 }
 
 function Sheet({ title, onClose, children, tabs }: { title: string; onClose: () => void; children: React.ReactNode; tabs?: React.ReactNode }) {
-  const drag = useSheetDrag(onClose)
-  return (
-    <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose() }}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag} role="dialog" aria-label={title}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 className="modal-title truncate">{title}</h2>
-          <button className="modal-close hit-44" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        {tabs}
-        <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">{children}</div>
-      </div>
-    </div>
-  )
+  return <UISheet title={title} label={title} onClose={onClose} below={tabs} bodyClassName="gap-4">{children}</UISheet>
 }
 
 function Tabs<T extends string>({ value, options, onChange }: { value: T; options: [T, string, number?][]; onChange: (t: T) => void }) {

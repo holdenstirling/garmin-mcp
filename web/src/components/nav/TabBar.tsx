@@ -17,6 +17,9 @@ const TABS: { id: TabId; label: string; icon: typeof Rabbit }[] = [
   { id: 'progress', label: 'Progress', icon: TrendingUp },
 ]
 
+/** Left-to-right order (swipe between tabs: hooks/useTabSwipe). */
+export const TAB_IDS: readonly TabId[] = TABS.map((t) => t.id)
+
 const KEY = 'rabbit.tab'
 
 export function readTab(): TabId {

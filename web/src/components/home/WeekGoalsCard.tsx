@@ -96,7 +96,7 @@ export function WeekGoalsCard({ refreshKey, onOpenPlan, onOpenGrade, onRing }: {
 
   if (!ring && !grade) return null
   return (
-    <section aria-label="This week's goals"
+    <section aria-label="This week's goals" data-usage-card="ring"
       className="mx-4 mt-2 shrink-0 divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {ring && (
         <button ref={ringBtn} type="button" onClick={onOpenPlan}

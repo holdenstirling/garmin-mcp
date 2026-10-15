@@ -3,6 +3,7 @@
 import { AuthError, getJSON, postJSON, sendJSON } from '@/lib/api'
 import type { Metric } from '@/lib/challenges'
 import type { SocialUser } from '@/lib/social'
+import { counted } from '@/lib/usage'
 
 export type Category = 'race' | 'pb' | 'milestone' | 'life' | 'comeback' | 'gratitude' | 'other'
 export type ReactionKind = 'party' | 'strong' | 'heart' | 'rabbit'
@@ -138,9 +139,9 @@ export const getCommunityFeed = (cursor?: string | null, club?: string, scope: '
   return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number }>(`${P}/feed${s ? `?${s}` : ''}`)
 }
 export const getPost = (id: string) => getJSON<{ post: Post }>(pp(id))
-export const createPost = (b: PostInput) => postJSON<{ post: Post }>(`${P}/posts`, b)
+export const createPost = (b: PostInput) => counted(postJSON<{ post: Post }>(`${P}/posts`, b), 'share', { what: 'post' })
 export const shareWorkout = (activityId: number, b: PostInput = {}) =>
-  postJSON<{ post: Post }>(`${P}/posts`, { ...b, workout_id: activityId })
+  counted(postJSON<{ post: Post }>(`${P}/posts`, { ...b, workout_id: activityId }), 'share', { what: 'workout' })
 export const updatePost = (id: string, b: PostInput) => sendJSON<{ post: Post }>('PATCH', pp(id), b)
 export const deletePost = (id: string) => sendJSON<{ ok: boolean }>('DELETE', pp(id))
 export const react = (id: string, kind: ReactionKind) => postJSON<{ post: Post }>(`${pp(id)}/reactions`, { kind })
@@ -155,7 +156,7 @@ export const postPhotoUrls = (p: Post) => p.photos.map((v, i) => `/app${pp(p.id)
 
 export const getDrafts = () => getJSON<{ drafts: Draft[] }>(`${P}/drafts`)
 export const shareDraft = (id: string, b: PostInput = {}) =>
-  postJSON<{ post: Post; message: string }>(`${P}/drafts/${encodeURIComponent(id)}/share`, b)
+  counted(postJSON<{ post: Post; message: string }>(`${P}/drafts/${encodeURIComponent(id)}/share`, b), 'share', { what: 'post' })
 export const dismissDraft = (id: string) => sendJSON<{ ok: boolean }>('DELETE', `${P}/drafts/${encodeURIComponent(id)}`)
 export const getCommunitySettings = () => getJSON<{ settings: CommunitySettings; usage: Usage }>(`${P}/settings`)
 export const putCommunitySettings = (patch: Partial<CommunitySettings>) =>
@@ -190,7 +191,8 @@ export const removeMember = (id: string, uid: string) =>
 export const addMeetup = (id: string, b: MeetupInput) => postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups`, b)
 export const deleteMeetup = (id: string, mid: string) => sendJSON<{ ok: boolean }>('DELETE', `${cp(id)}/meetups/${encodeURIComponent(mid)}`)
 export const rsvpMeetup = (id: string, mid: string, status: 'going' | 'maybe' | 'none') =>
-  postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status })
+  status === 'none' ? postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status })
+    : counted(postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status }), 'rsvp', { kind: 'meetup' })
 export const startClubChallenge = (id: string, template: string, period: 'week' | 'month') =>
   postJSON<{ club: ClubDetail }>(`${cp(id)}/challenges`, { template, period })
 export const joinClubChallenge = (id: string, gid: string) =>

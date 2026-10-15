@@ -83,7 +83,7 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, onToast }: {
 
   const feel = shown.find((a) => a.kind === 'feel')
   return (
-    <div className="px-4">
+    <div className="px-4" data-usage-card="actions">
       <div className="mx-auto max-w-2xl">
         <SharePrompt />
         {shown.length > 0 && (

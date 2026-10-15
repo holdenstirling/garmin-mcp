@@ -1,11 +1,11 @@
 // "Looking for a coach?": asked once (the optional "coach_status" setup quest, or the Me
 // row while unanswered). Saves athlete.coach_status; "looking" opens Find a coach.
-import { useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { useState } from 'react'
+import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { putAthlete, type Athlete, type CoachStatus } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { useDialog } from '@/hooks/useDialog'
+import { Sheet } from '@/components/ui/Sheet'
 
 const CHOICES: { id: CoachStatus; title: string; sub: string }[] = [
   { id: 'looking', title: "I'd like a coach", sub: 'See coaches who fit your race' },
@@ -22,8 +22,6 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
   const [pick, setPick] = useState<CoachStatus | null>(current ?? null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const box = useRef<HTMLDivElement>(null)
-  useDialog(box, () => { if (!busy) onClose() })
 
   async function save() {
     if (!pick) return
@@ -33,14 +31,7 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
   }
 
   return (
-    <div className="modal-overlay" onClick={() => { if (!busy) onClose() }}>
-      <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="cs-title" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div className="modal-header">
-          <h2 id="cs-title" className="modal-title">Do you want a coach?</h2>
-          <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
-        </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title="Do you want a coach?" onClose={onClose} dismissible={!busy}>
           <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
             A human coach can work alongside Rabbit. You can change this any time.
           </p>
@@ -68,8 +59,6 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
           {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
           <Button variant="primary" className="h-11 w-full text-[0.8824rem]" loading={busy} disabled={!pick}
             onClick={() => void save()}>Save</Button>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

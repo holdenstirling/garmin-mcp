@@ -2,6 +2,7 @@
 // response (src/garmin_mcp/passkey_web.py); this file only converts base64url <-> bytes and
 // calls navigator.credentials.
 import { getJSON, sendJSON } from './api'
+import { track } from '@/lib/usage'
 
 // ------------------------------------------------------------ base64url ---
 export function b64uToBytes(s: string): Uint8Array<ArrayBuffer> {
@@ -165,6 +166,7 @@ export async function shareLink(url: string): Promise<'shared' | 'copied' | 'fai
   if (navigator.share) {
     try {
       await navigator.share({ title: 'Join me on Rabbit', text: 'Join me on Rabbit, my training app:', url })
+      track('share', { what: 'invite' })
       return 'shared'
     } catch (e) {
       if ((e as { name?: string }).name === 'AbortError') return 'failed'

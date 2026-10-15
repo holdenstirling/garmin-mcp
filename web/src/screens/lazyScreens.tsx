@@ -65,3 +65,5 @@ export const DataSourcesSheet = split(() => import('@/components/settings/DataSo
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
 export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))
 export const MonthRecapSheet = split(() => import('@/components/reward/MonthRecapSheet').then((m) => m.MonthRecapSheet))
+// Me -> Usage (owners only)
+export const UsageScreen = split(() => import('@/components/settings/UsageScreen').then((m) => m.UsageScreen))

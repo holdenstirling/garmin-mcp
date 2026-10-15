@@ -1,6 +1,7 @@
 // Following friends: people you follow, their recent workouts, kudos and short cheers.
 import { getJSON, postJSON, sendJSON } from '@/lib/api'
 import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
+import { counted } from '@/lib/usage'
 
 export type SocialUser = { id: string; name: string; photo: number | null; picture: string }
 export type FeedUser = SocialUser & { level: number | null; streak: number | null }
@@ -44,10 +45,10 @@ export const putSocialSettings = (patch: Partial<SocialSettings>) =>
 export const newInviteCode = () => postJSON<{ invite_code: string }>('/api/social/code')
 
 const actPath = (owner: string, id: string) => `/api/social/kudos/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`
-export const giveKudos = (owner: string, id: string) => postJSON<{ count: number; you_kudoed: boolean }>(actPath(owner, id))
+export const giveKudos = (owner: string, id: string) => counted(postJSON<{ count: number; you_kudoed: boolean }>(actPath(owner, id)), 'cheer')
 export const takeKudos = (owner: string, id: string) => sendJSON<{ count: number; you_kudoed: boolean }>('DELETE', actPath(owner, id))
 export const addCheer = (owner: string, id: string, text: string) =>
-  postJSON<{ cheer: Cheer }>(`/api/social/cheers/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`, { text })
+  counted(postJSON<{ cheer: Cheer }>(`/api/social/cheers/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`, { text }), 'cheer')
 export const deleteCheer = (owner: string, id: string, cheer: string) =>
   sendJSON<{ ok: boolean }>('DELETE', `/api/social/cheers/${encodeURIComponent(owner)}/${encodeURIComponent(id)}/${encodeURIComponent(cheer)}`)
 

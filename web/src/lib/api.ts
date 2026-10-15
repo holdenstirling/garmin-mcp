@@ -17,6 +17,8 @@ export type CoachSettings = {
   data_sources?: DataSources
   /** answered "How should Rabbit use your data?" */
   data_sources_asked?: boolean
+  /** "Don't count my usage" (lib/usage.ts, server usage.py) */
+  usage_off?: boolean
 }
 
 export type DataSource = 'garmin' | 'oura'
@@ -40,6 +42,8 @@ export type Me = {
   role: 'athlete' | 'coach'
   /** may create invite links (owner, or members when MEMBERS_CAN_INVITE) */
   can_invite?: boolean
+  /** an app owner (access owners): sees the usage dashboard in Me */
+  owner?: boolean
   coaching: number        // athletes this user coaches
   coaches: number         // coaches this athlete has
   coach_unread: number
