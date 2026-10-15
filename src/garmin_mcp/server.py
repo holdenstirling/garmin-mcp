@@ -72,9 +72,16 @@ def _dev_user(settings: Settings) -> str | None:
     user = os.environ.get("DEV_NO_AUTH_USER", "").strip()
     if not user:
         return None
-    if settings.public_host.split(":")[0] not in {"localhost", "127.0.0.1"} or settings.host != "127.0.0.1":
-        raise RuntimeError("DEV_NO_AUTH_USER is only allowed with a localhost PUBLIC_BASE_URL")
-    return user
+    host = settings.public_host.split(":")[0]
+    if settings.host == "127.0.0.1" and host in {"localhost", "127.0.0.1"}:
+        return user
+    # Google Cloud Shell Web Preview: only the Cloud Shell owner can open https://8080-$WEB_HOST
+    # (Google sign-in in front), and only with demo Garmin data.
+    web_host = os.environ.get("WEB_HOST", "").strip()
+    if (settings.host == "127.0.0.1" and web_host and host.endswith(".cloudshell.dev")
+            and host.split("-", 1)[-1] == web_host and os.environ.get("RABBIT_FAKE_GARMIN") == "1"):
+        return user
+    raise RuntimeError("DEV_NO_AUTH_USER is only allowed with a localhost PUBLIC_BASE_URL")
 
 
 def build_app(settings: Settings, service: GarminService,

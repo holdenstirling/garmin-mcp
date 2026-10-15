@@ -238,3 +238,22 @@ def test_invite_defaults_to_no_plan_edits(env, tmp_path) -> None:
             r = await a.post("/app/api/coaches", headers=H, json={"email": COACH})
             assert r.status_code == 201 and r.json()["coaches"][0]["can_edit_plan"] is False
     asyncio.run(go_())
+
+
+def test_dev_no_auth_user_only_localhost_or_cloudshell_preview(monkeypatch, tmp_path) -> None:
+    from garmin_mcp.server import _dev_user
+    monkeypatch.setenv("DEV_NO_AUTH_USER", "demo")
+    mk = lambda url: Settings(public_base_url=url, data_dir=tmp_path, host="127.0.0.1")  # noqa: E731
+    assert _dev_user(mk("http://localhost:8001")) == "demo"
+    with pytest.raises(RuntimeError):
+        _dev_user(mk("https://rabbit.example.com"))
+    preview = "https://8080-cs-123-default.cs-us-east1-abcd.cloudshell.dev"
+    with pytest.raises(RuntimeError):  # not inside Cloud Shell
+        _dev_user(mk(preview))
+    monkeypatch.setenv("WEB_HOST", "cs-123-default.cs-us-east1-abcd.cloudshell.dev")
+    with pytest.raises(RuntimeError):  # real Garmin data
+        _dev_user(mk(preview))
+    monkeypatch.setenv("RABBIT_FAKE_GARMIN", "1")
+    assert _dev_user(mk(preview)) == "demo"
+    with pytest.raises(RuntimeError):  # some other cloudshell.dev host
+        _dev_user(mk("https://8080-cs-999-default.cs-us-east1-abcd.cloudshell.dev"))
