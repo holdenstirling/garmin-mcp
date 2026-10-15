@@ -12,8 +12,23 @@ function Fallback({ kind }: { kind: Kind }) {
     : <div className="fixed inset-0 z-50 flex items-center justify-center bg-(--bg)/70"><RabbitLoader label="Loading…" /></div>
 }
 
+// After a deploy, a page left open still points at the old screen files, which are gone.
+// Reload once to pick up the new version instead of showing a broken screen.
+const RELOADED = 'rabbit-chunk-reload'
+function fresh<T>(load: () => Promise<T>): Promise<T> {
+  return load().then((v) => {
+    try { sessionStorage.removeItem(RELOADED) } catch { /* private mode */ }
+    return v
+  }, (err) => {
+    let again = false
+    try { again = !sessionStorage.getItem(RELOADED); if (again) sessionStorage.setItem(RELOADED, '1') } catch { /* private mode */ }
+    if (again) { window.location.reload(); return new Promise<T>(() => {}) }
+    throw err
+  })
+}
+
 function split<T extends ComponentType<any>>(load: () => Promise<T>, kind: Kind = 'screen'): (props: ComponentProps<T>) => ReactElement {
-  const L = lazy(() => load().then((C) => ({ default: C })))
+  const L = lazy(() => fresh(load).then((C) => ({ default: C })))
   function Split(props: ComponentProps<T>) {
     const Any = L as ComponentType<any>
     return <Suspense fallback={<Fallback kind={kind} />}><Any {...props} /></Suspense>
