@@ -21,6 +21,8 @@ Triggers
   (checked daily from 09:00, posted at most weekly).
 * **Coach plan**: "Your coach Bill updated your plan." [Open plan] (the coach chat and push
   already told them; this is the Rabbit-log entry, no push).
+* **Friend joined** (``friend_joined``): someone joined from the athlete's invite link (they now
+  follow each other); webapp's ``on_join`` hook sends the push itself.
 
 Rules: quiet hours 21:00-07:00 local queue a moment until 07:00 (workout synced is exempt);
 at most ``DAILY_CAP`` moments a day besides workouts; only streak-at-risk and race countdown
@@ -215,6 +217,15 @@ def coach_plan_moment(coach_first: str, stamp: str) -> dict[str, Any]:
     return {"type": "coach_plan", "key": f"coachplan:{stamp}",
             "text": _clip(f"📋 {who} updated your plan. See this week's sessions."),
             "actions": [action("plan", "Open plan")]}
+
+
+def friend_joined_moment(name: str, joiner: str) -> dict[str, Any]:
+    """For the inviter, once per joiner: someone joined from their invite link (mutual follow)."""
+    first = _name(name, 30) or "A friend"
+    return {"type": "friend_joined", "key": f"joined:{joiner}",
+            "text": _clip(f"🎉 {first} joined Rabbit from your invite. You now follow each other."),
+            "push_title": "New friend on Rabbit",
+            "actions": [action("community", "See friends", view="people")]}
 
 
 def completed_challenges(doc: dict[str, Any]) -> list[dict[str, Any]]:
@@ -465,6 +476,10 @@ class Moments:
 
     def coach_plan(self, uid: str, coach_first: str) -> str:
         return self.post(uid, coach_plan_moment(coach_first, str(int(self._clock()))))
+
+    def friend_joined(self, uid: str, name: str, joiner: str) -> str:
+        """Invite joins (``passkey_web`` ``on_join``); the caller sends the push."""
+        return self.post(uid, friend_joined_moment(name, joiner))
 
     # ------------------------------------------------------ time-based --
     def _claim(self, uid: str, what: str, day: date) -> bool:

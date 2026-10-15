@@ -1,0 +1,152 @@
+// Rabbit home "Up next" (server: upnext.py): the one card at the top of the Rabbit tab with one
+// primary action. Today's planned session (Start, Send to watch) > rest day + tomorrow > build
+// your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
+// that card isn't shown separately.
+import { useState } from 'react'
+import { Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { InfoTip } from '@/components/ui/InfoTip'
+import { WeekDots } from '@/components/week/WeekStrip'
+import type { WeekDay } from '@/lib/api'
+import { fmtDuration } from '@/lib/format'
+import type { Term } from '@/lib/glossary'
+import type { TodayActionKind } from '@/lib/live'
+import { syncGarmin } from '@/lib/plan'
+import type { UpNext } from '@/lib/upnext'
+import { cn } from '@/lib/utils'
+
+const SEEN = 'rabbit.upnext.seen'
+const SIGNAL_TERM: Record<string, Term> = {
+  Form: 'form', Readiness: 'readiness', 'Oura readiness': 'oura_readiness', 'Garmin readiness': 'garmin_readiness', Streak: 'streak',
+}
+const TODAY_KINDS: readonly string[] = ['open_session', 'review_adjust', 'open_racepack', 'build_plan', 'log_rest', 'ask']
+
+function iconFor(up: UpNext): typeof Zap {
+  if (up.kind === 'group_run') return Users
+  if (up.kind === 'set_goal') return Target
+  if (up.kind === 'build_plan') return Route
+  if (up.kind === 'rest' || up.tone === 'rest') return Moon
+  return up.tone === 'race' ? Flag : up.tone === 'done' ? Check : up.tone === 'easy' ? Waves : up.tone === 'plan' ? Route : Zap
+}
+
+function firstShowToday(): boolean {
+  const day = new Date().toDateString()
+  try {
+    if (window.localStorage.getItem(SEEN) === day) return false
+    window.localStorage.setItem(SEEN, day)
+  } catch { /* storage unavailable: no entrance animation */ return false }
+  return true
+}
+
+export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday, onPlan, onSetup, onClubs, onAsk, onSynced, hideStreak }: {
+  up: UpNext
+  /** this plan week's days: dots next to the headline */
+  week?: WeekDay[] | null
+  /** top "do this" insight from Progress (one line, optional) */
+  insight?: string | null; onOpenInsight?: () => void
+  onStart: (sessionId: string) => void
+  onToday: (kind: TodayActionKind) => void
+  onPlan: () => void
+  /** plan setup (goal + plan) */
+  onSetup: () => void
+  onClubs: (clubId?: string) => void
+  onAsk: (text: string) => void
+  /** after Send to watch: reload the card */
+  onSynced: () => void
+  hideStreak?: boolean
+}) {
+  const [hop] = useState(firstShowToday)
+  const [sending, setSending] = useState(false)
+  const [sendMsg, setSendMsg] = useState<string | null>(null)
+  const Icon = iconFor(up)
+  const rest = up.kind === 'rest' || up.tone === 'rest'
+  const signals = (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 2)
+  const todayKind = up.today?.action.kind
+
+  const primary = () => {
+    const k = up.primary.kind
+    if (k === 'start' && up.session?.id) onStart(up.session.id)
+    else if (k === 'today') { if (todayKind) onToday(todayKind); else onAsk('About today: ') }
+    else if (k === 'open_plan') onPlan()
+    else if (k === 'build_plan' || k === 'set_goal') onSetup()
+    else if (k === 'group') onClubs(up.group?.club_id ?? undefined)
+    else if (TODAY_KINDS.includes(k)) onToday(k as TodayActionKind)
+  }
+  const send = async () => {
+    setSending(true); setSendMsg(null)
+    try { await syncGarmin(7); setSendMsg('Sent. Sync your watch to pick it up.'); onSynced() }
+    catch (e) { setSendMsg((e as Error).message) }
+    finally { setSending(false) }
+  }
+  const s = up.session
+  const t = up.tomorrow
+  const g = up.group
+  const headline = s && up.kind === 'session' ? [s.title, fmtDuration(s.minutes)].filter(Boolean).join(' · ') : up.headline
+  return (
+    <section aria-label="Up next"
+      className={cn('relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface) px-3 pb-3 pt-2.5 shadow-sm',
+        up.tone === 'race' ? 'border-(--brand)/30' : rest ? 'border-(--border-strong)' : 'border-(--accent)/30', hop && 'rb-hop-in')}>
+      <div className="flex items-center gap-2.5">
+        <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full text-(--on-fill)',
+          up.tone === 'race' ? 'bg-(--brand)' : rest ? 'bg-(--text-muted)' : 'bg-(--accent)')}>
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Up next</span>
+          <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{headline}</span>
+        </span>
+        {week && week.length === 7 && <WeekDots days={week} />}
+      </div>
+      {up.detail && <p className="mt-1.5 line-clamp-2 text-[0.7647rem] leading-snug text-(--text-secondary)">{up.detail}</p>}
+      {(s?.target || s?.on_watch || (rest && t) || (t && up.tone === 'done') || g?.club || signals.length > 0) && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {s?.target && <span className="rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] font-medium text-(--text)">{s.target}</span>}
+          {s?.on_watch && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-2 py-0.5 text-[0.7059rem] font-medium text-(--accent)">
+              <Watch className="size-3" aria-hidden /> On your watch
+            </span>
+          )}
+          {t && (rest || up.tone === 'done') && (
+            <span className="rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] text-(--text-secondary)">
+              Tomorrow: {t.rest ? 'rest' : `${t.title}${t.minutes ? ` · ${fmtDuration(t.minutes)}` : ''}`}
+            </span>
+          )}
+          {g?.club && <span className="rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] text-(--text-secondary)">{g.club}{g.rsvp === 'going' ? ' · going' : ''}</span>}
+          {signals.map((x) => (
+            <span key={x.label}
+              className={cn('inline-flex items-center gap-1 rounded-full border py-0.5 pl-2 text-[0.7059rem] font-medium',
+                SIGNAL_TERM[x.label] ? 'pr-1' : 'pr-2',
+                x.good ? 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' : 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)')}>
+              {x.label} {x.value}
+              {SIGNAL_TERM[x.label] && <InfoTip term={SIGNAL_TERM[x.label]!} />}
+            </span>
+          ))}
+        </div>
+      )}
+      {insight && (up.kind === 'session' || up.kind === 'today') && (
+        <button type="button" onClick={onOpenInsight} disabled={!onOpenInsight}
+          className="hit-44 mt-1 flex items-center gap-1.5 text-left text-[0.7059rem] leading-snug text-(--text-secondary)">
+          <Lightbulb className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 truncate"><span className="font-semibold">Insight:</span> {insight}</span>
+        </button>
+      )}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <Button variant="primary" className="h-11 min-w-28 px-4 text-[0.8235rem]" onClick={primary}>{up.primary.label}</Button>
+        {up.secondary && (
+          <Button variant="default" className="h-11 gap-1.5 px-3 text-[0.8235rem]" loading={sending} onClick={() => void send()}>
+            <Watch className="size-4" aria-hidden /> {up.secondary.label}
+          </Button>
+        )}
+        {up.extra && todayKind && (
+          <button type="button" className="hit-44 px-1 text-[0.7647rem] font-medium text-(--accent) underline-offset-2 hover:underline"
+            onClick={() => onToday(todayKind)}>{up.extra.label}</button>
+        )}
+        {g?.url && (
+          <a href={g.url} target="_blank" rel="noopener noreferrer"
+            className="hit-44 px-1 text-[0.7647rem] text-(--text-muted) underline-offset-2 hover:underline">Details</a>
+        )}
+      </div>
+      {sendMsg && <p className="mt-1.5 text-[0.7059rem] text-(--text-muted)" role="status">{sendMsg}</p>}
+    </section>
+  )
+}

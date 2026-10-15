@@ -46,7 +46,10 @@ def _ok(data: Any, status: int = 200) -> JSONResponse:
 
 def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitable[Response]]],
                 host_ok: Callable[[Request], bool], read_json: Callable[[Request], Awaitable[Any]],
-                join_limit: RateLimit | None = None, login_limit: RateLimit | None = None) -> list[BaseRoute]:
+                join_limit: RateLimit | None = None, login_limit: RateLimit | None = None,
+                on_join: Callable[[str, str, str], None] | None = None) -> list[BaseRoute]:
+    """``on_join(new_user_id, inviter_id, first_name)`` runs after a successful join (best
+    effort: the auto-follow + the inviter's moment; a failure never fails the join)."""
     acc = auth.access
     base = auth.s.public_base_url
     join_rl = join_limit or RateLimit(30, 600)
@@ -151,13 +154,19 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
         reg = verify_registration(cred, challenge=challenge, rp_id=auth.rp_id, origin=base)
         if acc.credential(reg.cred_id) is not None:
             raise AccessError("That passkey is already registered.", 409)
-        acc.add_member(invite_id=ch.invite_id, user_id=ch.user_id, name=ch.data["name"],
-                       email=ch.data["email"], taken=email_taken)
+        inviter = acc.add_member(invite_id=ch.invite_id, user_id=ch.user_id, name=ch.data["name"],
+                                 email=ch.data["email"], taken=email_taken)
         acc.set_handle(ch.user_id, ch.handle)
         acc.add_passkey(ch.user_id, cred_id=reg.cred_id, public_key=reg.public_key, sign_count=reg.sign_count,
                         alg=reg.alg, name=clean_label(body.get("label")) or "Passkey", transports=reg.transports)
         auth._store.user_doc(ch.user_id, "account").save({"name": ch.data["name"], "picture": ""})
         log_event(logger, logging.INFO, "member_joined", user_id=ch.user_id, invite=ch.invite_id)
+        if on_join is not None and inviter:
+            try:
+                on_join(ch.user_id, inviter, ch.data["name"])
+            except Exception as e:  # the account exists either way
+                log_event(logger, logging.WARNING, "member_join_hook_failed", user_id=ch.user_id,
+                          error=type(e).__name__)
         resp = _ok({"ok": True})
         auth.set_session_cookie(resp, auth.mint_session(ch.user_id))
         return resp
