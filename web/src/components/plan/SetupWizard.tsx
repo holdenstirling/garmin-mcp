@@ -3,6 +3,7 @@
 // Answers are kept as a local draft so leaving halfway loses nothing.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DurationInput } from '@/components/ui/DurationInput'
+import { expectForDistance } from '@/lib/duration'
 import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -340,8 +341,8 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
           </div>
           <Card>
             {g.goal_type === 'time' && (
-              <Field label="Target time" hint="Hours:minutes:seconds, or minutes:seconds for short races.">
-                <DurationInput label="Target time" value={g.target_time} onChange={(v) => setG({ target_time: v })} />
+              <Field label="Target time">
+                <DurationInput label="Target time" expect={expectForDistance(g.distance)} value={g.target_time} onChange={(v) => setG({ target_time: v })} />
               </Field>
             )}
             {sports.length > 1 && (

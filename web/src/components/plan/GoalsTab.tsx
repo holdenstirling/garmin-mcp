@@ -2,6 +2,7 @@
 // target time, editable in place, plus a one-line season goal. Full editing lives in Events.
 import { useCallback, useEffect, useState } from 'react'
 import { DurationInput } from '@/components/ui/DurationInput'
+import { expectForDistance } from '@/lib/duration'
 import { CalendarDays, ChevronRight, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -85,7 +86,7 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
         <Choice value={e.goal_type ?? 'finish'} options={GOAL_TYPES}
           onChange={(v) => v && v !== e.goal_type && void save(v === 'time' ? { goal_type: v } : { goal_type: v, target_time: null })} />
         {e.goal_type === 'time' && (
-          <DurationInput label={`Target time for ${e.name}`} value={target} onChange={setTarget}
+          <DurationInput label={`Target time for ${e.name}`} expect={expectForDistance(e.distance)} value={target} onChange={setTarget}
             onBlur={(v) => saveTarget(v)} disabled={busy} />
         )}
         {msg && <span className={cn('text-[0.7059rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</span>}
