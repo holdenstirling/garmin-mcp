@@ -11,3 +11,4 @@ infra/config.env
 src/garmin_mcp/web_dist/
 web/node_modules/
 infra/.rabbit-google-client-id
+web/node_modules
