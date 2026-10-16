@@ -257,7 +257,9 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         onAdd={readOnly ? undefined : (date) => setEditing({ session: null, date })}
         onResult={(r) => { setPlan(r.plan); setPlanCal(r.cal); onChanged() }}
         moving={moving} onMoving={setMoving}
-        hidden={tp.hidden} dayExtra={(d) => tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null} />
+        hidden={tp.hidden} dayExtra={(d) => tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null}
+        onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
+        onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
 
       {!coachMode && <>
       {/* Garmin */}

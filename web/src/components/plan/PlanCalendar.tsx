@@ -1,10 +1,12 @@
 // The plan as an easy calendar (server: plancal.py). Week view (default): each day's sessions as
 // cards (sport, title, distance in the athlete's units, time, target pace, done/missed, a one-line
 // coach note), drag a card to another day (mouse: drag; touch: long-press then drag, the page
-// auto-scrolls) or tap it -> Move. Every change re-balances the week and can be undone. Month view:
-// the month at a glance with weekly/monthly/plan mileage; tap a day to open its week.
+// auto-scrolls) or tap it -> Move. Every change re-balances the week and can be undone. Day view
+// (PlanDay.tsx): one day at a time with each workout in full, Learn more and Move / Swap. Month
+// view: the month at a glance with weekly/monthly/plan mileage; tap a day to open it.
+// Deep link: lib/plancal openPlanDay(date) (sessionStorage keys read on mount + an event).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, CalendarDays, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Pencil, Plane, Plus, Rows3, Undo2, Wrench } from 'lucide-react'
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Pencil, Plane, Plus, Rows3, Calendar, Undo2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { cn } from '@/lib/utils'
@@ -12,20 +14,17 @@ import { haptic } from '@/lib/haptics'
 import { KM_PER_MI, fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_LABEL, type BuiltPlan, type PlanSession, type PlanWeekBuilt } from '@/lib/plan'
 import {
-  PLAN_FIX_EVENT, SPORT_DIST_LABEL, fixMissed, moveSession, setWeekGoal, swapDays, takePlanFix, undoChange,
+  OPEN_PLAN_DAY_EVENT, PLAN_DAY_KEY, PLAN_FIX_EVENT, PLAN_VIEW_KEY, SPORT_DIST_LABEL, fixMissed, moveSession, setWeekGoal, takePlanFix, undoChange,
   type CalChange, type CalResult, type CalSession, type CalView, type DistSport, type Mileage,
 } from '@/lib/plancal'
 import { Card, Chip, ChipRow, Field, inputCls } from './ui'
 import { SPORT_ICON, fmtDay, sessionMinutes, weekPhaseLabel } from './PlanParts'
+import { MoveSheet, addDays, mondayOf, weekdayIdx } from './MoveSheet'
+import { PlanDay } from './PlanDay'
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const addDays = (d: string, n: number) => {
-  const x = new Date(`${d}T12:00:00`)
-  x.setDate(x.getDate() + n)
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
-}
-const weekdayIdx = (d: string) => (new Date(`${d}T12:00:00`).getDay() + 6) % 7
-const mondayOf = (d: string) => addDays(d, -weekdayIdx(d))
+type View = 'week' | 'month' | 'day'
+const readKey = (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }
 
 export function paceText(secPerKm: number, imperial: boolean) {
   const s = Math.round(secPerKm * (imperial ? KM_PER_MI : 1))
@@ -42,7 +41,7 @@ const toUnit = (km: number, imperial: boolean, sport: DistSport) =>
 const fromUnit = (v: number, imperial: boolean, sport: DistSport) =>
   sport === 'swim' ? v / 1000 / (imperial ? 1.0936133 : 1) : imperial ? v * KM_PER_MI : v
 
-export type MoveTarget = { session: PlanSession; date: string }
+export type MoveTarget = { session: PlanSession; date: string; mode?: 'move' | 'swap' }
 
 // ---------------------------------------------------------------- drag --
 type Drag = { id: string; from: string; title: string; x: number; y: number; over: string | null }
@@ -289,44 +288,9 @@ function DayChips({ days, today, raceDate, avail, from, best, onPick, busy }: {
   )
 }
 
-function MoveSheet({ t, plan, cal, today, onClose, run }: {
-  t: MoveTarget; plan: BuiltPlan; cal: CalView; today: string; onClose: () => void
-  run: (p: Promise<CalResult>) => Promise<boolean>
-}) {
-  const [mode, setMode] = useState<'move' | 'swap'>('move')
-  const [busy, setBusy] = useState<string | null>(null)
-  const mon = mondayOf(t.date < today ? today : t.date)
-  const thisWeek = Array.from({ length: 7 }, (_, i) => addDays(mon, i))
-  const nextWeek = Array.from({ length: 7 }, (_, i) => addDays(mon, i + 7))
-  const pick = async (d: string) => {
-    setBusy(d)
-    const ok = await run(mode === 'move' ? moveSession(t.session.id, d) : swapDays(t.date, d))
-    setBusy(null)
-    if (ok) onClose()
-  }
-  return (
-    <Sheet title={`Move ${t.session.title}`} onClose={onClose} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <p className="px-1 text-[0.7647rem] text-(--text-muted)">Now on {fmtDay(t.date, { weekday: 'long', month: 'short', day: 'numeric' })}. Rabbit keeps hard days apart and your miles on track.</p>
-      <ChipRow>
-        <Chip selected={mode === 'move'} onClick={() => setMode('move')}>Move this session</Chip>
-        <Chip selected={mode === 'swap'} onClick={() => setMode('swap')}><ArrowLeftRight className="mr-1 inline size-3.5" aria-hidden />Swap whole days</Chip>
-      </ChipRow>
-      <Card>
-        <Field label="This week">
-          <DayChips days={thisWeek} today={today} raceDate={plan.race_date} avail={cal.available_days} from={t.date} onPick={(d) => void pick(d)} busy={busy} />
-        </Field>
-        <Field label="Next week" className="border-t border-(--border)">
-          <DayChips days={nextWeek} today={today} raceDate={plan.race_date} avail={cal.available_days} from={t.date} onPick={(d) => void pick(d)} busy={busy} />
-        </Field>
-      </Card>
-      <p className="px-1 text-[0.7059rem] text-(--text-muted)">Tip: on the calendar you can also press and hold a session, then drag it to a day.</p>
-    </Sheet>
-  )
-}
-
 function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
   s: PlanSession; date: string; c: CalSession; plan: BuiltPlan; cal: CalView; today: string; onClose: () => void
-  run: (p: Promise<CalResult>) => Promise<boolean>
+  run: (p: Promise<CalResult>) => Promise<CalResult | null>
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const mon = mondayOf(today)
@@ -365,7 +329,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
 }
 
 // ------------------------------------------------------------- calendar --
-export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra }: {
+export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra, onStart, onAsk }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   week: PlanWeekBuilt; onWeek: (index: number) => void
   /** drag, Move, Fix and goals (the athlete's own plan) */
@@ -380,8 +344,30 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   hidden?: (id: string) => boolean
   /** extra items under a day's sessions (TrainingPeaks workouts) */
   dayExtra?: (date: string) => React.ReactNode
+  /** Day view: open the pre-workout screen for a session */
+  onStart?: (s: PlanSession, date: string) => void
+  /** Day view: ask Rabbit about a session */
+  onAsk?: (s: PlanSession, date: string) => void
 }) {
-  const [view, setView] = useState<'week' | 'month'>(() => { try { return sessionStorage.getItem('rabbit.plancal.view') === 'month' ? 'month' : 'week' } catch { return 'week' } })
+  const first = plan.weeks[0]!.days[0]!.date
+  const lastW = plan.weeks[plan.weeks.length - 1]!
+  const last = lastW.days[lastW.days.length - 1]!.date
+  const clamp = (d: string) => d < first ? first : d > last ? last : d
+  const weekOf = (d: string) => plan.weeks.find((w) => w.days.some((x) => x.date === d))
+  const [view, setView] = useState<View>(() => { const v = readKey(PLAN_VIEW_KEY); return v === 'month' || v === 'day' ? v : 'week' })
+  const [day, setDay] = useState<string>(() => {
+    const k = readKey(PLAN_DAY_KEY)
+    if (k && /^\d{4}-\d{2}-\d{2}$/.test(k)) return clamp(k)
+    return week.days.some((d) => d.date === today) ? today : week.days[0]!.date
+  })
+  const openDay = (d: string) => {
+    const c = clamp(d)
+    setDay(c)
+    setView('day')
+    const w = weekOf(c)
+    if (w && w.index !== week.index) onWeek(w.index)
+  }
+  const pickDay = (d: string) => { const c = clamp(d); setDay(c); const w = weekOf(c); if (w && w.index !== week.index) onWeek(w.index) }
   const [fix, setFix] = useState<{ s: PlanSession; date: string } | null>(null)
   const [change, setChange] = useState<CalChange | null>(null)
   const [toast, setToast] = useState<{ text: string; undo: string | null; n: number } | null>(null)
@@ -393,7 +379,28 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     return m
   }, [plan])
 
-  useEffect(() => { try { sessionStorage.setItem('rabbit.plancal.view', view) } catch { /* ignore */ } }, [view])
+  useEffect(() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, view) } catch { /* ignore */ } }, [view])
+  // Deep link (lib/plancal openPlanDay): keys read on mount (above), the event while mounted.
+  useEffect(() => {
+    if (readKey(PLAN_DAY_KEY)) {
+      try { sessionStorage.removeItem(PLAN_DAY_KEY) } catch { /* ignore */ }
+      if (view === 'day') { const w = weekOf(day); if (w && w.index !== week.index) onWeek(w.index) }
+    }
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<string>).detail
+      try { sessionStorage.removeItem(PLAN_DAY_KEY) } catch { /* ignore */ }
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) openDay(d)
+    }
+    window.addEventListener(OPEN_PLAN_DAY_EVENT, on)
+    return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, on)
+  }, [plan]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Another control (the phase strip) changed the week: keep the Day view inside it.
+  const weekSeen = useRef(week.start)
+  useEffect(() => {
+    if (weekSeen.current === week.start) return  // first render: a deep-linked day may still be moving the week
+    weekSeen.current = week.start
+    if (!week.days.some((d) => d.date === day)) setDay(week.days.some((d) => d.date === today) ? today : week.days[0]!.date)
+  }, [week.start]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!toast) return
     const t = window.setTimeout(() => setToast(null), 7000)
@@ -416,7 +423,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     return () => window.removeEventListener(PLAN_FIX_EVENT, open)
   }, [cal, sessionsById]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function run(p: Promise<CalResult>): Promise<boolean> {
+  async function run(p: Promise<CalResult>): Promise<CalResult | null> {
     setError(null)
     try {
       const r = await p
@@ -425,11 +432,11 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         setChange(r.change.rebalanced.length ? r.change : null)
         setToast((t) => ({ text: r.change!.summary, undo: r.change!.id, n: (t?.n ?? 0) + 1 }))
       }
-      return true
+      return r
     } catch (e) {
       setError((e as Error).message)
       setToast((t) => ({ text: (e as Error).message, undo: null, n: (t?.n ?? 0) + 1 }))
-      return false
+      return null
     }
   }
   const canDrop = (d: string) => d >= today && d <= plan.race_date && plan.weeks.some((w) => w.days.some((x) => x.date === d))
@@ -463,6 +470,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     <section className="flex flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
       <div className="flex items-center gap-2 px-1">
         <ChipRow>
+          <Chip selected={view === 'day'} onClick={() => openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date)}><Calendar className="mr-1 inline size-3.5" aria-hidden />Day</Chip>
           <Chip selected={view === 'week'} onClick={() => setView('week')}><Rows3 className="mr-1 inline size-3.5" aria-hidden />Week</Chip>
           <Chip selected={view === 'month'} onClick={() => setView('month')}><CalendarDays className="mr-1 inline size-3.5" aria-hidden />Month</Chip>
         </ChipRow>
@@ -491,7 +499,22 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         </div>
       )}
 
-      {view === 'week' ? (
+      {view === 'day' ? (
+        <PlanDay plan={plan} cal={cal} imperial={imperial} today={today} date={day} onDate={pickDay} unread={unread} hidden={hidden}
+          extra={dayExtra?.(day)}
+          onAdd={onAdd && day >= today && day <= plan.race_date ? () => onAdd(day) : undefined}
+          actions={(s) => {
+            const c = cal?.sessions[s.id]
+            const mv = movable(s, day)
+            return {
+              onEdit: (x) => onOpen(x, day),
+              onMove: mv && c?.status !== 'missed' ? (x, mode) => onMoving({ session: x, date: day, mode }) : undefined,
+              onFix: editable && cal && c?.status === 'missed' && c.missed?.this_week ? (x) => setFix({ s: x, date: day }) : undefined,
+              onStart: onStart ? (x) => onStart(x, day) : undefined,
+              onAsk: onAsk ? (x) => onAsk(x, day) : undefined,
+            }
+          }} />
+      ) : view === 'week' ? (
         <>
           {weekNav}
           <Card>
@@ -511,11 +534,14 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
                     className={cn('flex gap-3 px-3 py-2 transition-colors', isToday && 'bg-(--accent-subtle)',
                       over && 'bg-(--accent)/15 outline-2 -outline-offset-2 outline-dashed outline-(--accent)',
                       drag && !canDrop(d.date) && 'opacity-50')}>
-                    <span className="w-10 shrink-0 pt-2 text-center leading-tight">
-                      <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                        {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
-                      </span>
-                      <span className="block text-[0.7647rem] text-(--text-secondary)">{fmtDay(d.date, { day: 'numeric' })}</span>
+                    <span className="w-10 shrink-0 pt-1 text-center leading-tight">
+                      <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })} in full`}
+                        className="flex min-h-11 w-10 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)">
+                        <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
+                          {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
+                        </span>
+                        <span className="block text-[0.7647rem] text-(--accent) underline-offset-2">{fmtDay(d.date, { day: 'numeric' })}</span>
+                      </button>
                       {busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
                       {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
                     </span>
@@ -545,12 +571,12 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             </div>
           </Card>
           <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
-            {editable && cal ? 'Tap a session for the workout, or press and hold to drag it to another day.' : 'Tap a session to see the workout.'}
+            {editable && cal ? 'Tap a day to see it in full, a session to edit it, or press and hold to drag it to another day.' : 'Tap a day to see its workouts in full.'}
           </p>
         </>
       ) : (
         <MonthView plan={plan} cal={cal} imperial={imperial} today={today} anchor={week.start}
-          onPickDay={(d) => { const w = plan.weeks.find((x) => x.days.some((y) => y.date === d)); if (w) { onWeek(w.index); setView('week') } }} />
+          onPickDay={openDay} />
       )}
 
       {error && !toast && <p className="px-4 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
@@ -574,7 +600,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         )}
       </div>
 
-      {moving && cal && <MoveSheet t={moving} plan={plan} cal={cal} today={today} onClose={() => onMoving(null)} run={run} />}
+      {moving && cal && <MoveSheet key={`${moving.session.id}:${moving.mode ?? 'move'}`} session={moving.session} from={moving.date} initialMode={moving.mode}
+        plan={plan} cal={cal} today={today} onClose={() => onMoving(null)} run={run} />}
       {fix && cal && cal.sessions[fix.s.id] && (
         <FixSheet s={fix.s} date={fix.date} c={cal.sessions[fix.s.id]!} plan={plan} cal={cal} today={today} onClose={() => setFix(null)} run={run} />
       )}
@@ -651,7 +678,7 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
           })}
         </div>
       </Card>
-      <p className="px-4 text-[0.7059rem] text-(--text-muted)">Tap a day to open its week. Right column: done / goal per week.</p>
+      <p className="px-4 text-[0.7059rem] text-(--text-muted)">Tap a day to see it in full. Right column: done / goal per week.</p>
     </>
   )
 }

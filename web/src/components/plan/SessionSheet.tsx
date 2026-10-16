@@ -270,7 +270,7 @@ function SessionCheckIn({ session }: { session: PlanSession }) {
   )
 }
 
-function StepItem({ s }: { s: Step }) {
+export function StepItem({ s }: { s: Step }) {
   if (s.type === 'repeat') {
     return (
       <li className="rounded-lg border border-(--border) px-3 py-2">

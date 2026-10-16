@@ -63,3 +63,13 @@ export function takePlanFix(): string | null {
 }
 
 export const SPORT_DIST_LABEL: Record<DistSport, string> = { run: 'Run', bike: 'Bike', swim: 'Swim' }
+
+// Open the Plan tab's calendar on one day (Day view). Anyone can call this; PlanCalendar reads
+// the keys when it mounts and listens for the event while mounted; Chat.tsx switches to Plan.
+export const OPEN_PLAN_DAY_EVENT = 'rabbit:open-plan-day'
+export const PLAN_VIEW_KEY = 'rabbit.plancal.view'
+export const PLAN_DAY_KEY = 'rabbit.plancal.day'
+export function openPlanDay(date: string): void {
+  try { sessionStorage.setItem(PLAN_VIEW_KEY, 'day'); sessionStorage.setItem(PLAN_DAY_KEY, date) } catch { /* storage off */ }
+  try { window.dispatchEvent(new CustomEvent(OPEN_PLAN_DAY_EVENT, { detail: date })) } catch { /* old browsers */ }
+}

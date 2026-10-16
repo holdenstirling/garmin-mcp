@@ -2,8 +2,8 @@
 // primary action. Today's planned session (Start, Send to watch) > rest day + tomorrow > build
 // your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
 // that card isn't shown separately.
-import { useState } from 'react'
-import { Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap } from 'lucide-react'
+import { Suspense, lazy, useState } from 'react'
+import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { WeekDots } from '@/components/week/WeekStrip'
@@ -14,6 +14,9 @@ import type { TodayActionKind } from '@/lib/live'
 import { syncGarmin } from '@/lib/plan'
 import type { UpNext } from '@/lib/upnext'
 import { cn } from '@/lib/utils'
+
+// "Move" today's session to another day (loaded on first use).
+const MoveSessionSheet = lazy(() => import('@/components/plan/MoveSheet').then((m) => ({ default: m.MoveSessionSheet })))
 
 const SEEN = 'rabbit.upnext.seen'
 const SIGNAL_TERM: Record<string, Term> = {
@@ -58,6 +61,8 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const [hop] = useState(firstShowToday)
   const [sending, setSending] = useState(false)
   const [sendMsg, setSendMsg] = useState<string | null>(null)
+  const [moving, setMoving] = useState<string | null>(null)  // session id; reload the card when the sheet closes
+  const [moved, setMoved] = useState(false)
   const Icon = iconFor(up)
   const rest = up.kind === 'rest' || up.tone === 'rest'
   const signals = (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 2)
@@ -137,6 +142,11 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
             <Watch className="size-4" aria-hidden /> {up.secondary.label}
           </Button>
         )}
+        {s?.id && up.kind === 'session' && up.tone !== 'done' && (
+          <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" aria-label={`Move ${s.title} to another day`} onClick={() => { setMoved(false); setMoving(s.id) }}>
+            <CalendarClock className="size-4" aria-hidden /> Move
+          </Button>
+        )}
         {up.extra && todayKind && (
           <button type="button" className="hit-44 px-1 text-[0.7647rem] font-medium text-(--accent) underline-offset-2 hover:underline"
             onClick={() => onToday(todayKind)}>{up.extra.label}</button>
@@ -147,6 +157,11 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
         )}
       </div>
       {sendMsg && <p className="mt-1.5 text-[0.7059rem] text-(--text-muted)" role="status">{sendMsg}</p>}
+      {moving && (
+        <Suspense fallback={null}>
+          <MoveSessionSheet sessionId={moving} onClose={() => { setMoving(null); if (moved) onSynced() }} onMoved={() => setMoved(true)} />
+        </Suspense>
+      )}
     </section>
   )
 }

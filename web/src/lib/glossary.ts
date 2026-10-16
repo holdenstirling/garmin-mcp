@@ -26,3 +26,34 @@ export const GLOSSARY: Record<Term, { title: string; text: string }> = {
   hrv: { title: 'HRV', text: 'Heart rate variability: the tiny changes between heartbeats overnight. Higher than your usual usually means well recovered.' },
   long_session: { title: 'Long session', text: 'Your longest workout of the week in your race sport. It builds the endurance race day needs.' },
 }
+
+/** Workout types, for the plan's Day view "Learn more". Keyed like plan session kinds. */
+export const KIND_GLOSSARY: Record<string, { title: string; what: string; why: string; feel: string }> = {
+  easy: { title: 'Easy', what: 'Steady, relaxed training at a pace you could hold a conversation at.', why: 'Builds your aerobic engine, heart and muscles with little stress, so you recover for the hard days.', feel: 'Comfortable. If you can only manage a few words at a time, slow down.' },
+  long: { title: 'Long', what: 'Your longest session of the week, mostly easy.', why: 'Teaches your body to keep going: more endurance, better fat burning, tougher legs and mind for race day.', feel: 'Easy at the start, honest work at the end. Practise your race fueling.' },
+  endurance: { title: 'Endurance', what: 'A longer steady session in the aerobic zone.', why: 'Grows the base every other workout sits on.', feel: 'Relaxed and sustainable for the whole session.' },
+  recovery: { title: 'Recovery', what: 'Very short and very easy.', why: 'Gets blood moving to help you bounce back from harder days without adding fatigue.', feel: 'Easier than you think. Nothing about it should feel like work.' },
+  strides: { title: 'Strides', what: 'An easy session with a few 15 to 20 second relaxed accelerations near the end, with full rest between.', why: 'Keeps your legs quick and your form smooth without real fatigue.', feel: 'Fast but relaxed, never a sprint. Walk or jog back until you feel fully fresh.' },
+  tempo: { title: 'Tempo', what: 'A sustained block at a comfortably hard effort, between easy and threshold.', why: 'Raises the pace you can hold for a long time and builds mental focus.', feel: 'Comfortably hard. You can speak a short sentence, not chat.' },
+  threshold: { title: 'Threshold', what: 'Intervals at about the effort you could hold for an hour in a race, with short recoveries.', why: 'Pushes up your threshold, the single biggest driver of race speed for endurance events.', feel: 'Hard but controlled. You finish each rep feeling you could do one more.' },
+  vo2: { title: 'VO2 max', what: 'Short, hard repeats of about 2 to 5 minutes with equal or slightly shorter recoveries.', why: 'Raises the most oxygen your body can use, your top-end engine.', feel: 'Very hard, breathing heavily by the end of each rep. Speaking is single words.' },
+  racepace: { title: 'Race pace', what: 'Blocks at the pace or power you plan to race at.', why: 'Makes race effort feel familiar and lets you test pacing, fueling and kit.', feel: 'Controlled and rhythmic: the effort you want on race day.' },
+  openers: { title: 'Openers', what: 'A short session with a few brief efforts, usually a day or two before a race.', why: 'Wakes your legs up after a taper so you feel sharp, not flat.', feel: 'Short, snappy, finish fresh. Less is more.' },
+  shakeout: { title: 'Shakeout', what: 'A very short easy session, often the day before or the morning of a race.', why: 'Loosens you up and calms the nerves.', feel: 'Barely anything. Keep it light.' },
+  technique: { title: 'Technique', what: 'Drills and short efforts that focus on form.', why: 'Better form makes the same effort go further, especially in the water.', feel: 'Unhurried. Quality of movement over speed.' },
+  css: { title: 'CSS intervals', what: 'Swim repeats at your critical swim speed, about your threshold pace in the pool, with short rests.', why: 'The swim version of threshold work: the fastest way to get quicker over race distance.', feel: 'Hard but steady. Each rep should be the same time.' },
+  brick: { title: 'Brick', what: 'A bike straight into a run (or two sports back to back) with a fast change.', why: 'Teaches your legs to run off the bike, the strange feeling every triathlete meets on race day.', feel: 'The first minutes of the run feel heavy and odd. It eases; that is the point.' },
+  strength: { title: 'Strength', what: 'Gym or body-weight exercises for legs, hips and core.', why: 'Stronger muscles and tendons handle more training and get injured less.', feel: 'Controlled reps, good form, stop before your form breaks.' },
+  mobility: { title: 'Mobility', what: 'Gentle stretching and range-of-motion work.', why: 'Helps you move well and recover.', feel: 'Easy and relaxing.' },
+  rest: { title: 'Rest', what: 'A day off training.', why: 'Fitness is built while you recover, not while you train. Rest days make the hard days count.', feel: 'Guilt free. A walk or light stretching is fine.' },
+  race: { title: 'Race', what: 'The day you have been training for.', why: 'Everything in the plan points here.', feel: 'Start controlled, fuel early, finish strong.' },
+}
+
+/** Training zones in plain language (talk test + effort out of 10). */
+export const ZONE_GLOSSARY: Record<number, { title: string; text: string }> = {
+  1: { title: 'Zone 1 · Easy', text: 'Very light, 2 to 3 out of 10. Full conversation. Used for warm-ups, cool-downs and recovery.' },
+  2: { title: 'Zone 2 · Aerobic', text: 'Steady, 4 to 5 out of 10. You can talk in full sentences. Most of your training lives here.' },
+  3: { title: 'Zone 3 · Tempo', text: 'Comfortably hard, 6 out of 10. Short sentences only.' },
+  4: { title: 'Zone 4 · Threshold', text: 'Hard, 7 to 8 out of 10. About the effort you could hold for an hour. A few words at a time.' },
+  5: { title: 'Zone 5 · Hard', text: '9 out of 10 and up. Short repeats only; single words.' },
+}
