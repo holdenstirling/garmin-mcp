@@ -73,6 +73,9 @@ import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { OPEN_BLOCK_EVENT, blockMomentAction } from '@/lib/blocks'
 import { PaceHost } from '@/components/paces/PaceSheet'
 import { dismissPace, openPaceSuggestion } from '@/lib/paces'
+import { SearchButton } from '@/components/search/Search'
+import { Tour } from '@/components/onboarding/Tour'
+import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -329,6 +332,19 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const onBlock = (e: Event) => showPage({ k: 'block', id: (e as CustomEvent<string>).detail || 'new' })
     window.addEventListener(OPEN_BLOCK_EVENT, onBlock)
     return () => window.removeEventListener(OPEN_BLOCK_EVENT, onBlock)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Search everywhere (components/search): a picked result -> its tab or page.
+    const onPick = (e: Event) => {
+      const p = (e as CustomEvent<SearchPick>).detail
+      if (p.kind === 'person') openCommunity('people')
+      else if (p.kind === 'club') openCommunity('clubs', p.source === 'club' ? p.id : undefined)
+      else if (p.kind === 'event') openRaces()
+      else if (p.kind === 'session') goTab('plan')
+      else setReaction(p.id)
+    }
+    window.addEventListener(SEARCH_OPEN_EVENT, onPick)
+    return () => window.removeEventListener(SEARCH_OPEN_EVENT, onPick)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Workout day: the pre-workout screen (a page: from Today / the plan) and the post-workout reaction.
   const setWorkout = (w: { sessionId?: string }) => showPage({ k: 'workout', sessionId: w.sessionId })
@@ -657,13 +673,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const typing = composerFocus
 
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
-  const meButton = (
+  const meButton = (<>
+    <SearchButton imperial={me.athlete.units === 'imperial'} />
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
       me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
       {me.coach_unread > 0 && <span className="absolute right-1 top-1 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
-  )
+  </>)
 
   function renderHeader(isLog: boolean, under = false) {
     return (
@@ -1108,6 +1125,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <VoiceCheckIn open={!!voice} sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
+      {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
       {sheet === 'threads' && (

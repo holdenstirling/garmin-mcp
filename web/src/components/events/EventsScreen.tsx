@@ -2,10 +2,11 @@
 // edit, look up, delete, and pick the main one (the race or challenge your plan builds
 // toward). Other races become B/C race days in the plan; group activities become sessions,
 // trips lighten those days and life events get rest days.
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
 import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { EmptyRabbit, HopIn, PullToRefresh } from '@/components/anim'
+import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
@@ -97,8 +98,9 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
               </div>
             )}
             {upcoming.length === 0 && (
-              <EmptyRabbit className="py-10" size={60} mode="peek" title="Nothing on the calendar yet"
-                body="Add races, group rides, trips and big days. Rabbit plans around all of them." />
+              <EmptyState title="Nothing on the calendar yet"
+                body="Add races, group rides, trips and big days. Rabbit plans around all of them."
+                action="Add an event" onAction={() => setEditing('new')} />
             )}
             {upcoming.length > 0 && (
               <section className="flex flex-col gap-2">

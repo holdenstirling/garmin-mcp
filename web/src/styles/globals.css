@@ -3,6 +3,15 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+/* `dark:` follows Me > Appearance: html.dark forces it, html.light turns it off, otherwise the
+   phone's setting decides (lib/theme.ts, public/theme.js). */
+@custom-variant dark {
+  &:where(.dark, .dark *) { @slot; }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not(.light) *) { @slot; }
+  }
+}
+
 @theme {
   /* Spacing in px so only text (rem) follows the iPhone's text size, not padding. */
   --spacing: 4px;
