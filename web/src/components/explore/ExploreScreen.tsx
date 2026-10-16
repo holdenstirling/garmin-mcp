@@ -5,6 +5,7 @@
 // inferred from training, then Near you; "Let Rabbit explore" (one tap) is a small card under
 // the first row. Search with no filters uses your location, 50 mi, all types; with no location
 // it's nationwide and says so. Places and groups live in For you's "Near you" only.
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Search } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -217,15 +218,9 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
         ) : error ? (
           <ErrorState message={`Couldn't load races: ${error}`} onRetry={() => filters && run(filters, 1)} />
         ) : races && races.length === 0 && !loading ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <span className="flex size-14 items-center justify-center rounded-2xl bg-(--accent-subtle) text-(--accent)">
-              <Search className="size-7" />
-            </span>
-            <p className="text-[0.9412rem] font-medium text-(--text)">No races match yet</p>
-            <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">
-              Try a wider radius, a longer window or fewer filters. Or let Rabbit look around the web for you.
-            </p>
-          </div>
+          <EmptyState title="No races match yet"
+            body="Try a wider radius, a longer window or fewer filters. Or let Rabbit look around the web for you."
+            action={web ? undefined : 'Ask Rabbit to search the web'} onAction={() => void askWeb()} />
         ) : (
           <div className={cn('flex flex-col gap-5 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
             {capped && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}

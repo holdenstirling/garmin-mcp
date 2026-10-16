@@ -3095,6 +3095,25 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
             going=_cd_going)
 
+        # Search everywhere (search.py): GET /app/api/search?q= -> people / clubs / events /
+        # sessions / workouts, from stored and cached data only (no Garmin call per keystroke).
+        from . import search as _srch
+
+        def _srch_dir(uid: str) -> list[dict[str, Any]]:
+            m = _cd.metro(**_cm_home(uid))
+            return directory.view(m, now_local=_ag._now(uid), uid=uid)["listings"] if m else []
+        _search = _srch.Search(
+            today=lambda u: _ag._now(u).date(),
+            people=lambda u: {"following": [{"user_id": x} for x in soc.following_ids(u)],
+                              "followers": [{"user_id": x} for x in soc.follower_ids(u)]},
+            person=_soc_person, clubs=lambda u, q: clb.overview(u, q=q), directory=_srch_dir,
+            events=_ag.events.list, plan=plans.get, activities=lambda u: _ag.stats.activities(u)[1])
+
+        async def search_get(request: Request, user_id: str) -> Response:
+            q = request.query_params.get("q", "")
+            return JSONResponse(await anyio.to_thread.run_sync(_search.run, user_id, q))
+        friends_routes.append(Route("/app/api/search", _api(search_get, mutating=False), methods=["GET"]))
+
         # Community v2 (featured.py, feedgroups.py, routes in feed2_web.py): owner-featured clubs,
         # feed groups (audience grp:<gid>), friends' latest for Rabbit home, richer auto-shared
         # workout cards (lap shape + reward headline). Athletes only.

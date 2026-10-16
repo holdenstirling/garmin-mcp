@@ -3,6 +3,7 @@
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
 import { ChartColumn, ClipboardList, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
+import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
@@ -83,6 +84,8 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
             subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`} onClick={() => onOpen('athletes')} />
         )}
       </Group>
+
+      <AppearanceGroup />
 
       <Group>
         <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Garmin, Oura, Google Calendar"

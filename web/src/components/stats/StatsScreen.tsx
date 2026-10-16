@@ -1,6 +1,7 @@
 // Your progress, calm and in order: level/streak/week, main race grade, two insights, recovery
 // and challenges as one row each, fitness and form. Everything else sits under "More stats".
 // Sport-agnostic: everything Garmin records counts.
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -80,6 +81,11 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
         )}
         {noGarmin && !s && <GarminEmpty what="progress" />}
         {error && !(noGarmin && !s) && <ErrorState message={s ? `Couldn't refresh: ${error}` : `Couldn't load your progress: ${error}`} onRetry={() => void refresh()} compact={!!s} />}
+        {s && s.totals.year.workouts === 0 && (
+          <EmptyState card mode="sleep" title="Your story starts with one workout"
+            body="Finish a workout with your watch and it lands here within minutes: your streak, trends and what they mean."
+            action={onOpenPlan ? "See what's next" : undefined} onAction={onOpenPlan} />
+        )}
         {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
           race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
           insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}

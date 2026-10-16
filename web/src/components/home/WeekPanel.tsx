@@ -1,7 +1,7 @@
 // Rabbit home "This week": all seven days at a glance (each day's sessions with sport, title,
 // time or distance and done / missed / planned), today highlighted, and this week's distance
 // against the goal (plan calendar, builder plans). Tap a day: the Plan tab opens on that day
-// (lib/openday.ts). Data: /api/plan/week (passed in) + /api/plan/calendar for mileage.
+// (lib/plancal openPlanDay). Data: /api/plan/week (passed in) + /api/plan/calendar for mileage.
 import { useEffect, useState } from 'react'
 import { Activity, Check, ChevronRight, X } from 'lucide-react'
 import type { PlannedSession, PlanWeek, WeekDay } from '@/lib/api'

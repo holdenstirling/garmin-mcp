@@ -1,6 +1,7 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
 import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
@@ -129,8 +130,8 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
         </Group>
       )}
       {mine.length === 0 && races.length === 0 && (
-        <EmptyRabbit size={52} mode="peek" title="Find your people"
-          body="Join a run club near you, or start one for your Saturday crew. Racing with friends? Race crews show up here on their own." />
+        <EmptyState compact title="Find your people"
+          body="Join a run club near you (listed below), or start one for your Saturday crew. Racing with friends? Race crews show up here on their own." />
       )}
 
       <div className="flex gap-2">
@@ -165,7 +166,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
         )}
       </section>
 
-      {!found && <ClubDirectory onStartGroup={setStartFrom} />}
+      {!found && <ClubDirectory onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />}
 
       <Card>
         <Field label="Have a club code?">

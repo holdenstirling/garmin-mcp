@@ -60,7 +60,7 @@ export function TabBar({ tab, onSelect, dots }: {
       {TABS.map(({ id, label, icon: Icon }) => {
         const dot = dots?.[id]
         return (
-          <button key={id} type="button" className="tab-bar__item" aria-current={tab === id ? 'page' : undefined}
+          <button key={id} type="button" data-tour={`tab-${id}`} className="tab-bar__item" aria-current={tab === id ? 'page' : undefined}
             aria-label={dot ? `${label}, ${dot}` : label}
             onPointerDown={id === 'rabbit' ? () => setTwitch((n) => n + 1) : undefined}
             onClick={() => { if (id !== tab) setHop((h) => ({ id, n: (h?.n ?? 0) + 1 })); onSelect(id) }}>

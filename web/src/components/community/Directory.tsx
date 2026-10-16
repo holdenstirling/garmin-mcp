@@ -5,6 +5,7 @@
 // the listing), "Report outdated", and "Suggest a club or league". List | Map (DirectoryMap:
 // geocoded public meet spots; the list stays primary). While Rabbit reads club pages for a new
 // city, Explore's cached local groups show meanwhile.
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Megaphone, Mountain, Plus, Users, Volleyball, Waves,
@@ -169,7 +170,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
   )
 }
 
-export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) => void }) {
+export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing | null) => void }) {
   const [chip, setChip] = useState<DirChip | null>(null)
   const [data, setData] = useState<DirView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -246,10 +247,13 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
           <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">Rabbit is reading club pages for your city. This takes a few minutes.</p>
         </div>
       ) : (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
-          {chip ? 'Nothing in this filter yet.' : data.status === 'unavailable' ? 'The directory isn\'t available right now.'
-            : `No clubs or leagues listed for ${metro.label} yet.`}
-        </p>
+        chip ? (
+          <EmptyState compact title="Nothing in this filter yet" action="Show everything" onAction={() => setChip(null)} />
+        ) : (
+          <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
+            body="Know a club, track night or league? Add it and Rabbit checks it, or start your own group."
+            action="Start a group" onAction={() => onStartGroup(null)} />
+        )
       )}
       {!listings.length && fallback.length > 0 && (
         <div className="flex flex-col gap-1">
