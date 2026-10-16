@@ -1,10 +1,12 @@
 // Community feed: "Share something" (+ quick life-event templates), the milestone drafts tray,
 // meetups coming up, and calm post cards (category, text, up to 4 photos, linked event, four
 // reactions with a burst, one-level comment threads). Also a club's feed (``clubId``): the
-// composer posts to that club. Nothing is ever posted without a tap.
+// composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
+// each feed group / Clubs; a group's own feed (``groupId``) posts to that group only. My fresh
+// auto-shared workout is pinned on top for an hour with "Add a photo or caption".
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, X,
+  Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
@@ -14,7 +16,9 @@ import { areaCls, inputCls } from '@/components/plan/ui'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useDialog } from '@/hooks/useDialog'
 import { listEvents, type RaceEvent } from '@/lib/events'
-import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
+import { fmtClimb, fmtDist, fmtDuration, fmtPaceKm, fmtSpeed, fmtSwimPace } from '@/lib/format'
+import { listGroups, type FeedGroup } from '@/lib/community2'
+import { Sheet } from '@/components/ui/Sheet'
 import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import {
@@ -34,36 +38,61 @@ export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: nu
 
 type Template = (typeof TEMPLATES)[number]
 
-export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings, onOpenClub }: {
+/** Feed filter: everyone, friends, my clubs' posts, or one feed group (``g:<id>``). */
+type Filter = 'all' | 'friends' | 'clubs' | `g:${string}`
+
+export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, onInvite, onSettings, onOpenClub, onOpenGroup, onNewGroup, groupsKey }: {
   imperial: boolean; clubId?: string; clubName?: string; onInvite?: () => void; onSettings?: () => void
   onOpenClub?: (id: string) => void
+  /** a feed group's own feed (GroupPage): reads and posts to that group only */
+  groupId?: string; groupName?: string
+  onOpenGroup?: (id: string) => void; onNewGroup?: () => void
+  /** bump to re-read my groups (created / left one) */
+  groupsKey?: number
 }) {
   const [items, setItems] = useState<Post[] | null>(null)
   const [next, setNext] = useState<string | null>(null)
   const [following, setFollowing] = useState(0)
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [meetups, setMeetups] = useState<Meetup[]>([])
-  const [scope, setScope] = useState<'all' | 'friends'>('all')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [groups, setGroups] = useState<FeedGroup[]>([])
+  const [pinned, setPinned] = useState<Post | null>(null)
+  const [caption, setCaption] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [more, setMore] = useState(false)
   const [composer, setComposer] = useState<Template | 'blank' | null>(null)
+  const main = !clubId && !groupId
+  const scope = filter === 'friends' || filter === 'clubs' ? filter : 'all'
+  const group = groupId ?? (filter.startsWith('g:') ? filter.slice(2) : undefined)
+
+  useEffect(() => {
+    if (!main) return
+    listGroups().then((r) => {
+      setGroups(r.groups)
+      setFilter((f) => (f.startsWith('g:') && !r.groups.some((g) => `g:${g.id}` === f) ? 'all' : f))
+    }, () => { /* chips still work without groups */ })
+  }, [main, groupsKey])
 
   const load = useCallback(() => {
-    if (!clubId) getMyMeetups().then((r) => setMeetups(r.meetups.filter((m) => m.my_rsvp === 'going').slice(0, 4)), () => { /* a bonus */ })
-    return getCommunityFeed(null, clubId, scope).then((r) => {
-      setItems(r.items); setNext(r.next); setFollowing(r.following); setError(null)
-      if (!clubId && r.drafts) return getDrafts().then((d) => setDrafts(d.drafts))
-      if (!clubId) setDrafts([])
+    if (main) getMyMeetups().then((r) => setMeetups(r.meetups.filter((m) => m.my_rsvp === 'going').slice(0, 4)), () => { /* a bonus */ })
+    return getCommunityFeed(null, clubId, scope, group).then((r) => {
+      setItems(r.items); setNext(r.next); setFollowing(r.following); setPinned(r.pinned ?? null); setError(null)
+      if (main && r.drafts) return getDrafts().then((d) => setDrafts(d.drafts))
+      if (main) setDrafts([])
     }, (e) => setError((e as Error).message))
-  }, [clubId, scope])
+  }, [clubId, scope, group, main])
   useEffect(() => { void load() }, [load])
 
   async function loadMore() {
     if (!next) return
     setMore(true)
-    try { const r = await getCommunityFeed(next, clubId, scope); setItems((xs) => [...(xs ?? []), ...r.items]); setNext(r.next) }
+    try { const r = await getCommunityFeed(next, clubId, scope, group); setItems((xs) => [...(xs ?? []), ...r.items]); setNext(r.next) }
     catch (e) { setError((e as Error).message) } finally { setMore(false) }
   }
+  const chips: [Filter, string][] = [['all', 'All'], ['friends', 'Friends'],
+    ...groups.map((g): [Filter, string] => [`g:${g.id}`, `${g.emoji} ${g.name}`]), ['clubs', 'Clubs']]
+  const openGroup = filter.startsWith('g:') ? groups.find((g) => `g:${g.id}` === filter) : undefined
   const put = (p: Post) => setItems((xs) => (xs ?? []).map((x) => (x.id === p.id ? p : x)))
   const drop = (id: string) => setItems((xs) => (xs ?? []).filter((x) => x.id !== id))
   const dropAuthor = (uid: string) => setItems((xs) => (xs ?? []).filter((x) => x.author !== uid))
@@ -71,12 +100,12 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
 
   return (
     <>
-      {!clubId && <PullToRefresh onRefresh={load} />}
+      {main && <PullToRefresh onRefresh={load} />}
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setComposer('blank')}
           className="flex min-h-12 flex-1 items-center gap-2.5 rounded-2xl border border-(--border) bg-(--bg-surface) px-4 text-left text-[0.8824rem] text-(--text-muted) active:bg-(--bg-inset)">
           <SquarePen className="size-[18px] text-(--accent)" aria-hidden />
-          {clubName ? `Share with ${clubName}…` : 'Share something'}
+          {clubName ? `Share with ${clubName}…` : groupName ? `Share with ${groupName}…` : 'Share something'}
         </button>
         {onSettings && (
           <Button variant="ghost" className="hit-44 h-11 w-11 shrink-0 p-0" aria-label="Sharing settings" onClick={onSettings}>
@@ -84,7 +113,7 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
           </Button>
         )}
       </div>
-      {!clubId && (
+      {main && (
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" aria-label="Quick milestones">
           {TEMPLATES.map((t) => (
             <button key={t.label} type="button" onClick={() => setComposer(t)}
@@ -99,26 +128,54 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
           onDismissed={(d) => setDrafts((xs) => xs.filter((x) => x.id !== d.id))} />
       )}
       {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
-      {!clubId && (
-        <div role="radiogroup" aria-label="Show" className="flex gap-1.5">
-          {([['all', 'Everyone'], ['friends', 'Friends']] as const).map(([v, label]) => (
-            <button key={v} type="button" role="radio" aria-checked={scope === v} onClick={() => setScope(v)}
-              className="hit-44 inline-flex min-h-8 items-center">
-              <span className={cn('rounded-full px-3 py-1 text-[0.7059rem] font-medium',
-                scope === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>{label}</span>
+      {main && (
+        <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4" role="radiogroup" aria-label="Show">
+          {chips.map(([v, label]) => (
+            <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
+              className="hit-44 inline-flex min-h-8 shrink-0 items-center">
+              <span className={cn('whitespace-nowrap rounded-full px-3 py-1 text-[0.7059rem] font-medium',
+                filter === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>{label}</span>
             </button>
           ))}
+          {onNewGroup && (
+            <button type="button" onClick={onNewGroup} aria-label="New group"
+              className="hit-44 inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-(--border) px-3 py-1 text-[0.7059rem] font-medium text-(--text-secondary)">
+              <Plus className="size-3.5" aria-hidden /> Group
+            </button>
+          )}
         </div>
+      )}
+      {main && openGroup && onOpenGroup && (
+        <button type="button" onClick={() => onOpenGroup(openGroup.id)}
+          className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 text-left text-[0.7647rem] text-(--text-secondary) active:bg-(--bg-inset)">
+          <UsersRound className="size-4 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1 truncate">{openGroup.emoji} {openGroup.name} · {openGroup.count} people · only the group sees these</span>
+          <span className="text-(--accent)">Open</span>
+        </button>
+      )}
+      {pinned && (
+        <section aria-label="Your workout, just synced" className="flex flex-col gap-1.5">
+          <p className="flex items-center gap-1 px-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
+            <Pin className="size-3" aria-hidden /> Just synced · pinned for an hour
+          </p>
+          <PostCard post={pinned} imperial={imperial} onChange={setPinned} onDelete={() => setPinned(null)} />
+          {pinned.prompt && (
+            <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setCaption(true)}>
+              <ImagePlus className="size-4" /> {pinned.prompt}
+            </Button>
+          )}
+        </section>
       )}
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {items == null ? (error ? null : <FeedSkeleton />) : (
         <>
           {items.length === 0 && (
-            <EmptyRabbit hero size={60} mode={clubId ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
-              title={clubId ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
+            <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
+              title={!main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
               body={clubId ? 'Share the first news with the club: a meetup recap, a race, a welcome.'
+                : group ? 'Share the plan for Saturday, a photo from the run, a cheer. Only the group sees it.'
                 : 'First races, new PRs, comebacks, big life news. Share yours, and bring your friends so you can cheer each other on.'}
-              action={!clubId && onInvite ? (
+              action={main && filter === 'all' && onInvite ? (
                 <Button variant="primary" className="mt-1 h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
                   <UserPlus className="size-4" /> Find friends
                 </Button>
@@ -137,8 +194,13 @@ export function CommunityFeed({ imperial, clubId, clubName, onInvite, onSettings
         </>
       )}
       {composer && (
-        <Composer clubId={clubId} clubName={clubName} template={composer === 'blank' ? null : composer}
+        <Composer clubId={clubId} clubName={clubName} groupId={groupId ?? openGroup?.id} groupName={groupName ?? openGroup?.name}
+          groups={groups} template={composer === 'blank' ? null : composer}
           onClose={() => setComposer(null)} onPosted={(p) => { add(p); setComposer(null) }} />
+      )}
+      {caption && pinned && (
+        <CaptionSheet post={pinned} onClose={() => setCaption(false)}
+          onSaved={(p) => { setPinned({ ...p, prompt: null }); setCaption(false) }} />
       )}
     </>
   )
@@ -168,8 +230,9 @@ function ComingUp({ meetups, onOpenClub }: { meetups: Meetup[]; onOpenClub?: (id
 // -------------------------------------------------------------- composer ---
 type Pic = { id: string; url: string }
 
-function Composer({ clubId, clubName, template, onClose, onPosted }: {
-  clubId?: string; clubName?: string; template: Template | null; onClose: () => void; onPosted: (p: Post) => void
+function Composer({ clubId, clubName, groupId, groupName, groups = [], template, onClose, onPosted }: {
+  clubId?: string; clubName?: string; groupId?: string; groupName?: string; groups?: FeedGroup[]
+  template: Template | null; onClose: () => void; onPosted: (p: Post) => void
 }) {
   const [text, setText] = useState(template?.text ?? '')
   const [category, setCategory] = useState<Category>(template?.category ?? 'life')
@@ -177,7 +240,8 @@ function Composer({ clubId, clubName, template, onClose, onPosted }: {
   const [pics, setPics] = useState<Pic[]>([])
   const [picBusy, setPicBusy] = useState(false)
   const [eventId, setEventId] = useState('')
-  const [audience, setAudience] = useState<Audience>(clubId ? `club:${clubId}` : 'friends')
+  const [audience, setAudience] = useState<Audience>(clubId ? `club:${clubId}` : groupId ? `grp:${groupId}` : 'friends')
+  const fixed = !!clubId || !!groupId
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [clubs, setClubs] = useState<ClubSummary[]>([])
   const [busy, setBusy] = useState(false)
@@ -218,7 +282,7 @@ function Composer({ clubId, clubName, template, onClose, onPosted }: {
       <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
         <div className="sheet-handle" />
         <div className="modal-header">
-          <h2 className="modal-title">{clubName ? `Share with ${clubName}` : 'Share something'}</h2>
+          <h2 className="modal-title">{clubName ? `Share with ${clubName}` : groupName ? `Share with ${groupName}` : 'Share something'}</h2>
           <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
         </div>
         <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
@@ -264,10 +328,11 @@ function Composer({ clubId, clubName, template, onClose, onPosted }: {
                 </select>
               </label>
             )}
-            {!clubId && (
+            {!fixed && (
               <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Who can see it
                 <select className={cn(inputCls, 'text-[0.8235rem]')} value={audience} onChange={(e) => setAudience(e.target.value)}>
                   <option value="friends">Friends (people who follow you)</option>
+                  {groups.map((g) => <option key={g.id} value={`grp:${g.id}`}>Group: {g.emoji} {g.name}</option>)}
                   <option value="public">Everyone on Rabbit</option>
                   {clubs.map((g) => <option key={g.id} value={`club:${g.id}`}>Club: {g.name}</option>)}
                   <option value="private">Only me (journal)</option>
@@ -440,7 +505,8 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   const replies = (id: string) => p.comments.filter((c) => c.parent === id)
   const audience = p.audience === 'public' ? <><Globe className="size-3" /><span>Everyone</span></>
     : p.audience === 'private' ? <><Lock className="size-3" /><span>Only you</span></>
-    : p.club ? <><Users className="size-3" /><span className="truncate">{p.club.name}</span></> : null
+    : p.club ? <><Users className="size-3" /><span className="truncate">{p.club.name}</span></>
+    : p.groups?.length ? <><UsersRound className="size-3" /><span className="truncate">{p.groups.map((g) => `${g.emoji} ${g.name}`).join(', ')}</span></> : null
 
   return (
     <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
@@ -454,7 +520,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
             {ago(p.created)}{p.edited ? ' · edited' : ''}{audience && <><span>·</span>{audience}</>}
           </span>
         </span>
-        <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--accent)">{CATEGORY_LABEL[p.category]}</span>
+        <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--accent)">{p.kind === 'workout' ? 'Workout' : CATEGORY_LABEL[p.category]}</span>
         <div className="relative">
           <Button variant="ghost" className="hit-44 h-8 w-8 p-0" aria-label="Post options" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             <Ellipsis className="size-4" />
@@ -599,15 +665,108 @@ function PhotoGrid({ urls }: { urls: string[] }) {
   )
 }
 
+const SPORT_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', hike: '🥾', walk: '🚶', strength: '🏋️', ski: '⛷️', brick: '🔁', climb: '🧗', paddle: '🛶' }
+
 function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperial: boolean }) {
-  const parts = [w.km ? fmtDist(w.km, imperial, w.sport) : null, w.minutes ? fmtDuration(w.minutes) : null,
-    w.climb_m && w.climb_m >= 100 ? `${fmtClimb(w.climb_m, imperial)} up` : null].filter(Boolean)
+  const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
+    : w.pace_s_100m ? fmtSwimPace(w.pace_s_100m, imperial) : null
+  const stats: [string, string][] = ([
+    ['Distance', w.km ? fmtDist(w.km, imperial, w.sport) : null], ['Time', w.minutes ? fmtDuration(w.minutes) : null],
+    [w.speed_kmh ? 'Speed' : 'Pace', pace], ['Climb', w.climb_m && w.climb_m >= 30 ? fmtClimb(w.climb_m, imperial) : null],
+  ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1])
+  const headline = w.headline || w.highlight
   return (
     <div className="mt-2.5 rounded-xl border border-(--border) bg-(--bg-inset) px-3 py-2.5">
-      <p className="truncate text-[0.8235rem] font-medium text-(--text)">{w.title}</p>
-      {parts.length > 0 && <p className="text-[0.7059rem] tabular-nums text-(--text-secondary)">{parts.join(' · ')}</p>}
-      {w.highlight && <p className="mt-0.5 text-[0.7059rem] font-medium text-(--accent)">{w.highlight}</p>}
+      <p className="flex items-center gap-1.5 truncate text-[0.8235rem] font-semibold text-(--text)">
+        <span aria-hidden>{SPORT_EMOJI[w.sport] ?? '🐇'}</span>{w.title}
+      </p>
+      {headline && <p className="mt-0.5 text-[0.7647rem] font-medium text-(--accent)">{headline}</p>}
+      {stats.length > 0 && (
+        <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
+          {stats.map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="font-mono text-[0.6471rem] uppercase tracking-wider text-(--text-muted)">{k}</dt>
+              <dd className="truncate font-mono text-[0.8235rem] tabular-nums text-(--text)">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {w.splits && w.splits.length >= 2 && <SplitBars splits={w.splits} sport={w.sport} />}
     </div>
+  )
+}
+
+/** A route-less shape of the workout: one bar per lap, taller = faster (pace per km, so a
+ * short last lap still compares). No map, no heart rate. */
+function SplitBars({ splits, sport }: { splits: { km: number; s: number }[]; sport: string }) {
+  const speed = splits.map((x) => (x.km > 0 && x.s > 0 ? x.km / x.s : 0))
+  const max = Math.max(...speed), min = Math.min(...speed.filter((v) => v > 0))
+  const fastest = speed.indexOf(max)
+  return (
+    <div className="mt-2" role="img" aria-label={`${splits.length} ${sport === 'bike' ? 'laps' : 'splits'}, fastest is number ${fastest + 1}`}>
+      <div className="flex h-10 items-end gap-[2px]" aria-hidden>
+        {speed.map((v, i) => (
+          <span key={i} className={cn('min-w-[3px] flex-1 rounded-t-sm', i === fastest ? 'bg-(--accent)' : 'bg-(--accent)/40')}
+            style={{ height: `${max > min ? 30 + 70 * ((v - min) / (max - min)) : 70}%` }} />
+        ))}
+      </div>
+      <p className="mt-0.5 text-[0.6471rem] text-(--text-muted)">{splits.length} {sport === 'bike' ? 'laps' : 'splits'} · taller is faster</p>
+    </div>
+  )
+}
+
+/** "Add a photo or caption" for my fresh auto-shared workout. */
+function CaptionSheet({ post, onClose, onSaved }: { post: Post; onClose: () => void; onSaved: (p: Post) => void }) {
+  const [text, setText] = useState(post.text)
+  const [pics, setPics] = useState<Pic[]>([])
+  const [busy, setBusy] = useState(false)
+  const [picBusy, setPicBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const file = useRef<HTMLInputElement>(null)
+  const urls = useRef<string[]>([])
+  useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), [])
+  async function pick(files: FileList | null) {
+    if (!files?.length) return
+    setPicBusy(true); setErr(null)
+    try {
+      for (const f of Array.from(files).slice(0, MAX_PHOTOS - pics.length)) {
+        const blob = await resizeForPost(f)
+        const id = await uploadPostPhoto(blob)
+        const url = URL.createObjectURL(blob)
+        urls.current.push(url)
+        setPics((xs) => [...xs, { id, url }])
+      }
+    } catch (e) { setErr((e as Error).message) } finally { setPicBusy(false); if (file.current) file.current.value = '' }
+  }
+  async function save(el: HTMLElement) {
+    setBusy(true); setErr(null)
+    try {
+      const r = await updatePost(post.id, { text: text.trim(), ...(pics.length ? { photo_ids: pics.map((p) => p.id) } : {}) })
+      burst(el, 'kudos'); onSaved({ ...r.post, comments: post.comments })
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  return (
+    <Sheet title="Add a photo or caption" onClose={onClose}
+      bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      <textarea aria-label="Caption" className={cn(areaCls, 'min-h-[90px]')} autoFocus maxLength={TEXT_LEN} value={text}
+        placeholder="How did it feel?" onChange={(e) => setText(e.target.value)} />
+      {pics.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {pics.map((p, i) => <img key={p.id} src={p.url} alt={`Photo ${i + 1}`} className="aspect-[4/3] w-full rounded-xl object-cover" />)}
+        </div>
+      )}
+      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      <div className="flex items-center gap-2">
+        <input ref={file} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void pick(e.target.files)} />
+        <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem]" loading={picBusy} disabled={pics.length >= MAX_PHOTOS}
+          onClick={() => file.current?.click()}>
+          <ImagePlus className="size-4" /> {pics.length ? `${pics.length}/${MAX_PHOTOS}` : 'Photo'}
+        </Button>
+        <span className="flex-1" />
+        <Button variant="primary" className="h-11 px-5 text-[0.7647rem]" loading={busy} disabled={picBusy || (!text.trim() && !pics.length)}
+          onClick={(e) => void save(e.currentTarget)}>Save</Button>
+      </div>
+    </Sheet>
   )
 }
 

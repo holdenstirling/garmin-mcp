@@ -3059,6 +3059,55 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
             going=_cd_going)
 
+        # Community v2 (featured.py, feedgroups.py, routes in feed2_web.py): owner-featured clubs,
+        # feed groups (audience grp:<gid>), friends' latest for Rabbit home, richer auto-shared
+        # workout cards (lap shape + reward headline). Athletes only.
+        from . import featured as _ft, feed2_web as _f2w, feedgroups as _fg, foryou as _f2fy
+        _groups = _fg.FeedGroups(store, is_athlete=soc.is_athlete, follows=soc.follows, blocked=soc.blocked_between)
+        cm.groups = _groups
+
+        def _f2_splits(uid: str, aid: int) -> list[dict[str, Any]]:
+            return _cmm.splits_from(_ag._service.read_uncached(uid, "get_activity_splits", {"activity_id": str(aid)}))
+
+        def _f2_headline(uid: str, aid: int) -> str | None:
+            rw = getattr(_ag, "rewards", None)
+            r = rw.get(uid, aid) if rw is not None else None
+            return ((r or {}).get("headline") or {}).get("text")
+        cm.splits, cm.headline = _f2_splits, _f2_headline
+
+        def _f2_listing(city: str, state: str, lid: str, viewer: str) -> dict[str, Any] | None:
+            m = _cd.metro(city, state)
+            if m is None:
+                return None
+            try:
+                row = directory.get(m, lid, now_local=_ag._now(viewer), uid=viewer)
+            except _cd.DirectoryError:
+                return None
+            _cd_going.attach(viewer, m, [row])
+            return {"listing_id": row["id"], "name": row["name"], "listing_kind": row["kind"],
+                    "kind_label": row["kind_label"], "city": m.city, "state": m.state,
+                    "description": row["description"], "next": row["next"], "going": row.get("going"),
+                    "join_url": row["join_url"], "link_only": row["link_only"], "members": None,
+                    "same_metro": _cd.metro(**_cm_home(viewer)) == m}
+
+        def _f2_listing_ref(uid: str, lid: str) -> dict[str, str] | None:
+            m = _cd.metro(**_cm_home(uid))
+            return {"city": m.city, "state": m.state, "listing_id": lid} if m is not None else None
+
+        def _f2_sports(uid: str) -> set[str]:
+            main = _f2fy.main_race(_ag.events.list(uid), _ag._now(uid).date())
+            return _ft.athlete_sports(_ag.coach.athlete(uid), (main or {}).get("type"))
+
+        def _f2_notify(to: str, key: str, title: str, body: str) -> None:
+            if not _ag.moments.quiet(_ag._now(to)):
+                _cm_push(to, key, 3600, title, body)
+        featured = _ft.Featured(store, is_owner=auth.is_owner,
+                                club_card=lambda c, u: clb.featured_card(c, u, _ag._now(u)), listing_card=_f2_listing)
+        community_routes += _f2w.make_routes(
+            cm=cm, groups=_groups, featured=featured, wrap=_cd_wrap, read_json=read_json, person=_soc_person,
+            first_name=_soc_name, today=lambda u: _ag._now(u).date(), home=_cm_home, sports=_f2_sports,
+            listing_ref=_f2_listing_ref, notify=_f2_notify)
+
     # ------------------------------------------------- shared training blocks --
     # blocks.py (routes in blocks_web.py): friends or a club start the same N-week block. Each
     # member gets their OWN plan from the plan builder on the same weeks (replacing a goal only

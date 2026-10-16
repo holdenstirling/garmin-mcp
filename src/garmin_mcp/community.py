@@ -16,16 +16,20 @@ Posts
   highlight line. Never maps, heart rate, power or any health/Oura data.
 * **Auto-shared workouts** ("Share my workouts with friends", ``share_workouts``): each newly
   synced workout (today/yesterday, dated on or after the day sharing started) is posted once
-  to ``friends`` as the same compact card, with the title replaced by the sport ("Run") since
-  Garmin names often carry a place. Unset + the one-time prompt shown = on (the default);
-  never asked = nothing posted; declined = private.
+  to ``share_audience`` (``friends`` by default, or chosen feed groups) as the same compact
+  card, with the title replaced by the sport ("Run") since Garmin names often carry a place,
+  plus pace, a split bar shape (lap times only, ``splits_from``) and the workout reward's
+  headline. Unset + the one-time prompt shown = on (the default); never asked = nothing
+  posted; declined = private. For ``PIN_S`` after it posts, it is pinned at the top of the
+  author's own feed with "Add a photo or caption".
 
 Unread (``unread``): new reactions/comments on my posts (per post), cleared when I open the
 post or Community (``mark_seen``); feeds the app icon badge (``unread.py``).
 
 Audience per post: ``friends`` (people with an active follow edge to the author),
-``club:<id>`` (members of that club or race group), ``public`` (every allowlisted athlete on
-Rabbit) or ``private`` (only me, a journal). Blocked people (either way) never see each other's
+``club:<id>`` (members of that club or race group), ``grp:<gid>[,<gid>...]`` (members of those
+feed groups, ``feedgroups.py``, while the author is in one too), ``public`` (every allowlisted
+athlete on Rabbit) or ``private`` (only me, a journal). Blocked people (either way) never see each other's
 posts, comments or reactions. Reactions (one per person, switchable): 🎉 💪 ❤️ 🐇. Comments
 <= ``COMMENT_LEN``, threaded one level (a reply to a reply joins its parent), at most
 ``MAX_COMMENTS`` per post; the post's author can delete any comment on it. Hide = gone for me;
@@ -100,7 +104,14 @@ FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First h
           "70.3": "First 70.3", "140.6": "First full-distance triathlon", "century": "First century ride"}
 RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
-WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight")
+WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
+                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto")
+MAX_SPLITS = 40
+PIN_S = 3600              # the author's fresh auto-shared workout leads their feed this long
+LATEST_N = 3
+LATEST_DAYS = 7
+VIEWS = ("feed", "clubs")
+MAX_GROUP_AUDIENCE = 10
 # Auto-shared workouts are titled by sport (Garmin's names often include the city).
 SPORT_TITLE = {"run": "Run", "bike": "Ride", "swim": "Swim", "brick": "Brick", "strength": "Strength",
                "hike": "Hike", "ski": "Ski", "climb": "Climb", "paddle": "Paddle"}
@@ -289,7 +300,37 @@ def workout_card(acts: list[dict[str, Any]], aid: int, today: date) -> dict[str,
     return {"activity_id": aid, "sport": r["sport"], "title": _clip(str(r["name"] or "Workout"), 80),
             "date": r["date"].isoformat(), "km": round(r["km"], 2) if r["km"] else None,
             "minutes": round(r["min"]) if r["min"] else None, "climb_m": int(r["climb"]) if r["climb"] else None,
-            "highlight": hl}
+            "highlight": hl, **pace_fields(r["sport"], r["km"], r["min"])}
+
+
+def pace_fields(sport: str, km: float | None, minutes: float | None) -> dict[str, Any]:
+    """Pace for runs/walks/hikes (s/km), speed for rides (km/h), s/100 m for swims."""
+    if not km or not minutes or km <= 0 or minutes <= 0:
+        return {}
+    sec = minutes * 60
+    if sport == "bike":
+        return {"speed_kmh": round(km / (sec / 3600), 1)}
+    if sport == "swim":
+        return {"pace_s_100m": int(round(sec / (km * 10)))}
+    if sport in ("run", "hike", "walk", "brick"):
+        return {"pace_s_km": int(round(sec / km))}
+    return {}
+
+
+def splits_from(raw: Any) -> list[dict[str, Any]]:
+    """Lap shape for the workout card: ``[{km, s}]`` from Garmin's ``get_activity_splits``
+    (``lapDTOs``: distance m + duration s only; never HR, power or position). Laps under
+    100 m are dropped; at most ``MAX_SPLITS``."""
+    laps = raw.get("lapDTOs") if isinstance(raw, dict) else None
+    out: list[dict[str, Any]] = []
+    for lap in laps if isinstance(laps, list) else []:
+        if not isinstance(lap, dict):
+            continue
+        d, t = lap.get("distance"), lap.get("duration")
+        if not isinstance(d, int | float) or not isinstance(t, int | float) or isinstance(d, bool) or d < 100 or t <= 0:
+            continue
+        out.append({"km": round(float(d) / 1000, 2), "s": int(round(float(t)))})
+    return out[:MAX_SPLITS] if len(out) >= 2 else []
 
 
 def workout_label(w: dict[str, Any] | None) -> str:
@@ -357,6 +398,11 @@ class Community:
         self._name = name
         self._g = store.global_doc("community")
         self._lock = threading.Lock()
+        # Set by webapp: feed groups (feedgroups.FeedGroups), the lap shape of a workout
+        # (``splits(uid, aid) -> [{km, s}]``) and its reward headline (``headline(uid, aid)``).
+        self.groups: Any = None
+        self.splits: Callable[[str, int], list[dict[str, Any]]] | None = None
+        self.headline: Callable[[str, int], str | None] | None = None
         self._pushed: dict[tuple[str, str], float] = {}
         self._reminded: dict[str, float] = {}
 
@@ -377,7 +423,11 @@ class Community:
         s = d.get("settings") or {}
         aud = norm_audience(s.get("audience") or s.get("visibility"))
         sw = s.get("share_workouts")
+        sa = s.get("share_audience")
+        view = s.get("default_view")
         return {"milestones": {t: bool((s.get("milestones") or {}).get(t, True)) for t in MILESTONES},
+                "share_audience": sa if isinstance(sa, str) and (sa == "friends" or sa.startswith("grp:")) else "friends",
+                "default_view": view if view in VIEWS else "feed",
                 "auto_share": {t: bool((s.get("auto_share") or {}).get(t, False)) for t in MILESTONES},
                 "audience": aud if aud in AUDIENCES else "friends",
                 # None = never answered; the prompt (shown once) defaults to on.
@@ -417,6 +467,15 @@ class Community:
             clean["share_workouts"] = patch["share_workouts"]
         if patch.get("share_prompted") is True:
             clean["share_prompted"] = True
+        if "share_audience" in patch:
+            a = patch["share_audience"]
+            if a != "friends":
+                a = self._group_audience(uid, a)
+            clean["share_audience"] = a
+        if "default_view" in patch:
+            if patch["default_view"] not in VIEWS:
+                raise CommunityError("default_view must be feed or clubs")
+            clean["default_view"] = patch["default_view"]
         today = self._now(uid).date().isoformat()
 
         def apply(d: dict[str, Any]) -> dict[str, Any]:
@@ -424,7 +483,7 @@ class Community:
             was = self.sharing_workouts(cur)
             for k in ("milestones", "auto_share"):
                 cur[k] = {**cur[k], **clean.get(k, {})}
-            for k in ("audience", "share_workouts", "share_prompted"):
+            for k in ("audience", "share_workouts", "share_prompted", "share_audience", "default_view"):
                 if k in clean:
                     cur[k] = clean[k]
             if self.sharing_workouts(cur) and not was:
@@ -434,7 +493,25 @@ class Community:
         return self._mine(uid).update(apply)
 
     # ----------------------------------------------------------- access --
-    def _audience(self, uid: str, v: Any) -> str:
+    @staticmethod
+    def group_ids(audience: Any) -> list[str]:
+        """``grp:a,b`` -> ``[a, b]``; anything else -> []."""
+        if not isinstance(audience, str) or not audience.startswith("grp:"):
+            return []
+        return [g for g in audience[4:].split(",") if g]
+
+    def _group_audience(self, uid: str, v: Any) -> str:
+        """``grp:<gid>[,...]`` or a list of group ids, each a group ``uid`` is in."""
+        ids = v if isinstance(v, list) else self.group_ids(v)
+        ids = [g for g in dict.fromkeys(ids) if isinstance(g, str)]
+        if (not ids or len(ids) > MAX_GROUP_AUDIENCE or self.groups is None
+                or not all(self.groups.is_member(g, uid) for g in ids)):
+            raise CommunityError("Pick groups you're in.", 400)
+        return "grp:" + ",".join(sorted(ids))
+
+    def _audience(self, uid: str, v: Any, groups: Any = None) -> str:
+        if v == "groups" or isinstance(v, list) or (isinstance(v, str) and v.startswith("grp:")):
+            return self._group_audience(uid, groups if v == "groups" else v)
         v = norm_audience(v)
         if v is None:
             return self._settings_of(self._mine(uid).load())["audience"]
@@ -460,6 +537,9 @@ class Community:
         if v.startswith("club:"):
             cid = v[5:]
             return self.clubs.is_member(cid, viewer) and self.clubs.is_member(cid, author)
+        if v.startswith("grp:") and self.groups is not None:
+            return any(self.groups.is_member(g, viewer) and self.groups.is_member(g, author)
+                       for g in self.group_ids(v))
         return False
 
     def _owner(self, pid: Any) -> str:
@@ -518,6 +598,9 @@ class Community:
         })
         if v.startswith("club:"):
             out["club"] = {"id": v[5:], "name": self.clubs.name_of(v[5:], viewer) or "Club"}
+        if v.startswith("grp:"):
+            gs = [self.groups.brief(g, viewer) for g in self.group_ids(v)] if self.groups is not None else []
+            out["groups"] = [g for g in gs if g]
         return out
 
     # ------------------------------------------------------------ posts --
@@ -546,7 +629,7 @@ class Community:
         if not partial or "event_id" in body:
             out["event"] = self._event_link(uid, body.get("event_id"))
         if not partial or "audience" in body or "visibility" in body:
-            out["audience"] = self._audience(uid, body.get("audience", body.get("visibility")))
+            out["audience"] = self._audience(uid, body.get("audience", body.get("visibility")), body.get("groups"))
         return out
 
     @staticmethod
@@ -613,7 +696,8 @@ class Community:
                                 **f, "photos": [], "created": int(self._clock()), "edited": None,
                                 "reactions": {}, "comments": []}
         if workout is not None:
-            post["workout"] = {k: workout.get(k) for k in WORKOUT_FIELDS}
+            post["workout"] = {k: workout.get(k) for k in WORKOUT_FIELDS
+                               if k in WORKOUT_FIELDS[:8] or workout.get(k) not in (None, "", [], False)}
         if milestone is not None:
             post["milestone"] = {"type": milestone.get("type"), "key": milestone.get("key")}
         post["photos"] = self._attach_photos(uid, photo_ids, pid)
@@ -688,10 +772,12 @@ class Community:
         return set(self._mine(uid).load().get("hidden") or [])
 
     def feed(self, viewer: str, cursor: Any = None, *, club: str | None = None, scope: str = "all",
-             limit: int = PAGE) -> dict[str, Any]:
+             limit: int = PAGE, group: str | None = None) -> dict[str, Any]:
         """Newest first, ``limit`` per page. ``cursor``: the ``next`` of the previous page.
-        ``scope``: ``all`` (friends, my clubs, everyone's public posts) or ``friends`` (only
-        people I follow, and me)."""
+        ``scope``: ``all`` (friends, my clubs and groups, everyone's public posts), ``friends``
+        (only people I follow, and me) or ``clubs`` (posts to my clubs). ``group``: one feed
+        group's posts. On the first page of the main feed, my own auto-shared workout from the
+        last ``PIN_S`` comes back separately as ``pinned`` (with a caption prompt)."""
         self.require(viewer)
         after: tuple[int, str] | None = None
         if cursor:
@@ -700,18 +786,30 @@ class Community:
                 after = (int(ts), cid)
             except ValueError:
                 raise CommunityError("bad cursor") from None
-        if scope not in ("all", "friends"):
-            raise CommunityError("scope must be all or friends")
+        if scope not in ("all", "friends", "clubs"):
+            raise CommunityError("scope must be all, friends or clubs")
         if club is not None:
             if not self.clubs.is_member(club, viewer):
                 raise CommunityError("club not found", 404)
             owners = self.clubs.member_ids(club, viewer)
+        elif group is not None:
+            if self.groups is None or not self.groups.is_member(group, viewer):
+                raise CommunityError("group not found", 404)
+            owners = self.groups.member_ids(group, viewer)
+        elif scope == "clubs":
+            owners = [viewer]
+            for cid in self.clubs.ids_of(viewer):
+                owners += self.clubs.member_ids(cid, viewer)
         else:
             owners = [viewer, *self.social.following_ids(viewer, limit=FEED_FOLLOWEES)]
             if scope == "all":
                 for cid in self.clubs.ids_of(viewer):
                     owners += self.clubs.member_ids(cid, viewer)
+                for gid in (self.groups.ids_of(viewer) if self.groups is not None else []):
+                    owners += self.groups.member_ids(gid, viewer)
                 owners += [a for a, _ in (self._g.load().get("public") or {}).values()]
+        main = club is None and group is None and scope in ("all", "friends")
+        pinned: dict[str, Any] | None = None
         hidden = self._hidden(viewer)
         posts: list[dict[str, Any]] = []
         for owner in dict.fromkeys(owners):
@@ -723,14 +821,44 @@ class Community:
                 aud = norm_audience(p.get("audience") or p.get("visibility") or "friends")
                 if club is not None and aud != f"club:{club}":
                     continue
+                if group is not None and group not in self.group_ids(aud):
+                    continue
+                if scope == "clubs" and club is None and group is None and not aud.startswith("club:"):
+                    continue
                 if after is not None and (p["created"], p["id"]) >= after:
                     continue
                 if self.can_see(viewer, p):
                     posts.append(p)
         posts.sort(key=lambda p: (p["created"], p["id"]), reverse=True)
+        if main and after is None:
+            now = self._clock()
+            pin = next((p for p in posts if p["author"] == viewer and (p.get("workout") or {}).get("auto")
+                        and 0 <= now - p["created"] <= PIN_S), None)
+            if pin is not None:
+                posts = [p for p in posts if p["id"] != pin["id"]]
+                pinned = {**self.view(viewer, pin), "pinned_until": int(pin["created"]) + PIN_S,
+                          "prompt": "Add a photo or caption" if not pin.get("text") and not pin.get("photos") else None}
         page = posts[:limit]
         nxt = f"{page[-1]['created']}.{page[-1]['id']}" if len(posts) > limit else None
-        return {"items": [self.view(viewer, p) for p in page], "next": nxt}
+        return {"items": [self.view(viewer, p) for p in page], "next": nxt, "pinned": pinned}
+
+    def latest(self, viewer: str, limit: int = LATEST_N) -> list[dict[str, Any]]:
+        """Friends' latest: the newest posts (workouts first-class) from people I follow in the
+        last ``LATEST_DAYS`` days that I can see, not mine, not hidden. For the Rabbit home."""
+        self.require(viewer)
+        hidden = self._hidden(viewer)
+        since = self._clock() - LATEST_DAYS * 86400
+        posts: list[dict[str, Any]] = []
+        for owner in self.social.following_ids(viewer, limit=FEED_FOLLOWEES):
+            if owner == viewer or self.social.blocked_between(viewer, owner):
+                continue
+            for p in (self._posts(owner).load().get("posts") or {}).values():
+                if p["id"] in hidden or p["created"] < since:
+                    continue
+                if self.can_see(viewer, p):
+                    posts.append(p)
+        posts.sort(key=lambda p: (p["created"], p["id"]), reverse=True)
+        return [self.view(viewer, p) for p in posts[:limit]]
 
     # -------------------------------------------------------- reactions --
     def _touch(self, owner: str, pid: str, fn: Callable[[dict[str, Any]], Any]) -> Any:
@@ -912,8 +1040,39 @@ class Community:
             if card is None:
                 continue
             card["title"] = SPORT_TITLE.get(card["sport"], "Workout")
-            post = self.create(uid, {"text": "", "category": "other", "audience": "friends"}, workout=card, limited=False)
+            card["auto"] = True
+            card.update(self._extras(uid, r["id"]))
+            post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
+                               workout=card, limited=False)
             out.append(post["id"])
+        return out
+
+    def _share_audience(self, uid: str, s: dict[str, Any]) -> str:
+        """The chosen auto-share audience; groups I've since left drop out, and when none are
+        left the workout stays private rather than going wider than chosen."""
+        a = s.get("share_audience") or "friends"
+        if a == "friends":
+            return a
+        live = [g for g in self.group_ids(a) if self.groups is not None and self.groups.is_member(g, uid)]
+        return "grp:" + ",".join(live) if live else "private"
+
+    def _extras(self, uid: str, aid: int) -> dict[str, Any]:
+        """Split shape and reward headline for a workout card (both best effort)."""
+        out: dict[str, Any] = {}
+        try:
+            if self.splits is not None:
+                sp = self.splits(uid, aid)
+                if sp:
+                    out["splits"] = sp[:MAX_SPLITS]
+        except Exception as e:
+            log_event(logger, logging.INFO, "community_splits_failed", user_id=uid, error=type(e).__name__)
+        try:
+            if self.headline is not None:
+                h = self.headline(uid, aid)
+                if h:
+                    out["headline"] = _clip(str(h), 120)
+        except Exception as e:
+            log_event(logger, logging.INFO, "community_headline_failed", user_id=uid, error=type(e).__name__)
         return out
 
     # ------------------------------------------------------------- push --

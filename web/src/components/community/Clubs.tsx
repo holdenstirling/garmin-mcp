@@ -23,6 +23,7 @@ import {
 import { clubSport, linkListing, type DirListing } from '@/lib/clubdir'
 import { Choice } from './Choice'
 import { ClubDirectory } from './Directory'
+import { FeatureSwitch } from './Featured'
 import { CommunityFeed, PersonAvatar } from './Feed'
 import { Sheet } from '@/components/ui/Sheet'
 
@@ -303,6 +304,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
         </Card>
       )}
       {msg && <p className={cn('px-1 text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {c && c.kind === 'club' && (!member || view === 'members') && <FeatureSwitch clubId={c.id} />}
       {c && member && (
         <>
           {view === 'feed' && (
