@@ -3240,6 +3240,35 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             Route("/app/api/racegrade/live", _api(racegrade_live, mutating=False), methods=["GET"]),
         ]
 
+    # ---------------------------------------------------------- trainingpeaks --
+    # tpsync.py (routes in tp_web.py): the athlete's own TrainingPeaks, two-way. Pull planned
+    # workouts onto the plan calendar, push Rabbit sessions when Rabbit is the source, move TP
+    # workouts. Session value pasted in the connect sheet, stored encrypted per user. Refresh via
+    # Moments.on_tick; Rabbit plan writes push (debounced). Athletes only (coach 403 in _api).
+    from . import tp_web as _tpw, tpsync as _tps
+    tp_sync: Any = None
+    tp_routes: list[BaseRoute] = []
+    if settings.app_trainingpeaks and store is not None:
+        _tp_agent = chat.agent if chat is not None else None
+
+        def _tp_today(uid: str) -> date:
+            return plans.today(uid) if plans is not None else date.today()
+
+        def _tp_acts(uid: str) -> list[dict[str, Any]]:
+            return _tp_agent.stats.activities(uid)[1] if _tp_agent is not None and _garmin_connected(uid) else []
+        tp_sync = _tps.TPSync(store, plan=lambda u: plans.get(u) if plans is not None else None,
+                              today=_tp_today, activities=_tp_acts, transport=_tps.TRANSPORT)
+        store.on_user_write(tp_sync.on_plan_write)
+        if _tp_agent is not None:
+            _tp_tick_prev = _tp_agent.moments.on_tick
+
+            def _tp_tick(uid: str) -> None:
+                if _tp_tick_prev is not None:
+                    _tp_tick_prev(uid)
+                tp_sync.tick(uid)
+            _tp_agent.moments.on_tick = _tp_tick
+        tp_routes = _tpw.make_routes(tp=tp_sync, api=_api, read_json=read_json)
+
     # ------------------------------------------------------- connected apps --
     # connections.py: one status row per integration (Garmin, Oura, Google Calendar) for the
     # Me -> Connected apps hub and its connect popups, without calling any provider: Garmin's
@@ -3270,7 +3299,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "calendar", available=cal is not None, connected=c_on,
                 last_sync=(cal.last_read(uid) if cal is not None else None),
                 error=_conn_errors.get((uid, "calendar")), attention=(uid, "calendar") in _conn_errors),
-        }
+        } | ({"trainingpeaks": _conn.status(
+            "trainingpeaks", available=True, connected=(tps := tp_sync.status(uid))["connected"],
+            last_sync=tps["last_sync"], error=tps["error"], attention=tps["attention"])}
+            if tp_sync is not None else {})
 
     def _conn_sources(uid: str) -> dict[str, Any] | None:
         if store is None:
@@ -3283,6 +3315,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     async def connections_sync(request: Request, user_id: str) -> Response:
         app_id = request.path_params["app"]
+        if app_id == "trainingpeaks" and tp_sync is not None:
+            if not await anyio.to_thread.run_sync(lambda: tp_sync.connected(user_id)):
+                return _err(409, "TrainingPeaks isn't connected.")
+            await anyio.to_thread.run_sync(lambda: tp_sync.sync(user_id))
+            rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
+            return JSONResponse({"app": rows[app_id]})
         if app_id not in ("oura", "calendar"):
             return _err(400, "Use /app/api/sync for Garmin.")
         today = plans.today(user_id) if plans else date.today()
@@ -3602,6 +3640,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *directory_routes,
         *community_routes,
         *block_routes,
+        *tp_routes,
         *friends_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
         Route("/app/about", legal_page, methods=["GET"]),

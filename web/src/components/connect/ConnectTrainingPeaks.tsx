@@ -1,0 +1,130 @@
+// TrainingPeaks sign-in, as steps inside the connect popup (ConnectSheet). TrainingPeaks has
+// no public API and its sign-in form uses a captcha, so Rabbit can't take a password: the
+// athlete copies their Production_tpAuth session value from a signed-in browser and pastes it
+// here once (server: tpsync.TPSync.connect; stored encrypted, never shown again).
+// Also: TPSourcePref, the "which plan is the source of truth" choice.
+import { useState } from 'react'
+import { ExternalLink, Info } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { RabbitLoader } from '@/components/RabbitLoader'
+import { Progress } from '@/components/plan/ui'
+import { cn } from '@/lib/utils'
+import {
+  TP_SOURCE_HINT, TP_SOURCE_LABEL, connectTP, setTPSource, tpChanged, type TPSource,
+} from '@/lib/trainingpeaks'
+
+const STEPS = ['Sign in to TrainingPeaks', 'Copy your session value', 'Paste it here', 'Connecting'] as const
+
+export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: string | null) => void }) {
+  const [step, setStep] = useState(0)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+
+  async function connect() {
+    setErr(null); setStep(3)
+    try {
+      const r = await connectTP(value)
+      setValue('')
+      tpChanged()
+      onConnected(r.name)
+    } catch (e) {
+      setErr((e as Error).message); setStep(2)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <div>
+        <Progress step={step} total={STEPS.length} />
+        <p className="mt-2 text-center text-[0.7059rem] text-(--text-muted)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
+      </div>
+
+      {step === 0 && (
+        <>
+          <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
+            On a computer, open TrainingPeaks and sign in as you normally do. Keep that tab open.
+          </p>
+          <a href="https://app.trainingpeaks.com" target="_blank" rel="noopener noreferrer"
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) text-[0.8235rem] text-(--accent) active:bg-(--bg-inset)">
+            Open TrainingPeaks <ExternalLink className="size-3.5" aria-hidden />
+          </a>
+          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={() => setStep(1)}>I’m signed in</Button>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-[0.7647rem] leading-snug text-(--text-secondary)">
+            <li>In the TrainingPeaks tab, open developer tools (F12, or Cmd+Option+I on a Mac).</li>
+            <li>Go to <b>Application</b> (Chrome, Edge) or <b>Storage</b> (Firefox, Safari), then <b>Cookies</b> → app.trainingpeaks.com.</li>
+            <li>Find <b>Production_tpAuth</b> and copy its whole <b>Value</b> (a long line of letters and numbers).</li>
+          </ol>
+          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={() => setStep(2)}>I copied it</Button>
+          <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={() => setStep(0)}>Back</button>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[0.7647rem] text-(--text-secondary)">Production_tpAuth value</span>
+            <textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3}
+              autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-[0.7647rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              placeholder="Paste the value here" aria-describedby="tp-paste-help" />
+          </label>
+          {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" disabled={value.trim().length < 20} onClick={() => void connect()}>
+            Connect TrainingPeaks
+          </Button>
+          <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={() => setStep(1)}>Back</button>
+        </>
+      )}
+
+      {step === 3 && <div className="flex justify-center py-6"><RabbitLoader label="Checking with TrainingPeaks…" /></div>}
+
+      <p id="tp-paste-help" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" aria-hidden />
+        <span>
+          Why not your password? TrainingPeaks has no public connection for apps and its sign-in uses a captcha,
+          so Rabbit can’t sign in for you. The value you paste lets Rabbit see your calendar; it’s stored encrypted
+          and never shown again. On a phone? Do this once on a computer. If you sign out of TrainingPeaks,
+          Rabbit asks you to reconnect.
+        </span>
+      </p>
+    </div>
+  )
+}
+
+/** Which plan wins when both have the same workout. Saves on tap. */
+export function TPSourcePref({ source, onSaved, onToast }: {
+  source: TPSource
+  onSaved: (s: TPSource) => void
+  onToast: (msg: string) => void
+}) {
+  const [busy, setBusy] = useState<TPSource | null>(null)
+  async function pick(s: TPSource) {
+    if (s === source || busy) return
+    setBusy(s)
+    try {
+      await setTPSource(s)
+      onSaved(s); tpChanged()
+      onToast(s === 'rabbit' ? 'Rabbit plan is the source. Your next 14 days are in TrainingPeaks.' : 'TrainingPeaks plan is the source')
+    } catch (e) { onToast((e as Error).message) } finally { setBusy(null) }
+  }
+  return (
+    <fieldset role="radiogroup" aria-label="Source of truth" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+      <legend className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Source of truth</legend>
+      {(['trainingpeaks', 'rabbit'] as const).map((s) => (
+        <button key={s} type="button" role="radio" aria-checked={source === s} disabled={!!busy} onClick={() => void pick(s)}
+          className={cn('flex min-h-11 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left',
+            source === s ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) active:bg-(--bg-inset)')}>
+          <span className={cn('text-[0.8235rem]', source === s ? 'text-(--accent)' : 'text-(--text)')}>
+            {TP_SOURCE_LABEL[s]}{busy === s ? '…' : ''}
+          </span>
+          <span className="text-[0.7059rem] leading-snug text-(--text-muted)">{TP_SOURCE_HINT[s]}</span>
+        </button>
+      ))}
+    </fieldset>
+  )
+}

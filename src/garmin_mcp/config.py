@@ -88,6 +88,8 @@ class Settings:
     # TrainingPeaks (off unless TRAININGPEAKS_ENABLED; writes need their own flag)
     trainingpeaks_enabled: bool = False
     trainingpeaks_allow_writes: bool = False
+    # Rabbit app: athletes connect their own TrainingPeaks (tpsync.py); APP_TRAININGPEAKS=false hides it
+    app_trainingpeaks: bool = True
     garmin_api_tls_impersonation: bool = False
     cache_ttl_seconds: int = 300
     rate_limit_per_minute: int = 30
@@ -213,6 +215,7 @@ class Settings:
             allow_writes=_bool("GARMIN_ALLOW_WRITES", False),
             trainingpeaks_enabled=_bool("TRAININGPEAKS_ENABLED", False),
             trainingpeaks_allow_writes=_bool("TRAININGPEAKS_ALLOW_WRITES", False),
+            app_trainingpeaks=_bool("APP_TRAININGPEAKS", True),
             garmin_api_tls_impersonation=_bool("GARMIN_API_TLS_IMPERSONATION", False),
             cache_ttl_seconds=_int("CACHE_TTL_SECONDS", 300),
             rate_limit_per_minute=_int("RATE_LIMIT_PER_MINUTE", 30),

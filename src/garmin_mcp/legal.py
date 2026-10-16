@@ -31,6 +31,7 @@ PRIVACY = """
 <li><b>Garmin Connect</b> (when you connect it): workouts, heart rate, sleep and similar training data, and the planned workouts Rabbit sends to your watch.</li>
 <li><b>Oura</b> (when you connect it): readiness, sleep, heart rate variability, resting heart rate and daily activity summaries. Oura workouts are not imported; workouts come from Garmin only.</li>
 <li><b>Google Calendar</b> (when you connect it, read-only): event times, used to spot busy days and travel.</li>
+<li><b>TrainingPeaks</b> (when you connect it): Rabbit reads the planned workouts on your TrainingPeaks calendar (title, sport, duration, distance, description, coach notes and structure) from 2 weeks back to 6 weeks ahead. You connect by pasting your TrainingPeaks session value; Rabbit stores it encrypted, never logs it and never asks for your TrainingPeaks password. Rabbit writes to TrainingPeaks only when you choose Rabbit as your plan (it adds, updates and deletes the planned workouts it created for your next 14 days and never changes or deletes ones it didn't create) or when you move a TrainingPeaks workout in Rabbit. Completed workouts are not imported from TrainingPeaks; they come from Garmin only.</li>
 <li><b>What you enter</b>: your profile, goals, races, gear, photo, chats and coach messages.</li>
 </ul>
 <h2>How it's used</h2>
@@ -46,7 +47,7 @@ PRIVACY = """
 <p>Data is stored encrypted on a private Google Cloud server. Connection tokens for Garmin, Oura and Google Calendar are encrypted and used only to read your data (and, for Garmin, to send planned workouts you ask for).</p>
 <h2>Your choices</h2>
 <ul>
-<li>Disconnect Garmin, Oura or Google Calendar at any time in Me &rarr; Connected apps; Rabbit stops reading from them and deletes the stored tokens.</li>
+<li>Disconnect Garmin, Oura, Google Calendar or TrainingPeaks at any time in Me &rarr; Connected apps; Rabbit stops reading from them and deletes the stored tokens.</li>
 <li>Ask for a copy or deletion of your data by contacting {CONTACT}.</li>
 </ul>
 <h2>Contact</h2><p>Questions: {CONTACT}.</p>

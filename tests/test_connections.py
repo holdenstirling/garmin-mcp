@@ -27,7 +27,7 @@ def test_status_states() -> None:
     off = conn.status("oura", available=True, connected=False, last_sync=5, error="x")
     assert off["last_sync"] is None and off["error"] is None
     v = conn.view({a: conn.status(a, available=True, connected=False) for a in reversed(conn.ORDER)})
-    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "calendar"]
+    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "calendar", "trainingpeaks"]
 
 
 def test_facts_match_the_privacy_policy() -> None:
@@ -40,7 +40,7 @@ def test_facts_match_the_privacy_policy() -> None:
     assert any("never imported" in s for s in conn.APPS["oura"]["never"])
     assert any("read-only" in s for s in conn.APPS["calendar"]["reads"])
     assert all(conn.APPS[a]["reads"] and conn.APPS[a]["never"] for a in conn.ORDER)
-    assert "trainingpeaks" not in conn.APPS  # MCP-server only; the app can't connect it
+    assert conn.APPS["trainingpeaks"]["kind"] == "cookie"  # pasted session value (tpsync.py)
 
 
 def test_live_sync_last_and_reauth_code(env) -> None:
@@ -77,7 +77,7 @@ def test_api_shape_sync_guards_and_coach_403(env, tmp_path) -> None:
             r = await a.get("/app/api/connections")
             assert r.status_code == 200
             body = r.json()
-            assert [x["id"] for x in body["apps"]] == ["garmin", "oura", "calendar"]
+            assert [x["id"] for x in body["apps"]] == ["garmin", "oura", "calendar", "trainingpeaks"]
             for row in body["apps"]:
                 assert set(row) >= {"state", "connected", "available", "last_sync", "reads", "never", "import_label"}
             assert body["sources"]["workouts"] == "garmin"

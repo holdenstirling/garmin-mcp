@@ -23,6 +23,7 @@ import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/li
 import { athleteChat } from '@/lib/coach'
 import { OwnPlanImport } from './PlanImport'
 import { importApi, type ImportStatus } from '@/lib/planimport'
+import { TPCalendarList, TPDayItems, TPPlanBar, TPWorkoutSheet, useTrainingPeaks } from './TPItems'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
@@ -67,6 +68,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
   const [unread, setUnread] = useState<string[]>([])
   const canMessage = !!onMessage
+  const tp = useTrainingPeaks(!coachMode)  // TrainingPeaks workouts on this calendar (TPItems.tsx)
+  const imperial = me.athlete?.units === 'imperial'
   // Loading a plan from a file (athlete side) and the last import's summary.
   const [imp, setImp] = useState<{ status: ImportStatus; open: boolean } | null>(null)
   const loadImport = (open: boolean) => OWN_IMPORT.status().then((st) => setImp({ status: st, open }), (e) => setLoadError((e as Error).message))
@@ -110,6 +113,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan</Button>}
           </div>
         )}
+        {plan === null && <TPCalendarList tp={tp} today={planToday(plan)} imperial={imperial} />}
+        <TPWorkoutSheet tp={tp} today={planToday(plan)} imperial={imperial} />
         {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan={false} onClose={() => setImp(null)} onApplied={() => { setImp(null); load(); onChanged() }} />}
       </Screen>
     )
@@ -225,6 +230,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
       </Card>
 
+      <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week */}
       <section className="flex flex-col gap-1.5">
         <div className="flex items-center gap-1 px-1">
@@ -260,10 +266,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                     {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    {d.sessions.map((s) => (
+                    {d.sessions.filter((s) => !tp.hidden(s.id)).map((s) => (
                       <SessionLine key={s.id} s={s} unread={unread.includes(s.id)} onClick={s.sport === 'rest' && past ? undefined : () => setEditing({ session: s, date: d.date })} />
                     ))}
-                    {!d.sessions.length && <p className="py-2 text-[0.7647rem] text-(--text-muted)">Rest</p>}
+                    <TPDayItems tp={tp} date={d.date} imperial={imperial} />
+                    {!d.sessions.length && !tp.itemsOn(d.date).length && <p className="py-2 text-[0.7647rem] text-(--text-muted)">Rest</p>}
                   </div>
                   {canAdd && (
                     <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`}
@@ -378,6 +385,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             onAsk(`About my ${s.title} on ${fmtDay(editing.date, { weekday: 'long', month: 'short', day: 'numeric' })}: `)
           } : undefined} />
       )}
+      <TPWorkoutSheet tp={tp} today={today} imperial={imperial} onToast={setNote} />
     </Screen>
   )
 }
