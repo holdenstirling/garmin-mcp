@@ -3240,6 +3240,35 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             Route("/app/api/racegrade/live", _api(racegrade_live, mutating=False), methods=["GET"]),
         ]
 
+    # ------------------------------------------------------- training paces --
+    # paces.py (routes in paces_web.py): deterministic threshold pace / FTP / CSS detection after
+    # each synced workout (Moments.after_workouts) and weekly (Moments.on_tick); a "pace" moment
+    # with one-tap Update; accept re-targets future plan sessions, undo for 24 h. Athletes only.
+    if chat is not None and store is not None:
+        from . import paces as _pc, paces_web as _pcw
+        _pa = chat.agent
+
+        def _pc_g10(uid: str) -> float | None:
+            return next((t for km, t in (_pred_basis(uid).get("garmin") or []) if km == 10.0), None)
+        pace_svc = _pc.Paces(
+            store, athlete=_pa.coach.athlete, set_athlete=_pa.coach.update_athlete,
+            activities=lambda u: _pa.stats.activities(u)[1], now=_pa._now, clock=time.time,
+            splits=lambda u, aid: _pa._service.read_uncached(u, "get_activity_splits", {"activity_id": aid}),
+            predictor=_pc_g10, edit_plan=(plans._edit if plans is not None else None), post=_pa.moments.post)
+        _pc_tick_prev, _pc_after_prev = _pa.moments.on_tick, _pa.moments.after_workouts
+
+        def _pc_tick(uid: str) -> None:
+            if _pc_tick_prev is not None:
+                _pc_tick_prev(uid)
+            pace_svc.weekly(uid)
+
+        def _pc_after(uid: str) -> None:
+            if _pc_after_prev is not None:
+                _pc_after_prev(uid)
+            pace_svc.after_workouts(uid)
+        _pa.moments.on_tick, _pa.moments.after_workouts = _pc_tick, _pc_after
+        home_routes += _pcw.make_routes(svc=pace_svc, api=_api, read_json=read_json)
+
     # ------------------------------------------------------- connected apps --
     # connections.py: one status row per integration (Garmin, Oura, Google Calendar) for the
     # Me -> Connected apps hub and its connect popups, without calling any provider: Garmin's

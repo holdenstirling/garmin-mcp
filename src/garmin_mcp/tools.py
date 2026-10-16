@@ -350,6 +350,10 @@ def compact_activity(a: dict[str, Any]) -> dict[str, Any]:
         "training_effect_label": a.get("trainingEffectLabel"),
         "training_load": _round(a.get("activityTrainingLoad"), 0),
         "event": _event_type(a),
+        # paces.py: FTP from the best 20 min, heat/altitude outliers.
+        "max_20min_power_w": _round(a.get("max20MinPower"), 0),
+        "max_temp_c": _round(a.get("maxTemperature"), 0),
+        "max_elev_m": _round(a.get("maxElevation"), 0),
     }
     if "swim" in key:
         out["avg_pace_per_100m"] = _pace(speed, 100)

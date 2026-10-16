@@ -37,6 +37,7 @@ import anyio
 import httpx2
 
 from .nutrition import fuel
+from .paces import athlete_for
 from .planbuilder import PACE_ZONES, POWER_ZONES, ZONE_NAMES, iter_sessions, step_minutes, week_for
 from .progress import PLAN_SESSION_XP, workout_xp
 from .stats import _rows, category
@@ -441,7 +442,7 @@ class WorkoutDay:
             s, d, w = found
             if s.get("sport") == "rest":
                 return out | {"state": "rest"}
-            view = session_view(s, d, athlete, phase=w.get("phase"), recovery=bool(w.get("recovery")), plan=plan)
+            view = session_view(s, d, athlete_for(athlete, s), phase=w.get("phase"), recovery=bool(w.get("recovery")), plan=plan)
             st = status.get(s.get("id")) or {}
             view["status"] = st.get("status") or ("planned" if d >= today.isoformat() else "missed")
             view["activity"] = st.get("activity")

@@ -68,6 +68,8 @@ import { composerPrompts, intentSuggestions, intentsOf, wantsPlan } from '@/lib/
 import { BlockScreen } from '@/screens/lazyScreens'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { OPEN_BLOCK_EVENT, blockMomentAction } from '@/lib/blocks'
+import { PaceHost } from '@/components/paces/PaceSheet'
+import { dismissPace, openPaceSuggestion } from '@/lib/paces'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -618,6 +620,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
     else if (a.id === 'month_recap') setMonthCard(a.month ?? lastMonth().month)
     else if (a.id === 'block' || a.id === 'block_checkin') blockMomentAction(a).then((m) => { if (m) showToast(m) }, (e) => showToast((e as Error).message))
+    else if (a.id === 'pace' || a.id === 'pace_accept') openPaceSuggestion({ sport: a.sport, sid: a.sid, accept: a.id === 'pace_accept' })
+    else if (a.id === 'pace_later' && a.sid) dismissPace(a.sid).then(() => showToast('Okay, Rabbit will check again later.'), (e) => showToast((e as Error).message))
   }
   // Quick replies under Rabbit's latest message when it asks something (max 3).
   const lastRow = shownRows[shownRows.length - 1]
@@ -1135,6 +1139,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onFeel={(xp) => { if (xp) getProgress().then(setProgress, () => {}) }} />
       )}
       {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
+      <PaceHost />
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}
           onClose={() => setReaction(null)} onOpenSession={(id) => { setReaction(null); setWorkout({ sessionId: id }) }}

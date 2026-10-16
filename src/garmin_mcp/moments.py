@@ -64,7 +64,7 @@ GRADE_EVERY_DAYS = 7
 RACE_STEPS = ((56, 3, "8w"), (28, 3, "4w"), (14, 2, "2w"), (7, 2, "week"), (1, 0, "eve"))
 GRADE_ORDER = ("F", "D", "C", "C+", "B-", "B", "B+", "A-", "A")
 WORKOUT_TYPES = frozenset({"workout"})  # exempt from the daily cap and quiet hours
-PUSH_TYPES = frozenset({"streak_risk", "race", "week_nudge", "block_checkin"})  # + blocks.py Sunday check-in
+PUSH_TYPES = frozenset({"streak_risk", "race", "week_nudge", "block_checkin", "pace"})  # + blocks.py Sunday check-in, paces.py
 MILESTONE_TYPES = frozenset({"streak", "level", "badge", "challenge"})  # may become Community drafts
 
 _EMOJI = re.compile("[\U0001F000-\U0001FAFF☀-➿⭐⏳]")
