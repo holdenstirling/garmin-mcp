@@ -21,7 +21,7 @@ for arg in "$@"; do
     *) echo "unknown argument: $arg"; exit 2 ;;
   esac
 done
-SSH=(gcloud compute ssh "$VM_NAME" --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap)
+SSH=(gcloud compute ssh "$VM_NAME" --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap --quiet)
 
 if [[ "$MODE" == "--rollback" ]]; then
   # shellcheck disable=SC2016  # expanded on the VM, not locally
@@ -56,7 +56,7 @@ fi
 } | COPYFILE_DISABLE=1 tar --no-xattrs --null -czf "$BUNDLE" -T -
 echo "==> Uploading $APP release $REL"
 gcloud compute scp "$BUNDLE" "$VM_NAME:/tmp/$APP-$REL.tgz" \
-  --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap
+  --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap --quiet
 
 "${SSH[@]}" --command "sudo env APP='$APP' PORT='$PORT' REL='$REL' MODE='$MODE' DOMAIN='$DOMAIN' \
   GITHUB_CLIENT_ID='$GITHUB_CLIENT_ID' ALLOWED_GITHUB_USERS='$ALLOWED_GITHUB_USERS' \

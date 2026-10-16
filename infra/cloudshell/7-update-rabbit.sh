@@ -8,26 +8,7 @@ export PATH="$HOME/.bun/bin:$HOME/.local/bin:$PATH"
 
 git pull --ff-only -q || { echo "!! git pull failed (local changes?). Nothing deployed."; exit 1; }
 
-if [[ ! -f infra/config.env ]]; then
-  echo "==> Writing infra/config.env"
-  cat > infra/config.env <<'ENV'
-PROJECT=training-project-511604
-REGION=us-central1
-ZONE=us-central1-a
-VM_NAME=garmin-mcp
-MACHINE_TYPE=e2-micro
-DISK_TYPE=pd-standard
-DISK_SIZE=30GB
-IMAGE_FAMILY=debian-12
-BEHIND_CLOUDFLARE=false
-DOMAIN=34-45-18-209.sslip.io
-APP_DOMAIN=rabbit.holdenottolini.com
-GITHUB_CLIENT_ID=Ov23liWUsK5Ksw2XDvKj
-ALLOWED_GITHUB_USERS=unused-for-rabbit-deploys
-TRAININGPEAKS_ENABLED=true
-TRAININGPEAKS_ALLOW_WRITES=true
-ENV
-fi
+infra/write-config.sh
 # shellcheck disable=SC1091
 source infra/config.env
 gcloud config set project training-project-511604 >/dev/null 2>&1 || true

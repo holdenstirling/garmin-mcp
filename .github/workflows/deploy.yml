@@ -1,0 +1,69 @@
+# Test, build and deploy Rabbit to the VM on every push to main.
+# Auth: keyless (Workload Identity Federation, set up once by infra/cloudshell/13-autodeploy.sh).
+# Nothing deploys if the type-check, build or any test fails. "Run workflow" can also deploy
+# the MCP server.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mcp:
+        description: Also deploy the MCP server (garmin-mcp.service)
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Type-check and build the web app
+        run: cd web && bun install --frozen-lockfile && bun run build
+
+      - name: Tests
+        run: uv run -q pytest -q
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/695678987717/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: rabbit-deployer@training-project-511604.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Rabbit
+        run: |
+          infra/write-config.sh
+          ./deploy.sh --rabbit
+
+      - name: Deploy MCP server
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mcp }}
+        run: ./deploy.sh
+
+      - name: Check it's up
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://rabbit.holdenottolini.com/app/privacy || true)
+            [ "$code" = 200 ] && { echo "Rabbit is up"; exit 0; }
+            sleep 10
+          done
+          echo "Rabbit didn't answer 200"; exit 1
