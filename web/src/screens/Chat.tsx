@@ -20,6 +20,7 @@ import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekGoalsCard } from '@/components/home/WeekGoalsCard'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions } from '@/components/home/QuickActions'
+import { FriendsLatest } from '@/components/home/FriendsLatest'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
@@ -189,6 +190,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [racesView, setRacesView] = useState<RacesView>('mine')
   const [communityView, setCommunityView] = useState<CommunityView>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
+  const [friendsLatest, setFriendsLatest] = useState(false)
   const [composerFocus, setComposerFocus] = useState(false)
   const friendsDot = useSocialBadge()
 
@@ -740,6 +742,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
       return
     }
+    if (t === 'community' && t !== tab) { setCommunityView('feed'); setCommunityClub(null) } // Community opens on Feed
     setTab(t)
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
@@ -913,11 +916,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {isCoach && !typing && me.role === 'athlete' && (
         <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
-          skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} />
+          skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
       )}
       {isCoach && !typing && (
         <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={(id) => showPage({ k: 'fit', id })} onRing={setRingShown} />
       )}
+      {isCoach && !typing && me.role === 'athlete' && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
       {isCoach && !typing && (
         <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
           onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />

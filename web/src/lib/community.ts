@@ -8,7 +8,7 @@ import { counted } from '@/lib/usage'
 export type Category = 'race' | 'pb' | 'milestone' | 'life' | 'comeback' | 'gratitude' | 'other'
 export type ReactionKind = 'party' | 'strong' | 'heart' | 'rabbit'
 export type MilestoneType = 'race' | 'pb' | 'streak' | 'level' | 'badge' | 'challenge' | 'first'
-/** "friends" | "public" | "private" | "club:<id>" */
+/** "friends" | "public" | "private" | "club:<id>" | "grp:<gid>[,<gid>]" (feed groups) */
 export type Audience = string
 
 export const CATEGORIES: [Category, string][] = [
@@ -45,6 +45,7 @@ export function audienceLabel(a: Audience, club?: { name: string } | null): stri
   if (a === 'public') return 'Everyone on Rabbit'
   if (a === 'private') return 'Only me'
   if (a.startsWith('club:')) return club?.name ?? 'Club'
+  if (a.startsWith('grp:')) return 'Group'
   return 'Friends'
 }
 
@@ -52,6 +53,14 @@ export type PostEvent = { id: string; name: string; date: string; type?: string 
 export type PostWorkout = {
   activity_id: number; sport: string; title: string; date: string
   km: number | null; minutes: number | null; climb_m: number | null; highlight: string
+  /** s/km (runs, walks, hikes) · km/h (rides) · s/100 m (swims) */
+  pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number
+  /** lap shape: distance + time per lap (no HR, no GPS) */
+  splits?: { km: number; s: number }[]
+  /** the workout reward's headline */
+  headline?: string
+  /** auto-shared after sync */
+  auto?: boolean
 }
 export type PostComment = {
   id: string; by: { id: string; name: string }; text: string; ts: number; parent: string | null; mine: boolean; can_delete: boolean
@@ -61,6 +70,9 @@ export type Post = {
   category: Category; text: string; feeling: string | null; event: PostEvent | null; workout?: PostWorkout | null
   milestone?: { type: MilestoneType; key: string } | null; created: number; edited: number | null
   audience: Audience; club: { id: string; name: string } | null; mine: boolean; photos: number[]
+  groups?: { id: string; name: string; emoji: string }[]
+  /** the pinned post on my own feed: "Add a photo or caption" while it has neither */
+  prompt?: string | null; pinned_until?: number
   reactions: Record<ReactionKind, number>; reaction_total: number; my_reaction: ReactionKind | null
   comment_count: number; comments: PostComment[]
 }
@@ -75,6 +87,9 @@ export type CommunitySettings = {
   share_workouts?: boolean | null
   share_prompted?: boolean
   share_since?: string | null
+  /** where auto-shared workouts go: "friends" or "grp:<gid>[,...]" */
+  share_audience?: string
+  default_view?: 'feed' | 'clubs'
 }
 /** Effective "Share my workouts with friends" (community.py `sharing_workouts`). */
 export const sharingWorkouts = (s: CommunitySettings) =>
@@ -130,13 +145,14 @@ const P = '/api/community'
 const pp = (id: string) => `${P}/posts/${encodeURIComponent(id)}`
 const cp = (id: string) => `${P}/clubs/${encodeURIComponent(id)}`
 
-export const getCommunityFeed = (cursor?: string | null, club?: string, scope: 'all' | 'friends' = 'all') => {
+export const getCommunityFeed = (cursor?: string | null, club?: string, scope: 'all' | 'friends' | 'clubs' = 'all', group?: string) => {
   const q = new URLSearchParams()
   if (cursor) q.set('cursor', cursor)
   if (club) q.set('club', club)
+  if (group) q.set('group', group)
   if (scope !== 'all') q.set('scope', scope)
   const s = q.toString()
-  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number }>(`${P}/feed${s ? `?${s}` : ''}`)
+  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null }>(`${P}/feed${s ? `?${s}` : ''}`)
 }
 export const getPost = (id: string) => getJSON<{ post: Post }>(pp(id))
 export const createPost = (b: PostInput) => counted(postJSON<{ post: Post }>(`${P}/posts`, b), 'share', { what: 'post' })

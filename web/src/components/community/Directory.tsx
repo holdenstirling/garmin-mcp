@@ -7,7 +7,7 @@
 // city, Explore's cached local groups show meanwhile.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Mountain, Plus, Users, Volleyball, Waves,
+  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, MapPin, Medal, Megaphone, Mountain, Plus, Users, Volleyball, Waves,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Segmented } from '@/components/nav/Segmented'
@@ -24,6 +24,7 @@ import {
   type DirChip, type DirGoing, type DirKind, type DirListing, type DirView,
 } from '@/lib/clubdir'
 import { Sheet } from '@/components/ui/Sheet'
+import { FeatureSheet, useIsOwner } from './Featured'
 
 const ICON: Record<DirKind, typeof Bike> = {
   run_club: Footprints, trail: Mountain, tri: Medal, ride: Bike, swim: Waves, league: Volleyball, other: Users,
@@ -71,8 +72,10 @@ function GoingRow({ l, onGoing }: { l: DirListing; onGoing: (g: DirGoing) => voi
   )
 }
 
-function ListingCard({ l, onStart, onReport, onGoing, busy }: {
+function ListingCard({ l, onStart, onReport, onGoing, busy, onFeature }: {
   l: DirListing; onStart: () => void; onReport: () => void; onGoing: (g: DirGoing) => void; busy: boolean
+  /** the app owner's "Feature this club" */
+  onFeature?: () => void
 }) {
   const Icon = ICON[l.kind] ?? Users
   const when = nextLabel(l.next)
@@ -115,6 +118,11 @@ function ListingCard({ l, onStart, onReport, onGoing, busy }: {
         ) : (
           <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
             <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
+          </button>
+        )}
+        {onFeature && (
+          <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
+            <Megaphone className="size-3.5" aria-hidden /> Feature
           </button>
         )}
         {!l.reported && (
@@ -169,6 +177,8 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
   const [msg, setMsg] = useState<string | null>(null)
   const [suggesting, setSuggesting] = useState(false)
   const [view, setView] = useState<'list' | 'map'>('list')
+  const [featuring, setFeaturing] = useState<DirListing | null>(null)
+  const owner = useIsOwner(data?.listings[0] ? { listing: data.listings[0].id } : null)
   const polls = useRef(0)
   const load = useCallback(() => getDirectory(chip).then((d) => { setData(d); setError(null) },
     (e) => setError((e as Error).message)), [chip])
@@ -190,7 +200,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
   }
   const card = (l: DirListing) => (
     <ListingCard l={l} busy={busy === l.id} onStart={() => onStartGroup(l)} onReport={() => void report(l)}
-      onGoing={(g) => setGoing(l.id, g)} />
+      onGoing={(g) => setGoing(l.id, g)} onFeature={owner ? () => setFeaturing(l) : undefined} />
   )
 
   if (error && !data) return <ErrorState compact message={error} onRetry={() => void load()} />
@@ -263,6 +273,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing) 
         </button>
       </div>
       {suggesting && <SuggestSheet city={metro.city} state={metro.state} onClose={() => setSuggesting(false)} />}
+      {featuring && <FeatureSheet name={featuring.name} listingId={featuring.id} onClose={() => setFeaturing(null)} />}
     </section>
   )
 }

@@ -1,6 +1,7 @@
 // The Community tab: "Feed | Clubs | People". The feed is calm on purpose: what people choose
 // to share (life events, races, PRs) and milestones as drafts until you tap Share, never
-// every workout. Clubs: local run clubs and crews with meetups and challenges.
+// every workout. Clubs: local run clubs and crews with meetups and challenges. Featured clubs
+// (owner-promoted) lead Feed and Clubs; feed groups open as their own page.
 import { useEffect, useState } from 'react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -18,6 +19,9 @@ import { PeopleSection } from './People'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { markSeen } from '@/lib/unread'
 import { Sheet } from '@/components/ui/Sheet'
+import { getCommunityHome, listGroups, type Featured, type FeedGroup } from '@/lib/community2'
+import { FeaturedStrip } from './Featured'
+import { GroupPage, GroupSheet } from './Groups'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -27,16 +31,32 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
   club: string | null; onClub: (id: string | null) => void
 }) {
   const [settings, setSettings] = useState(false)
+  const [featured, setFeatured] = useState<Featured[] | undefined>(undefined)
+  const [group, setGroup] = useState<string | null>(null)
+  const [newGroup, setNewGroup] = useState(false)
+  const [groupsKey, setGroupsKey] = useState(0)
   const openClub = (id: string) => { onClub(id); onView('clubs') }
+  useEffect(() => {
+    let live = true
+    getCommunityHome().then((r) => { if (live) setFeatured(r.featured) }, () => { if (live) setFeatured([]) })
+    return () => { live = false }
+  }, [])
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
     <Screen title="Community"
       headerExtra={<Segmented label="Community" value={view} onChange={onView}
         options={[['feed', 'Feed'], ['clubs', 'Clubs'], ['people', 'People']] as const} />}>
+      {(view === 'feed' || view === 'clubs') && featured && featured.length > 0 && (
+        <FeaturedStrip items={featured} onOpenClub={openClub} />
+      )}
       {view === 'feed' && <BlocksEntry compact />}
-      {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub} />}
+      {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub}
+        onOpenGroup={setGroup} onNewGroup={() => setNewGroup(true)} groupsKey={groupsKey} />}
       {view === 'clubs' && <ClubsTab imperial={imperial} openId={club} onOpen={onClub} />}
+      {newGroup && <GroupSheet onClose={() => setNewGroup(false)}
+        onSaved={(g) => { setNewGroup(false); setGroupsKey((k) => k + 1); setGroup(g.id) }} />}
+      {group && <GroupPage id={group} imperial={imperial} onClose={() => setGroup(null)} onChanged={() => setGroupsKey((k) => k + 1)} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
       {settings && <SharingSheet onClose={() => setSettings(false)} />}
     </Screen>
@@ -48,8 +68,12 @@ const TYPES = Object.keys(MILESTONE_LABEL) as MilestoneType[]
 function SharingSheet({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
+  const [groups, setGroups] = useState<FeedGroup[]>([])
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => { getCommunitySettings().then((r) => { setS(r.settings); setUsage(r.usage) }, (e) => setError((e as Error).message)) }, [])
+  useEffect(() => {
+    getCommunitySettings().then((r) => { setS(r.settings); setUsage(r.usage) }, (e) => setError((e as Error).message))
+    listGroups().then((r) => setGroups(r.groups), () => { /* friends still works */ })
+  }, [])
   async function put(patch: Partial<CommunitySettings>, optimistic: CommunitySettings) {
     const prev = s
     setS(optimistic)
@@ -75,6 +99,15 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
                       onChange={(v) => void put({ auto_share: { ...s.auto_share, [t]: v } }, { ...s, auto_share: { ...s.auto_share, [t]: v } })} />} />
                 ))}
               </Group>
+              {groups.length > 0 && (
+                <Group label="Auto-shared workouts go to" footer="Right after your watch syncs. Group posts are only seen by the group.">
+                  <div className="px-3 py-2.5">
+                    <Choice label="Auto-shared workouts audience" value={s.share_audience ?? 'friends'}
+                      options={[['friends', 'Friends'], ...groups.map((g) => [`grp:${g.id}`, `${g.emoji} ${g.name}`] as const)]}
+                      onChange={(v) => void put({ share_audience: v }, { ...s, share_audience: v })} />
+                  </div>
+                </Group>
+              )}
               <Group label="Shared milestones go to" footer="Never your heart rate, health data or where you trained.">
                 <div className="px-3 py-2.5">
                   <Choice label="Default audience" value={s.audience}

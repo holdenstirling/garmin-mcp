@@ -55,3 +55,9 @@ export function fmtSwimPace(secPer100m: number, unit = true): string {
   const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   return unit ? `${t}/100m` : t
 }
+
+/** Swim pace in the athlete's units from seconds per 100 m: "1:52 /100m" or "1:43 /100yd". */
+export function fmtSwim100(sPer100m: number, imperial: boolean): string {
+  const s = Math.round(imperial ? sPer100m / YD_PER_M : sPer100m)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /100${imperial ? 'yd' : 'm'}`
+}

@@ -41,8 +41,10 @@ function text(a: QuickAction, imperial: boolean): string {
 
 const ICON = { feel: Smile, rsvp: CalendarCheck, cheer: PartyPopper, watch: Watch } as const
 
-export function QuickActions({ refreshKey, imperial, skipWatchFor, onToast }: {
+export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, onToast }: {
   refreshKey?: number; imperial: boolean
+  /** "Friends' latest" shows on the home with its own cheers */
+  skipCheer?: boolean
   /** today's session already offers "Send to watch" in the Up next card */
   skipWatchFor?: string | null
   onToast: (msg: string) => void
@@ -58,7 +60,8 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, onToast }: {
     return () => { live = false }
   }, [refreshKey])
 
-  const shown = actions.filter((a) => !(a.kind === 'watch' && skipWatchFor && a.session_id === skipWatchFor))
+  const shown = actions.filter((a) => !(a.kind === 'watch' && skipWatchFor && a.session_id === skipWatchFor)
+    && !(a.kind === 'cheer' && skipCheer))
 
   async function run(a: QuickAction, el: HTMLElement | null, feel?: number) {
     setBusy(a.kind)

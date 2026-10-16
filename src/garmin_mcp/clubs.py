@@ -340,6 +340,29 @@ class Clubs:
                 "invited": [m for m in (c.get("invites") or {}) if self._admin(role)],
                 "challenges": list(c.get("challenges") or [])}
 
+    def featured_card(self, cid: str, viewer: str, now: datetime) -> dict[str, Any] | None:
+        """A featured club's public card (featured.py): name, sport, city, members, my role and
+        the next meetup (its place only for open clubs or members). None when gone, a race
+        group/block, or the owner and viewer blocked each other."""
+        c = (self._doc.load().get("clubs") or {}).get(cid) if isinstance(cid, str) else None
+        if c is None or self._blocked(viewer, c["owner"]):
+            return None
+        v = self._view(c, viewer)
+        member = v["role"] is not None
+        nxt = None
+        for m in (c.get("meetups") or {}).values():
+            mv = self._meetup_view(m, viewer, now)
+            if mv["next"] and (nxt is None or mv["next"] < nxt["next"]):
+                nxt = mv
+        meet = None
+        if nxt is not None:
+            meet = {"id": nxt["id"], "title": nxt["title"], "next": nxt["next"], "going": len(nxt["going"]),
+                    "my_rsvp": nxt["my_rsvp"], "where": nxt["where"] if member or v["privacy"] == "open" else ""}
+        return {"club_id": c["id"], "name": v["name"], "emoji": v["emoji"], "sport": v["sport"],
+                "city": v["city"], "state": v["state"], "description": v["description"], "members": v["members"],
+                "privacy": v["privacy"], "role": v["role"], "requested": v["requested"], "next_meetup": meet,
+                "full": len(c["members"]) >= MAX_MEMBERS}
+
     # ------------------------------------------------------------- writes --
     def _validate(self, fields: dict[str, Any], *, partial: bool) -> dict[str, Any]:
         out: dict[str, Any] = {}

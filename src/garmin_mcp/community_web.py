@@ -2,7 +2,8 @@
 with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, coach accounts
 403). Every route also requires an allowlisted athlete.
 
-    GET    /app/api/community/feed?cursor=&club=&scope=all|friends   20 per page, newest first
+    GET    /app/api/community/feed?cursor=&club=&group=&scope=all|friends|clubs   20 per page, newest
+           first; ``pinned``: my fresh auto-shared workout (first page of the main feed)
     POST   /app/api/community/posts                  {text, category, feeling?, photo_ids?, event_id?,
                                                       audience?} | {workout_id, text?, audience?}
     GET    /app/api/community/posts/{pid}            with all comments
@@ -121,12 +122,17 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         cursor = request.query_params.get("cursor") or None
         club = request.query_params.get("club") or None
         scope = request.query_params.get("scope") or "all"
+        group = request.query_params.get("group") or None
         if club is not None:
             club = valid_cid(club)
-        out = await run(lambda: cm.feed(user_id, cursor, club=club, scope=scope))
+        if group is not None and (len(group) > 20 or not group.isalnum()):
+            raise CommunityError("group not found", 404)
+        out = await run(lambda: cm.feed(user_id, cursor, club=club, scope=scope, group=group))
         drafts = await run(lambda: len(cm.drafts(user_id))) if cursor is None else None
+        pinned = out.get("pinned")
         return JSONResponse({"items": [deco(p) for p in out["items"]], "next": out["next"], "drafts": drafts,
-                             "following": len(cm.social.following_ids(user_id))})
+                             "following": len(cm.social.following_ids(user_id)),
+                             "pinned": deco(pinned) if pinned else None})
 
     async def post_create(request: Request, user_id: str) -> Response:
         b = await body_of(request)

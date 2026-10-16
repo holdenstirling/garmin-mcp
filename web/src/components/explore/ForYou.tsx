@@ -22,6 +22,7 @@ import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { EstimateLine } from './Estimate'
 import { LocationLine, LocationPrompt } from './LocationPrompt'
 import { NearYouSection } from './LocalActivities'
+import { FeaturedStrip } from '@/components/community/Featured'
 
 const CHIP_KEY = 'rabbit.explore.inferred.dismissed'
 const SCOUT = ['Scouting races for you…', 'Sniffing out start lines…', 'Checking your calendar…', 'Lining up tune-ups…']
@@ -136,6 +137,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
         </div>
       )}
       {feed.sections.slice(0, 1).map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
+      <FeaturedStrip where="explore" />
       {explore}
       {feed.sections.slice(1).map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
       {feed.bucket.due && !bucketBusy && (
