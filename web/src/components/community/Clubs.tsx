@@ -2,6 +2,10 @@
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
 import { useCallback, useEffect, useState } from 'react'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import {
   Check, ChevronRight, Copy, Flag, LogOut, MapPin, Plus, Repeat, Search, Trash2, Trophy, UserPlus, X,
 } from 'lucide-react'
@@ -15,9 +19,9 @@ import { getChallenges, targetLine, type Suggestion } from '@/lib/challenges'
 import { getPeople, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import {
-  LEVELS, SPORTS, addMeetup, answerClubInvite, cancelJoinRequest, createClub, decideRequest, deleteClub, deleteMeetup,
+  LEVELS, SPORTS, answerClubInvite, cancelJoinRequest, decideRequest, deleteClub, deleteMeetup,
   getClub, getClubs, inviteToClub, joinClub, joinClubByCode, joinClubChallenge, leaveClub, meetupWhen, newClubCode,
-  removeMember, rsvpMeetup, setMemberRole, startClubChallenge, updateClub,
+  removeMember, rsvpMeetup, setMemberRole, startClubChallenge,
   type ClubDetail, type ClubInput, type ClubSummary, type ClubsView, type Level, type Meetup, type Sport,
 } from '@/lib/community'
 import { clubSport, linkListing, type DirListing } from '@/lib/clubdir'
@@ -191,24 +195,30 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
 function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
   initial?: ClubSummary; prefill?: ClubInput; home?: { city: string; state: string }; onClose: () => void; onSaved: (c: ClubSummary) => void
 }) {
-  const [f, setF] = useState<Required<ClubInput>>({
+  const [f, setF, draft] = useDraft<Required<ClubInput>>(`club.${initial?.id ?? 'new'}`, () => ({
     name: initial?.name ?? prefill?.name ?? '', sport: initial?.sport ?? prefill?.sport ?? 'running', city: initial?.city ?? home?.city ?? '',
     state: initial?.state ?? home?.state ?? '', description: initial?.description ?? prefill?.description ?? '', emoji: initial?.emoji || '🐇',
     privacy: initial?.privacy ?? 'open',
-  })
+  }), { label: initial ? 'club changes' : 'new club' })
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const set = <K extends keyof ClubInput>(k: K, v: Required<ClubInput>[K]) => setF((x) => ({ ...x, [k]: v }))
   async function save() {
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setQueued(false)
     try {
       const b = { ...f, name: f.name.trim(), description: f.description.trim(), city: f.city.trim(), state: f.state.trim() }
-      const r = initial ? await updateClub(initial.id, b) : await createClub(b)
+      const r = await saveDurably<{ club: ClubSummary }>(initial
+        ? { method: 'PATCH', path: `/api/community/clubs/${encodeURIComponent(initial.id)}`, body: b, label: 'club', coalesce: `club.${initial.id}` }
+        : { method: 'POST', path: '/api/community/clubs', body: b, label: 'club' }, () => setQueued(true))
+      draft.clear()
       onSaved(r.club)
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
   return (
-    <Sheet title={initial ? 'Edit club' : 'Start a club'} onClose={onClose}>
+    <Sheet title={initial ? 'Edit club' : 'Start a club'} onClose={guard.wrap(onClose)} extra={guard.dialog}>
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
       <Field label="Name"><input className={inputCls} maxLength={40} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Wash Park Run Club" /></Field>
       <Field label="Sport"><Choice label="Sport" value={f.sport} options={SPORTS} onChange={(v) => set('sport', v)} /></Field>
       <div className="grid grid-cols-[2fr_1fr] gap-2">
@@ -229,6 +239,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
       <Field label="Who can join" hint={f.privacy === 'open' ? 'Anyone on Rabbit can join.' : 'People ask to join; you or an admin say yes. Invites and the club code skip the wait.'}>
         <Choice label="Who can join" value={f.privacy} options={[['open', 'Anyone'], ['approval', 'Ask to join']]} onChange={(v) => set('privacy', v)} />
       </Field>
+      {queued && <SaveStatus state="queued" />}
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
       <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!f.name.trim()} onClick={() => void save()}>
         {initial ? 'Save' : 'Start club'}
@@ -519,24 +530,34 @@ function MeetupCard({ m, clubId, admin, onChanged, onError }: {
 function MeetupSheet({ clubId, onClose, onSaved }: { clubId: string; onClose: () => void; onSaved: () => void }) {
   const tomorrow = new Date(Date.now() + 86400000)
   const pad = (n: number) => String(n).padStart(2, '0')
-  const [title, setTitle] = useState('')
-  const [start, setStart] = useState(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T07:00`)
-  const [weekly, setWeekly] = useState(false)
-  const [place, setPlace] = useState('')
-  const [pace, setPace] = useState('')
-  const [level, setLevel] = useState<Level>('all')
-  const [notes, setNotes] = useState('')
+  type M = { title: string; start: string; weekly: boolean; place: string; pace: string; level: Level; notes: string }
+  const [m, setM, draft] = useDraft<M>(`meetup.${clubId}`, () => ({ title: '', weekly: false, place: '', pace: '', level: 'all', notes: '',
+    start: `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T07:00` }), { label: 'meetup' })
+  const { title, start, weekly, place, pace, level, notes } = m
+  const setTitle = (title: string) => setM((x) => ({ ...x, title }))
+  const setStart = (start: string) => setM((x) => ({ ...x, start }))
+  const setWeekly = (weekly: boolean) => setM((x) => ({ ...x, weekly }))
+  const setPlace = (place: string) => setM((x) => ({ ...x, place }))
+  const setPace = (pace: string) => setM((x) => ({ ...x, pace }))
+  const setLevel = (level: Level) => setM((x) => ({ ...x, level }))
+  const setNotes = (notes: string) => setM((x) => ({ ...x, notes }))
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   async function save() {
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setQueued(false)
     try {
-      await addMeetup(clubId, { title: title.trim(), start, repeat: weekly ? 'weekly' : 'none', where: place.trim(), pace: pace.trim(), level, notes: notes.trim() })
+      await saveDurably({ method: 'POST', path: `/api/community/clubs/${encodeURIComponent(clubId)}/meetups`, label: 'meetup',
+        body: { title: title.trim(), start, repeat: weekly ? 'weekly' : 'none', where: place.trim(), pace: pace.trim(), level, notes: notes.trim() } },
+      () => setQueued(true))
+      draft.clear()
       onSaved()
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
   return (
-    <Sheet title="Plan a meetup" onClose={onClose}>
+    <Sheet title="Plan a meetup" onClose={guard.wrap(onClose)} extra={guard.dialog}>
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
       <Field label="What"><input className={inputCls} maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Saturday long run" /></Field>
       <Field label="When"><input type="datetime-local" className={inputCls} value={start} onChange={(e) => setStart(e.target.value.slice(0, 16))} /></Field>
       <Field label="Repeats">
@@ -548,6 +569,7 @@ function MeetupSheet({ clubId, onClose, onSaved }: { clubId: string; onClose: ()
       <Field label="Level"><Choice label="Level" value={level} options={LEVELS} onChange={setLevel} /></Field>
       <Field label="Pace (optional)"><input className={inputCls} maxLength={40} value={pace} onChange={(e) => setPace(e.target.value)} placeholder="9:30–10:00 /mi, no-drop" /></Field>
       <Field label="Notes (optional)"><input className={inputCls} maxLength={200} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Coffee after at Steam" /></Field>
+      {queued && <SaveStatus state="queued" />}
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
       <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!title.trim() || !place.trim() || !start} onClick={() => void save()}>Plan it</Button>
     </Sheet>

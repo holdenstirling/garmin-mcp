@@ -11,6 +11,8 @@ import { Card, Choice, Field, NumberStepper, areaCls, inputCls } from './ui'
 import { SPORT_LABEL, fmtDay, todayStr } from './PlanParts'
 import { Sheet } from '@/components/ui/Sheet'
 import type { CalNote } from '@/lib/plancal'
+import { useDraft } from '@/lib/drafts'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }
 
@@ -50,7 +52,11 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     title: session?.title ?? '',
     detail: session?.detail ?? '',
   }
-  const [d, setD] = useState<SessionDraft>(initial)
+  // Unsaved edits are kept per session (or new-session day) on this device until saved.
+  const [d, setD, draft] = useDraft<SessionDraft>(readOnly ? null : `session.${session?.id ?? `new.${date}`}`, initial,
+    { label: session ? `changes to ${session.title}` : 'new session' })
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
+  const close = guard.wrap(onClose)
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isRace = session?.kind === 'race'
@@ -71,14 +77,14 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
 
   async function save() {
     setBusy('save'); setError(null)
-    try { await onSave(d, changed); onClose() }
+    try { await onSave(d, changed); draft.clear(); onClose() }
     catch (e) { setError((e as Error).message) }
     finally { setBusy(null) }
   }
   async function remove() {
     if (!onDelete) return
     setBusy('delete'); setError(null)
-    try { await onDelete(); onClose() }
+    try { await onDelete(); draft.discard(); onClose() }
     catch (e) { setError((e as Error).message) }
     finally { setBusy(null) }
   }
@@ -90,7 +96,8 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     : []
 
   return (
-    <Sheet title={session ? session.title : 'Add a session'} onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title={session ? session.title : 'Add a session'} onClose={close} closing={closing} onDismissed={onDismissed} extra={guard.dialog} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
           <p className="px-1 text-[0.7647rem] text-(--text-muted)">
             {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}
             {session?.synced && ' · on your Garmin calendar'}

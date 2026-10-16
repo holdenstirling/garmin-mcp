@@ -2,6 +2,10 @@
 // Mileage comes from the server (workouts since each item was added, or Garmin's own
 // total for imported gear); this screen lists, adds, edits, retires and imports.
 import { useCallback, useEffect, useState } from 'react'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { Backpack, Bike, ChevronRight, CircleDot, Flag, Footprints, MessageCircle, Plus, RefreshCw, Trash2, Watch, Waves, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -11,7 +15,7 @@ import { Card, Choice, Field, MultiChoice, Screen, areaCls, inputCls } from '@/c
 import { cn } from '@/lib/utils'
 import {
   BIKE_TYPE_LABEL, DEFAULT_SPORT, KIND_GROUP, KIND_LABEL, KIND_ORDER, KM_PER_MI, SHOE_TYPE_LABEL, SPORT_LABEL,
-  createGear, deleteGear, fmtDist, gearName, getGear, importGarminGear, retireGear, updateGear,
+  deleteGear, fmtDist, gearName, getGear, importGarminGear, retireGear,
   type BikeType, type GearCatalog, type GearFields, type GearItem, type GearKind, type GearList, type GearSport, type ShoeType,
 } from '@/lib/gear'
 
@@ -192,14 +196,17 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
     if (km == null) return ''
     return imperial ? String(Math.round(km / KM_PER_MI / 50) * 50) : String(km)
   }
-  const [f, setF] = useState<Form>(() => item ? {
+  // Kept as a draft per item (or the new one) on this device until saved or discarded.
+  const [f, setF, draft] = useDraft<Form>(`gear.${item?.id ?? 'new'}`, () => item ? {
     kind: item.kind, brand: item.brand, model: item.model, nickname: item.nickname, size: item.size,
     bike_type: item.bike_type, shoe_type: item.shoe_type, default_for: item.default_for,
     start: item.start_km ? toUnit(item.start_km) : '', alert: item.alert_km != null ? toUnit(item.alert_km) : '', notes: item.notes,
   } : {
     kind: 'shoes', brand: '', model: '', nickname: '', size: '', bike_type: null, shoe_type: null,
     default_for: ['run'], start: '', alert: defaultAlert('shoes'), notes: '',
-  })
+  }, { label: item ? 'gear changes' : 'new gear' })
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
+  const [queued, setQueued] = useState(false)
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState<'save' | 'retire' | 'delete' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -212,10 +219,10 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
   }
 
   async function run(kind: 'save' | 'retire' | 'delete', fn: () => Promise<GearList>) {
-    setBusy(kind); setError(null)
-    try { onSaved(await fn()); close() }
+    setBusy(kind); setError(null); setQueued(false)
+    try { const r = await fn(); draft.clear(); onSaved(r); close() }
     catch (e) { setError((e as Error).message) }
-    finally { setBusy(null) }
+    finally { setBusy(null); setQueued(false) }
   }
 
   function dist(text: string, label: string, allowEmpty: boolean): number | null {
@@ -241,7 +248,10 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
   function save() {
     const fields = fieldsOrNull()
     if (!fields) return
-    void run('save', () => item ? updateGear(item.id, fields) : createGear({ ...fields, kind: f.kind }))
+    // Durable (lib/outbox): offline / 5xx -> "Not saved yet — we'll retry", sent once.
+    void run('save', () => saveDurably<GearList>(item
+      ? { method: 'PATCH', path: `/api/gear/${encodeURIComponent(item.id)}`, body: fields, label: 'gear', coalesce: `gear.${item.id}` }
+      : { method: 'POST', path: '/api/gear', body: { ...fields, kind: f.kind }, label: 'gear' }, () => setQueued(true)))
   }
 
   const brands = catalog.brands[f.kind] ?? []
@@ -251,9 +261,12 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
 
   return (
     <Screen title={item ? gearName(item) : 'Add gear'} subtitle={item?.retired ? 'Retired' : item ? KIND_LABEL[item.kind] : undefined}
-      closing={closing} onClose={close} onBack={close}
+      closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
       footer={<Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'} disabled={!named}
         onClick={save}>{item ? 'Save changes' : 'Add to garage'}</Button>}>
+      {guard.dialog}
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
+      {queued && <SaveStatus state="queued" className="px-1" />}
       {!item && (
         <Card>
           <Field label="What is it?">

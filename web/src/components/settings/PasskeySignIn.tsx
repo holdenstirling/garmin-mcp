@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { passkeyError, signInWithPasskey, supportsPasskeys } from '@/lib/passkey'
 import { hapticTap } from '@/lib/haptics'
 
-export function PasskeySignIn() {
+export function PasskeySignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   if (!supportsPasskeys()) return null
@@ -14,7 +14,7 @@ export function PasskeySignIn() {
     setBusy(true); setError(null)
     try {
       await signInWithPasskey()
-      window.location.replace('/app/')
+      if (onSignedIn) { setBusy(false); onSignedIn() } else window.location.replace('/app/')
     } catch (e) {
       setError(passkeyError(e)); setBusy(false)
     }

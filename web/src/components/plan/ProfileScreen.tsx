@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronRight, Compass, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { putAthlete, type Me, type Sport } from '@/lib/api'
+import { type Me, type Sport } from '@/lib/api'
 import { getGarminNumbers, sportsFor, type AthleteFull } from '@/lib/plan'
 import { Card, Field, Screen, StepIntro, areaCls } from './ui'
 import { GarminFill, NumbersFields, TraitsFields, WeekFields, YouFields } from './ProfileFields'
@@ -12,6 +12,10 @@ import { PhotoField } from './PhotoField'
 import { TrainingPaces } from '@/components/paces/TrainingPaces'
 import { InterestsSheet } from '@/components/explore/InterestsSheet'
 import { interestsSummary, type Interests } from '@/lib/foryou'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 type Tab = 'you' | 'goals' | 'numbers' | 'week'
 
@@ -24,7 +28,9 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   onOpenGear?: () => void
 }) {
   const initial = me.athlete as AthleteFull
-  const [a, setAState] = useState<Partial<AthleteFull>>(() => ({ ...initial }))
+  // Unsaved answers are kept as a draft on this device (lib/drafts) until saved or discarded.
+  const [a, setAState, draft] = useDraft<Partial<AthleteFull>>('profile', () => ({ ...initial }), { label: 'training profile' })
+  const [queued, setQueued] = useState(false)
   const [tab, setTab] = useState<Tab>('you')
   const [closing, setClosing] = useState(false)
   const [busy, setBusy] = useState<'save' | 'garmin' | null>(null)
@@ -49,12 +55,15 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   }, [a, initial])
 
   async function save() {
-    setBusy('save'); setMsg(null)
+    setBusy('save'); setMsg(null); setQueued(false)
     try {
       const body = { ...changed }
       // Past races without a name are dropped rather than refused.
       if (Array.isArray(body.race_history)) body.race_history = (body.race_history as { name: string }[]).filter((r) => r.name.trim())
-      await putAthlete(body as unknown as Parameters<typeof putAthlete>[0])
+      // Durable PUT (lib/outbox): offline / 5xx keeps it queued and retries.
+      await saveDurably({ method: 'PUT', path: '/api/athlete', body, label: 'training profile', coalesce: 'athlete' },
+        () => setQueued(true))
+      draft.clear(); setQueued(false)
       setSaved(true)
       setMsg({ text: 'Saved. Rabbit uses these from now on.', ok: true })
       onSaved()
@@ -74,8 +83,9 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   }
 
   const dirty = Object.keys(changed).length > 0 && !saved
+  const guard = useUnsavedGuard(dirty && !queued, draft.discard)
   return (<>
-    <Screen title="Training profile" subtitle="Used for your plan, zones and coaching" closing={closing} onClose={close}
+    <Screen title="Training profile" subtitle="Used for your plan, zones and coaching" closing={closing} onClose={guard.wrap(close)}
       headerExtra={
         <div className="mx-auto mt-2.5 flex max-w-xl gap-1 rounded-lg bg-(--bg-elevated) p-1">
           {([['you', 'You'], ['goals', 'Goals'], ['numbers', 'Zones'], ['week', 'Week']] as [Tab, string][]).map(([t, l]) => (
@@ -91,6 +101,10 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         </Button>
       </>}>
       {me.garmin.connected && (tab === 'you' || tab === 'numbers') && <GarminFill busy={busy === 'garmin'} onClick={() => void fill()} />}
+      {guard.dialog}
+      {draft.restored && <DraftRestored onDiscard={draft.discard} note="tap Save to keep it" />}
+      {queued && <SaveStatus state="queued" className="px-1" />}
+      {saved && !msg && <SaveStatus state="saved" className="px-1" />}
       {msg && <p className={`px-1 text-[0.7647rem] ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
       {tab === 'you' && (
         <>

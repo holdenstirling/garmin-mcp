@@ -18,9 +18,13 @@ import { Chip, ChipRow } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { hapticTap } from '@/lib/haptics'
 import { celebrate } from '@/components/fx/motion'
+import { readDraft, useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { DENIED_ERRORS, speechCtor, type SpeechRecognizer, type SpeechResultEvent } from '@/lib/speech'
 import {
-  AREA_LABEL, checkinChips, createCheckin, sorenessLabel, updateCheckin,
+  AREA_LABEL, checkinChips, sorenessLabel, updateCheckin,
   type Area, type Checkin, type CheckinEdit, type Side, type Sleep,
 } from '@/lib/checkins'
 
@@ -56,18 +60,23 @@ const own = (e: SyntheticEvent) => e.stopPropagation()
 
 function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceCheckInProps) {
   const [closing, setClosing] = useState(false)
-  const drag = useSheetDrag(onClose)
-  const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
+  const shut = () => { setClosing(true); window.setTimeout(onClose, 200) }
 
+  // What they said or typed is kept as a draft (per session / workout) until it's saved.
+  const scope = sessionId ?? (activityId != null ? `a${activityId}` : 'day')
   const supported = speechCtor() !== null
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [typing, setTyping] = useState(!supported)
-  const [text, setText] = useState('')
+  const [text, setText, textDraft] = useDraft<string>(`checkin.${scope}.text`, '', { label: 'check-in', isEmpty: (v) => !v.trim() })
+  const [feel, setFeel, feelDraft] = useDraft<number | null>(`checkin.${scope}.feel`, null, { label: 'check-in' })
+  const [phase, setPhase] = useState<Phase>(() => readDraft<string>(`checkin.${scope}.text`) ? 'review' : 'idle')
+  const [typing, setTyping] = useState(() => !supported || !!readDraft<string>(`checkin.${scope}.text`))
+  const [queued, setQueued] = useState(false)
+  const [saved, setSaved] = useState<{ c: Checkin; xp: number } | null>(null)
+  const guard = useUnsavedGuard(!saved && (!!text.trim() || feel !== null), () => { textDraft.discard(); feelDraft.discard() })
+  const close = guard.wrap(shut)
+  const drag = useSheetDrag(close)
   const [interim, setInterim] = useState('')
-  const [feel, setFeel] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(supported ? null : "Voice isn't available in this browser. Type it instead.")
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState<{ c: Checkin; xp: number } | null>(null)
 
   // ----------------------------------------------------------- speech ---
   const rec = useRef<SpeechRecognizer | null>(null)
@@ -160,12 +169,14 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
   const canSave = text.trim().length > 0 || feel !== null
   async function save() {
     if (!canSave) return
-    setPhase('saving'); setError(null)
+    setPhase('saving'); setError(null); setQueued(false)
     try {
-      const r = await createCheckin({
+      // Durable + idempotent (lib/outbox): offline / 5xx -> kept here, retried, saved once.
+      const r = await saveDurably<{ checkin: Checkin; xp: number }>({ method: 'POST', path: '/api/checkins', label: 'check-in', body: {
         text: text.trim(), ...(feel !== null ? { feel } : {}),
         ...(sessionId ? { session_id: sessionId } : {}), ...(activityId != null ? { activity_id: activityId } : {}),
-      })
+      } }, () => { setQueued(true); setPhase('review') })
+      textDraft.clear(); feelDraft.clear(); setQueued(false)
       setSaved({ c: r.checkin, xp: r.xp })
       setPhase('done')
       onSaved?.(r.checkin, r.xp)
@@ -180,6 +191,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
     <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`}
       onClick={(e) => { e.stopPropagation(); close() }}
       onTouchStart={own} onTouchMove={own} onTouchEnd={own} onTouchCancel={own} onKeyDown={own}>
+      {guard.dialog}
       <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}
         aria-label={heading}>
         <div className="sheet-handle" />
@@ -189,7 +201,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
         </div>
         <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {phase === 'done' && saved ? (
-            <Result saved={saved} onDone={close}
+            <Result saved={saved} onDone={shut}
               onEdited={(c) => { setSaved((s) => s && { ...s, c }); onSaved?.(c, 0) }} />
           ) : phase === 'saving' ? (
             <RabbitLoader className="py-10" label="Making sense of it…" />
@@ -215,6 +227,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
 
               <QuickChips feel={feel} onFeel={(v) => setFeel((f) => (f === v ? null : v))} onPhrase={addPhrase} />
 
+              {queued && <SaveStatus state="queued" className="px-1" />}
               {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
 
               <div className="flex flex-wrap items-center gap-2">
@@ -233,7 +246,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
                     <Mic className="size-4" /> Add more
                   </Button>
                 )}
-                <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" disabled={!canSave || phase === 'listening'}
+                <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" disabled={!canSave || phase === 'listening' || queued}
                   onClick={() => void save()}>
                   Save check-in
                 </Button>

@@ -98,10 +98,45 @@ print(d.get("sizeGb","?"), d.get("type","").rsplit("/",1)[-1], pols)' "$TMP/disk
     LAST_TS=${LAST##*[[:space:]]}
     AGE_H=$(( ( $(date -u +%s) - $(date -u -d "$LAST_TS" +%s 2>/dev/null || echo 0) ) / 3600 ))
     if (( AGE_H <= 26 )); then pass "latest snapshot ${AGE_H}h old ($NSNAP total)"
-    else warn "latest snapshot ${AGE_H}h old ($NSNAP total)"; fi
+    elif (( AGE_H < 36 )); then warn "latest snapshot ${AGE_H}h old ($NSNAP total)"
+    else fail "latest snapshot ${AGE_H}h old ($NSNAP total): the daily schedule isn't running"; fi
   fi
 else
   fail "cannot describe boot disk '${VM_BOOT_DISK:-?}'"
+fi
+
+# ---------------------------------------------------------------------------
+section "Off-server backups (Cloud Storage, 14-offsite-backups.sh)"
+BUCKET=${BACKUP_BUCKET:-$PROJECT-rabbit-backups}
+if g storage buckets describe "gs://$BUCKET" --format=json >"$TMP/bucket.json" 2>/dev/null; then
+  python3 - "$TMP/bucket.json" <<'PY' | tee "$TMP/bucket.out"
+import json, sys
+b = json.load(open(sys.argv[1]))
+iam = b.get("iamConfiguration", {})
+ubla = b.get("uniform_bucket_level_access", iam.get("uniformBucketLevelAccess", {}).get("enabled"))
+pap = b.get("public_access_prevention", iam.get("publicAccessPrevention"))
+ver = b.get("versioning_enabled", (b.get("versioning") or {}).get("enabled"))
+rules = (b.get("lifecycle_config") or b.get("lifecycle") or {}).get("rule", [])
+print(("PASS" if ubla else "FAIL") + f"   uniform bucket-level access: {ubla}")
+print(("PASS" if pap == "enforced" else "FAIL") + f"   public access prevention: {pap}")
+print(("PASS" if ver else "WARN") + f"   object versioning: {ver}")
+print(("PASS" if len(rules) >= 2 else "WARN") + f"   lifecycle rules: {len(rules)} (30 daily / 12 monthly)")
+PY
+  NP=$((NP + $(grep -c '^PASS' "$TMP/bucket.out"))); NW=$((NW + $(grep -c '^WARN' "$TMP/bucket.out"))); NF=$((NF + $(grep -c '^FAIL' "$TMP/bucket.out")))
+  roles=$(g storage buckets get-iam-policy "gs://$BUCKET" --flatten='bindings[].members' \
+    --filter="bindings.members:serviceAccount:${VM_SA:-x}" --format='value(bindings.role)' 2>/dev/null | sort -u | tr '\n' ' ')
+  if [[ "$roles" == "roles/storage.objectCreator " ]]; then pass "VM service account: only objectCreator on gs://$BUCKET"
+  else warn "VM service account roles on gs://$BUCKET: ${roles:-none} (want only roles/storage.objectCreator)"; fi
+  NEWEST=$(g storage ls -l "gs://$BUCKET/daily/**" 2>/dev/null | awk '$2 ~ /^[0-9]{4}-/ {print $2}' | sort | tail -1)
+  if [[ -z "$NEWEST" ]]; then
+    fail "no archives in gs://$BUCKET/daily/ yet"
+  else
+    B_AGE=$(( ( $(date -u +%s) - $(date -u -d "$NEWEST" +%s 2>/dev/null || echo 0) ) / 3600 ))
+    if (( B_AGE < 36 )); then pass "newest off-server backup ${B_AGE}h old ($NEWEST)"
+    else fail "newest off-server backup ${B_AGE}h old ($NEWEST): check 'journalctl -u rabbit-backup' on the VM"; fi
+  fi
+else
+  fail "no off-server backup bucket gs://$BUCKET. Fix: bash infra/cloudshell/14-offsite-backups.sh"
 fi
 
 # ---------------------------------------------------------------------------
@@ -281,6 +316,25 @@ for d in /var/lib/garmin-mcp /var/lib/rabbit; do
   plain=$(find "$d" -type f \( -name '*.json' -o -name '*.txt' -o -name '*.db' \) 2>/dev/null | wc -l)
   (( plain == 0 )) || w "$d: $plain non-.fernet data files (check they hold no plaintext secrets/health data)"
 done
+# --- nightly off-server backup (infra/backup, 14-offsite-backups.sh)
+if systemctl is-enabled --quiet rabbit-backup.timer 2>/dev/null; then
+  p "rabbit-backup.timer enabled (next: $(systemctl show -p NextElapseUSecRealtime --value rabbit-backup.timer))"
+  if [[ -f /var/lib/rabbit-backup/last-success ]]; then
+    read -r ts obj bytes < /var/lib/rabbit-backup/last-success
+    age=$(( ( $(date -u +%s) - ts ) / 3600 ))
+    (( age < 36 )) && p "last backup ${age}h ago: $obj ($bytes bytes)" || f "last backup ${age}h ago ($obj): journalctl -u rabbit-backup"
+  else
+    f "rabbit-backup has never succeeded (journalctl -u rabbit-backup)"
+  fi
+  systemctl is-failed --quiet rabbit-backup.service && f "rabbit-backup.service last run failed"
+else
+  f "no nightly off-server backup timer (run infra/cloudshell/14-offsite-backups.sh)"
+fi
+for pp in 8000:garmin-mcp 8001:rabbit; do
+  body=$(curl -fsS -m 5 "http://127.0.0.1:${pp%%:*}/healthz" 2>/dev/null)
+  grep -q '"data_writable":true' <<<"$body" && p "${pp#*:} can write its data dir" || w "${pp#*:} /healthz: ${body:-no answer} (data_writable missing or false)"
+done
+
 for a in garmin-mcp rabbit; do
   [[ -d /opt/$a/releases ]] && i "$a: $(ls -1 /opt/$a/releases | wc -l) releases kept, current -> $(basename "$(readlink -f /opt/$a/current)")"
 done

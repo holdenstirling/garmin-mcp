@@ -1,7 +1,14 @@
 // Same-origin JSON API. The session is an HttpOnly cookie, so nothing auth-related
 // lives in JS. Mutating calls always send JSON (the server rejects anything else).
 
-export class AuthError extends Error {}
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message)
+    // The session ran out (or was revoked) mid-use: App shows "Sign in again" over the
+    // current screen, so nothing typed is lost (components/ui/SessionLost.tsx).
+    try { window.dispatchEvent(new Event('rabbit:auth-lost')) } catch { /* not in a browser */ }
+  }
+}
 
 export type CoachSettings = {
   timezone: string

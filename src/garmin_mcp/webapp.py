@@ -30,6 +30,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from .appstore import AppStore
+from .idempotency import Idempotency, InFlight, Mismatch, valid_key as idem_key_ok
 from .attachments import MAX_UPLOAD, AttachmentError, AttachmentStore
 from .coaching import CoachError
 from .config import Settings
@@ -177,6 +178,18 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return True
         return local and host.split(":")[0] in {"localhost", "127.0.0.1"}
 
+    # Optional Idempotency-Key on mutating calls (idempotency.py): the app's outbox retries
+    # a save with the same key, and the first 2xx answer is replayed instead of running twice.
+    idem = Idempotency(auth._store)
+
+    async def _idem_settle(user_id: str, slot: str, raw: bytes, resp: Response | None) -> None:
+        body = getattr(resp, "body", None)  # streamed responses have none: never replayed
+        if resp is None or not isinstance(body, bytes) or "set-cookie" in resp.headers:
+            idem.abort(user_id, slot)
+            return
+        status, media = resp.status_code, resp.media_type
+        await anyio.to_thread.run_sync(lambda: idem.finish(user_id, slot, raw, status, body, media))
+
     def _api(handler: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
         async def endpoint(request: Request) -> Response:
             if not host_ok(request):
@@ -188,6 +201,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 return _err(403, "bad origin")
             if user_id.startswith("coach_") and not request.url.path.startswith(COACH_PATHS):
                 return _err(403, "Coach accounts can only use the coach view.")
+            key = request.headers.get("idempotency-key") if mutating else None
+            slot: str | None = None
+            raw = b""
+            if key is not None:
+                if not idem_key_ok(key):
+                    return _err(400, "bad Idempotency-Key")
+                raw = await request.body()
+                try:
+                    slot, cached = await anyio.to_thread.run_sync(
+                        lambda: idem.begin(user_id, request.method, request.url.path, key, raw))
+                except InFlight:
+                    return JSONResponse({"error": "Still saving that. Try again in a moment.", "code": "in_flight"},
+                                        status_code=409, headers={"Cache-Control": "no-store"})
+                except Mismatch:
+                    return _err(422, "That Idempotency-Key was already used for a different request.")
+                if cached is not None:
+                    return Response(Idempotency.replay_body(cached), status_code=int(cached["status"]),
+                                    media_type=str(cached.get("type") or "application/json"),
+                                    headers={"Cache-Control": "no-store", "Idempotent-Replayed": "true"})
+            resp: Response | None = None
             try:
                 resp = await handler(request, user_id)
             except (ValueError, json.JSONDecodeError):
@@ -196,6 +229,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 log_event(logger, logging.ERROR, "app_unexpected_error",
                           path=request.url.path, error=type(e).__name__)
                 return _err(500, f"Internal error ({type(e).__name__})")
+            finally:
+                if slot is not None:
+                    await _idem_settle(user_id, slot, raw, resp)
             resp.headers["Cache-Control"] = "no-store"
             return resp
         return endpoint

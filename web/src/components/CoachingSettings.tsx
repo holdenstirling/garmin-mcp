@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell, CalendarCheck, Clock, FlaskConical, Play, Sunrise, Watch } from 'lucide-react'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
-import { postJSON, putSettings, type CoachSettings, type Me } from '@/lib/api'
+import { postJSON, type CoachSettings, type Me } from '@/lib/api'
+import { SaveStatus, useSaver } from '@/components/ui/SaveStatus'
 import { MotionLab } from '@/components/fx/MotionLab'
 
 export function CoachingSettings({ me, onChange, onDevDone }: {
@@ -16,13 +17,16 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
   sRef.current = s
   // Saves can overlap: only the newest one's reply (or failure) is applied.
   const seq = useRef(0)
+  // Durable PUT (lib/outbox): a subtle "Saved" tick, or "Not saved yet — we'll retry" while
+  // offline (the switch keeps what they picked; queued patches are merged and sent later).
+  const saver = useSaver<CoachSettings>()
   async function save(patch: Partial<CoachSettings>, prev: CoachSettings = sRef.current) {
     const n = ++seq.current
     setS((cur) => ({ ...cur, ...patch }))
     try {
-      const next = await putSettings(patch)
-      if (n !== seq.current) return
-      setS(next)
+      const r = await saver.run({ method: 'PUT', path: '/api/settings', body: patch, label: 'settings', coalesce: 'settings' })
+      if (!r.ok || n !== seq.current) return
+      setS(r.data)
       onChange()
     } catch (e) {
       if (n !== seq.current) return
@@ -72,6 +76,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
 
   return (
     <>
+      <div className="-mb-3 flex min-h-5 justify-end px-4"><SaveStatus state={saver.state} error={saver.error} /></div>
       <Group label="Coaching messages"
         footer={`Rabbit can message you first; these arrive as notifications. Times are ${tz} time.`}>
         <Row icon={<Icon><Watch /></Icon>} title="Workout feedback" subtitle="A short note after each new activity"

@@ -97,6 +97,11 @@ class StateStore:
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(tmp, self.path)
+            dfd = os.open(self.path.parent, os.O_RDONLY)  # persist the rename itself
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)
         except BaseException:
             with contextlib.suppress(OSError):
                 os.unlink(tmp)

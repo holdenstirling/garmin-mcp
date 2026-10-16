@@ -8,13 +8,18 @@ import { inputCls } from '@/components/plan/ui'
 import { joinInfo, joinWithPasskey, passkeyError, PasskeyApiError, supportsPasskeys } from '@/lib/passkey'
 import { hapticTap } from '@/lib/haptics'
 import { flushUsage, track } from '@/lib/usage'
+import { useDraft } from '@/lib/drafts'
 
 type Phase = { kind: 'loading' } | { kind: 'bad'; message: string } | { kind: 'form'; inviter: string; signedIn: boolean }
 
 export function JoinScreen({ token }: { token: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  // Name + email only (never anything else) are kept as a draft per invite (lib/drafts, no
+  // account yet, so it's the device's "anon" space) until the join goes through.
+  const [f, setF, draft] = useDraft<{ name: string; email: string }>(`join.${token.slice(0, 16)}`, { name: '', email: '' })
+  const { name, email } = f
+  const setName = (name: string) => setF((x) => ({ ...x, name }))
+  const setEmail = (email: string) => setF((x) => ({ ...x, email }))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<{ text: string; signin?: boolean } | null>(null)
   const nameId = useId(), emailId = useId(), errId = useId(), hintId = useId()
@@ -32,6 +37,7 @@ export function JoinScreen({ token }: { token: string }) {
     setBusy(true); setError(null)
     try {
       await joinWithPasskey(token, name.trim(), email.trim())
+      draft.clear()
       track('invite_join'); flushUsage(true) // counted as the new account (lib/usage)
       window.location.replace('/app/')
     } catch (err) {

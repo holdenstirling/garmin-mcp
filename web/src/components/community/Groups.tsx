@@ -13,11 +13,15 @@ import { Group, Row } from '@/components/settings/Grouped'
 import { Field, Screen, inputCls } from '@/components/plan/ui'
 import type { SocialUser } from '@/lib/social'
 import {
-  addToGroup, createGroup, deleteGroup, getGroup, groupFriends, leaveGroup, removeFromGroup, updateGroup,
+  addToGroup, deleteGroup, getGroup, groupFriends, leaveGroup, removeFromGroup,
   type FeedGroup,
 } from '@/lib/community2'
 import { cn } from '@/lib/utils'
 import { CommunityFeed, PersonAvatar } from './Feed'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 const EMOJIS = ['👟', '🏃', '🌅', '🚴', '🏊', '⛰️', '🔥', '☕', '🍻', '🐇', '💪', '🏁']
 
@@ -25,22 +29,33 @@ const EMOJIS = ['👟', '🏃', '🌅', '🚴', '🏊', '⛰️', '🔥', '☕',
 export function GroupSheet({ initial, onClose, onSaved }: {
   initial?: FeedGroup; onClose: () => void; onSaved: (g: FeedGroup) => void
 }) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [emoji, setEmoji] = useState(initial?.emoji ?? '👟')
-  const [picked, setPicked] = useState<string[]>([])
+  type G = { name: string; emoji: string; picked: string[] }
+  const [g, setG, draft] = useDraft<G>(`group.${initial?.id ?? 'new'}`,
+    () => ({ name: initial?.name ?? '', emoji: initial?.emoji ?? '👟', picked: [] }), { label: initial ? 'group changes' : 'new group' })
+  const { name, emoji, picked } = g
+  const setName = (name: string) => setG((x) => ({ ...x, name }))
+  const setEmoji = (emoji: string) => setG((x) => ({ ...x, emoji }))
+  const setPicked = (picked: string[]) => setG((x) => ({ ...x, picked }))
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   async function save(el: HTMLElement) {
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setQueued(false)
     try {
-      const r = initial ? await updateGroup(initial.id, { name: name.trim(), emoji }) : await createGroup({ name: name.trim(), emoji, members: picked })
+      const r = await saveDurably<{ group: FeedGroup }>(initial
+        ? { method: 'PATCH', path: `/api/community/groups/${encodeURIComponent(initial.id)}`, body: { name: name.trim(), emoji }, label: 'group', coalesce: `group.${initial.id}` }
+        : { method: 'POST', path: '/api/community/groups', body: { name: name.trim(), emoji, members: picked }, label: 'group' },
+      () => setQueued(true))
+      draft.clear()
       if (!initial) burst(el, 'kudos')
       onSaved(r.group)
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
   return (
-    <Sheet title={initial ? 'Edit group' : 'New group'} onClose={onClose}
+    <Sheet title={initial ? 'Edit group' : 'New group'} onClose={guard.wrap(onClose)} extra={guard.dialog}
       bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
       <Field label="Name">
         <input className={inputCls} maxLength={40} value={name} autoFocus placeholder="Saturday long run crew" onChange={(e) => setName(e.target.value)} />
       </Field>
@@ -52,6 +67,7 @@ export function GroupSheet({ initial, onClose, onSaved }: {
       </div>
       {!initial && <FriendPicker picked={picked} onPick={setPicked} />}
       <p className="text-[0.6471rem] text-(--text-muted)">Only people in the group see what you post to it. They can leave any time.</p>
+      {queued && <SaveStatus state="queued" />}
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
       <Button variant="primary" className="h-11 text-[0.7647rem]" loading={busy} disabled={!name.trim()} onClick={(e) => void save(e.currentTarget)}>
         {initial ? 'Save' : picked.length ? `Start group with ${picked.length}` : 'Start group'}

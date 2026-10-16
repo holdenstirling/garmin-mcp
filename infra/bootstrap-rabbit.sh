@@ -33,4 +33,11 @@ systemctl enable rabbit
 if [[ -n "$DOMAIN" ]]; then
   DOMAIN="$DOMAIN" bash "$SRC/infra/render-caddy.sh"
 fi
+
+# Nightly off-server backup (infra/backup; first set up by infra/cloudshell/14-offsite-backups.sh,
+# which creates the bucket). Refreshed here once it's configured, or when BACKUP_BUCKET is given.
+if [[ -n "${BACKUP_BUCKET:-}" || -f /etc/rabbit-backup.env ]]; then
+  echo "==> Nightly backup timer"
+  bash "$SRC/infra/backup/install.sh"
+fi
 echo "Rabbit bootstrap complete. Fill in /etc/rabbit/env (README), then ./deploy.sh --rabbit."

@@ -51,6 +51,8 @@ export function chatApi(base: string) {
       return r
     }),
     post: (id: string, text: string) => sendJSON<{ message: Message }>('POST', `${base}/${id}/messages`, { text }),
+    /** for durable sends (lib/outbox) */
+    messagesPath: (id: string) => `${base}/${id}/messages`,
   }
 }
 export type ChatApi = ReturnType<typeof chatApi>

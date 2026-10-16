@@ -4,7 +4,10 @@ import { Dumbbell, Flag, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
-import { timeAgo, type ChatApi, type Thread } from '@/lib/coach'
+import { timeAgo, type ChatApi, type Message, type Thread } from '@/lib/coach'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 const POLL_MS = 15_000
 
@@ -14,7 +17,9 @@ export function ThreadView({ api, threadId, me, otherName, draft }: {
   draft?: string
 }) {
   const [t, setT] = useState<Thread | null>(null)
-  const [text, setText] = useState(draft ?? '')
+  // An unsent message is kept per thread on this device (lib/drafts) until it's sent.
+  const [text, setText, msgDraft] = useDraft<string>(`coachmsg.${threadId}`, draft ?? '', { label: 'message' })
+  const [queued, setQueued] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // A failed poll shows until the next one succeeds.
@@ -34,13 +39,15 @@ export function ThreadView({ api, threadId, me, otherName, draft }: {
   async function send() {
     const body = text.trim()
     if (!body) return
-    setBusy(true); setError(null)
+    setBusy(true); setError(null); setQueued(false)
     try {
-      const r = await api.post(threadId, body)
+      // Durable + idempotent: offline / 5xx keeps it here and retries; never sent twice.
+      const r = await saveDurably<{ message: Message }>({ method: 'POST', path: api.messagesPath(threadId), body: { text: body },
+        label: 'message' }, () => setQueued(true))
       setT((x) => x ? { ...x, messages: [...x.messages, r.message] } : x)
-      setText('')
+      setText(''); msgDraft.clear()
     } catch (e) { setError((e as Error).message) }
-    finally { setBusy(false) }
+    finally { setBusy(false); setQueued(false) }
   }
 
   return (
@@ -69,6 +76,7 @@ export function ThreadView({ api, threadId, me, otherName, draft }: {
         })}
         <div ref={end} />
       </div>
+      {queued && <SaveStatus state="queued" />}
       {(error ?? pollError) && <p className="text-[0.7647rem] text-(--danger)" role="alert">{error ?? pollError}</p>}
       <div className="sticky bottom-0 flex items-end gap-2 bg-(--bg) pb-1 pt-1">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}

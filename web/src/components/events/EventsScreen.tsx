@@ -10,8 +10,8 @@ import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
-  DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, TYPE_LABEL, WEEKDAYS, countdown, createEvent, deleteEvent, daysUntil, isRace, kindOf, listEvents,
-  makeMainEvent, updateEvent, writeDebrief,
+  DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, TYPE_LABEL, WEEKDAYS, countdown, deleteEvent, daysUntil, isRace, kindOf, listEvents,
+  makeMainEvent, writeDebrief,
   type Debrief, type EventFields, type EventKind, type EventType, type RaceEvent,
 } from '@/lib/events'
 import { EventBasics, EventGoal, EventKindFields, InfoBlock, KIND_ICON, KindPicker, kindDefaults } from './EventForm'
@@ -23,6 +23,10 @@ import { listReadiness, type RaceGrade } from '@/lib/readiness'
 import { getPeopleSummary, type PeopleSummary } from '@/lib/racepeople'
 import { FollowingRaces, PeopleRow, PeopleSheet, RaceInvitesInbox } from './RacePeople'
 import { EventsSkeleton } from '@/components/ui/Skeleton'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
@@ -213,7 +217,11 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
 }) {
   const [closing, setClosing] = useState(false)
   // A new event starts with the kind picker; the rest of the form follows the kind.
-  const [v, setV] = useState<EventFields>(() => event ? { ...event, kind: kindOf(event) } : {})
+  // Draft per event (or the new one): kept on this device until it's saved or discarded.
+  const [v, setV, draft] = useDraft<EventFields>(`event.${event?.id ?? 'new'}`,
+    () => event ? { ...event, kind: kindOf(event) } : {}, { label: event ? `changes to ${event.name}` : 'new event' })
+  const guard = useUnsavedGuard(draft.dirty, draft.discard)
+  const [queued, setQueued] = useState(false)
   const kind: EventKind | null = event ? kindOf(event) : (v.kind ?? null)
   const canBeMain = kind != null && MAIN_KINDS.includes(kind)
   const race = kind === 'race'
@@ -229,8 +237,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
   const past = !!event && daysUntil(event.date) < 0
 
   async function run(kind: 'save' | 'delete' | 'main', fn: () => Promise<{ events: RaceEvent[] }>) {
-    setBusy(kind); setError(null)
-    try { const r = await fn(); onSaved(r.events); close() }
+    setBusy(kind); setError(null); setQueued(false)
+    try { const r = await fn(); draft.clear(); onSaved(r.events); close() }
     catch (e) { setError((e as Error).message) }
     finally { setBusy(null) }
   }
@@ -248,15 +256,18 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
 
   return (
     <Screen title={event ? event.name : 'Add an event'} subtitle={event?.main ? 'Your main event' : undefined}
-      closing={closing} onClose={close} onBack={close}
+      closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
       footer={<>
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
           disabled={!kind || !(v.name ?? '').trim() || !v.date}
           onClick={(e) => {
             const btn = e.currentTarget
             void run('save', async () => {
-              if (event) return updateEvent(event.id, payload())
-              const r = await createEvent({ ...payload(), main })
+              // Durable: offline / 5xx -> "Not saved yet — we'll retry" (lib/outbox, idempotent).
+              if (event) return saveDurably<{ events: RaceEvent[] }>({ method: 'PATCH', path: `/api/events/${event.id}`,
+                body: payload(), label: 'event', coalesce: `event.${event.id}` }, () => setQueued(true))
+              const r = await saveDurably<{ events: RaceEvent[] }>({ method: 'POST', path: '/api/events',
+                body: { ...payload(), main }, label: 'event' }, () => setQueued(true))
               celebrate(btn, 'race') // a new event on the calendar
               return r
             })
@@ -264,6 +275,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
           {event ? 'Save changes' : 'Add event'}
         </Button>
       </>}>
+      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
+      {guard.dialog}
       {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
       {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />
@@ -321,6 +334,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
           <Trash2 className="size-4" /> Delete event
         </Button>
       ))}
+      {queued && busy === 'save' && <SaveStatus state="queued" className="px-1" />}
       {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
     </Screen>
   )

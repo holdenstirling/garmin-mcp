@@ -22,10 +22,14 @@ import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileField
 import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
 import { track } from '@/lib/usage'
+import { clearDraft, readDraft, writeDraft } from '@/lib/drafts'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
-const DRAFT_KEY = 'rabbit.setup.v1'
+// lib/drafts key (per user, 14 days, like every other form). The wizard keeps its own merge
+// rules (server values win for anything the server already has), so it uses the raw helpers.
+const DRAFT_KEY = 'setup'
+const LEGACY_KEY = 'rabbit.setup.v1' // pre-lib/drafts drafts (not per user): read once, then dropped
 
 type Draft = {
   goalId: string | null       // the goal this draft was started for
@@ -79,8 +83,13 @@ function initialDraft(me: Me): Draft {
     start_date: todayIso(),
   }
   try {
-    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as (Draft & { at: number }) | null
-    if (saved && Date.now() - saved.at < 14 * 86_400_000) {
+    let saved = readDraft<Draft>(DRAFT_KEY)
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) ?? 'null') as (Draft & { at: number }) | null
+    if (legacy) {
+      localStorage.removeItem(LEGACY_KEY)
+      if (!saved && Date.now() - legacy.at < 14 * 86_400_000) saved = legacy
+    }
+    if (saved) {
       const athlete = { ...fresh.athlete, ...missingOnly<AthleteFull>(saved.athlete, a) }
       // Race answers only come back for the same goal, and never a half-made "new race"
       // (it would otherwise be applied to the current goal). The saved event's details
@@ -135,7 +144,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
   useEffect(() => {
     if (step === 'done' || !changed.current) return
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, at: Date.now() })) } catch { /* ignore */ }
+    writeDraft(DRAFT_KEY, draft, 'plan setup')
   }, [draft, step])
 
   const g = draft.goal
@@ -205,7 +214,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       if (athlete.long_day && !(athlete.available_days ?? []).includes(athlete.long_day)) athlete.long_day = null
       const r = await setupPlan({ athlete, goal, event: draft.event, start_date: draft.start_date, new_goal: draft.newGoal && !!me.goal })
       setPlan(r.plan)
-      try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+      clearDraft(DRAFT_KEY)
       setStep('done')
       track('setup_complete')
       onDone()

@@ -1,0 +1,30 @@
+[Unit]
+Description=Nightly off-server backup of Rabbit + Garmin MCP data to Cloud Storage
+Documentation=file:///opt/rabbit/current/infra/restore-backup.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# root: the two data dirs are 0700 and owned by different service users. Read-only everywhere
+# except its own state dir (StateDirectory) and a private /var/tmp; it never writes to the data
+# dirs. The only capability kept is reading past file permissions.
+ExecStart=/usr/local/sbin/rabbit-backup
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=200M
+TimeoutStartSec=30min
+UMask=0077
+ProtectSystem=strict
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+PrivateTmp=yes
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+StateDirectory=rabbit-backup
+StateDirectoryMode=0700

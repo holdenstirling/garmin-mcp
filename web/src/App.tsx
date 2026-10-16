@@ -9,6 +9,10 @@ import { JoinScreen } from './screens/JoinScreen'
 import { RabbitLogo } from './components/RabbitLogo'
 import { RabbitLoader } from './components/RabbitLoader'
 import { FxHost } from './components/fx/CarrotBurst'
+import { SessionLost } from './components/ui/SessionLost'
+import { OutboxPill, ResumeNote } from './components/ui/SaveSafety'
+import { setDraftUser } from './lib/drafts'
+import { startOutbox } from './lib/outbox'
 
 const BOOT_MESSAGES = ['Lacing up…', 'Warming up…', 'Checking your watch…', 'Crunching the numbers…']
 
@@ -34,6 +38,13 @@ function MainApp() {
   const reqId = useRef(0)
   // Once the app is showing, a failed refresh keeps the current UI instead of the error screen.
   const shown = useRef(false)
+  // The session ran out mid-use: sign in again over the current screen (nothing typed is lost).
+  const [authLost, setAuthLost] = useState(false)
+  useEffect(() => {
+    const on = () => { if (shown.current) setAuthLost(true) }
+    window.addEventListener('rabbit:auth-lost', on)
+    return () => window.removeEventListener('rabbit:auth-lost', on)
+  }, [])
 
   const load = useCallback(async () => {
     const params = new URLSearchParams(window.location.search)
@@ -49,6 +60,10 @@ function MainApp() {
     try {
       const me = await getMe()
       if (id !== reqId.current) return
+      // The Google sign-in window opened by SessionLost: done, hand back to the app.
+      if (window.name === 'rabbit-signin' && window.opener) { window.name = ''; window.close() }
+      setDraftUser(me.user_id) // lib/drafts: per-user form drafts
+      startOutbox()            // lib/outbox: retry saves that didn't go through
       shown.current = true
       setState({ kind: 'home', me })
     } catch (e) {
@@ -70,6 +85,10 @@ function MainApp() {
       {state.kind === 'home' && (state.me.role === 'coach'
         ? <CoachApp me={state.me} onSignOut={() => void signOut().finally(load)} />
         : <Chat me={state.me} onChange={load} />)}
+      {state.kind === 'home' && <><OutboxPill /><ResumeNote userId={state.me.user_id} /></>}
+      {state.kind === 'home' && authLost && (
+        <SessionLost userId={state.me.user_id} onBack={() => { setAuthLost(false); startOutbox() }} />
+      )}
       {state.kind === 'error' && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <RabbitLogo size={40} />

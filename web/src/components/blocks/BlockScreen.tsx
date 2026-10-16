@@ -14,8 +14,12 @@ import { WeekRing } from '@/components/progress/Progress'
 import { PersonAvatar, CommunityFeed } from '@/components/community/Feed'
 import { burst } from '@/components/anim'
 import { cn } from '@/lib/utils'
+import { useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import {
-  FEELS, FEEL_LABEL, checkinBlock, createBlock, declineBlock, endBlock, fmtDay, getBlock, getBlockNew, inviteToBlock,
+  FEELS, FEEL_LABEL, declineBlock, endBlock, fmtDay, getBlock, getBlockNew, inviteToBlock,
   joinBlock, leaveBlock, needsPlanChoice, nudgeInBlock, setBlockCheckins, weekLine,
   type BlockCheckin, type BlockDetail, type BlockNew, type BlockPerson, type CreateBody, type Feel, type PlanChoice,
 } from '@/lib/blocks'
@@ -32,15 +36,26 @@ export function BlockScreen({ id, imperial, onClose }: { id: string; imperial: b
 function CreateBlock({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const [info, setInfo] = useState<BlockNew | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pick, setPick] = useState<string | null>(null)          // template id or "race:<event id>"
-  const [start, setStart] = useState<string | null>(null)
-  const [crew, setCrew] = useState<string[]>([])
-  const [club, setClub] = useState<string | null>(null)
-  const [plan, setPlan] = useState<'new' | 'keep' | null>(null)
+  // Choices are kept as a draft (lib/drafts) until the block starts or they're discarded.
+  type B = { pick: string | null; start: string | null; crew: string[]; club: string | null; plan: 'new' | 'keep' | null }
+  const [f, setF, draft] = useDraft<B>('block.new', { pick: null, start: null, crew: [], club: null, plan: null },
+    { label: 'new block', isEmpty: (v) => !v.pick && !v.crew.length && !v.club })
+  const { pick, start, crew, club, plan } = f
+  const setPick = (pick: string | null) => setF((x) => ({ ...x, pick }))
+  const setStart = (start: string | null) => setF((x) => ({ ...x, start }))
+  const setCrew = (fn: (c: string[]) => string[]) => setF((x) => ({ ...x, crew: fn(x.crew) }))
+  const setClub = (club: string | null) => setF((x) => ({ ...x, club }))
+  const setPlan = (plan: 'new' | 'keep' | null) => setF((x) => ({ ...x, plan }))
+  const guard = useUnsavedGuard(draft.dirty && !!(pick || crew.length || club), draft.discard)
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   useEffect(() => {
-    getBlockNew().then((r) => { setInfo(r); setStart(r.starts[0] ?? null) }, (e) => setError((e as Error).message))
-  }, [])
+    getBlockNew().then((r) => {
+      setInfo(r)
+      // A restored start that's no longer offered falls back to the first one (not a user edit).
+      setF((x) => (x.start && r.starts.includes(x.start) ? x : { ...x, start: r.starts[0] ?? null }))
+    }, (e) => setError((e as Error).message))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const hasGoal = !!info?.current.has_goal
   const ready = !!pick && !!start && (!hasGoal || !!plan)
 
@@ -54,27 +69,33 @@ function CreateBlock({ onClose, onCreated }: { onClose: () => void; onCreated: (
     body.club = club
     body.plan = hasGoal ? (plan ?? undefined) : 'new'
     if (hasGoal && plan === 'new') body.confirm_replace = true
+    setQueued(false)
     try {
-      const r = await createBlock(body)
+      const r = await saveDurably<{ block: BlockDetail }>({ method: 'POST', path: '/api/blocks', body, label: 'block' },
+        () => setQueued(true))
+      draft.clear()
       onCreated(r.block.id)
     } catch (e) {
       setError((e as Error).message)
     } finally {
-      setBusy(false)
+      setBusy(false); setQueued(false)
     }
   }
 
   return (
-    <Screen title="Start a block" subtitle="Same weeks, your own plans" onClose={onClose}
+    <Screen title="Start a block" subtitle="Same weeks, your own plans" onClose={guard.wrap(onClose)}
       footer={info ? (
         <div className="flex flex-col gap-2 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
           {error && <p role="alert" className="text-[0.7647rem] text-(--danger)">{error}</p>}
+          {queued && <SaveStatus state="queued" />}
           <Button variant="primary" size="lg" className="hit-44 w-full" disabled={!ready || busy} loading={busy} onClick={() => void go()}>
             {crew.length || club ? 'Start and invite' : 'Start the block'}
           </Button>
         </div>
       ) : undefined}>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">
+        {guard.dialog}
+        {draft.restored && <DraftRestored onDiscard={draft.discard} />}
         {!info && !error && <RabbitLoader className="py-10" label="Loading" cycle={['Lacing up', 'Finding your crew', 'Counting Mondays']} />}
         {!info && error && <ErrorState message={error} />}
         {info && (
@@ -267,17 +288,26 @@ function Crew({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: BlockDe
 
 function CheckIn({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: BlockDetail) => void; onNote: (s: string) => void }) {
   const mine = b.my_checkin
-  const [feel, setFeel] = useState<Feel | null>(mine?.feel ?? null)
-  const [text, setText] = useState(mine?.note ?? '')
+  // The note is kept as a draft per block + week until it's shared.
+  const [c, setC, draft] = useDraft<{ feel: Feel | null; text: string }>(`blockcheckin.${b.id}.${b.week.n}`,
+    { feel: mine?.feel ?? null, text: mine?.note ?? '' }, { label: 'block check-in' })
+  const { feel, text } = c
+  const setFeel = (feel: Feel) => setC((x) => ({ ...x, feel }))
+  const setText = (text: string) => setC((x) => ({ ...x, text }))
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const shown: BlockCheckin[] = (b.checkins?.length ? b.checkins : b.last_checkins) ?? []
   const lastWeek = !b.checkins?.length && (b.last_checkins?.length ?? 0) > 0
   async function share() {
     if (!feel) return
-    setBusy(true)
-    try { const r = await checkinBlock(b.id, feel, text.trim()); onChanged(r.block); onNote('Shared with your crew') }
+    setBusy(true); setQueued(false)
+    try {
+      const r = await saveDurably<{ block: BlockDetail }>({ method: 'POST', path: `/api/blocks/${b.id}/checkin`,
+        body: { feel, note: text.trim() }, label: 'block check-in', coalesce: `blockcheckin.${b.id}` }, () => setQueued(true))
+      draft.clear(); onChanged(r.block); onNote('Shared with your crew')
+    }
     catch (e) { onNote((e as Error).message) }
-    finally { setBusy(false) }
+    finally { setBusy(false); setQueued(false) }
   }
   return (
     <Card>
@@ -289,6 +319,7 @@ function CheckIn({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: Bloc
         <Button variant="primary" className="hit-44 self-start" disabled={!feel || busy} loading={busy} onClick={() => void share()}>
           {mine ? 'Update check-in' : 'Share check-in'}
         </Button>
+        {queued && <SaveStatus state="queued" />}
       </Field>
       {shown.length > 0 && (
         <ul className="flex flex-col border-t border-(--border)">

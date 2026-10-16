@@ -31,6 +31,7 @@ from .proactive import AgentDelivery, Proactive, ProactiveThread
 from .providers.fake import FakeGarminProvider, simulate_activity
 from .auth import SCOPE, GitHubOAuthProvider
 from .config import Settings
+from .datadir import WritableProbe
 from .logs import log_event, setup_logging
 from .providers import GarminError, GarminProvider
 from .poller import Poller, PollerThread, RoutineClient, Schedule, StateStore, token_fingerprint
@@ -214,9 +215,11 @@ def build_app(settings: Settings, service: GarminService,
         async def github_callback(request: Request) -> Response:
             return await auth_provider.github_callback(request)
 
+    probe = WritableProbe(settings.data_dir)
+
     @mcp.custom_route("/healthz", methods=["GET"])
     async def healthz(request: Request) -> Response:
-        return JSONResponse({"ok": True})
+        return await _health(probe)
 
     local = settings.public_host.split(":")[0] in {"localhost", "127.0.0.1"}
     origins = ["https://claude.ai", "https://claude.com", settings.public_base_url]
@@ -477,7 +480,7 @@ def create_app() -> tuple[Settings, Any]:
             raise RuntimeError("MCP_ENABLED=false needs APP_ENABLED=true")
         log_event(logger, logging.INFO, "startup", base_url=settings.public_base_url,
                   mode="app_only")
-        return settings, build_web_only_app(rabbit.routes, rabbit)
+        return settings, build_web_only_app(rabbit.routes, rabbit, settings.data_dir)
     auth_provider = None
     if dev_user is None:
         if not settings.github_client_id or not settings.allowed_github_users:
@@ -515,11 +518,22 @@ def create_app() -> tuple[Settings, Any]:
     return settings, app
 
 
-def build_web_only_app(web_routes: list[Any], rabbit: RabbitParts | None = None) -> Any:
+async def _health(probe: WritableProbe) -> Response:
+    """200 ``{"ok": true, "data_writable": true}``; 503 when DATA_DIR can't take a write
+    (datadir.py), so deploys and uptime checks catch a full or read-only disk."""
+    ok = await anyio.to_thread.run_sync(probe.check)
+    return JSONResponse({"ok": ok, "data_writable": ok}, status_code=200 if ok else 503,
+                        headers={"Cache-Control": "no-store"})
+
+
+def build_web_only_app(web_routes: list[Any], rabbit: RabbitParts | None = None,
+                       data_dir: Any = None) -> Any:
     """Starlette app with just /healthz and the Rabbit routes (no MCP, no OAuth AS).
     Starts the proactive-messages thread for the app's lifetime."""
+    probe = WritableProbe(data_dir)
+
     async def healthz(request: Request) -> Response:
-        return JSONResponse({"ok": True})
+        return await _health(probe)
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[None]:

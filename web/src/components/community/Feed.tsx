@@ -23,13 +23,18 @@ import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, MAX_PHOTOS, REACTIONS, TEMPLATES, TEXT_LEN,
-  addComment, ago, audienceLabel, communityPhotoUrl, createPost, deleteComment, deletePost, dismissDraft,
+  ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft,
   getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
   reportPost, resizeForPost, shareDraft, unreact, updatePost, uploadPostPhoto,
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
   type ReactionKind,
 } from '@/lib/community'
 import { FeedSkeleton } from '@/components/ui/Skeleton'
+import { readDraft, useDraft } from '@/lib/drafts'
+import { saveDurably } from '@/lib/outbox'
+import { counted } from '@/lib/usage'
+import { SaveStatus } from '@/components/ui/SaveStatus'
+import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 
 export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
@@ -234,13 +239,24 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
   clubId?: string; clubName?: string; groupId?: string; groupName?: string; groups?: FeedGroup[]
   template: Template | null; onClose: () => void; onPosted: (p: Post) => void
 }) {
-  const [text, setText] = useState(template?.text ?? '')
-  const [category, setCategory] = useState<Category>(template?.category ?? 'life')
-  const [feeling, setFeeling] = useState<string | null>(null)
+  // Text, category, feeling, linked event and audience are kept as a draft (lib/drafts) until
+  // posted or discarded. Photos can't be kept in a draft (they'd have to be picked again).
+  type PostDraft = { text: string; category: Category; feeling: string | null; eventId: string; audience: Audience }
+  const [d, setD, draft] = useDraft<PostDraft>(`post.${clubId ? `club.${clubId}` : groupId ? `grp.${groupId}` : 'feed'}`, () => ({
+    text: template?.text ?? '', category: template?.category ?? 'life', feeling: null, eventId: '',
+    audience: clubId ? `club:${clubId}` : groupId ? `grp:${groupId}` : 'friends',
+  }), { label: 'post', isEmpty: (v) => !v.text.trim() })
+  const { text, category, feeling, eventId, audience } = d
+  const setText = (text: string) => setD((x) => ({ ...x, text }))
+  const setCategory = (category: Category) => setD((x) => ({ ...x, category }))
+  const setFeeling = (feeling: string | null) => setD((x) => ({ ...x, feeling }))
+  const setEventId = (eventId: string) => setD((x) => ({ ...x, eventId }))
+  const setAudience = (audience: Audience) => setD((x) => ({ ...x, audience }))
   const [pics, setPics] = useState<Pic[]>([])
   const [picBusy, setPicBusy] = useState(false)
-  const [eventId, setEventId] = useState('')
-  const [audience, setAudience] = useState<Audience>(clubId ? `club:${clubId}` : groupId ? `grp:${groupId}` : 'friends')
+  const [queued, setQueued] = useState(false)
+  const guard = useUnsavedGuard(!!text.trim() || pics.length > 0, draft.discard)
+  const close = guard.wrap(onClose)
   const fixed = !!clubId || !!groupId
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [clubs, setClubs] = useState<ClubSummary[]>([])
@@ -248,7 +264,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
   const [err, setErr] = useState<string | null>(null)
   const file = useRef<HTMLInputElement>(null)
   const urls = useRef<string[]>([])
-  const drag = useSheetDrag(onClose)
+  const drag = useSheetDrag(close)
 
   useEffect(() => {
     listEvents().then((r) => setEvents(r.events), () => setEvents([]))
@@ -270,20 +286,26 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
     } catch (e) { setErr((e as Error).message) } finally { setPicBusy(false); if (file.current) file.current.value = '' }
   }
   async function post(el: HTMLElement) {
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setQueued(false)
     try {
-      const r = await createPost({ text: text.trim(), category, feeling, audience, photo_ids: pics.map((p) => p.id), event_id: eventId || null })
+      // Durable + idempotent (lib/outbox): offline / 5xx keeps the text here and retries; a
+      // retry can never post twice. Photos are already uploaded, so their ids go along.
+      const r = await counted(saveDurably<{ post: Post }>({ method: 'POST', path: '/api/community/posts', label: 'post',
+        body: { text: text.trim(), category, feeling, audience, photo_ids: pics.map((p) => p.id), event_id: eventId || null } },
+      () => setQueued(true)), 'share', { what: 'post' })
+      draft.clear()
       burst(el, 'kudos'); onPosted(r.post)
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
   const canPost = (!!text.trim() || pics.length > 0) && !picBusy
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={close}>
+      {guard.dialog}
       <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 className="modal-title">{clubName ? `Share with ${clubName}` : groupName ? `Share with ${groupName}` : 'Share something'}</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
+          <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
         </div>
         <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <div className="-mx-1 flex flex-wrap gap-1" role="radiogroup" aria-label="What is it">
@@ -341,6 +363,13 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
             )}
           </div>
           <p className="text-[0.6471rem] text-(--text-muted)">Never your heart rate, health data or where you trained.</p>
+          {draft.restored && (
+            <p className="flex flex-wrap items-center gap-x-2 text-[0.6471rem] text-(--text-muted)" role="status">
+              <span>Restored your unsaved post. Photos aren't kept in drafts: add them again.</span>
+              <button type="button" className="hit-44 underline" onClick={draft.discard}>Discard draft</button>
+            </p>
+          )}
+          {queued && <SaveStatus state="queued" />}
           {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
           <div className="flex items-center gap-2">
             <input ref={file} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void pick(e.target.files)} />
@@ -424,8 +453,10 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   const [menu, setMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(p.text)
-  const [showComments, setShowComments] = useState(false)
-  const [comment, setComment] = useState('')
+  // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
+  const [comment, setComment, commentDraft] = useDraft<string>(`comment.${p.id}`, '', { label: 'comment', isEmpty: (v) => !v.trim() })
+  const [showComments, setShowComments] = useState(() => readDraft<string>(`comment.${p.id}`) != null)
+  const [commentQueued, setCommentQueued] = useState(false)
   const [replyTo, setReplyTo] = useState<PostComment | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -459,11 +490,15 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   async function send() {
     const t = comment.trim()
     if (!t) return
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setCommentQueued(false)
     try {
-      const r = await addComment(p.id, t, replyTo?.id)
-      onChange({ ...p, comments: [...p.comments, r.comment], comment_count: p.comment_count + 1 }); setComment(''); setReplyTo(null)
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+      // Durable + idempotent: kept and retried when offline, never posted twice.
+      const r = await saveDurably<{ comment: PostComment }>({ method: 'POST', label: 'comment',
+        path: `/api/community/posts/${encodeURIComponent(p.id)}/comments`, body: { text: t, reply_to: replyTo?.id ?? null } },
+      () => setCommentQueued(true))
+      onChange({ ...p, comments: [...p.comments, r.comment], comment_count: p.comment_count + 1 })
+      setComment(''); commentDraft.clear(); setReplyTo(null)
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setCommentQueued(false) }
   }
   async function removeComment(cid: string) {
     try {
@@ -616,6 +651,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
           </div>
         </div>
       )}
+      {commentQueued && <SaveStatus state="queued" className="mt-1.5" />}
       {err && <p className="mt-1.5 text-[0.7059rem] text-(--danger)">{err}</p>}
     </article>
   )

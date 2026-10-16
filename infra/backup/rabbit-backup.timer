@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly Rabbit data backup to Cloud Storage
+
+[Timer]
+# 08:20 UTC (~2 am Denver), before the 09:00 UTC disk snapshot. A missed run (VM off) runs at boot.
+OnCalendar=*-*-* 08:20:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
