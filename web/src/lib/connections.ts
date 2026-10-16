@@ -1,14 +1,14 @@
-// Connected apps (server: connections.py): Garmin, Oura and Google Calendar, one status row
+// Connected apps (server: connections.py): Garmin, Oura, Google Calendar and TrainingPeaks, one status row
 // each for the Me -> Connected apps hub and the connect popup (components/connect/).
 // Any screen opens an app's popup with requestConnect(app); screens/Chat.tsx listens.
 import { getJSON, sendJSON, type DataSources } from '@/lib/api'
 import { OURA_CONNECT_URL } from '@/lib/oura'
 import { CALENDAR_CONNECT_URL } from '@/lib/calendar'
 
-export type ConnApp = 'garmin' | 'oura' | 'calendar'
+export type ConnApp = 'garmin' | 'oura' | 'calendar' | 'trainingpeaks'
 export type ConnState = 'connected' | 'attention' | 'not_connected' | 'unavailable'
 export type Connection = {
-  id: ConnApp; name: string; kind: 'password' | 'oauth'
+  id: ConnApp; name: string; kind: 'password' | 'oauth' | 'cookie'
   available: boolean; connected: boolean; state: ConnState
   /** ISO time of the last successful read, or null */
   last_sync: string | null
@@ -20,7 +20,7 @@ export type Connection = {
 export type Connections = { apps: Connection[]; sources: DataSources | null }
 
 export const getConnections = () => getJSON<Connections>('/api/connections')
-export const syncConnection = (app: 'oura' | 'calendar') =>
+export const syncConnection = (app: 'oura' | 'calendar' | 'trainingpeaks') =>
   sendJSON<{ app: Connection }>('POST', `/api/connections/${app}/sync`, {})
 export const OAUTH_URL: Record<'oura' | 'calendar', string> = { oura: OURA_CONNECT_URL, calendar: CALENDAR_CONNECT_URL }
 

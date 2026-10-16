@@ -365,7 +365,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
 }
 
 // ------------------------------------------------------------- calendar --
-export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving }: {
+export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   week: PlanWeekBuilt; onWeek: (index: number) => void
   /** drag, Move, Fix and goals (the athlete's own plan) */
@@ -376,6 +376,10 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   onAdd?: (date: string) => void
   onResult: (r: CalResult) => void
   moving: MoveTarget | null; onMoving: (t: MoveTarget | null) => void
+  /** sessions shown elsewhere (e.g. the TrainingPeaks copy is the source of truth) */
+  hidden?: (id: string) => boolean
+  /** extra items under a day's sessions (TrainingPeaks workouts) */
+  dayExtra?: (date: string) => React.ReactNode
 }) {
   const [view, setView] = useState<'week' | 'month'>(() => { try { return sessionStorage.getItem('rabbit.plancal.view') === 'month' ? 'month' : 'week' } catch { return 'week' } })
   const [fix, setFix] = useState<{ s: PlanSession; date: string } | null>(null)
@@ -498,7 +502,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
               {week.days.map((d) => {
                 const past = d.date < today
                 const isToday = d.date === today
-                const work = d.sessions.filter((s) => s.sport !== 'rest')
+                const work = d.sessions.filter((s) => s.sport !== 'rest' && !hidden?.(s.id))
+                const extra = dayExtra?.(d.date)
                 const over = drag?.over === d.date && drag.from !== d.date
                 const canAdd = !!onAdd && !past && d.date <= plan.race_date && work.length < 4
                 return (
@@ -525,7 +530,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
                             onFix={editable && cal && c?.status === 'missed' && c.missed?.this_week ? () => setFix({ s, date: d.date }) : undefined} />
                         )
                       })}
-                      {!work.length && <p className="py-2 text-[0.7647rem] text-(--text-muted)">{over ? 'Drop here' : 'Rest'}</p>}
+                      {extra}
+                      {!work.length && !extra && <p className="py-2 text-[0.7647rem] text-(--text-muted)">{over ? 'Drop here' : 'Rest'}</p>}
                     </div>
                     {canAdd && (
                       <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}

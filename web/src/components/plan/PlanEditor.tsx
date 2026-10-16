@@ -25,6 +25,7 @@ import { addTravel, getCalendar, removeTravel, type CalendarSummary } from '@/li
 import { athleteChat } from '@/lib/coach'
 import { OwnPlanImport } from './PlanImport'
 import { importApi, type ImportStatus } from '@/lib/planimport'
+import { TPCalendarList, TPDayItems, TPPlanBar, TPWorkoutSheet, useTrainingPeaks } from './TPItems'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
@@ -74,6 +75,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
   const [unread, setUnread] = useState<string[]>([])
   const canMessage = !!onMessage
+  const tp = useTrainingPeaks(!coachMode)  // TrainingPeaks workouts on this calendar (TPItems.tsx)
   // Loading a plan from a file (athlete side) and the last import's summary.
   const [imp, setImp] = useState<{ status: ImportStatus; open: boolean } | null>(null)
   const loadImport = (open: boolean) => OWN_IMPORT.status().then((st) => setImp({ status: st, open }), (e) => setLoadError((e as Error).message))
@@ -118,6 +120,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan</Button>}
           </div>
         )}
+        {plan === null && <TPCalendarList tp={tp} today={planToday(plan)} imperial={imperial} />}
+        <TPWorkoutSheet tp={tp} today={planToday(plan)} imperial={imperial} />
         {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan={false} onClose={() => setImp(null)} onApplied={() => { setImp(null); load(); onChanged() }} />}
       </Screen>
     )
@@ -245,13 +249,15 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
       </Card>
 
+      <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
       <PlanCalendar plan={plan} cal={planCal} imperial={imperial} today={today} week={week} onWeek={setWeekIdx}
         editable={!coachMode && !readOnly} unread={unread} busyLabel={busyLabel}
         onOpen={(s, date) => setEditing({ session: s, date })}
         onAdd={readOnly ? undefined : (date) => setEditing({ session: null, date })}
         onResult={(r) => { setPlan(r.plan); setPlanCal(r.cal); onChanged() }}
-        moving={moving} onMoving={setMoving} />
+        moving={moving} onMoving={setMoving}
+        hidden={tp.hidden} dayExtra={(d) => tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null} />
 
       {!coachMode && <>
       {/* Garmin */}
@@ -358,6 +364,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             onAsk(`About my ${s.title} on ${fmtDay(editing.date, { weekday: 'long', month: 'short', day: 'numeric' })}: `)
           } : undefined} />
       )}
+      <TPWorkoutSheet tp={tp} today={today} imperial={imperial} onToast={setNote} />
     </Screen>
   )
 }

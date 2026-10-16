@@ -5,8 +5,8 @@ reads and what it never does. The facts restate ``legal.privacy`` and ``sources.
 come from Garmin only; Oura data never reaches the AI model); ``tests/test_connections.py``
 pins them against the privacy page so the popup can't promise something the policy doesn't.
 
-TrainingPeaks is deliberately absent: it lives in the MCP server process only
-(``trainingpeaks.py``, a per-user cookie set by a CLI), so the Rabbit app can't connect it.
+TrainingPeaks (``tpsync.py``) connects with the athlete's pasted session value (``kind:
+"cookie"``): TrainingPeaks' sign-in has a captcha and no public API, so there is no OAuth.
 """
 
 from __future__ import annotations
@@ -60,8 +60,23 @@ APPS: dict[str, dict[str, Any]] = {
             "Never shares your calendar with anyone",
         ],
     },
+    "trainingpeaks": {
+        "name": "TrainingPeaks",
+        "kind": "cookie",
+        "import_weeks": 6,
+        "import_label": "Reading your TrainingPeaks calendar…",
+        "reads": [
+            "Planned workouts on your TrainingPeaks calendar, 2 weeks back to 6 weeks ahead",
+            "Titles, durations, descriptions, coach notes and workout structure",
+        ],
+        "never": [
+            "Completed workouts are not imported from TrainingPeaks; they come from Garmin only",
+            "Never changes or deletes workouts it didn't create, except one you move in Rabbit",
+            "Never asks for your TrainingPeaks password; the sign-in you paste is stored encrypted",
+        ],
+    },
 }
-ORDER = ("garmin", "oura", "calendar")
+ORDER = ("garmin", "oura", "calendar", "trainingpeaks")
 
 
 def _iso(ts: float | str | None) -> str | None:

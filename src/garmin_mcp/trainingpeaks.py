@@ -449,6 +449,50 @@ def fit_from_garmin_download(blob: bytes) -> tuple[bytes, str]:
     return blob, "activity.fit"
 
 
+def workout_payload(*, date_: str, sport: str, title: str, description: str | None = None,
+                    start_time: str | None = None, duration_minutes: float | None = None,
+                    distance_km: float | None = None, tss: float | None = None,
+                    structure: Any = None) -> dict[str, Any]:
+    """The wire fields of a planned workout (no athlete id), validated."""
+    day = _parse_day(date_)
+    title = (title or "").strip()
+    if not title or len(title) > 200:
+        raise TrainingPeaksError("title is required (max 200 characters)")
+    type_id = sport_id(sport)
+    built = build_structure(structure) if structure is not None else None
+    payload: dict[str, Any] = {
+        "workoutDay": f"{day.isoformat()}T00:00:00",
+        "workoutTypeFamilyId": type_id,
+        "workoutTypeValueId": type_id,
+        "title": title,
+        "isHidden": False,
+    }
+    if start_time:
+        try:
+            hh, mm = (int(x) for x in str(start_time).split(":")[:2])
+            payload["startTimePlanned"] = datetime(day.year, day.month, day.day,
+                                                   hh, mm).isoformat(timespec="seconds")
+        except (ValueError, TypeError):
+            raise TrainingPeaksError("start_time must be HH:MM (24h)") from None
+    if description:
+        payload["description"] = str(description)[:5000]
+    minutes = duration_minutes
+    if minutes is None and built is not None:
+        minutes = built.seconds / 60
+    if minutes is not None:
+        payload["totalTimePlanned"] = round(_num(minutes, "duration_minutes", 1, 24 * 60) / 60, 4)
+    if distance_km is not None:
+        payload["distancePlanned"] = round(_num(distance_km, "distance_km", 0.01, 1000) * 1000, 1)
+    if tss is not None:
+        payload["tssPlanned"] = _num(tss, "tss", 0, 2000)
+    elif built is not None and built.tss is not None:
+        payload["tssPlanned"] = built.tss
+        payload["ifPlanned"] = built.intensity_factor
+    if built is not None:
+        payload["structure"] = json.dumps(built.wire, separators=(",", ":"))
+    return payload
+
+
 # ---------------------------------------------------------------- service ---
 GarminActivity = Callable[[str, int], dict[str, Any]]
 GarminFile = Callable[[str, int], bytes]
@@ -496,6 +540,18 @@ class TrainingPeaksService:
         return {"from": s.isoformat(), "to": e.isoformat(), "count": len(items),
                 "writes_enabled": self.allow_writes, "workouts": items}
 
+    def calendar(self, user_id: str, start: date, end: date) -> list[dict[str, Any]]:
+        """Raw workouts between ``start`` and ``end`` (the Rabbit app's TrainingPeaks sync,
+        ``tpsync.py``, compacts them itself: it needs descriptions, coach comments and
+        structure in full)."""
+        self._guard(user_id, write=False)
+        if end < start or (end - start).days + 1 > MAX_RANGE_DAYS:
+            raise TrainingPeaksError(f"Ask for at most {MAX_RANGE_DAYS} days at a time.")
+        aid = self.client.athlete_id(user_id)
+        raw = self._call(user_id, "GET",
+                         f"/fitness/v6/athletes/{aid}/workouts/{start.isoformat()}/{end.isoformat()}")
+        return [w for w in (raw or []) if isinstance(w, dict)]
+
     # -- writes --
     def create_workout(self, user_id: str, *, date_: str, sport: str, title: str,
                        description: str | None = None, start_time: str | None = None,
@@ -503,52 +559,49 @@ class TrainingPeaksService:
                        distance_km: float | None = None, tss: float | None = None,
                        structure: Any = None) -> dict[str, Any]:
         self._guard(user_id, write=True)
-        day = _parse_day(date_)
-        title = (title or "").strip()
-        if not title or len(title) > 200:
-            raise TrainingPeaksError("title is required (max 200 characters)")
-        type_id = sport_id(sport)
-        built = build_structure(structure) if structure is not None else None
+        payload = workout_payload(date_=date_, sport=sport, title=title, description=description,
+                                  start_time=start_time, duration_minutes=duration_minutes,
+                                  distance_km=distance_km, tss=tss, structure=structure)
+        return {"created": compact_workout(self._create(user_id, payload))}
 
-        payload: dict[str, Any] = {
-            "workoutDay": f"{day.isoformat()}T00:00:00",
-            "workoutTypeFamilyId": type_id,
-            "workoutTypeValueId": type_id,
-            "title": title,
-            "isHidden": False,
-        }
-        if start_time:
-            try:
-                hh, mm = (int(x) for x in str(start_time).split(":")[:2])
-                payload["startTimePlanned"] = datetime(day.year, day.month, day.day,
-                                                       hh, mm).isoformat(timespec="seconds")
-            except (ValueError, TypeError):
-                raise TrainingPeaksError("start_time must be HH:MM (24h)") from None
-        if description:
-            payload["description"] = str(description)[:5000]
-        minutes = duration_minutes
-        if minutes is None and built is not None:
-            minutes = built.seconds / 60
-        if minutes is not None:
-            payload["totalTimePlanned"] = round(_num(minutes, "duration_minutes", 1, 24 * 60) / 60, 4)
-        if distance_km is not None:
-            payload["distancePlanned"] = round(_num(distance_km, "distance_km", 0.01, 1000) * 1000, 1)
-        if tss is not None:
-            payload["tssPlanned"] = _num(tss, "tss", 0, 2000)
-        elif built is not None and built.tss is not None:
-            payload["tssPlanned"] = built.tss
-            payload["ifPlanned"] = built.intensity_factor
-        if built is not None:
-            payload["structure"] = json.dumps(built.wire, separators=(",", ":"))
+    def create_planned(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST one planned workout built by ``workout_payload``; returns TrainingPeaks' copy."""
+        self._guard(user_id, write=True)
+        return self._create(user_id, payload)
 
+    def _create(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         aid = self.client.athlete_id(user_id)
-        payload["athleteId"] = aid
+        payload = dict(payload) | {"athleteId": aid}
         created = self._call(user_id, "POST", f"/fitness/v6/athletes/{aid}/workouts", payload)
         if not isinstance(created, dict) or not created.get("workoutId"):
             raise TrainingPeaksError("TrainingPeaks did not return the new workout.")
         log_event(logger, logging.INFO, "tp_workout_created", user_id=user_id,
-                  workout_id=created.get("workoutId"), structured=built is not None)
-        return {"created": compact_workout(created)}
+                  workout_id=created.get("workoutId"), structured="structure" in payload)
+        return created
+
+    def update_workout(self, user_id: str, workout_id: int,
+                       changes: dict[str, Any]) -> dict[str, Any]:
+        """Change a *planned* workout (date, title, plan fields): GET it, merge ``changes``
+        (TrainingPeaks wire fields, e.g. from ``workout_payload``), PUT it back. Workouts
+        with completed data are refused, like deletes."""
+        self._guard(user_id, write=True)
+        wid = int(workout_id)
+        aid = self.client.athlete_id(user_id)
+        path = f"/fitness/v6/athletes/{aid}/workouts/{wid}"
+        existing = self._call(user_id, "GET", path)
+        if not isinstance(existing, dict):
+            raise NotFound("TrainingPeaks says that workout does not exist.")
+        if is_completed(existing):
+            raise TrainingPeaksError("That workout already has completed data, so it stays as it is.")
+        allowed = {"workoutDay", "workoutTypeFamilyId", "workoutTypeValueId", "title",
+                   "description", "startTimePlanned", "totalTimePlanned", "distancePlanned",
+                   "tssPlanned", "ifPlanned", "structure"}
+        body = dict(existing) | {k: v for k, v in changes.items() if k in allowed}
+        body["athleteId"] = aid
+        body["workoutId"] = wid
+        updated = self._call(user_id, "PUT", path, body)
+        log_event(logger, logging.INFO, "tp_workout_updated", user_id=user_id, workout_id=wid)
+        return updated if isinstance(updated, dict) else body
 
     def delete_workout(self, user_id: str, workout_id: int) -> dict[str, Any]:
         self._guard(user_id, write=True)

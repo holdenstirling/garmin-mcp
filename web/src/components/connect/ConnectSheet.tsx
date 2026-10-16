@@ -6,10 +6,12 @@
 //      on return (?oura= / ?calendar=) Chat.tsx reopens this popup with `result`.
 //   3. Success: check mark, "Importing your last N weeks…" (RabbitLoader), then Done. Oura asks
 //      where recovery & sleep should come from (sources.py) right here.
+//   TrainingPeaks: paste-your-session steps (ConnectTrainingPeaks) inside this sheet, then the
+//   source-of-truth choice (TPSourcePref) on success and when connected.
 //   Connected: last sync, Sync now, the source choice, Disconnect (with a confirm).
 // Status comes from GET /app/api/connections (connections.py), facts included.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, Check, CircleDot, RefreshCw, TriangleAlert, Watch } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock, Check, CircleDot, ClipboardList, RefreshCw, TriangleAlert, Watch } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -17,6 +19,8 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { ConnectGarmin, type GarminStep } from '@/components/ConnectGarmin'
 import { Progress } from '@/components/plan/ui'
 import { SourcePref, useSourcePref } from '@/components/connect/SourcePref'
+import { ConnectTrainingPeaks, TPSourcePref } from '@/components/connect/ConnectTrainingPeaks'
+import { disconnectTP, getTP, syncTP, tpChanged, type TPSource } from '@/lib/trainingpeaks'
 import { postJSON, type Me } from '@/lib/api'
 import { syncNow } from '@/lib/live'
 import { getProgress } from '@/lib/progress'
@@ -28,11 +32,11 @@ import {
 } from '@/lib/connections'
 import { cn } from '@/lib/utils'
 
-export const APP_ICON: Record<ConnApp, typeof Watch> = { garmin: Watch, oura: CircleDot, calendar: CalendarClock }
-const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar' }
-const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar' }
+export const APP_ICON: Record<ConnApp, typeof Watch> = { garmin: Watch, oura: CircleDot, calendar: CalendarClock, trainingpeaks: ClipboardList }
+const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
+const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 
-type View = 'loading' | 'intro' | 'garmin' | 'redirect' | 'importing' | 'done' | 'failed' | 'manage'
+type View = 'loading' | 'intro' | 'garmin' | 'tp' | 'redirect' | 'importing' | 'done' | 'failed' | 'manage'
 
 /** Generic app tile (no brand logos). */
 export function AppTile({ app, size = 44 }: { app: ConnApp; size?: number }) {
@@ -84,6 +88,7 @@ const GARMIN_STEPS: { id: GarminStep | 'import'; label: string }[] = [
 async function runImport(app: ConnApp): Promise<void> {
   if (app === 'garmin') { await syncNow().catch(() => null); await getProgress() }
   else if (app === 'oura') await getOura(28)
+  else if (app === 'trainingpeaks') { await syncTP(); tpChanged() }
   else await getCalendar(42)
 }
 
@@ -105,6 +110,13 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   const [importNote, setImportNote] = useState<string | null>(null)
   const ouraOn = me.oura.connected || (app === 'oura' && (conn?.connected ?? false))
   const pref = useSourcePref(me, ouraOn)
+  const [tpSource, setTpSource] = useState<TPSource | null>(null)
+  useEffect(() => {
+    if (app !== 'trainingpeaks' || !(view === 'manage' || view === 'done')) return
+    let off = false
+    getTP().then((v) => { if (!off) setTpSource(v.source) }, () => {})
+    return () => { off = true }
+  }, [app, view])
 
   const live = useRef(true)
   useEffect(() => () => { live.current = false }, [])
@@ -144,6 +156,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
 
   const cont = () => {
     if (app === 'garmin') { setView('garmin'); return }
+    if (app === 'trainingpeaks') { setView('tp'); return }
     setView('redirect')
     window.location.href = OAUTH_URL[app]
   }
@@ -156,6 +169,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
         onToast(r.error ? r.error : r.new.length ? `Synced ${r.new.length} new workout${r.new.length === 1 ? '' : 's'}` : 'Up to date')
       } else {
         const r = await syncConnection(app)
+        if (app === 'trainingpeaks') tpChanged()
         onToast(r.app.error ?? (r.app.connected ? `${SHORT[app]} synced` : `${SHORT[app]} needs connecting again`))
       }
       await load(); connectionsChanged()
@@ -167,6 +181,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
     try {
       if (app === 'garmin') await postJSON('/api/garmin/disconnect')
       else if (app === 'oura') await disconnectOura()
+      else if (app === 'trainingpeaks') { await disconnectTP(); tpChanged() }
       else await disconnectCalendar()
       onToast(`${SHORT[app]} disconnected`)
       setConfirm(false)
@@ -186,7 +201,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   }
 
   const available = conn ? conn.available || conn.connected : app === 'garmin' ? me.garmin.can_connect
-    : app === 'oura' ? me.oura.available : me.calendar.available
+    : app === 'oura' ? me.oura.available : app === 'calendar' ? me.calendar.available : false
   const reads = conn?.reads ?? []
   const never = conn?.never ?? []
   const title = view === 'manage' ? SHORT[app] : view === 'done' ? `${SHORT[app]} connected`
@@ -207,6 +222,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
         <p className="text-center text-[0.8235rem] leading-snug text-(--text-secondary)">
           {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
             : app === 'oura' ? 'Your readiness and sleep show in Progress and help Rabbit ease your week after a rough night.'
+            : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your Rabbit plan, or Rabbit’s plan goes to TrainingPeaks. You choose which one leads.'
             : 'Rabbit spots trips and busy days so your plan can work around them.'}
         </p>
         {loadErr && <p role="alert" className="text-[0.7647rem] text-(--danger)">{loadErr}</p>}
@@ -225,7 +241,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
             {SHORT[app]} isn’t set up on this server yet.
           </p>
         )}
-        {app !== 'garmin' && available && (
+        {(app === 'oura' || app === 'calendar') && available && (
           <p className="text-center text-[0.6471rem] text-(--text-muted)">You’ll sign in with {SHORT[app]} and come right back here.</p>
         )}
       </>
@@ -245,6 +261,8 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
         )}
       </>
     )
+  } else if (view === 'tp') {
+    body = <ConnectTrainingPeaks onConnected={() => { changed(); setView('importing') }} />
   } else if (view === 'redirect') {
     body = <div className="flex justify-center py-8"><RabbitLoader label={`Opening ${SHORT[app]}…`} /></div>
   } else if (view === 'importing') {
@@ -267,6 +285,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to Rabbit.`}</p>
         </div>
         {app === 'oura' && <SourcePref pref={pref} ouraOn />}
+        {app === 'trainingpeaks' && tpSource && <TPSourcePref source={tpSource} onSaved={setTpSource} onToast={onToast} />}
         <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy}
           onClick={() => void (app === 'oura' ? savePref(true) : onClose())}>Done</Button>
       </>
@@ -310,6 +329,9 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           <Button className="h-11 w-full text-[0.8235rem]" loading={busy} onClick={() => void syncNowFor()}>
             <RefreshCw className="mr-1.5 size-3.5" aria-hidden />Sync now
           </Button>
+        )}
+        {app === 'trainingpeaks' && tpSource && state !== 'attention' && (
+          <TPSourcePref source={tpSource} onSaved={(s) => { setTpSource(s); void load() }} onToast={onToast} />
         )}
         {showPref && (
           <>

@@ -9,6 +9,7 @@ import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
 import type { ConnApp, ConnectRequest } from '@/lib/connections'
+import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
@@ -781,6 +782,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <TabScreen key="start" action={meButton}>
         <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'}>
           {weekLead}
+          <TPPlanSection imperial={me.athlete.units === 'imperial'} />
           {goal?.plan ? (
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Plan from your coach or app" subtitle={planLine(week, goal)}
