@@ -162,11 +162,20 @@
 .press { transition: transform 260ms var(--fx-spring), scale 260ms var(--fx-spring), background-color 0.15s, color 0.15s, border-color 0.15s; }
 .press:active:not(:disabled) { transform: scale(1.03, 0.9); transition-duration: 90ms; }
 
+
+/* ---- Full-screen celebration (race finish, block complete, personal record) ---- */
+.fx-cel { animation: fx-cel-in 420ms ease-out both; }
+@keyframes fx-cel-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+.fx-cel-rise { animation: fx-cel-rise 520ms var(--fx-spring) both; }
+@keyframes fx-cel-rise { 0% { opacity: 0; transform: translateY(18px) scale(0.98); } 100% { opacity: 1; transform: none; } }
+.fx-cel-glow { opacity: 0.18; animation: fx-cel-glow 1200ms ease-out both; }
+@keyframes fx-cel-glow { 0% { opacity: 0; transform: scale(0.4); } 40% { opacity: 0.55; } 100% { opacity: 0.18; transform: scale(1); } }
+
 @media (prefers-reduced-motion: reduce) {
   .fx-burst, .fx-hops, .fx-flame__hot, .fx-flame__carrot, .fx-today, .fx-ptr__puff { display: none; }
   .fx-burst__bit, .fx-hops__print, .fx-flame--risk,
   .fx-flame--flicker > svg:first-child, .fx-tab-hop, .fx-ptr__bunny.is-busy .fx-ptr__crouch, .fx-tab-wiggle, .fx-ptr__bunny.is-leap, .fx-sway,
-  .fx-leap, .fx-medal, .fx-hop { animation: none; }
+  .fx-leap, .fx-medal, .fx-hop, .fx-cel, .fx-cel-rise, .fx-cel-glow { animation: none; }
   .fx-leap { display: none; }
   .fx-ptr__bunny, .fx-ptr__crouch, .press { transition: none; }
   .press:active:not(:disabled) { transform: none; }

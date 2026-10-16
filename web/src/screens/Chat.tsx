@@ -30,6 +30,7 @@ import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
 import { MonthRecapSheet, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
+import { CelebrationHost } from '@/components/reward/CelebrationHost'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -1147,6 +1148,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onFeel={(xp) => { if (xp) getProgress().then(setProgress, () => {}) }} />
       )}
       {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
+      {me.role === 'athlete' && <CelebrationHost ready={overlayFree && !reward && reaction == null && !monthCard} />}
       <PaceHost />
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}

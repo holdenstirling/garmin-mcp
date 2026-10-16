@@ -33,7 +33,7 @@ export function tiles(r: MonthRecap): [string, string][] {
   ]
 }
 
-function fit(ctx: CanvasRenderingContext2D, text: string, max: number, size: number, family: string, weight = ''): string {
+export function fit(ctx: CanvasRenderingContext2D, text: string, max: number, size: number, family: string, weight = ''): string {
   let s = size
   ctx.font = `${weight} ${s}px ${family}`.trim()
   while (ctx.measureText(text).width > max && s > size * 0.55) {
@@ -46,7 +46,7 @@ function fit(ctx: CanvasRenderingContext2D, text: string, max: number, size: num
   return `${t.trimEnd()}…`
 }
 
-function rabbit(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+export function rabbit(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
   const [vx, vy, vw] = VIEWBOX.split(' ').map(Number)
   ctx.save()
   ctx.translate(x, y)
@@ -57,7 +57,7 @@ function rabbit(ctx: CanvasRenderingContext2D, x: number, y: number, size: numbe
   ctx.restore()
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2)
   ctx.beginPath()
   ctx.moveTo(x + rr, y)
@@ -142,14 +142,18 @@ export function cardBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 /** navigator.share with the PNG where the browser supports files, else a download. */
-export async function shareCard(canvas: HTMLCanvasElement, r: MonthRecap): Promise<'shared' | 'downloaded' | 'cancelled'> {
+export function shareCard(canvas: HTMLCanvasElement, r: MonthRecap): Promise<'shared' | 'downloaded' | 'cancelled'> {
+  return shareImage(canvas, `rabbit-${r.label.toLowerCase()}-${r.year}.png`, `My ${r.label} on Rabbit`)
+}
+
+/** Any card canvas: the system share sheet with the PNG where supported, else a download. */
+export async function shareImage(canvas: HTMLCanvasElement, name: string, title: string): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const blob = await cardBlob(canvas)
-  const name = `rabbit-${r.label.toLowerCase()}-${r.year}.png`
   const file = new File([blob], name, { type: 'image/png' })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({ files: [file], title: `My ${r.label} on Rabbit` })
+      await nav.share({ files: [file], title })
       return 'shared'
     } catch (e) {
       if ((e as DOMException)?.name === 'AbortError') return 'cancelled'
