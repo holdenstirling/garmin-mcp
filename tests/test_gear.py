@@ -223,8 +223,10 @@ def test_gear_api_end_to_end(env, tmp_path, monkeypatch) -> None:
             assert r.status_code == 201, r.text
             gid = r.json()["item_id"]
             shoe = next(x for x in r.json()["items"] if x["id"] == gid)
-            # FakeGarmin's 10 km run is from before the item was added, so only start_km counts.
-            assert shoe["total_km"] == 5 and shoe["status"] == "ok" and shoe["default_for"] == ["run"]
+            # Only start_km plus runs from the day it was added count. The demo provider's history is
+            # generated around today, so a run may or may not fall on today's date.
+            assert (shoe["total_km"] == 5) == (shoe["activities"] == 0) and shoe["total_km"] >= 5, shoe
+            assert shoe["status"] == "ok" and shoe["default_for"] == ["run"], shoe
             r = await c.post("/app/api/gear", headers=H, json={"kind": "shoes", "brand": "x" * 61})
             assert r.status_code == 400 and "60" in r.json()["error"]
             r = await c.patch(f"/app/api/gear/{gid}", headers=H, json={"start_km": 600})
