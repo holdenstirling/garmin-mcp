@@ -18,6 +18,9 @@ import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekGoalsCard } from '@/components/home/WeekGoalsCard'
+import { WeekPanel } from '@/components/home/WeekPanel'
+import { HomeGreeting, NextRaceCard, ProgressGlance } from '@/components/home/HomeGlance'
+import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/openday'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
@@ -171,7 +174,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
-  const [ringShown, setRingShown] = useState(false) // home week ring is up: Up next drops its dots
+  const [, setRingShown] = useState(false) // home week ring is up (Home shows the full week panel, so Up next has no dots)
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
@@ -192,6 +195,15 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   const [composerFocus, setComposerFocus] = useState(false)
+  // Rabbit tab: Home (dashboard) or Chat (Rabbit's log + composer); kept for this browser session.
+  const [homeView, setHomeViewState] = useState<'home' | 'chat'>(() => {
+    if (openParam === 'coach') return 'chat'
+    try { return sessionStorage.getItem('rabbit.home.view') === 'chat' ? 'chat' : 'home' } catch { return 'home' }
+  })
+  const setHomeView = useCallback((v: 'home' | 'chat') => {
+    setHomeViewState(v)
+    try { sessionStorage.setItem('rabbit.home.view', v) } catch { /* this render only */ }
+  }, [])
   const friendsDot = useSocialBadge()
 
   const thread = threads.find((t) => t.id === threadId) ?? null
@@ -256,7 +268,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [threadId, pending, items.length === 0])
+  }, [threadId, pending, items.length === 0, homeView])
 
   // An approval is waiting on you: bring it into view.
   const pendingCount = items.filter((it) => it.kind === 'approval' && it.status === 'pending').length
@@ -283,6 +295,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (sheet) { setSheet(null); setClosing(false) }
     closePages()
     setTab('rabbit')
+    setHomeView('chat')
   }
   const builtPlan = goal?.plan_source === 'builder'
   const showScreen = (sc: PlanScreen) => pushPage({ k: 'screen', s: sc })
@@ -330,6 +343,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(OPEN_BLOCK_EVENT, onBlock)
     return () => window.removeEventListener(OPEN_BLOCK_EVENT, onBlock)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Home's week, a moment, any screen (lib/openday openPlanDay): the Plan tab on that day.
+    const onDay = () => { setSheet(null); setClosing(false); closePages(); setTab('plan') }
+    window.addEventListener(OPEN_PLAN_DAY_EVENT, onDay)
+    return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, onDay)
+  }, [setTab])
   // Workout day: the pre-workout screen (a page: from Today / the plan) and the post-workout reaction.
   const setWorkout = (w: { sessionId?: string }) => showPage({ k: 'workout', sessionId: w.sessionId })
   const [reaction, setReaction] = useState<number | null>(null)
@@ -509,7 +528,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setClosing(false)
     closePages()
     setTab('rabbit')
-  }, [coachId, threads, setTab])
+    setHomeView('chat')
+  }, [coachId, threads, setTab, setHomeView])
 
   // First message of a draft chat: only now is the thread created on the server.
   async function sendPending(text: string, attachments: AttachmentMeta[]) {
@@ -528,6 +548,27 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
 
   const isCoach = !pending && thread?.kind === 'coach'
+  // Home or Chat at Rabbit's log (also while the chat list is still loading).
+  const atLog = !pending && (isCoach || !threadId)
+  const showHome = atLog && homeView === 'home'
+  // What's new in Rabbit's log since it was last read in Chat (a "N new" row on Home).
+  const [logSeen, setLogSeen] = useState<number>(() => {
+    try { const v = Number(window.localStorage.getItem('rabbit.log.seen')); if (v > 0) return v } catch { /* first run */ }
+    const now = Date.now() / 1000
+    try { window.localStorage.setItem('rabbit.log.seen', String(now)) } catch { /* ignore */ }
+    return now
+  })
+  const itemTs = (it: ChatItem) => (it as { ts?: number }).ts ?? 0
+  const readingLog = tab === 'rabbit' && isCoach && homeView === 'chat'
+  useEffect(() => {
+    if (!readingLog || !items.length) return
+    const newest = Math.max(...items.map(itemTs))
+    if (newest > logSeen) {
+      setLogSeen(newest)
+      try { window.localStorage.setItem('rabbit.log.seen', String(newest)) } catch { /* ignore */ }
+    }
+  }, [readingLog, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  const logNew = isCoach ? items.filter((it) => (it.kind === 'moment' || (it.kind === 'message' && it.role === 'agent')) && itemTs(it) > logSeen).length : 0
   // Rabbit's log is home; other chats sit on top of it, with a back button and an edge
   // swipe. The log's last rows are kept so it can be drawn underneath a chat during the
   // swipe, and shown at once on the way back while its history reloads.
@@ -733,12 +774,91 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     })
   }
 
+  // ------------------------------------------------------------------ home ---
+  // Rabbit's Home: one scrolling dashboard with everything at a glance; Chat holds the log.
+  const homeScroll = useRef<HTMLDivElement>(null)
+  const refreshHome = () => {
+    loadToday(); loadWeek(); setFeedTick((n) => n + 1)
+    return Promise.all([refreshThreads(), getProgress().then(setProgress, () => {})])
+  }
+  const askFromHome = () => { setDraft((d) => ({ text: '', n: (d?.n ?? 0) + 1 })); setHomeView('chat') }
+  function renderHome() {
+    const athlete = me.role === 'athlete'
+    const waiting = isCoach ? pendingCount : 0
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div ref={homeScroll} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="mx-auto flex w-full max-w-2xl flex-col pb-4">
+            <PullToRefresh onRefresh={refreshHome} />
+            <div className="mx-4 mt-2"><HomeGreeting name={me.profile.name} /></div>
+            {banner && (
+              <StatusBanner banner={banner} onTap={tapBanner}
+                onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
+            )}
+            {(logNew > 0 || waiting > 0) && (
+              <button type="button" onClick={() => setHomeView('chat')}
+                className="mx-4 mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2 text-left active:opacity-80">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--brand)"><RabbitLogo size={20} /></span>
+                <span className="min-w-0 flex-1 text-[0.8235rem] font-medium text-(--accent)">
+                  {waiting > 0 ? `Rabbit needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
+                    : `Rabbit has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+              </button>
+            )}
+            {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
+            {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
+            {upnext && (
+              <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
+                onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
+                onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
+                hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+            )}
+            {stripFirst(intents) && (
+              <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
+                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
+            )}
+            {goal && (
+              <div className="mx-4 mt-3">
+                <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
+                  refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} />
+              </div>
+            )}
+            {athlete && (
+              <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
+                skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
+            )}
+            <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={(id) => showPage({ k: 'fit', id })} onRing={setRingShown} />
+            {athlete && <div className="mx-4 mt-3"><NextRaceCard refreshKey={feedTick} onOpen={openRaces} /></div>}
+            {athlete && <div className="mx-4 mt-3"><ProgressGlance progress={progress} onOpen={openProgress} /></div>}
+            {athlete && <div className="mt-3"><FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} /></div>}
+            <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
+              onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
+            {!stripFirst(intents) && intents.length > 1 && (
+              <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
+                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
+            )}
+          </div>
+        </div>
+        {/* Ask Rabbit: switches to Chat with the composer focused. */}
+        <div className="shrink-0 border-t border-(--border) bg-background px-4 pb-2 pt-2">
+          <button type="button" onClick={askFromHome} disabled={!me.chat.available}
+            className="mx-auto flex min-h-11 w-full max-w-2xl items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-4 text-left text-[0.8235rem] text-(--text-muted) active:bg-(--bg-inset) disabled:opacity-50">
+            <MessageCircle className="size-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">{me.chat.available ? 'Ask Rabbit anything…' : 'Chat isn’t configured yet'}</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ------------------------------------------------------------------ tabs ---
   const imperial = me.athlete.units === 'imperial'
   const selectTab = (t: TabId) => {
     if (t === tab && t === 'rabbit') {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
+      else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
       else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
       return
     }
@@ -906,40 +1026,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
-      {isCoach && !upnext && !upnextTried && me.garmin.connected && !typing && <HomeCardSkeleton />}
-      {isCoach && !typing && me.role === 'athlete' && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
-      {isCoach && upnext && !typing && (
-        <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal && !ringShown ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
-          onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
-          onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={loadToday}
-          hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+      {atLog && !typing && (
+        <div className="shrink-0 px-4 pb-1">
+          <Segmented label="Rabbit" value={homeView} onChange={setHomeView}
+            options={[['home', 'Home'], ['chat', logNew > 0 && !readingLog ? `Chat · ${logNew} new` : 'Chat']] as const} />
+        </div>
       )}
-      {isCoach && !typing && me.role === 'athlete' && (
-        <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
-          skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
-      )}
-      {isCoach && !typing && (
-        <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={(id) => showPage({ k: 'fit', id })} onRing={setRingShown} />
-      )}
-      {isCoach && !typing && me.role === 'athlete' && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
-      {isCoach && !typing && (
-        <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
-          onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
-      )}
-
+      {showHome ? renderHome() : (
+        <>
       {banner && !typing && (
         <StatusBanner banner={banner} onTap={tapBanner}
           onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
       )}
-      {isCoach && !typing && stripFirst(intents) && (
-        <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
-          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
-      )}
-      {isCoach && !typing && !stripFirst(intents) && intents.length > 1 && (
-        <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
-          onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
-      )}
-
       {pending ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
@@ -1068,6 +1166,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : idlePrompt}
         />
       </div>
+        </>
+      )}
       </div>
       </div>
 
