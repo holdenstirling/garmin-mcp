@@ -5,19 +5,21 @@ import { DurationInput } from '@/components/ui/DurationInput'
 import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
-  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, ftInToCm, kgToLb, lbToKg, parsePace,
+  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, guessUnits, ftInToCm, kgToLb, lbToKg, parsePace,
   type AthleteFull, type PastRace,
 } from '@/lib/plan'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Choice, Field, MultiChoice, NumberStepper, OptionCard, areaCls, inputCls } from './ui'
 
 type Props = { a: Partial<AthleteFull>; setA: (p: Partial<AthleteFull>) => void; sports: Sport[] }
 
 export function YouFields({ a, setA }: Props) {
-  const imperial = a.units === 'imperial'
+  const imperial = (a.units ?? guessUnits()) === 'imperial'
   return (
     <>
+      <UnitsToggle a={a} setA={setA} />
       <Card>
         <Field label="Favorite sports" hint="What you love doing. Rabbit leans your training and stats toward these.">
           <MultiChoice value={(a.favorite_sports ?? []) as typeof FAVORITE_SPORTS[number][0][]} options={FAVORITE_SPORTS}
@@ -30,28 +32,25 @@ export function YouFields({ a, setA }: Props) {
         <OptionCard selected={a.level === 'advanced'} title="Experienced" description="Years of structured training; you handle big weeks." onClick={() => setA({ level: 'advanced' })} />
       </div>
       <Card>
-        <Field label="Units">
-          <Choice value={a.units ?? 'metric'} onChange={(v) => setA({ units: v ?? 'metric' })} options={[['metric', 'Metric'], ['imperial', 'Imperial']]} />
-        </Field>
         <Field label="Sex" hint="Optional. Helps Rabbit read heart-rate and recovery data.">
           <Choice value={a.sex ?? null} allowNone onChange={(v) => setA({ sex: v })} options={[['female', 'Female'], ['male', 'Male'], ['other', 'Other']]} />
         </Field>
         <Field label="Age">
-          <NumberStepper label="age" value={a.age} min={10} max={100} onChange={(v) => setA({ age: v })} suffix="years" />
+          <NumberStepper label="age" value={a.age} min={10} max={100} typical={[25, 30, 35, 40, 45, 50]}  onChange={(v) => setA({ age: v })} suffix="years" />
         </Field>
         <Field label="Height">
           {imperial ? (
             <HeightImperial cm={a.height_cm ?? null} onChange={(cm) => setA({ height_cm: cm })} />
           ) : (
-            <NumberStepper label="height" value={a.height_cm} min={100} max={250} onChange={(v) => setA({ height_cm: v })} suffix="cm" />
+            <NumberStepper label="height" value={a.height_cm} min={100} max={250} typical={[160, 165, 170, 175, 180, 185]}  onChange={(v) => setA({ height_cm: v })} suffix="cm" />
           )}
         </Field>
         <Field label="Weight">
           {imperial ? (
-            <NumberStepper label="weight" value={a.weight_kg ? kgToLb(a.weight_kg) : null} min={66} max={550}
+            <NumberStepper label="weight" value={a.weight_kg ? kgToLb(a.weight_kg) : null} min={66} max={550} typical={[130, 150, 170, 190, 210]} 
               onChange={(v) => setA({ weight_kg: v == null ? null : lbToKg(v) })} suffix="lb" />
           ) : (
-            <NumberStepper label="weight" value={a.weight_kg} min={30} max={250} step={0.5} decimals={1}
+            <NumberStepper label="weight" value={a.weight_kg} min={30} max={250} step={0.5} decimals={1} typical={[55, 65, 75, 85, 95]} 
               onChange={(v) => setA({ weight_kg: v })} suffix="kg" />
           )}
         </Field>
@@ -67,24 +66,25 @@ export function YouFields({ a, setA }: Props) {
 }
 
 export function NumbersFields({ a, setA, sports }: Props) {
-  const imperial = a.units === 'imperial'
+  const imperial = (a.units ?? guessUnits()) === 'imperial'
   return (
     <>
+      <UnitsToggle a={a} setA={setA} />
       <Card>
         <Field label="Resting heart rate">
-          <NumberStepper label="resting heart rate" value={a.resting_hr} min={25} max={120} onChange={(v) => setA({ resting_hr: v })} suffix="bpm" />
+          <NumberStepper label="resting heart rate" value={a.resting_hr} min={25} max={120} typical={[45, 50, 55, 60, 65]}  onChange={(v) => setA({ resting_hr: v })} suffix="bpm" />
         </Field>
         <Field label="Max heart rate">
-          <NumberStepper label="max heart rate" value={a.max_hr} min={100} max={230} onChange={(v) => setA({ max_hr: v })} suffix="bpm" />
+          <NumberStepper label="max heart rate" value={a.max_hr} min={100} max={230} typical={[175, 180, 185, 190, 195]}  onChange={(v) => setA({ max_hr: v })} suffix="bpm" />
         </Field>
         <Field label="Threshold heart rate" hint="Roughly your average heart rate for an all-out hour.">
-          <NumberStepper label="threshold heart rate" value={a.threshold_hr} min={80} max={220} onChange={(v) => setA({ threshold_hr: v })} suffix="bpm" />
+          <NumberStepper label="threshold heart rate" value={a.threshold_hr} min={80} max={220} typical={[155, 160, 165, 170, 175]}  onChange={(v) => setA({ threshold_hr: v })} suffix="bpm" />
         </Field>
       </Card>
       <Card>
         {sports.includes('bike') && (
           <Field label="Cycling FTP" hint={a.weight_kg && a.ftp_w ? `${(a.ftp_w / a.weight_kg).toFixed(1)} W/kg. Bike workouts target power.` : 'Bike workouts target power when you have a power meter.'}>
-            <NumberStepper label="FTP" value={a.ftp_w} min={50} max={600} step={5} onChange={(v) => setA({ ftp_w: v })} suffix="watts" />
+            <NumberStepper label="FTP" value={a.ftp_w} min={50} max={600} step={5} typical={[150, 200, 250, 300]}  onChange={(v) => setA({ ftp_w: v })} suffix="watts" />
           </Field>
         )}
         {sports.includes('run') && (
@@ -109,7 +109,7 @@ export function WeekFields({ a, setA, sports }: Props) {
     <>
       <Card>
         <Field label="Hours a week right now" hint="Average of the last month. Garmin's history helps if you're unsure.">
-          <NumberStepper label="hours per week" value={a.weekly_hours} min={1} max={30} step={0.5} decimals={1}
+          <NumberStepper label="hours per week" value={a.weekly_hours} min={1} max={30} step={0.5} decimals={1} typical={[4, 6, 8, 10, 12]} 
             onChange={(v) => setA({ weekly_hours: v })} suffix="hours" />
         </Field>
         <Field label="Training days" hint={(a.available_days ?? []).length < 3 ? 'Three or more days works best.' : `${(a.available_days ?? []).length} days a week. The rest are rest days.`}>
@@ -131,11 +131,12 @@ export function WeekFields({ a, setA, sports }: Props) {
 
 /** Where you train, strengths and limiters, heat, why you race: used by Race fit and Rabbit. */
 export function TraitsFields({ a, setA }: Props) {
-  const imperial = a.units === 'imperial'
+  const imperial = (a.units ?? guessUnits()) === 'imperial'
   const elev = a.home_elevation_m ?? null
   const acclim = a.altitude_acclimatized == null ? null : a.altitude_acclimatized ? 'yes' : 'no'
   return (
     <>
+      <UnitsToggle a={a} setA={setA} />
       <Card>
         <Field label="Home base" hint="Where you live and train most.">
           <input className={inputCls} value={a.home_location ?? ''} maxLength={80} placeholder="e.g. Denver, CO"
@@ -160,7 +161,7 @@ export function TraitsFields({ a, setA }: Props) {
       </Card>
       <Card>
         <Field label="Years of training">
-          <NumberStepper label="years of training" value={a.years_training} min={0} max={60} onChange={(v) => setA({ years_training: v })} suffix="years" />
+          <NumberStepper label="years of training" value={a.years_training} min={0} max={60} typical={[1, 3, 5, 10]}  onChange={(v) => setA({ years_training: v })} suffix="years" />
         </Field>
         <Field label="Strengths" className="border-t border-(--border)">
           <MultiChoice value={a.strengths ?? []} options={TRAITS} onChange={(v) => setA({ strengths: v })} />
@@ -225,6 +226,29 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
   )
 }
 
+/** US or metric, at the top of every step with numbers. Changing it converts nothing: values are
+ *  stored metric and only shown in the athlete's units. */
+export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-1">
+      <span id="units-label" className="text-[0.7647rem] text-(--text-secondary)">Units</span>
+      <div role="radiogroup" aria-labelledby="units-label" className="flex rounded-full border border-(--border) p-0.5">
+        {([['imperial', 'US', 'mi · lb · ft'], ['metric', 'Metric', 'km · kg · m']] as const).map(([v, name, hint]) => {
+          const on = (a.units ?? guessUnits()) === v
+          return (
+            <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setA({ units: v })}
+              className={cn('hit-44 flex min-h-9 flex-col items-center rounded-full px-3.5 py-1 leading-tight',
+                on ? 'bg-(--accent) text-(--on-fill)' : 'text-(--text-secondary)')}>
+              <span className="text-[0.7647rem] font-semibold">{name}</span>
+              <span className={cn('text-[0.6471rem]', on ? 'opacity-90' : 'text-(--text-muted)')}>{hint}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function GarminFill({ busy, onClick }: { busy: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} disabled={busy}
@@ -243,7 +267,7 @@ export function HeightImperial({ cm, onChange }: { cm: number | null; onChange: 
   const { ft, inch } = cm ? cmToFtIn(cm) : { ft: 5, inch: 9 }
   return (
     <div className="flex gap-3">
-      <div className="flex-1"><NumberStepper label="feet" value={cm ? ft : null} min={3} max={8} onChange={(v) => onChange(v == null ? null : ftInToCm(v, inch))} suffix="ft" /></div>
+      <div className="flex-1"><NumberStepper label="feet" value={cm ? ft : null} min={3} max={8} typical={[5, 6]}  onChange={(v) => onChange(v == null ? null : ftInToCm(v, inch))} suffix="ft" /></div>
       <div className="flex-1"><NumberStepper label="inches" value={cm ? inch : null} min={0} max={11} onChange={(v) => onChange(v == null ? null : ftInToCm(ft, v))} suffix="in" /></div>
     </div>
   )

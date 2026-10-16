@@ -1,7 +1,7 @@
 // Small building blocks for the plan screens, in Rabbit's existing look: grouped cards,
 // DM Mono labels, forest-green accent chips.
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
-import { ChevronLeft, Minus, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/useDialog'
 
@@ -211,43 +211,40 @@ export function OptionCard({ selected, title, description, onClick }: {
   )
 }
 
-export function NumberStepper({ value, onChange, step = 1, min, max, suffix, decimals = 0, label }: {
+/** A number picked from a dropdown (the phone's native wheel/list): min..max by step, plus "–"
+ *  for not set. A saved value that isn't on the grid (e.g. 72.3 kg) is kept as its own option.
+ *  `typical` (optional) is listed first under "Common" so nobody scrolls from 30 kg to 75. */
+export function NumberStepper({ value, onChange, step = 1, min, max, suffix, decimals = 0, label, typical }: {
   value: number | null | undefined; onChange: (v: number | null) => void
   step?: number; min: number; max: number; suffix?: string; decimals?: number; label: string
+  typical?: number[]
 }) {
   const v = value ?? null
-  // Typed text lives here until it's a complete number ("7." stays "7." while typing).
-  const [text, setText] = useState<string | null>(null)
-  const clamp = (n: number) => Math.min(max, Math.max(min, Math.round(n * 10 ** decimals) / 10 ** decimals))
-  const bump = (d: number) => {
-    setText(null)
-    const base = v ?? Math.round(((min + max) / 2) / step) * step
-    onChange(clamp(base + d))
+  const fmt = (n: number) => n.toFixed(decimals)
+  const opts: number[] = []
+  for (let n = min; n <= max + 1e-9; n += step) opts.push(Math.round(n * 10 ** decimals) / 10 ** decimals)
+  if (v != null && !opts.some((o) => Math.abs(o - v) < 1e-9)) {
+    opts.push(v); opts.sort((a, b) => a - b)
   }
+  const common = (typical ?? []).filter((t) => t >= min && t <= max)
+  const unit = suffix ? ` ${suffix}` : ''
   return (
-    <div className="flex items-center gap-2">
-      <button type="button" className="plan-step-btn" aria-label={`Less ${label}`} onClick={() => bump(-step)}><Minus className="size-4" /></button>
-      <div className="flex flex-1 items-baseline justify-center gap-1">
-        <input inputMode="decimal" aria-label={label} value={text ?? (v ?? '')} placeholder="–"
-          onChange={(e) => {
-            const t = e.target.value.replace(',', '.')
-            if (!/^\d*\.?\d*$/.test(t)) return
-            setText(t)
-            if (t === '') return onChange(null)
-            const n = Number(t)
-            if (Number.isFinite(n) && !t.endsWith('.') && n >= min && n <= max) onChange(n)
-          }}
-          onBlur={() => {
-            if (text == null) return
-            setText(null)
-            if (text === '' || text === '.') return onChange(null)
-            const n = Number(text)
-            if (Number.isFinite(n)) onChange(clamp(n))
-          }}
-          className="w-20 bg-transparent text-center font-display text-[1.6471rem] leading-none text-(--text) placeholder:text-(--text-muted)" />
-        {suffix && <span className="text-[0.7647rem] text-(--text-muted)">{suffix}</span>}
-      </div>
-      <button type="button" className="plan-step-btn" aria-label={`More ${label}`} onClick={() => bump(step)}><Plus className="size-4" /></button>
+    <div className="relative">
+      <select aria-label={label} value={v == null ? '' : fmt(v)}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+        className={cn('h-12 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-10 text-[1.0588rem] tabular-nums',
+          'text-(--text) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring', v == null && 'text-(--text-muted)')}>
+        <option value="">Choose {label}…</option>
+        {common.length > 0 && v == null && (
+          <optgroup label="Common">
+            {common.map((n) => <option key={`c${n}`} value={fmt(n)}>{fmt(n)}{unit}</option>)}
+          </optgroup>
+        )}
+        <optgroup label={common.length > 0 && v == null ? 'All' : label}>
+          {opts.map((n) => <option key={n} value={fmt(n)}>{fmt(n)}{unit}</option>)}
+        </optgroup>
+      </select>
+      <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
     </div>
   )
 }

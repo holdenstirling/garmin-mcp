@@ -12,7 +12,7 @@ import { ConnectGarmin } from '@/components/ConnectGarmin'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import type { Me } from '@/lib/api'
 import {
-  DISTANCES, cmToFtIn, fmtPace, getGarminNumbers, kgToLb, KM_PER_MI,
+  DISTANCES, cmToFtIn, fmtPace, getGarminNumbers, guessUnits, kgToLb, KM_PER_MI,
   setupPlan, sportsFor, syncGarmin, weeksUntil,
   type AthleteFull, type BuiltPlan, type GoalFull, type SyncResult,
 } from '@/lib/plan'
@@ -68,7 +68,7 @@ function initialDraft(me: Me): Draft {
       priorities: g.priorities ?? '', limiters: g.limiters ?? [],
     } : { priority: 'A', goal_type: 'finish', limiters: [] },
     athlete: {
-      units: a.units ?? 'metric', sex: a.sex ?? null, age: a.age ?? null, height_cm: a.height_cm ?? null,
+      units: a.units ?? guessUnits(), sex: a.sex ?? null, age: a.age ?? null, height_cm: a.height_cm ?? null,
       weight_kg: a.weight_kg ?? null, level: a.level ?? null, injuries: a.injuries ?? '', experience: a.experience ?? '',
       resting_hr: a.resting_hr ?? null, max_hr: a.max_hr ?? null, threshold_hr: a.threshold_hr ?? null,
       ftp_w: a.ftp_w ?? null, run_threshold_pace: a.run_threshold_pace ?? null, swim_css: a.swim_css ?? null,
