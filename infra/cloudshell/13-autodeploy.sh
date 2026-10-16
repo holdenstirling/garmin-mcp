@@ -13,6 +13,8 @@ infra/write-config.sh
 # shellcheck disable=SC1091
 source infra/config.env
 g() { gcloud --project "$PROJECT" --quiet "$@"; }
+# New service accounts take a little while to be visible to IAM: retry bindings.
+retry() { local n; for n in 1 2 3 4 5 6 7 8; do "$@" && return 0; echo "   (waiting for IAM to catch up, try $n)"; sleep 10; done; return 1; }
 
 REPO=holdenstirling/garmin-mcp
 SA_NAME=rabbit-deployer
@@ -29,10 +31,10 @@ echo "==> Deploy service account ($SA)"
 g iam service-accounts describe "$SA" >/dev/null 2>&1 || \
   g iam service-accounts create "$SA_NAME" --display-name "Rabbit deploys from GitHub Actions" >/dev/null
 for role in roles/compute.viewer roles/compute.osAdminLogin roles/iap.tunnelResourceAccessor; do
-  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role "$role" \
+  retry g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role "$role" \
     --condition=None >/dev/null
 done
-g iam service-accounts add-iam-policy-binding "$VM_SA" --member "serviceAccount:$SA" \
+retry g iam service-accounts add-iam-policy-binding "$VM_SA" --member "serviceAccount:$SA" \
   --role roles/iam.serviceAccountUser >/dev/null
 
 echo "==> Workload identity pool + GitHub provider (only $REPO, only main)"
@@ -46,7 +48,7 @@ if ! g iam workload-identity-pools providers describe "$PROVIDER" --location glo
     --attribute-mapping "google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
     --attribute-condition "assertion.repository == '$REPO' && assertion.ref == 'refs/heads/main'" >/dev/null
 fi
-g iam service-accounts add-iam-policy-binding "$SA" --role roles/iam.workloadIdentityUser \
+retry g iam service-accounts add-iam-policy-binding "$SA" --role roles/iam.workloadIdentityUser \
   --member "principalSet://iam.googleapis.com/projects/$PNUM/locations/global/workloadIdentityPools/$POOL/attribute.repository/$REPO" >/dev/null
 
 echo
