@@ -65,7 +65,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
 
   return (
     <Sheet onClose={onClose} label="Search" portal
-      header={<h2 className="modal-title sr-only">Search</h2>}
+      title="Search"
       below={
         <div className="px-4 pb-2">
           <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-inset) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
@@ -73,7 +73,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             <input ref={input} type="search" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') rememberSearch(q) }}
               placeholder="People, clubs, races, workouts…" aria-label="Search people, clubs, races, sessions and workouts"
-              className="min-w-0 flex-1 bg-transparent text-[0.9412rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+              className="min-w-0 flex-1 bg-transparent text-[0.9412rem] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none text-(--text) outline-none placeholder:text-(--text-muted)" />
             {q && (
               <button type="button" aria-label="Clear search" onClick={() => { setQ(''); input.current?.focus() }}
                 className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>

@@ -95,7 +95,7 @@ export function Tour({ userId, auto, onStart }: {
         className={`absolute inset-x-4 mx-auto max-w-sm rounded-2xl border border-(--border) bg-(--bg-surface) p-4 shadow-xl${anim}`}
         style={cardPos}>
         <div className="flex items-start gap-3">
-          <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--brand)"><RabbitLogo size={28} /></span>
+          <span aria-hidden className="logo-tile flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--brand)"><RabbitLogo size={28} /></span>
           <div className="min-w-0 flex-1">
             <p className="text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
               {step + 1} of {STEPS.length}

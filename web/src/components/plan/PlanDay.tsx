@@ -43,7 +43,7 @@ function Learn({ s, c, cal, imperial }: { s: PlanSession; c: CalSession | undefi
     <div className="border-t border-(--border)">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
         className="flex min-h-11 w-full items-center gap-2 px-3.5 text-left text-[0.7647rem] font-medium text-(--accent)">
-        <BookOpen className="size-3.5" aria-hidden /> <span className="flex-1">Learn more about this {k ? k.title.toLowerCase() : 'session'}</span>
+        <BookOpen className="size-3.5" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
         <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
@@ -111,8 +111,8 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       </div>
 
       {(mins || dist || pace) && (
-        <dl className="mx-3.5 mt-3 grid grid-cols-3 gap-2 rounded-lg bg-(--bg-inset) px-3 py-2">
-          {[['Time', mins ? fmtDuration(mins) : '–'], ['Distance', dist || '–'], ['Pace', pace || '–']].map(([k, v]) => (
+        <dl className="mx-3.5 mt-3 flex gap-6 rounded-lg bg-(--bg-inset) px-3 py-2">
+          {([['Time', mins ? fmtDuration(mins) : ''], ['Distance', dist], ['Pace', pace]] as const).filter(([, v]) => !!v).map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">{k}</dt>
               <dd className="truncate font-mono text-[0.7647rem] font-semibold tabular-nums text-(--text)">{v}</dd>
@@ -215,7 +215,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           <p className="text-[0.9412rem] font-semibold leading-tight text-(--text)">{head}</p>
           <p className="text-[0.7059rem] text-(--text-muted)">
             {fmtDay(date, { month: 'long', day: 'numeric' })}{week ? ` · week ${week.index} · ${weekPhaseLabel(week)}` : ''}
-            {date !== today && today >= first && today <= last && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onDate(today)}>today</button></>}
+            {date !== today && today >= first && today <= last && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onDate(today)}>Jump to today</button></>}
           </p>
         </div>
         <button type="button" className="modal-close" aria-label="Next day" disabled={date >= last} onClick={() => go(1)}><ChevronRight className="size-4" /></button>

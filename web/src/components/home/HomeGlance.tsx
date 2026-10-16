@@ -1,7 +1,7 @@
 // Small Rabbit home cards: the greeting, the next race countdown (tap: Races) and a progress
-// glance (streak, this week, level; tap: Progress).
+// glance (streak and level; the week is in the week panel above; tap: Progress).
 import { useEffect, useState } from 'react'
-import { ChevronRight, Flag, Flame, Sparkles, Target } from 'lucide-react'
+import { ChevronRight, Flag, Flame, Sparkles } from 'lucide-react'
 import { daysUntil, isRace, listEvents, TYPE_LABEL, type RaceEvent } from '@/lib/events'
 import type { Progress } from '@/lib/progress'
 import { cn } from '@/lib/utils'
@@ -43,7 +43,7 @@ export function NextRaceCard({ refreshKey, onOpen }: { refreshKey?: number; onOp
   const what = [ev.distance, TYPE_LABEL[ev.type]].filter(Boolean).join(' ')
   return (
     <button type="button" onClick={onOpen} aria-label={`Next race: ${ev.name}, ${when}, in ${n} days. Open Races`}
-      className="settings-group flex min-h-16 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
+      className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)" aria-hidden>
         <Flag className="size-5" />
       </span>
@@ -72,14 +72,12 @@ function Stat({ icon: Icon, value, label, hot }: { icon: typeof Flame; value: st
 
 export function ProgressGlance({ progress, onOpen }: { progress: Progress | null; onOpen: () => void }) {
   if (!progress) return <div className="skeleton h-[74px] rounded-xl" aria-hidden />
-  const { streak, week } = progress
-  const label = `Progress: ${streak.current} day streak, this week ${week.done} of ${week.target}, level ${progress.level} ${progress.name}. Open Progress`
+  const { streak } = progress
+  const label = `Progress: ${streak.current} day streak, level ${progress.level} ${progress.name}. Open Progress`
   return (
     <button type="button" onClick={onOpen} aria-label={label}
-      className="settings-group flex w-full items-center rounded-xl border border-(--border) bg-(--bg-surface) px-1 text-left active:bg-(--bg-inset)">
+      className="flex w-full items-center rounded-xl border border-(--border) bg-(--bg-surface) px-1 text-left active:bg-(--bg-inset)">
       <Stat icon={Flame} value={String(streak.current)} label="day streak" hot={streak.today_done} />
-      <span className="h-8 w-px bg-(--border)" aria-hidden />
-      <Stat icon={Target} value={`${week.done}/${week.target}`} label={week.label || 'this week'} hot={week.target > 0 && week.done >= week.target} />
       <span className="h-8 w-px bg-(--border)" aria-hidden />
       <Stat icon={Sparkles} value={`Lv ${progress.level}`} label={progress.name} />
       <ChevronRight className="mr-2 size-4 shrink-0 text-(--text-muted)" aria-hidden />

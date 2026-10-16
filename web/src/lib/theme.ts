@@ -43,4 +43,4 @@ export function useTheme(): Theme {
   return useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb) } }, getTheme, () => 'system')
 }
 
-export const THEME_LABEL: Record<Theme, string> = { system: 'Match phone', light: 'Light', dark: 'Dark' }
+export const THEME_LABEL: Record<Theme, string> = { system: 'Auto', light: 'Light', dark: 'Dark' }

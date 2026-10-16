@@ -8,7 +8,6 @@
 // CSS-var colors, so light and dark both work.
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Table2 } from 'lucide-react'
-import { Card } from '@/components/plan/ui'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { cn } from '@/lib/utils'
 import { KM_PER_MI, YD_PER_M } from '@/lib/format'
@@ -310,7 +309,9 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
   }, [loadKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const imperial = t?.units === 'imperial'
-  const sports = t?.distance.sports ?? []
+  const ORDER = ['run', 'bike', 'swim']
+  const rank = (x: string) => { const i = ORDER.indexOf(x); return i < 0 ? 9 : i }
+  const sports = useMemo(() => [...(t?.distance.sports ?? [])].sort((a, b) => rank(a.sport) - rank(b.sport)), [t])  // runs first
   const cur = useMemo(() => sports.find((s) => s.sport === sport) ?? sports[0] ?? null, [sports, sport])
   if (failed || !t) return failed ? null : <div className="skeleton h-56 rounded-xl" aria-hidden="true" />
 
@@ -321,7 +322,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
     : view === 'pace' ? (t.pace.points.length ? null : t.pace.reason)
     : t.sleep.reason && t.sleep.nights < 7 ? t.sleep.reason : null
   return (
-    <Card className="flex flex-col gap-2.5 p-4">
+    <div className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="m-0 flex items-center gap-1 text-[0.8824rem] font-semibold text-(--text)">
           Trends <InfoTip label={views.find(([v]) => v === view)![1]} text={WHY[view]} align="start" />
@@ -363,6 +364,6 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
       {view === 'sleep' && !empty && t.sleep.source && (
         <p className="m-0 text-[0.6471rem] text-(--text-muted)">Sleep from {t.sleep.source === 'oura' ? 'Oura' : 'Garmin'} · only you see this</p>
       )}
-    </Card>
+    </div>
   )
 }

@@ -6,8 +6,9 @@
 // view: the month at a glance with weekly/monthly/plan mileage; tap a day to open it.
 // Deep link: lib/plancal openPlanDay(date) (sessionStorage keys read on mount + an event).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Pencil, Plane, Plus, Rows3, Calendar, Undo2, Wrench } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Flag, GripVertical, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Segmented } from '@/components/nav/Segmented'
 import { Sheet } from '@/components/ui/Sheet'
 import { cn } from '@/lib/utils'
 import { haptic } from '@/lib/haptics'
@@ -380,16 +381,20 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   }, [plan])
 
   useEffect(() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, view) } catch { /* ignore */ } }, [view])
-  // Deep link (lib/plancal openPlanDay): keys read on mount (above), the event while mounted.
+  // Deep link (lib/plancal openPlanDay): keys read on mount (above), the event while mounted;
+  // either way the calendar scrolls into view so the day is what you see.
+  const rootRef = useRef<HTMLElement>(null)
+  const reveal = () => setTimeout(() => rootRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120)
   useEffect(() => {
     if (readKey(PLAN_DAY_KEY)) {
+      reveal()
       try { sessionStorage.removeItem(PLAN_DAY_KEY) } catch { /* ignore */ }
       if (view === 'day') { const w = weekOf(day); if (w && w.index !== week.index) onWeek(w.index) }
     }
     const on = (e: Event) => {
       const d = (e as CustomEvent<string>).detail
       try { sessionStorage.removeItem(PLAN_DAY_KEY) } catch { /* ignore */ }
-      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) openDay(d)
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) { openDay(d); reveal() }
     }
     window.addEventListener(OPEN_PLAN_DAY_EVENT, on)
     return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, on)
@@ -467,19 +472,14 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   )
 
   return (
-    <section className="flex flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
-      <div className="flex items-center gap-2 px-1">
-        <ChipRow>
-          <Chip selected={view === 'day'} onClick={() => openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date)}><Calendar className="mr-1 inline size-3.5" aria-hidden />Day</Chip>
-          <Chip selected={view === 'week'} onClick={() => setView('week')}><Rows3 className="mr-1 inline size-3.5" aria-hidden />Week</Chip>
-          <Chip selected={view === 'month'} onClick={() => setView('month')}><CalendarDays className="mr-1 inline size-3.5" aria-hidden />Month</Chip>
-        </ChipRow>
-        {cal?.total.run && cal.total.run.planned > 0 && (
-          <span className="ml-auto truncate font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
-            Plan: {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })}
-          </span>
-        )}
-      </div>
+    <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
+      <Segmented label="Calendar view" value={view} options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month']] as const}
+        onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date) : setView(v)} />
+      {cal?.total.run && cal.total.run.planned > 0 && (
+        <p className="px-1 text-center font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
+          Running so far: {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })} in the plan
+        </p>
+      )}
 
       {change && change.rebalanced.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5" role="status">

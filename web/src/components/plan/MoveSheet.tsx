@@ -155,7 +155,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
     )
   }
   const group = (label: string, days: DayInfo[]) => days.length > 0 && (
-    <Card>
+    <Card className="shrink-0">
       <p className="border-b border-(--border) px-3.5 py-2 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</p>
       <ul className="divide-y divide-(--border)">{days.map(dayRow)}</ul>
     </Card>
@@ -173,7 +173,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       <div className="flex items-center gap-3 px-1">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-4" aria-hidden /></span>
         <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          Now on {dayLabel(from)}. Rabbit keeps hard days apart and your weekly miles on track.
+          Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. Rabbit keeps hard days apart and your weekly miles on track.
         </p>
       </div>
       <ChipRow>
