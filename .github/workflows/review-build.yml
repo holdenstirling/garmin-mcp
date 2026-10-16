@@ -1,0 +1,32 @@
+# Build the web app and publish the bundle to the review-dist branch, so a screenshot review can
+# run it locally against demo data (Run workflow, or: gh workflow run review-build.yml --ref <branch>).
+# Never deploys anything.
+name: review-build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Build
+        run: cd web && bun install --frozen-lockfile && bun run build
+      - name: Publish to review-dist
+        run: |
+          src=$(git rev-parse --short HEAD)
+          cp -r src/garmin_mcp/web_dist "$RUNNER_TEMP/dist"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout --orphan review-dist
+          git rm -rfq .
+          cp -r "$RUNNER_TEMP/dist/." .
+          git add -A
+          git commit -qm "web bundle from $src"
+          git push -f origin review-dist

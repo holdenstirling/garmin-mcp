@@ -40,13 +40,6 @@ jobs:
       - name: Type-check and build the web app
         run: cd web && bun install --frozen-lockfile && bun run build
 
-      - name: Keep the built app (for screenshot reviews)
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: src/garmin_mcp/web_dist
-          retention-days: 7
-
       - name: Tests
         run: uv run -q pytest -q
 
