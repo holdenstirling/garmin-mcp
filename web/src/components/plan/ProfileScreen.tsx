@@ -9,6 +9,7 @@ import { Card, Field, Screen, StepIntro, areaCls } from './ui'
 import { GarminFill, NumbersFields, TraitsFields, WeekFields, YouFields } from './ProfileFields'
 import { GoalsTab } from './GoalsTab'
 import { PhotoField } from './PhotoField'
+import { TrainingPaces } from '@/components/paces/TrainingPaces'
 import { InterestsSheet } from '@/components/explore/InterestsSheet'
 import { interestsSummary, type Interests } from '@/lib/foryou'
 
@@ -138,6 +139,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
       {tab === 'numbers' && (
         <>
           <StepIntro eyebrow="Zones" title="Training numbers">Workouts on your watch target these. Leave blank to use Garmin's heart-rate zones.</StepIntro>
+          <TrainingPaces onChanged={(p) => { setAState((x) => ({ ...x, ...p } as Partial<AthleteFull>)); onSaved() }} />
           <NumbersFields a={a} setA={setA} sports={['swim', 'bike', 'run']} />
         </>
       )}

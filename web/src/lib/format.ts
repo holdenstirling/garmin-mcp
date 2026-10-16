@@ -41,3 +41,17 @@ export function fmtDuration(minutes: number | null | undefined): string {
 export function fmtSpeed(kmh: number, imperial: boolean): string {
   return imperial ? `${Math.round(kmh / KM_PER_MI)} mph` : `${Math.round(kmh)} km/h`
 }
+
+/** A pace from seconds per km in the athlete's units: "7:04/mi" | "4:23/km" (`unit: false` drops the unit). */
+export function fmtPaceKm(secPerKm: number, imperial: boolean, unit = true): string {
+  const s = Math.round(secPerKm * (imperial ? KM_PER_MI : 1))
+  const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  return unit ? `${t}/${imperial ? 'mi' : 'km'}` : t
+}
+
+/** Swim pace from seconds per 100 m: "1:45/100m". */
+export function fmtSwimPace(secPer100m: number, unit = true): string {
+  const s = Math.round(secPer100m)
+  const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  return unit ? `${t}/100m` : t
+}
