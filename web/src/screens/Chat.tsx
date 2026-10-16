@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { requestPlanFix } from '@/lib/plancal'
 import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upload } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
@@ -608,6 +609,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'racepack') { openRaces(); pushPage({ k: 'screen', s: 'racepack' }) }
     else if (a.id === 'raceweek') { if (a.event_id) showPage({ k: 'raceweek', id: a.event_id, section: a.section }); else openRaces() }
     else if (a.id === 'plan') openPlan()
+    else if (a.id === 'plan_fix') { openPlan(); requestPlanFix(a.session_id) }
     else if (a.id === 'progress') openProgress()
     else if (a.id === 'community_share' && a.draft_id) {
       shareDraft(a.draft_id).then(() => showToast('Shared in Community 🎉'), (e) => showToast((e as Error).message))
@@ -759,7 +761,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" lead={<>{weekLead}<BlocksEntry compact /></>} action={meButton}>
+        <TabScreen key="planner" title="Plan" lead={<BlocksEntry compact />} action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             onRebuild={startSetup}
             onAsk={tellRabbit}

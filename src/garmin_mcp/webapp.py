@@ -3240,6 +3240,43 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             Route("/app/api/racegrade/live", _api(racegrade_live, mutating=False), methods=["GET"]),
         ]
 
+    # ------------------------------------------------------------- plan calendar --
+    # plancal.py: week/month calendar data (status, distance, pace, notes, mileage), move / swap /
+    # missed-session fixes with a deterministic re-balance and undo, weekly mileage goals, the
+    # weekring `miles` field and the morning-after-a-miss moment (Moments.on_tick chain).
+    # Athletes only (coach 403 in _api). Writes go through PlanService._edit (change hook fires).
+    if chat is not None and store is not None and plans is not None:
+        from . import plancal as _pc
+        _pcal = _pc.PlanCal(plans, chat.agent.coach, activities=chat.agent.stats.activities,
+                            now=chat.agent._now, moments=chat.agent.moments)
+        _ring.miles = _pcal.week_miles
+        _pc_tick_prev = chat.agent.moments.on_tick
+
+        def _pc_tick(uid: str) -> None:
+            if _pc_tick_prev is not None:
+                _pc_tick_prev(uid)
+            _pcal.check_missed(uid)
+        chat.agent.moments.on_tick = _pc_tick
+
+        async def plancal_get(request: Request, user_id: str) -> Response:
+            return JSONResponse({"cal": await _plan_call(lambda: _pcal.view(user_id))})
+
+        def _pc_op(kind: str) -> Handler:
+            async def handler(request: Request, user_id: str) -> Response:
+                body = await read_json(request)
+                if not isinstance(body, dict):
+                    raise ValueError("body")
+                out = await _plan_call(lambda: _pcal.op(user_id, kind, body))
+                return JSONResponse({"plan": public_plan(out["plan"], plans.today(user_id)),
+                                     "cal": out["cal"], "change": out.get("change")})
+            return handler
+
+        home_routes += [
+            Route("/app/api/plan/calendar", _plan_api(plancal_get, mutating=False), methods=["GET"]),
+            *[Route(f"/app/api/plan/calendar/{k}", _plan_api(_pc_op(k), mutating=True), methods=["POST"])
+              for k in ("move", "swap", "fix", "undo", "goal")],
+        ]
+
     # ------------------------------------------------------- connected apps --
     # connections.py: one status row per integration (Garmin, Oura, Google Calendar) for the
     # Me -> Connected apps hub and its connect popups, without calling any provider: Garmin's

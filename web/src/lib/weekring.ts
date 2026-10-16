@@ -12,6 +12,9 @@ export type WeekRingData = {
   days_left: number; week_start: string; rest_week: boolean
   next: { date: string; title: string; sport: string | null; id: string | null; minutes: number | null } | null
   phase: string | null
+  /** this week's mileage (plancal.py), km; null without a plan with distances */
+  miles?: { week_start: string; imperial: boolean; primary: 'run' | 'bike' | 'swim'
+    sports: Partial<Record<'run' | 'bike' | 'swim', { done: number; goal: number; planned: number; custom: boolean }>> } | null
 }
 export const getWeekRing = () => getJSON<{ ring: WeekRingData | null }>('/api/weekring')
 

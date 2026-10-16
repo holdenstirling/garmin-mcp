@@ -9,6 +9,7 @@ import { ArrowDown, ArrowUp, Check, ChevronRight, Minus } from 'lucide-react'
 import { celebrate } from '@/components/fx/motion'
 import { WeekRing } from '@/components/progress/Progress'
 import { cn } from '@/lib/utils'
+import { fmtDist } from '@/lib/format'
 import { getLiveGrade, getWeekRing, type LiveGrade, type RingDayState, type WeekRingData } from '@/lib/weekring'
 
 const CLOSED_SEEN = 'rabbit.weekring.closed'
@@ -49,6 +50,25 @@ function Dots({ ring }: { ring: WeekRingData }) {
           </span>
         )
       })}
+    </span>
+  )
+}
+
+/** "18.2 of 25 mi" with a thin bar: the week's mileage goal (plancal.py via the ring's `miles`). */
+function Miles({ ring }: { ring: WeekRingData }) {
+  const m = ring.miles
+  const sp = m?.primary
+  const v = sp ? m?.sports[sp] : undefined
+  if (!m || !sp || !v || v.goal <= 0) return null
+  const pct = Math.min(100, (v.done / v.goal) * 100)
+  const num = (km: number) => sp === 'swim' ? fmtDist(km, m.imperial, 'swim') : fmtDist(km, m.imperial, sp).replace(/ (mi|km)$/, '')
+  const text = sp === 'swim' ? `${num(v.done)} of ${num(v.goal)}` : `${num(v.done)} of ${fmtDist(v.goal, m.imperial, sp, { decimals: v.goal >= 10 ? 0 : 1 })}`
+  return (
+    <span className="mt-1 flex items-center gap-2" aria-label={`${text} this week`}>
+      <span className="font-mono text-[0.7059rem] tabular-nums text-(--text-secondary)">{text}</span>
+      <span className="h-1 w-16 overflow-hidden rounded-full bg-(--bg-elevated)" aria-hidden>
+        <span className={cn('block h-full rounded-full', pct >= 100 ? 'bg-(--success)' : 'bg-(--accent)')} style={{ width: `${pct}%` }} />
+      </span>
     </span>
   )
 }
@@ -110,6 +130,7 @@ export function WeekGoalsCard({ refreshKey, onOpenPlan, onOpenGrade, onRing }: {
             <span className={cn('block truncate text-[0.8824rem] font-semibold leading-tight',
               ring.closed ? 'text-(--accent)' : 'text-(--text)')}>{ring.line}</span>
             {ring.sub && <span className="block truncate text-[0.7059rem] text-(--text-secondary)">{ring.sub}</span>}
+            <Miles ring={ring} />
             <Dots ring={ring} />
           </span>
           <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />

@@ -68,7 +68,7 @@ def ring(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date) -
     sunday = monday + timedelta(days=6)
     planned: dict[str, list[dict[str, Any]]] = {}
     for _, d, s in iter_sessions(plan or {}):
-        if monday.isoformat() <= d <= sunday.isoformat():
+        if monday.isoformat() <= d <= sunday.isoformat() and not s.get("skipped"):  # plancal skip
             planned.setdefault(d, []).append({"id": s.get("id"), "sport": s.get("sport"), "title": s.get("title"),
                                               "minutes": s.get("minutes")})
     days = merge(monday, today, planned, acts)
@@ -185,6 +185,8 @@ class WeekRing:
                  now: Callable[[str], datetime], moments: Moments) -> None:
         self._plan, self._acts, self._checkins = plan, activities, checkins
         self._profile, self._now, self._moments = profile, now, moments
+        # Optional: this week's mileage (plancal.PlanCal.week_miles), added as ``miles``.
+        self.miles: Callable[[str], dict[str, Any] | None] | None = None
 
     def get(self, uid: str) -> dict[str, Any] | None:
         """None when Garmin can't be read (nothing honest to count)."""
@@ -192,7 +194,13 @@ class WeekRing:
             today, acts = self._acts(uid)
         except Exception:
             return None
-        return ring(self._plan(uid), acts, today)
+        r = ring(self._plan(uid), acts, today)
+        if self.miles is not None:
+            try:
+                r["miles"] = self.miles(uid)
+            except Exception:  # mileage is extra: the ring still shows
+                r["miles"] = None
+        return r
 
     def check_nudge(self, uid: str) -> str:
         """From ``Moments.tick`` (outside quiet hours). Cheap until Friday 17:00; then at

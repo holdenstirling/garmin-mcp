@@ -1,19 +1,21 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, FileUp, MessageCircle, Plane, Plus, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { cn } from '@/lib/utils'
 import type { Me, Sport } from '@/lib/api'
 import {
   deletePlan, placedEventLabel, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, Screen } from './ui'
-import { PhaseStrip, SessionLine, fmtDay, planToday, weekPhaseLabel } from './PlanParts'
+import { PhaseStrip, fmtDay, planToday, sessionMinutes } from './PlanParts'
+import { PlanCalendar, paceText, type MoveTarget } from './PlanCalendar'
+import { getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
+import { fmtDist, fmtDuration } from '@/lib/format'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
 import { TravelSheet } from './TravelSheet'
@@ -64,6 +66,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [travelClosing, setTravelClosing] = useState(false)
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // Plan calendar data (athlete only: status, distance, pace, notes, mileage) and the Move sheet.
+  const [planCal, setPlanCal] = useState<CalView | null>(null)
+  const [moving, setMoving] = useState<MoveTarget | null>(null)
+  const imperial = coachMode ? false : me.athlete?.units === 'imperial'
+  const loadCal = useCallback(() => { if (!coachMode) getPlanCal().then((r) => setPlanCal(r.cal), () => {}) }, [coachMode])
   // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
   const [unread, setUnread] = useState<string[]>([])
   const canMessage = !!onMessage
@@ -93,10 +100,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     }, (e) => setLoadError((e as Error).message))
   }, [api])
   useEffect(load, [load])
+  useEffect(loadCal, [loadCal])
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const closeSheet = () => { setSheetClosing(true); setTimeout(() => { setEditing(null); setSheetClosing(false) }, 200) }
-  const applied = (p: BuiltPlan) => { setPlan(p); onChanged() }
+  const applied = (p: BuiltPlan) => { setPlan(p); loadCal(); onChanged() }
 
   if (plan === undefined || plan === null) {
     return (
@@ -116,7 +124,6 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   }
 
   const week = plan.weeks.find((w) => w.index === weekIdx) ?? plan.weeks[0]!
-  const pos = plan.weeks.indexOf(week)
   const today = planToday(plan)
   const sports = sportsFor(plan.distance)
   const raceDay = fmtDay(plan.race_date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
@@ -176,6 +183,19 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     return m >= 60 ? `${Math.round(m / 60)}h busy` : m >= 30 ? `${m}m busy` : ''
   }
 
+  const sessionMeta = (s: PlanSession) => {
+    const c = planCal?.sessions[s.id]
+    const dist = c ? Object.entries(c.km).filter(([, v]) => (v ?? 0) > 0).map(([sp, v]) => fmtDist(v!, imperial, sp)).join(' + ') : ''
+    const mins = sessionMinutes(s)
+    const pace = c?.pace ? `${paceText(c.pace.fast, imperial)}–${paceText(c.pace.slow, imperial)}/${imperial ? 'mi' : 'km'}` : ''
+    return [dist, mins ? fmtDuration(mins) : '', pace].filter(Boolean).join(' · ')
+  }
+  const canMove = (s: PlanSession, date: string) => {
+    const st = planCal?.sessions[s.id]?.status
+    return !coachMode && !readOnly && !!planCal && s.sport !== 'rest' && s.kind !== 'race' &&
+      st !== 'done' && st !== 'skipped' && (date >= today || st === 'missed')
+  }
+
   const synced = plan.weeks.reduce((n, w) => n + w.days.reduce((m, d) => m + d.sessions.filter((s) => s.synced).length, 0), 0)
 
   return (
@@ -225,60 +245,13 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
       </Card>
 
-      {/* Week */}
-      <section className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-1 px-1">
-          <button type="button" className="modal-close" aria-label="Previous week" disabled={pos <= 0}
-            onClick={() => setWeekIdx(plan.weeks[pos - 1]!.index)}><ChevronLeft className="size-4" /></button>
-          <div className="min-w-0 flex-1 text-center">
-            <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-              Week {week.index} of {plan.weeks.length} · {weekPhaseLabel(week)} · {week.hours}h
-            </p>
-            <p className="text-[0.7059rem] text-(--text-muted)">
-              {fmtDay(week.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(week.days[week.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
-              {week.index === plan.current_week && ' · this week'}
-            </p>
-          </div>
-          <button type="button" className="modal-close" aria-label="Next week" disabled={pos >= plan.weeks.length - 1}
-            onClick={() => setWeekIdx(plan.weeks[pos + 1]!.index)}><ChevronRight className="size-4" /></button>
-        </div>
-        <Card>
-          {week.focus && <p className="border-b border-(--border) px-4 py-2.5 text-[0.7647rem] leading-snug text-(--text-secondary)">{week.focus}</p>}
-          <div className="divide-y divide-(--border)">
-            {week.days.map((d) => {
-              const past = d.date < today
-              const isToday = d.date === today
-              const canAdd = !readOnly && !past && d.date <= plan.race_date && d.sessions.length < 4
-              return (
-                <div key={d.date} className={cn('flex gap-3 px-4 py-2', isToday && 'bg-(--accent-subtle)', past && 'opacity-60')}>
-                  <span className="w-10 shrink-0 pt-2 text-center leading-tight">
-                    <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                      {fmtDay(d.date, { weekday: 'short' })}
-                    </span>
-                    <span className="block text-[0.7647rem] text-(--text-secondary)">{fmtDay(d.date, { day: 'numeric' })}</span>
-                    {busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
-                    {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    {d.sessions.map((s) => (
-                      <SessionLine key={s.id} s={s} unread={unread.includes(s.id)} onClick={s.sport === 'rest' && past ? undefined : () => setEditing({ session: s, date: d.date })} />
-                    ))}
-                    {!d.sessions.length && <p className="py-2 text-[0.7647rem] text-(--text-muted)">Rest</p>}
-                  </div>
-                  {canAdd && (
-                    <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`}
-                      onClick={() => setEditing({ session: null, date: d.date })}
-                      className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
-                      <Plus className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-        <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">Tap a session to see the workout, change it or move it. Edited sessions stay as you set them.</p>
-      </section>
+      {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
+      <PlanCalendar plan={plan} cal={planCal} imperial={imperial} today={today} week={week} onWeek={setWeekIdx}
+        editable={!coachMode && !readOnly} unread={unread} busyLabel={busyLabel}
+        onOpen={(s, date) => setEditing({ session: s, date })}
+        onAdd={readOnly ? undefined : (date) => setEditing({ session: null, date })}
+        onResult={(r) => { setPlan(r.plan); setPlanCal(r.cal); onChanged() }}
+        moving={moving} onMoving={setMoving} />
 
       {!coachMode && <>
       {/* Garmin */}
@@ -360,6 +333,13 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             applied(r.plan)
           } : undefined}
           readOnly={readOnly}
+          note={editing.session ? planCal?.sessions[editing.session.id]?.note : undefined}
+          meta={editing.session ? sessionMeta(editing.session) : undefined}
+          onMove={editing.session && canMove(editing.session, editing.date) ? () => {
+            const t = { session: editing.session!, date: editing.date }
+            setEditing(null)
+            setMoving(t)
+          } : undefined}
           checkIn={!coachMode && !!editing.session && editing.date <= today}
           onOpenWorkout={editing.session && onOpenWorkout && !coachMode ? () => {
             const id = editing.session!.id

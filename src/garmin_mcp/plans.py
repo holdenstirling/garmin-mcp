@@ -13,6 +13,7 @@ sessions that were deleted, moved out of the plan or replaced by a rebuild are k
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -67,6 +68,7 @@ class PlanService:
         self._events = events
         self._sync_locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
+        self._listeners: list[Callable[[str, list[dict[str, Any]]], Any]] = []
 
     # ------------------------------------------------------------ storage --
     def _doc(self, user_id: str, goal_id: str):
@@ -246,19 +248,37 @@ class PlanService:
         return removed
 
     # ------------------------------------------------------------- edits --
+    def add_listener(self, fn: Callable[[str, list[dict[str, Any]]], Any]) -> None:
+        """``fn(user_id, changes)`` after any session edit/move/add/delete (see ``session_changes``),
+        e.g. a TrainingPeaks sync. Errors in a listener are logged and never fail the edit."""
+        self._listeners.append(fn)
+
     def _edit(self, user_id: str, fn: Callable[[dict[str, Any], date], Any]) -> dict[str, Any]:
         goal = self._goal(user_id)
         today = self.today(user_id)
+        before: dict[str, tuple[str, str]] = {}
+        after: dict[str, tuple[str, str]] = {}
 
         def apply(d: dict[str, Any]) -> None:
             if not d:
                 raise PlanError("Build a plan first.")
+            before.clear()
+            before.update(_session_index(d))
             fn(d, today)
             d["updated"] = int(self._clock())
+            after.clear()
+            after.update(_session_index(d))
         self._doc(user_id, goal["id"]).update(apply)
         plan = self.get(user_id)
         assert plan is not None
         self._publish(user_id, goal, plan)
+        changes = session_changes(before, after, plan) if self._listeners else []
+        for listener in list(self._listeners) if changes else []:
+            try:
+                listener(user_id, changes)
+            except Exception as e:  # a sync hook never breaks an edit
+                log_event(logger, logging.WARNING, "plan_listener_failed", user_id=user_id,
+                          error=type(e).__name__)
         return plan
 
     @staticmethod
@@ -812,6 +832,33 @@ def _travel_swap(x: dict[str, Any], has: dict[str, bool], swim_pace: float, phas
     if note:
         new["detail"] = f"{note} {new.get('detail', '')}".strip()[:400]
     return new
+
+
+_SIG_KEYS = ("sport", "kind", "title", "minutes", "detail", "note", "skipped", "meters")
+
+
+def _session_index(plan: dict[str, Any]) -> dict[str, tuple[str, str]]:
+    """{session id: (day, content signature)} for the change hook."""
+    return {s["id"]: (d, json.dumps([s.get(k) for k in _SIG_KEYS], default=str))
+            for _, d, s in iter_sessions(plan) if s.get("id") and s.get("sport") != "rest"}
+
+
+def session_changes(before: dict[str, tuple[str, str]], after: dict[str, tuple[str, str]],
+                    plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """What changed between two indexes: ``{"type": moved|edited|added|removed, "id", "from",
+    "to", "session"}`` (``session`` = the stored session now, without Garmin ids; None when
+    removed). Moved and edited at once is ``moved``."""
+    now = {s["id"]: s for _, _, s in iter_sessions(plan) if s.get("id")}
+    out: list[dict[str, Any]] = []
+    for sid in sorted(set(before) | set(after)):
+        b, a = before.get(sid), after.get(sid)
+        if b == a:
+            continue
+        kind = "added" if b is None else "removed" if a is None else "moved" if b[0] != a[0] else "edited"
+        s = now.get(sid)
+        out.append({"type": kind, "id": sid, "from": b[0] if b else None, "to": a[0] if a else None,
+                    "session": {k: v for k, v in s.items() if k != "garmin"} if s and a else None})
+    return out
 
 
 def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | None:
