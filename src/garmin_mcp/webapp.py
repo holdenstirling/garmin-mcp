@@ -3254,6 +3254,48 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             _social_push(inviter, f"invite-joined:{inviter}:{new_uid}", 86400, "New friend on Rabbit",
                          f"{first} joined Rabbit from your invite.")
 
+    # ------------------------------------------- progress trends + celebrations --
+    # trends.py: Progress charts (weekly distance vs plan goal, pace at easy effort, sleep vs
+    # load; Garmin nights kept in the "sleeplog" doc, Oura nights read live and never stored).
+    # celebrate.py: full-screen moments for race finishes and finished blocks, once per
+    # achievement across devices. Routes in bloom_web.py. Never in Rabbit's context.
+    from . import bloom_web as _bloomw, celebrate as _cel, trends as _trends
+    bloom_routes: list[BaseRoute] = []
+    if chat is not None and store is not None:
+        _tg = chat.agent
+        _sleeplog = _trends.SleepLog(store)
+
+        def _trend_inputs(uid: str) -> dict[str, Any]:
+            today, acts = _tg.stats.activities(uid)
+            athlete = _tg.coach.athlete(uid)
+            connected = bool(auth.oura is not None and auth.oura.connected(uid))
+            prefs, _ = prefs_for(store, uid, connected)
+            src = _src_effective(prefs, connected, "sleep")
+            nights: dict[str, float] = {}
+            if src == "oura" and auth.oura is not None:
+                try:
+                    rec = anyio.from_thread.run(auth.oura.recovery, uid, today, _trends.SLEEP_DAYS)
+                    nights = {str(r["date"])[:10]: float(r["sleep_hours"]) for r in (rec or {}).get("days") or []
+                              if isinstance(r, dict) and isinstance(r.get("sleep_hours"), int | float)}
+                except Exception:
+                    nights = {}
+            else:
+                try:
+                    rec = garmin_recovery(_tg._service, uid, today)
+                except Exception:
+                    rec = None
+                nights = _sleeplog.merge(uid, (rec or {}).get("days"))
+            return {"acts": acts, "today": today, "plan": plans.get(uid) if plans is not None else None,
+                    "athlete": athlete, "nights": nights, "sleep_source": src if nights or src else None}
+
+        def _cel_acts(uid: str) -> list[dict[str, Any]]:
+            return _tg.stats.activities(uid)[1]
+        bloom_routes = _bloomw.make_routes(
+            trends=_trends.TrendsService(_trend_inputs),
+            celebrations=_cel.Celebrations(store, now=_tg._now, events=_tg.events.list, acts=_cel_acts,
+                                           imperial=lambda u: _tg.coach.athlete(u).get("units") == "imperial"),
+            api=_api, no_garmin=_no_garmin)
+
     # ------------------------------------------------------- race-week mode --
     # raceweek.py (routes in raceweek_web.py): the 7 days before an A/B/main race take over the
     # Rabbit home; pacing plan, course, packing (stored per event), nutrition, logistics, an
@@ -3810,6 +3852,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *directory_routes,
         *community_routes,
         *block_routes,
+        *bloom_routes,
         *tp_routes,
         *friends_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),

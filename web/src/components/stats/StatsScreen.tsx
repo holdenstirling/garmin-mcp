@@ -19,6 +19,7 @@ import { MainRaceGrade } from '@/components/events/Readiness'
 import { RaceFitScreen } from '@/components/events/RaceFitScreen'
 import { ChallengesCard } from '@/components/challenges/ChallengesCard'
 import { InsightsCard } from '@/components/insights/InsightsCard'
+import { TrendsCard } from '@/components/progress/TrendsCard'
 import { PullToRefresh } from '@/components/fx/PullToRefresh'
 import { hopIn } from '@/components/anim'
 import { useRefreshGroup, useTrackRefresh } from './refresh'
@@ -89,6 +90,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
         {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
           race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
           insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}
+          trends={<TrendsCard loadKey={loadKey} />}
           recovery={<Recovery loadKey={loadKey} />}
           challenges={<ChallengesCard imperial={imperial} loadKey={loadKey} collapsible />}
           more={<CheckinsCard />} />}
@@ -100,14 +102,16 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
 
 /** The stats sections in Progress order (also the coach's view of an athlete):
  *  1 hero (level/XP, streak, week; setup as one line) 2 main race grade 3 insights (2 + Show all)
- *  4 recovery (one row) 5 challenges (one row) 6 fitness & form 7 "More stats" (weekly bars,
+ *  3b trends (distance, easy pace, sleep) 4 recovery (one row) 5 challenges (one row) 6 fitness & form 7 "More stats" (weekly bars,
  *  badges, totals, calendar, sports, bests, check-ins). */
-export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, loadKey, race, recovery, challenges, insights, more: moreExtra }: {
+export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, loadKey, race, recovery, challenges, insights, trends, more: moreExtra }: {
   s: Stats; progress?: Progress | null; onOpenPlan?: () => void; onOpenSetup?: () => void
   loadBase?: string; loadKey?: number
   race?: React.ReactNode; recovery?: React.ReactNode; challenges?: React.ReactNode
   /** "What your data says" */
   insights?: React.ReactNode
+  /** trend charts (distance vs goal, easy pace, sleep vs load) */
+  trends?: React.ReactNode
   /** extra sections under "More stats" (the athlete's own check-ins) */
   more?: React.ReactNode
 }) {
@@ -119,6 +123,7 @@ export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, load
         : <StreakHero s={s} />}
       {race}
       {insights}
+      {trends}
       {recovery}
       {challenges}
       {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}

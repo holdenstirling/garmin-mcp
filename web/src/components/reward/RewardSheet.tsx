@@ -13,9 +13,13 @@ import { burst, reducedMotion, useCountUp } from '@/components/anim'
 import { createCheckin } from '@/lib/checkins'
 import { getReward, markRewardSeen, type LevelView, type Reward } from '@/lib/reward'
 import { cn } from '@/lib/utils'
+import { CelebrationScreen } from './CelebrationScreen'
 
 const FACES: [number, string, string][] = [[1, '😫', 'Awful'], [2, '🙁', 'Rough'], [3, '😐', 'OK'], [4, '🙂', 'Good'], [5, '😄', 'Great']]
 const RECORD = new Set(['split_5k', 'split_10k', 'distance', 'climb', 'duration', 'effect'])
+/** Best in 12 months or ever (celebrate.big_record): a full-screen moment before the sheet. */
+const BIG = new Set(['split_5k', 'split_10k', 'distance'])
+const bigRecord = (r: Reward) => BIG.has(r.headline.kind) && r.headline.weeks == null && !r.seen
 
 export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheckIn, onFeel }: {
   /** which workout; the sheet loads it unless ``initial`` already has it */
@@ -33,6 +37,8 @@ export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheck
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const drag = useSheetDrag(onClose)
+  const [party, setParty] = useState<boolean | null>(null) // null until the reward is here
+  useEffect(() => { if (r && party === null) setParty(bigRecord(r)) }, [r, party])
   useEffect(() => {
     let live = true
     if (!r) {
@@ -46,6 +52,15 @@ export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheck
   }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
   const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
 
+  if (r && party) {
+    return (
+      <CelebrationScreen c={{
+        id: `pr:${r.activity_id}`, kind: 'pr', date: r.date, title: 'New personal record', subtitle: r.headline.text,
+        line: r.headline.text.includes('12 months') ? 'Your best in a year. The work is showing.' : 'Your best ever on Rabbit. Take a moment.',
+        stats: r.chips,
+      }} onClose={() => setParty(false)} />
+    )
+  }
   return (
     <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>
       <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}
