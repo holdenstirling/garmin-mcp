@@ -3059,6 +3059,50 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
             going=_cd_going)
 
+    # ------------------------------------------------- shared training blocks --
+    # blocks.py (routes in blocks_web.py): friends or a club start the same N-week block. Each
+    # member gets their OWN plan from the plan builder on the same weeks (replacing a goal only
+    # with confirm_replace); the block page shows done/planned per member, a group ring, the
+    # block feed (Community posts to club:b-<id> via clubs.block_groups) and the Sunday check-in;
+    # Monday recap moments and coalesced cheers. Moments.on_tick chain. Athletes only.
+    from . import blocks as _blk, blocks_web as _blkw
+    block_routes: list[BaseRoute] = []
+    if community_routes and chat is not None and plans is not None and soc is not None:
+        from . import weekring as _blk_wr
+        _bag = chat.agent
+
+        def _blk_week(uid: str, day: date) -> tuple[int, int]:
+            _, acts = _bag.stats.activities(uid)
+            r = _blk_wr.ring(plans.get(uid), acts, day)
+            return int(r["done"]), int(r["target"])
+
+        def _blk_admin(cid: str, uid: str) -> bool:
+            try:
+                clb.can_start_challenge(uid, cid)
+                return isinstance(cid, str) and cid.startswith("g")
+            except _clubs.ClubError:
+                return False
+        blocks = _blk.Blocks(
+            store, now=_bag._now, is_athlete=soc.is_athlete, follows=soc.follows, blocked=soc.blocked_between,
+            names=_soc_name, week=_blk_week, events=_bag.events.list,
+            plan=_blk.PlanHooks(coach=_bag.coach, plans=plans, events=_bag.events, now=_bag._now),
+            club_member=clb.is_member, club_admin=_blk_admin, club_name=lambda c, u: clb.name_of(c, u),
+            moment=_bag.moments.post)
+        clb.block_groups = blocks.groups_of
+        _blk_tick_prev = _bag.moments.on_tick
+
+        def _blk_tick(uid: str) -> None:
+            if _blk_tick_prev is not None:
+                _blk_tick_prev(uid)
+            blocks.tick(uid)
+        _bag.moments.on_tick = _blk_tick
+        block_routes = _blkw.make_routes(
+            blocks=blocks, plan_api=_plan_api, read_json=read_json, person=_soc_person,
+            friends=lambda u: [x for x in soc.following_ids(u, limit=200) if blocks.mutual(u, x)],
+            admin_clubs=lambda u: [{"id": c, "name": clb.name_of(c, u) or "Club"} for c in clb.ids_of(u)
+                                   if _blk_admin(c, u)],
+            push=_social_push)
+
     # ------------------------------------------ up next + first visit --
     # upnext.py: the one "Up next" card on Rabbit home (wraps the Today card; a group run from
     # RSVP'd club meetups / the clubs directory for people with no plan or goal). Invite joins:
@@ -3557,6 +3601,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *raceweek_routes,
         *directory_routes,
         *community_routes,
+        *block_routes,
         *friends_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
         Route("/app/about", legal_page, methods=["GET"]),

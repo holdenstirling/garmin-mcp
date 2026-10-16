@@ -15,6 +15,7 @@ import {
 import { ClubsTab } from './Clubs'
 import { CommunityFeed } from './Feed'
 import { PeopleSection } from './People'
+import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { markSeen } from '@/lib/unread'
 import { Sheet } from '@/components/ui/Sheet'
 
@@ -33,6 +34,7 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
     <Screen title="Community"
       headerExtra={<Segmented label="Community" value={view} onChange={onView}
         options={[['feed', 'Feed'], ['clubs', 'Clubs'], ['people', 'People']] as const} />}>
+      {view === 'feed' && <BlocksEntry compact />}
       {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub} />}
       {view === 'clubs' && <ClubsTab imperial={imperial} openId={club} onOpen={onClub} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}

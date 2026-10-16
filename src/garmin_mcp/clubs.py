@@ -57,7 +57,7 @@ LEVELS = ("all", "easy", "moderate", "fast")
 ROLES = ("owner", "admin", "member")
 UPCOMING_DAYS = 120
 UPCOMING_MAX = 8
-_CID = re.compile(r"^(g[0-9a-f]{12}|r-[A-Za-z0-9_-]{1,64})$")
+_CID = re.compile(r"^(g[0-9a-f]{12}|r-[A-Za-z0-9_-]{1,64}|b-[0-9a-f]{12})$")
 _MID = re.compile(r"^m[0-9a-f]{10}$")
 _WHEN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
 _CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
@@ -132,6 +132,8 @@ class Clubs:
         self._related = related
         self._blocked = blocked
         self._race_groups = race_groups
+        # Shared training blocks (blocks.py): ``b-<id>`` groups for the block feed, set by webapp.
+        self.block_groups: Callable[[str], list[dict[str, Any]]] | None = None
         self._clock = clock
         self._lock = threading.Lock()
 
@@ -159,6 +161,15 @@ class Clubs:
             return self._race_groups(uid)
         except Exception:  # race people unavailable: clubs still work
             return []
+
+    def _block(self, uid: str, cid: str) -> dict[str, Any] | None:
+        """``uid``'s training block ``b-<id>`` (blocks.py), else None."""
+        if self.block_groups is None:
+            return None
+        try:
+            return next((b for b in self.block_groups(uid) if b["id"] == cid), None)
+        except Exception:  # blocks unavailable: clubs still work
+            return None
 
     @staticmethod
     def _count(d: dict[str, Any], uid: str) -> int:
@@ -196,6 +207,8 @@ class Clubs:
             return False
         if cid.startswith("r-"):
             return any(race_cid(r["id"]) == cid for r in self._races(uid))
+        if cid.startswith("b-"):
+            return self._block(uid, cid) is not None
         c = (self._doc.load().get("clubs") or {}).get(cid)
         return c is not None and uid in c["members"]
 
@@ -204,6 +217,8 @@ class Clubs:
         if cid.startswith("r-"):
             r = next((r for r in self._races(viewer) if race_cid(r["id"]) == cid), None)
             return list(r["members"]) if r else []
+        if cid.startswith("b-"):
+            return list((self._block(viewer, cid) or {}).get("members") or [])
         c = (self._doc.load().get("clubs") or {}).get(cid)
         if not c or viewer not in c["members"]:
             return []
@@ -212,12 +227,18 @@ class Clubs:
     def ids_of(self, uid: str) -> list[str]:
         """Every club ``uid`` is in (user clubs and race groups)."""
         mine = [cid for cid, c in (self._doc.load().get("clubs") or {}).items() if uid in c["members"]]
-        return mine + [race_cid(r["id"]) for r in self._races(uid)]
+        try:
+            blocks = [b["id"] for b in (self.block_groups(uid) if self.block_groups is not None else [])]
+        except Exception:  # blocks unavailable: clubs still work
+            blocks = []
+        return mine + [race_cid(r["id"]) for r in self._races(uid)] + blocks
 
     def name_of(self, cid: str, viewer: str) -> str | None:
         if cid.startswith("r-"):
             r = next((r for r in self._races(viewer) if race_cid(r["id"]) == cid), None)
             return self._race_name(r) if r else None
+        if cid.startswith("b-"):
+            return (self._block(viewer, cid) or {}).get("name")
         c = (self._doc.load().get("clubs") or {}).get(cid)
         return c["name"] if c and viewer in c["members"] else None
 

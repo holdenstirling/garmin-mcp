@@ -65,6 +65,9 @@ import { hapticTap } from '@/lib/haptics'
 import { WelcomeGate } from '@/components/onboarding/WelcomeFlow'
 import { IntentStrip, stripFirst } from '@/components/onboarding/IntentHome'
 import { composerPrompts, intentSuggestions, intentsOf, wantsPlan } from '@/lib/intent'
+import { BlockScreen } from '@/screens/lazyScreens'
+import { BlocksEntry } from '@/components/blocks/BlocksEntry'
+import { OPEN_BLOCK_EVENT, blockMomentAction } from '@/lib/blocks'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -117,8 +120,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string }
-  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'raceweek'; id: string; section?: string }
-const pageKey = (p: Page) => p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
+  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
@@ -314,6 +317,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const onConnect = (e: Event) => setConnect({ app: ((e as CustomEvent<ConnApp | undefined>).detail) ?? 'garmin' })
     window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
     return () => window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Shared training blocks (lib/blocks openBlock): Plan, Community, a moment -> the block page.
+    const onBlock = (e: Event) => showPage({ k: 'block', id: (e as CustomEvent<string>).detail || 'new' })
+    window.addEventListener(OPEN_BLOCK_EVENT, onBlock)
+    return () => window.removeEventListener(OPEN_BLOCK_EVENT, onBlock)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Workout day: the pre-workout screen (a page: from Today / the plan) and the post-workout reaction.
   const setWorkout = (w: { sessionId?: string }) => showPage({ k: 'workout', sessionId: w.sessionId })
@@ -608,6 +617,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'ask') tellRabbit(a.prompt ?? '')
     else if (a.id === 'race_invite') openRaces() // the invites inbox sits on top of Races
     else if (a.id === 'month_recap') setMonthCard(a.month ?? lastMonth().month)
+    else if (a.id === 'block' || a.id === 'block_checkin') blockMomentAction(a).then((m) => { if (m) showToast(m) }, (e) => showToast((e as Error).message))
   }
   // Quick replies under Rabbit's latest message when it asks something (max 3).
   const lastRow = shownRows[shownRows.length - 1]
@@ -749,7 +759,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" lead={weekLead} action={meButton}>
+        <TabScreen key="planner" title="Plan" lead={<>{weekLead}<BlocksEntry compact /></>} action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             onRebuild={startSetup}
             onAsk={tellRabbit}
@@ -789,6 +799,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               </Group>
             </>
           )}
+          <BlocksEntry />
         </Screen>
       </TabScreen>
     )
@@ -835,6 +846,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'connections': return <ConnectionsScreen onClose={closePages} />
       case 'access': return <AccessScreen onClose={closePages} />
       case 'usage': return <UsageScreen onClose={closePages} />
+      case 'block': return <BlockScreen id={pg.id} imperial={imperial} onClose={closePages} />
       case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
       case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />
       case 'workout':
