@@ -67,7 +67,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
   const tomorrow = addDays(today, 1)
   const tomorrowOk = mode === 'move' && valid(tomorrow)
   const best = mode === 'move'
-    ? [...thisWeek].filter((d) => d.date > tomorrow)
+    ? [...thisWeek, ...nextWeek].filter((d) => d.date > tomorrow && !d.clash)
         .sort((a, b) => Number(!!a.clash) - Number(!!b.clash) || Number(a.off) - Number(b.off) || a.sessions.length - b.sessions.length || a.date.localeCompare(b.date))[0]
     : undefined
 
@@ -138,7 +138,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
           </span>
           <span className="min-w-0 flex-1">
             <span className={cn('block text-[0.8235rem] font-medium', d.off ? 'text-(--text-secondary)' : 'text-(--text)')}>
-              {dayLabel(d.date)}{best?.date === d.date && <span className="ml-1.5 text-[0.7059rem] font-semibold text-(--accent)">Best fit</span>}
+              {dayLabel(d.date)}{best?.date === d.date && best.date !== tomorrow && <span className="ml-1.5 text-[0.7059rem] font-semibold text-(--accent)">Best fit</span>}
             </span>
             <span className="block truncate text-[0.7059rem] text-(--text-muted)">
               {d.sessions.length ? d.sessions.map((s) => s.title).join(' · ') : 'Rest day, nothing planned'}
@@ -184,7 +184,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
         <ChipRow>
           {tomorrowOk && <Chip selected={pick === tomorrow} onClick={() => setPick(tomorrow)}>Tomorrow</Chip>}
           {best && best.date !== tomorrow && (
-            <Chip selected={pick === best.date} onClick={() => setPick(best.date)}>Later this week · {fmtDay(best.date, { weekday: 'short' })}</Chip>
+            <Chip selected={pick === best.date} onClick={() => setPick(best.date)}>Best fit · {fmtDay(best.date, thisWeek.some((d) => d.date === best.date) ? { weekday: 'short' } : { weekday: 'short', month: 'short', day: 'numeric' })}</Chip>
           )}
         </ChipRow>
       )}

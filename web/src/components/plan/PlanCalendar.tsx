@@ -473,8 +473,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
   return (
     <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
-      <Segmented label="Calendar view" value={view} options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month']] as const}
-        onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date) : setView(v)} />
+      <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month']] as const}
+        onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date) : setView(v)} /></div>
       {cal?.total.run && cal.total.run.planned > 0 && (
         <p className="px-1 text-center font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
           Running so far: {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })} in the plan
