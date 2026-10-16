@@ -1,15 +1,51 @@
 // Code-split screens, tabs and sheets: each loads on first open (its own chunk) behind a
 // RabbitLoader, so the first load only carries the Rabbit home/chat. Same names and props
 // as the real components, so call sites don't change.
-import { lazy, Suspense, type ComponentProps, type ComponentType, type ReactElement } from 'react'
+import { Component, lazy, Suspense, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from 'react'
+import { X } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 
 type Kind = 'tab' | 'screen'
 
-function Fallback({ kind }: { kind: Kind }) {
+// A screen's loading cover sits over the app like the screen will, so it keeps the way out:
+// the X (and Escape/Back via the screen once it loads) closes it even if the chunk is slow.
+function Fallback({ kind, onClose }: { kind: Kind; onClose?: () => void }) {
   return kind === 'tab'
     ? <div className="flex min-h-0 flex-1 items-center justify-center p-8"><RabbitLoader label="Loading…" /></div>
-    : <div className="fixed inset-0 z-50 flex items-center justify-center bg-(--bg)/70"><RabbitLoader label="Loading…" /></div>
+    : (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-(--bg)/70">
+        <RabbitLoader label="Loading…" />
+        {onClose && (
+          <button type="button" className="modal-close absolute right-3 top-[max(10px,env(safe-area-inset-top))]" aria-label="Close" onClick={onClose}>
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+    )
+}
+
+// A chunk that can't load (offline, after the one reload) shows a way out instead of a blank app.
+class LoadFailed extends Component<{ kind: Kind; onClose?: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() {
+    if (!this.state.failed) return this.props.children
+    const { kind, onClose } = this.props
+    return (
+      <div className={kind === 'tab' ? 'flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center'
+        : 'fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-(--bg) p-8 text-center'} role="alert">
+        <p className="text-[0.8235rem] text-(--text-secondary)">This screen didn't load. Check your connection.</p>
+        <div className="flex gap-2">
+          <button type="button" className="hit-44 rounded-lg border border-(--border) px-4 py-2 text-[0.8235rem] text-(--text)"
+            onClick={() => window.location.reload()}>Reload</button>
+          {onClose && (
+            <button type="button" className="hit-44 rounded-lg px-4 py-2 text-[0.8235rem] text-(--accent)"
+              onClick={() => { this.setState({ failed: false }); onClose() }}>Close</button>
+          )}
+        </div>
+      </div>
+    )
+  }
 }
 
 // After a deploy, a page left open still points at the old screen files, which are gone.
@@ -31,7 +67,12 @@ function split<T extends ComponentType<any>>(load: () => Promise<T>, kind: Kind 
   const L = lazy(() => fresh(load).then((C) => ({ default: C })))
   function Split(props: ComponentProps<T>) {
     const Any = L as ComponentType<any>
-    return <Suspense fallback={<Fallback kind={kind} />}><Any {...props} /></Suspense>
+    const onClose = typeof (props as { onClose?: unknown }).onClose === 'function' ? (props as { onClose: () => void }).onClose : undefined
+    return (
+      <LoadFailed kind={kind} onClose={onClose}>
+        <Suspense fallback={<Fallback kind={kind} onClose={onClose} />}><Any {...props} /></Suspense>
+      </LoadFailed>
+    )
   }
   return Split
 }

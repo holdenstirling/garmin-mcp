@@ -31,7 +31,8 @@ const OWN_IMPORT = importApi('/api')
 export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
   me: Me
   goalTitle: string
-  onClose: () => void
+  /** none when it is the Plan tab page (no X) */
+  onClose?: () => void
   onRebuild: () => void
   onAsk: (text: string) => void
   onChanged: () => void
@@ -92,7 +93,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   }, [api])
   useEffect(load, [load])
 
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const closeSheet = () => { setSheetClosing(true); setTimeout(() => { setEditing(null); setSheetClosing(false) }, 200) }
   const applied = (p: BuiltPlan) => { setPlan(p); onChanged() }
 
@@ -148,7 +149,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     try {
       await deletePlan()
       onChanged()
-      close()
+      close?.()
     } catch (e) { setSync((s) => ({ ...s, error: (e as Error).message })); setDeleting(false) }
   }
 
@@ -316,7 +317,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       {/* Plan actions */}
       <Group label="Plan">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
-          onClick={() => { close(); onAsk('About my plan: ') }} />
+          onClick={() => { close?.(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
           onClick={onOpenEvents} />
         <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
@@ -372,7 +373,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           messageLabel={editing.session && unread.includes(editing.session.id) ? 'New reply from your coach' : messageLabel}
           onAsk={editing.session && !coachMode ? () => {
             const s = editing.session!
-            setEditing(null); close()
+            setEditing(null); close?.()
             onAsk(`About my ${s.title} on ${fmtDay(editing.date, { weekday: 'long', month: 'short', day: 'numeric' })}: `)
           } : undefined} />
       )}

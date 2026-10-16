@@ -1,6 +1,7 @@
 // Long-press on a "Chat started" card in the coach log: an iMessage-style peek at how the
 // chat opened (tap it to open the chat), with Open and Delete underneath.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useDismiss } from '@/hooks/useDialog'
 import { ExternalLink, MessageSquareText, Trash2 } from 'lucide-react'
 import { getJSON, type Thread } from '@/lib/api'
 
@@ -18,6 +19,8 @@ export function ThreadPeek({ thread, onOpen, onDelete, onClose }: {
   const [failed, setFailed] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useDismiss(box, onClose)
 
   useEffect(() => {
     getJSON<{ turns: Turn[] }>(`/api/threads/${thread.id}/messages?from=start&limit=3`)
@@ -37,7 +40,7 @@ export function ThreadPeek({ thread, onOpen, onDelete, onClose }: {
   return (
     <>
       <div className="msg-menu-backdrop" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
-      <div className="thread-peek" onClick={onClose}>
+      <div ref={box} className="thread-peek" onClick={onClose}>
         <button className="thread-peek-card" onClick={(e) => { e.stopPropagation(); onOpen() }}>
           <span className="flex items-center gap-2 border-b border-(--border) px-3.5 py-2.5">
             <MessageSquareText className="size-4 shrink-0 text-(--accent)" />

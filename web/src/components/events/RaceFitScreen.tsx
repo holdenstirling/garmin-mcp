@@ -125,7 +125,7 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
         </>
       )}
       {coachThread && (
-        <Screen title="Race chat" subtitle={coachThread.coach} onClose={() => setCoachThread(null)} onBack={() => setCoachThread(null)}>
+        <Screen title="Race chat" subtitle={coachThread.coach} onBack={() => setCoachThread(null)}>
           <ThreadView api={athleteChat} threadId={coachThread.id} me="athlete" otherName={coachThread.coach.split('@')[0]!} draft={coachThread.draft} />
         </Screen>
       )}

@@ -4,6 +4,7 @@ import { Award, Check, ChevronRight, ListChecks, PartyPopper, Star, X } from 'lu
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Screen } from '@/components/plan/ui'
+import { useDialog } from '@/hooks/useDialog'
 import { cn } from '@/lib/utils'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { HopPrints } from '@/components/fx/HopPrints'
@@ -231,12 +232,8 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
     const t = window.setTimeout(() => celebrate(card.current, p.level_up ? 'level' : 'badge'), 180)
     return () => window.clearTimeout(t)
   }, [active]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!active) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setShown(false); void markProgressSeen().catch(() => {}).finally(onDone) } }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [active, onDone])
+  // Escape and the phone's Back close it like the X.
+  useDialog(card, finish)
   if (!active) return null
   return (
     <div className="modal-overlay" onClick={finish}>

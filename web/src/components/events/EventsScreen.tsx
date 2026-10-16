@@ -31,7 +31,8 @@ const TYPE_ICON: Record<EventType, typeof Bike> = {
 
 export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false }: {
   hasBuiltPlan: boolean
-  onClose: () => void
+  /** none when it is the Events tab page (no X) */
+  onClose?: () => void
   onChanged: () => void
   onOpenPlan: () => void
   onBuildPlan: () => void
@@ -59,7 +60,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   }, [])
   useEffect(() => { void load() }, [load])
 
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const upcoming = (events ?? []).filter((e) => daysUntil(e.date) >= 0)
   const past = (events ?? []).filter((e) => daysUntil(e.date) < 0).reverse()
   const saved = (list: RaceEvent[]) => { setEvents(list); setChanged(true); onChanged() }

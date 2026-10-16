@@ -1,13 +1,17 @@
 // Small building blocks for the plan screens, in Rabbit's existing look: grouped cards,
 // DM Mono labels, forest-green accent chips.
-import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/useDialog'
 
-// Tab pages (components/nav): the first Screen rendered inside a TabScreen becomes the tab's
-// page (no close button, no slide, sits above the tab bar). Screens it opens on top (event
-// editor, race pack, a friend) stay full-screen overlays.
+// Tab pages (components/nav): a TabScreen hosts one embedded page. The page is the first
+// Screen that *commits* inside it (claimed in a layout effect, never during render: a render
+// can be retried or thrown away, e.g. while React.lazy suspends, and a thrown-away render must
+// not leave a stale claim behind). The page has no close button, no slide and sits above the
+// tab bar. Every other Screen stays a full-screen overlay: siblings opened next to the page
+// (event editor, race pack) lose the claim, and anything rendered inside a Screen never sees
+// the tab at all (the Screen resets the context for its children).
 type Embed = { claim: { owner: string | null }; title?: string; top?: React.ReactNode; lead?: React.ReactNode; action?: React.ReactNode }
 const EmbedCtx = createContext<Embed | null>(null)
 
@@ -27,28 +31,31 @@ export function TabScreen({ title, top, lead, action, children }: {
 }
 
 /** Full-screen page that slides up over the app (setup wizard, plan editor), or a tab page
- *  inside a TabScreen. One close model: a child screen (onBack) shows only a back arrow, a
- *  root screen only an X, and a tab page neither. */
+ *  inside a TabScreen. Close model: a child screen whose back is its close (onBack === onClose)
+ *  shows only a back arrow, a root screen only an X, a screen with a separate back step and
+ *  close (wizard step, inbox thread) both, and a tab page neither. `onClose` is optional only for screens that
+ *  are always a tab page: a Screen without a close action never shows an X. */
 export function Screen({ title, subtitle, onBack, onClose, closing, footer, children, headerExtra }: {
   title: string; subtitle?: string
-  onBack?: () => void; onClose: () => void; closing?: boolean
+  onBack?: () => void; onClose?: () => void; closing?: boolean
   footer?: React.ReactNode; children: React.ReactNode; headerExtra?: React.ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const none = useRef<HTMLDivElement>(null)
   const id = useId()
   const embed = useContext(EmbedCtx)
-  if (embed && embed.claim.owner == null) embed.claim.owner = id
-  const embedded = !!embed && embed.claim.owner === id
-  // The page was swapped for another (unmounts run before mounts): the new one takes over.
-  const [, rerender] = useState(0)
-  useEffect(() => {
-    if (!embed) return
+  // First render: a guess (the tab has no page yet). Settled before paint by the layout effect.
+  const [page, setPage] = useState(() => !!embed && embed.claim.owner == null)
+  useLayoutEffect(() => {
+    if (!embed) { setPage(false); return }
     const c = embed.claim
-    if (c.owner == null) { c.owner = id; rerender((n) => n + 1) }
+    if (c.owner == null) c.owner = id
+    setPage(c.owner === id)
     return () => { if (c.owner === id) c.owner = null }
   }, [embed?.claim, id]) // eslint-disable-line react-hooks/exhaustive-deps
-  useDialog(embedded ? none : ref, onClose)
+  const embedded = !!embed && page
+  // Escape and the phone's Back go one level back (child screen) or close (root screen).
+  useDialog(embedded ? none : ref, onBack ?? onClose)
   const name = embedded && embed.title ? embed.title : title
   const body = (
     <>
@@ -64,14 +71,16 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
         ) : (
           <div className="flex items-center gap-2">
             {onBack ? (
-              <button className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-5" /></button>
+              <button type="button" className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-5" /></button>
             ) : <span className="modal-close invisible" aria-hidden />}
             <div className="min-w-0 flex-1 text-center">
               <h2 className="truncate font-display text-[1.0588rem] leading-tight text-(--brand)">{name}</h2>
               {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
             </div>
-            {onBack || embedded ? <span className="modal-close invisible" aria-hidden />
-              : <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>}
+            {/* X: a root screen, or a step/child screen whose close leaves entirely (a wizard step,
+                a thread inside the inbox), so there is always one tap all the way out. */}
+            {embedded || !onClose || onClose === onBack ? <span className="modal-close invisible" aria-hidden />
+              : <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>}
           </div>
         )}
         {embedded && embed.top}

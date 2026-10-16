@@ -50,7 +50,8 @@ function restore(): ExploreFilters | null {
 }
 
 export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
-  onClose: () => void
+  /** none when it is the Events tab page (no X) */
+  onClose?: () => void
   onAsk: (text: string) => void
   onChanged?: () => void
   imperial?: boolean
@@ -107,7 +108,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
   }, [filters, run, mode])
 
   const set = (p: Partial<ExploreFilters>) => setFilters((f) => ({ ...(f ?? EMPTY), ...p }))
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
 
   async function askWeb() {
     if (!filters) return

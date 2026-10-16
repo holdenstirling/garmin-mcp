@@ -12,7 +12,10 @@
 // Closing: by default the Sheet runs its own exit animation and then calls `onClose`. Parents
 // that already drive the exit (`closing` + `onDismissed`, as in Chat.tsx's sheets) pass both:
 // `onClose` then starts their exit and `onDismissed` unmounts at once after a drag.
-// `dismissible={false}` (e.g. while saving) ignores backdrop taps, drags and Escape.
+// `dismissible={false}` (e.g. while saving) ignores backdrop taps, drags and Escape; keep it
+// tied to the in-flight request (reset in `finally`) so the X can never stay disabled.
+// A controlled parent must unmount the sheet after `closing` (timer) and on `onDismissed`.
+// An uncontrolled sheet whose parent doesn't unmount it after `onClose` reappears.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -21,7 +24,8 @@ import { prefersReducedMotion } from '@/lib/overlays'
 import { cn } from '@/lib/utils'
 
 const EXIT_MS = 200
-// A portaled sheet's events still bubble to its React parents (maybe another sheet): keep them.
+// A sheet's events still bubble to its React parents (maybe another sheet whose drag would
+// follow this one's finger): keep touches (and, when portaled, keys) to itself.
 const own = (e: React.SyntheticEvent) => e.stopPropagation()
 
 export function Sheet({
@@ -68,7 +72,12 @@ export function Sheet({
     if (exiting) return
     if (prefersReducedMotion()) { onClose(); return }
     setExiting(true)
-    timer.current = window.setTimeout(onClose, EXIT_MS)
+    timer.current = window.setTimeout(() => {
+      onClose()
+      // Still here a moment later: the parent didn't unmount us (it refused or failed). Come
+      // back instead of sitting invisible over the app.
+      timer.current = window.setTimeout(() => { timer.current = null; setExiting(false) }, 400)
+    }, EXIT_MS)
   }
   const dismissNow = () => { if (can.current) (onDismissed ?? onClose)() }
   const drag = useSheetDrag(dismissNow, { bodyDrags, onEscape: requestClose })
@@ -77,7 +86,8 @@ export function Sheet({
   const sheet = (
     <div className={cn('modal-overlay', shut && 'modal-overlay--exit')} style={zIndex ? { zIndex } : undefined}
       onClick={(e) => { e.stopPropagation(); requestClose() }}
-      {...(portal ? { onTouchStart: own, onTouchMove: own, onTouchEnd: own, onTouchCancel: own, onKeyDown: own } : {})}>
+      onTouchStart={own} onTouchMove={own} onTouchEnd={own} onTouchCancel={own}
+      {...(portal ? { onKeyDown: own } : {})}>
       <div ref={ref} className={cn('modal', shut && 'modal--exit', className)} aria-label={label}
         onClick={(e) => e.stopPropagation()} {...(dismissible ? touch : {})}>
         <div className="sheet-handle" aria-hidden="true" />

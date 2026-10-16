@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { Goal, PlannedSession, PlanWeek, Sport, WeekDay } from '@/lib/api'
 import { SPORT_ICON } from '@/components/plan/PlanParts'
 import { fmtDist } from '@/lib/format'
+import { useDismiss } from '@/hooks/useDialog'
 
 export function fmtMinutes(m: number): string {
   if (m < 60) return `${m}m`
@@ -196,6 +197,8 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
   useEffect(() => () => {
     if (lowerTimer.current) window.clearTimeout(lowerTimer.current)
   }, [])
+  // The open drawer closes on Escape and the phone's Back, like the dimmed area.
+  useDismiss(cardRef, () => setOpen(false), open)
   const hasPlan = !!goal.plan
   const reading = loading && hasPlan && !week
   const failed = error && !week && !loading

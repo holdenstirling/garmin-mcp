@@ -56,8 +56,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     void skipWelcome().catch(() => {}) // best effort: seen either way on this device
     onFinish({ saved: true, intents: null, next: null })
   }
-  // Escape = Skip (not on the last step, which has its own button).
-  useDialog(box, () => { if (!saving && step !== 'yours') skip() })
+  // Escape / the phone's Back = Skip; on the last step (already saved) it just closes.
+  useDialog(box, () => {
+    if (saving) return
+    if (step === 'yours') onFinish({ saved: true, intents: picks, next: null })
+    else skip()
+  })
   async function save() {
     setSaving(true); setErr(null)
     try {

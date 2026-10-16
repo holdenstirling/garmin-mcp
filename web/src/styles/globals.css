@@ -387,6 +387,8 @@
 
 .modal-overlay--exit {
   animation: modal-fade-out 0.2s ease-out forwards;
+  /* on its way out: taps go to whatever is underneath */
+  pointer-events: none;
 }
 
 .modal {
@@ -400,7 +402,10 @@
   border-top-left-radius: var(--radius-xl);
   border-top-right-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  animation: modal-slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* backwards, not forwards: a transform left on the panel would make it the containing block
+     of every position:fixed overlay opened inside it (nested sheets, confirms, photo viewer),
+     trapping them in the panel's box with their close buttons out of reach. */
+  animation: modal-slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .modal:focus,

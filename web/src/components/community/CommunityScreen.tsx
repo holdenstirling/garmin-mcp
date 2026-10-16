@@ -30,7 +30,7 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
-    <Screen title="Community" onClose={() => {}}
+    <Screen title="Community"
       headerExtra={<Segmented label="Community" value={view} onChange={onView}
         options={[['feed', 'Feed'], ['clubs', 'Clubs'], ['people', 'People']] as const} />}>
       {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub} />}

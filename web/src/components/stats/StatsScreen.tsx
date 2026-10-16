@@ -27,7 +27,8 @@ import { isGarminMissing } from '@/lib/upnext'
 type Period = 'week' | 'month' | 'year'
 
 export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGear, onOpenSession, onOpenSetup }: {
-  onClose: () => void; onOpenPlan?: () => void; onOpenRecap?: () => void
+  /** none when it is the Progress tab page (no X) */
+  onClose?: () => void; onOpenPlan?: () => void; onOpenRecap?: () => void
   /** insight actions ("What your data says") */
   onAsk?: (text: string) => void; onOpenGear?: () => void; onOpenSession?: (sessionId: string) => void
   /** the setup checklist (one line in the hero until core setup is done) */
@@ -53,7 +54,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
   useEffect(() => { void load() }, [load])
   // Refresh = stats + every card below; resolves when all of them have landed (pull rabbit).
   const refresh = useCallback(() => group.refresh(() => setLoadKey((k) => k + 1), load(true)), [group, load])
-  const close = () => { setClosing(true); setTimeout(onClose, 200) }
+  const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const imperial = s?.units === 'imperial'
 
   return (

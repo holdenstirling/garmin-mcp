@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Copy, MessagesSquare, Share, TextSelect } from 'lucide-react'
 import type { ChatMessage } from '@/hooks/useCoach'
 import { Sheet } from '@/components/ui/Sheet'
+import { useDismiss } from '@/hooks/useDialog'
 
 export type MenuTarget = { item: ChatMessage; el: HTMLElement; canDiscuss: boolean }
 
@@ -58,6 +59,7 @@ export function MessageMenu({ target, onClose, onDiscuss, onToast }: {
       : { top, left: Math.max(12, r.left), origin })
   }, [target.el, isUser])
 
+  useDismiss(menu, onClose, !selecting)
   const act = (fn: () => void | Promise<void>) => async () => { await fn(); if (!selecting) onClose() }
   const canShare = typeof navigator.share === 'function'
 

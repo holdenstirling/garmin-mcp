@@ -35,17 +35,17 @@ export function DataSourcesSheet({ me, onClose, onSaved }: {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   // Closing without saving keeps the defaults and doesn't ask again.
-  async function dismiss() {
+  // Never waits on the network: a slow or hung request must not keep the sheet (already
+  // faded out) over the app. Chat only re-asks when data_sources_asked changes, so a /me
+  // refresh that lands before this save doesn't bring the sheet back.
+  function dismiss() {
     if (busy) return
-    if (!me.settings.data_sources_asked) {
-      setBusy(true)
-      await putSettings({ data_sources_asked: true }).catch(() => {})
-    }
+    if (!me.settings.data_sources_asked) void putSettings({ data_sources_asked: true }).catch(() => {})
     onClose()
   }
 
   return (
-    <Sheet title="How should Rabbit use your data?" onClose={() => void dismiss()} dismissible={!busy} bodyClassName="gap-4">
+    <Sheet title="How should Rabbit use your data?" onClose={dismiss} dismissible={!busy} bodyClassName="gap-4">
           <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
             Workouts come from Garmin only. Oura workouts are never added, so nothing is counted twice.
           </p>

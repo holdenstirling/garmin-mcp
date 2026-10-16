@@ -113,7 +113,6 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
-const noop = () => {}
 // Touch devices: focusing the composer means the keyboard is coming, so make room for it.
 const coarsePointer = () => { try { return window.matchMedia('(pointer: coarse)').matches } catch { return false } }
 
@@ -719,7 +718,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (builtPlan) {
       return (
         <TabScreen key="planner" title="Plan" lead={weekLead} action={meButton}>
-          <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'} onClose={noop}
+          <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             onRebuild={startSetup}
             onAsk={tellRabbit}
             onChanged={() => { void refreshThreads(); loadWeek() }}
@@ -732,7 +731,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     return (
       <TabScreen key="start" action={meButton}>
-        <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'} onClose={noop}>
+        <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'}>
           {weekLead}
           {goal?.plan ? (
             <Group label="Your plan">
@@ -775,7 +774,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     return (
       <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={<MonthRecapEntry onOpen={setMonthCard} />}>
-        <StatsScreen onClose={noop} onOpenPlan={builtPlan ? openPlan : undefined}
+        <StatsScreen onOpenPlan={builtPlan ? openPlan : undefined}
           onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
@@ -787,13 +786,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       options={[['mine', 'My events'], ['explore', 'Explore']] as const} />
     return racesView === 'mine' ? (
       <TabScreen key="mine" title="Events" top={seg} action={meButton}>
-        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} onClose={noop}
+        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={openPlan} onBuildPlan={startSetup} />
       </TabScreen>
     ) : (
       <TabScreen key="explore" title="Events" top={seg} action={meButton}>
-        <ExploreScreen imperial={imperial} onClose={noop} onAsk={tellRabbit} onChanged={onChange} />
+        <ExploreScreen imperial={imperial} onAsk={tellRabbit} onChanged={onChange} />
       </TabScreen>
     )
   }
