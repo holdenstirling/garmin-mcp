@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, FileUp, MessageCircle, Plane, Plus, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ConnectGarmin } from '@/components/ConnectGarmin'
+import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { cn } from '@/lib/utils'
@@ -28,7 +28,7 @@ type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
 const OWN_IMPORT = importApi('/api')
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
   me: Me
   goalTitle: string
   /** none when it is the Plan tab page (no X) */
@@ -36,7 +36,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   onRebuild: () => void
   onAsk: (text: string) => void
   onChanged: () => void
-  onMeChanged: () => void
+  /** kept for callers; Garmin now connects in the app's connect popup, which refreshes /me */
+  onMeChanged?: () => void
   onOpenEvents: () => void
   api?: PlanApi
   coachMode?: boolean      // a coach viewing an athlete's plan: no Garmin, no plan actions
@@ -308,7 +309,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
               {sync.removed != null && <p className="text-[0.7647rem] text-(--accent)">Removed {sync.removed} workout{sync.removed === 1 ? '' : 's'} from your Garmin calendar.</p>}
             </div>
           ) : me.garmin.can_connect ? (
-            <ConnectGarmin cooldownUntil={me.garmin.cooldown_until} onConnected={onMeChanged} />
+            <GarminEmpty what="workout" compact />
           ) : <p className="text-[0.7647rem] text-(--text-muted)">Garmin isn't available on this server.</p>}
         </Field>
       </Group>

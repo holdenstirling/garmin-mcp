@@ -122,7 +122,7 @@ html, body { overscroll-behavior: none; }
 html.msg-menu-open, html.msg-menu-open * { -webkit-user-select: none !important; user-select: none !important; }
 html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-select: text !important; user-select: text !important; }
 .msg-lifted {
-  position: relative; z-index: 60;
+  position: relative; z-index: var(--z-popover-lift);
   animation: msg-lift 0.32s cubic-bezier(0.2, 0.9, 0.25, 1.15) forwards;
 }
 @keyframes msg-lift {
@@ -130,13 +130,13 @@ html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-
   100% { transform: scale(1.035); filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.22)); }
 }
 .msg-menu-backdrop {
-  position: fixed; inset: 0; z-index: 55;
+  position: fixed; inset: 0; z-index: var(--z-popover-dim);
   background: rgba(10, 15, 12, 0.18);
   -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%);
   animation: modal-fade-in 0.2s ease-out both;
 }
 .msg-menu {
-  position: fixed; z-index: 61; min-width: 210px; overflow: hidden;
+  position: fixed; z-index: var(--z-popover); min-width: 210px; overflow: hidden;
   border-radius: 14px; border: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
   -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
@@ -145,7 +145,7 @@ html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-
 }
 /* Long-press peek at a chat from the coach log: preview card + menu, centered. */
 .thread-peek {
-  position: fixed; inset: 0; z-index: 61; display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--z-popover); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px;
   padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
 }
@@ -159,7 +159,7 @@ html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-
 .msg-menu > button + button { border-top: 1px solid var(--border); }
 @keyframes msg-menu-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 .rabbit-toast {
-  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 70;
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: var(--z-toast);
   transform: translateX(-50%); padding: 6px 14px; border-radius: 999px;
   background: var(--text); color: var(--bg); font-size: 0.7647rem; box-shadow: var(--shadow-md); pointer-events: none;
   animation: toast-in 1.6s ease both;
@@ -184,7 +184,7 @@ html.kb-open .chat-suggestions { opacity: 0; pointer-events: none; }
 .empty-hero { transform: translateY(var(--hero-shift, 0px)); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
 html.kb-open .empty-hero { transform: none; }
 /* The expanded week: a drawer that slides down over the feed while everything else dims. */
-.week-dim { position: fixed; inset: 0; z-index: 45; background: rgba(0, 0, 0, 0.45);
+.week-dim { position: fixed; inset: 0; z-index: var(--z-drawer); background: rgba(0, 0, 0, 0.45);
   opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
 .week-dim--open { opacity: 1; pointer-events: auto; }
 .week-drawer {
@@ -205,7 +205,7 @@ html.kb-open .empty-hero { transform: none; }
 
 /* Plan builder: full-screen pages (setup wizard, plan editor) that slide up over the app. */
 .plan-screen {
-  position: fixed; inset: 0; z-index: 48; display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--z-page); display: flex; flex-direction: column;
   background: var(--bg);
   padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
   /* backwards, not both: no transform left behind, so fixed overlays opened inside (sheets,
@@ -214,11 +214,18 @@ html.kb-open .empty-hero { transform: none; }
 }
 .plan-screen--exit { animation: modal-slide-down 0.2s ease-in forwards; pointer-events: none; }
 .plan-screen--tab { position: relative; inset: auto; z-index: auto; flex: 1; min-height: 0; padding-left: 0; padding-right: 0; animation: none; }
+/* Page stack (screens/Chat.tsx): only the top page is drawn. A page pushed from a page slides
+   in from the right (it has a back arrow); the page Back reveals appears in place. */
+.page-stack { display: contents; }
+.page-stack--pushed > .plan-screen { animation-name: page-push-in; }
+.page-stack--revealed > .plan-screen { animation: none; }
+@keyframes page-push-in { from { transform: translateX(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page-stack--pushed > .plan-screen { animation: none; } }
 
 /* Bottom tab bar (components/nav/TabBar). Pages above it don't pad for the home indicator;
    the bar does. It steps aside while typing (keyboard open). */
 .tab-bar {
-  position: relative; z-index: 30; display: flex; flex-shrink: 0;
+  position: relative; z-index: var(--z-tabbar); display: flex; flex-shrink: 0;
   border-top: 1px solid var(--border); background: var(--bg);
   padding-bottom: env(safe-area-inset-bottom);
 }

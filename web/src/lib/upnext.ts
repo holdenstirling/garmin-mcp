@@ -1,4 +1,5 @@
 // Rabbit home "Up next" (server: upnext.py) and the first visit without Garmin.
+import { requestConnect } from '@/lib/connections'
 import { getJSON } from '@/lib/api'
 import type { Today, TodayActionKind, TodayTone } from '@/lib/live'
 
@@ -37,8 +38,6 @@ export function isGarminMissing(e: unknown): boolean {
   return !!e && typeof e === 'object' && (e as { code?: unknown }).code === GARMIN_MISSING
 }
 
-/** Any screen can ask the app to open Connect Garmin (screens/Chat.tsx listens). */
-export const CONNECT_GARMIN_EVENT = 'rabbit:connect-garmin'
-export function requestConnectGarmin(): void {
-  window.dispatchEvent(new CustomEvent(CONNECT_GARMIN_EVENT))
-}
+/** Any screen can ask the app to open the Connect Garmin popup (lib/connections.ts; Chat.tsx listens). */
+export { CONNECT_EVENT as CONNECT_GARMIN_EVENT } from '@/lib/connections'
+export function requestConnectGarmin(): void { requestConnect('garmin') }

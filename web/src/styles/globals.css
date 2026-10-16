@@ -375,10 +375,29 @@
   }
 }
 
+/* One z-index scale for everything that floats (no ad-hoc numbers elsewhere):
+   tab page/bar < pull-to-refresh < week drawer < overlay page < sheet < popover (long-press
+   menu) < dialog (confirm, welcome) < toast < decorative fx. */
+:root {
+  --z-tabbar: 30;
+  --z-ptr: 40;
+  --z-drawer: 45;
+  --z-drawer-raised: 46;
+  --z-page: 48;
+  --z-sheet: 50;
+  --z-popover-dim: 55;
+  --z-popover-lift: 60;
+  --z-popover: 61;
+  --z-dialog: 65;
+  --z-toast: 70;
+  --z-fx: 90;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: var(--z-sheet);
+  visibility: visible; /* shows even inside a covered sheet (below) */
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: flex-end;
@@ -390,6 +409,12 @@
   /* on its way out: taps go to whatever is underneath */
   pointer-events: none;
 }
+
+/* One sheet shows at a time (lib/overlays markCovered): a sheet under another sheet or under
+   a page opened over it hides its panel and clears its backdrop until it's on top again. */
+.modal-overlay[data-covered] { background: transparent; animation: none; }
+.modal-overlay[data-covered] > .modal { visibility: hidden; animation: none; }
+.modal-overlay[data-covered] .plan-screen { visibility: visible; }
 
 .modal {
   width: 100%;

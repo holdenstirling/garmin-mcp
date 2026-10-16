@@ -8,7 +8,7 @@ import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } f
 import { Button } from '@/components/ui/button'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { ConnectGarmin } from '@/components/ConnectGarmin'
+import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import type { Me } from '@/lib/api'
 import {
@@ -95,13 +95,14 @@ function initialDraft(me: Me): Draft {
   return fresh
 }
 
-export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onMeChanged }: {
+export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
   me: Me
   onClose: () => void
   onDone: () => void            // plan saved (refresh goal/plan elsewhere)
   onOpenPlan: () => void
   onUploadPlan: () => void
-  onMeChanged: () => void
+  /** kept for callers; Garmin now connects in the app's connect popup, which refreshes /me */
+  onMeChanged?: () => void
 }) {
   const [draft, setDraftState] = useState<Draft>(() => initialDraft(me))
   // The draft is saved only once the user has changed something: merely opening the
@@ -464,7 +465,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan, onM
                   {sync.error && <p className="text-[0.7647rem] text-(--danger)">{sync.error}</p>}
                 </div>
               ) : me.garmin.can_connect ? (
-                <ConnectGarmin cooldownUntil={me.garmin.cooldown_until} onConnected={onMeChanged} />
+                <GarminEmpty what="workout" compact />
               ) : <p className="text-[0.7647rem] text-(--text-muted)">Garmin isn't available on this server.</p>}
             </Field>
           </Card>

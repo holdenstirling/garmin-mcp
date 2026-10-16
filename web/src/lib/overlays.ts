@@ -90,17 +90,56 @@ function onPopState() {
   schedule()
 }
 
+// ------------------------------------------------------------ One layer shows ---
+// Sheets never pile up: only the topmost layer (last in document order among open sheets and
+// overlay pages) is drawn. A sheet under another sheet, or under a page opened over it, is
+// marked `data-covered`: its panel hides and its backdrop goes clear (globals.css), so nothing
+// peeks out and backdrops never double-dim. When the top one closes (or starts its exit), the
+// one underneath shows again exactly as it was. Confirms drawn inside a sheet aren't layers.
+const LAYERS = '.modal-overlay, .plan-screen:not(.plan-screen--tab)'
+const EXITING = '.modal-overlay--exit, .plan-screen--exit'
+let watching = false
+let framed = false
+
+export function markCovered(): void {
+  framed = false
+  if (typeof document === 'undefined') return
+  const layers = Array.from(document.querySelectorAll(LAYERS)).filter((l) => !l.closest(EXITING))
+  const top = layers[layers.length - 1]
+  for (const l of Array.from(document.querySelectorAll('.modal-overlay'))) {
+    const covered = !!top && l !== top && layers.includes(l)
+    if (covered !== l.hasAttribute('data-covered')) {
+      if (covered) l.setAttribute('data-covered', '')
+      else l.removeAttribute('data-covered')
+    }
+  }
+}
+
+function watchLayers() {
+  if (watching || typeof MutationObserver === 'undefined' || typeof document === 'undefined') return
+  watching = true
+  new MutationObserver(() => {
+    if (framed) return
+    if (!stack.length && !document.querySelector('[data-covered]')) return
+    framed = true
+    window.requestAnimationFrame(markCovered)
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+}
+
 /** Register an open dialog; returns the unregister function. */
 export function registerOverlay(el: Element, close: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
   if (!listening) { window.addEventListener('popstate', onPopState); listening = true }
+  watchLayers()
   const entry: Entry = { el, close, closingUntil: 0 }
   stack.push(entry)
   schedule()
+  window.requestAnimationFrame(markCovered)
   return () => {
     const i = stack.indexOf(entry)
     if (i >= 0) stack.splice(i, 1)
     schedule()
+    window.requestAnimationFrame(markCovered)
   }
 }
 

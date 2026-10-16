@@ -37,9 +37,15 @@ function useNow(active: boolean): number {
   return now
 }
 
-export function ConnectGarmin({ cooldownUntil, onConnected }: {
+export type GarminStep = 'signin' | 'code' | 'connecting'
+
+// The Garmin sign-in form (email + password, then Garmin's code when it asks), shown as steps
+// inside the Garmin connect popup (components/connect/ConnectSheet.tsx). `onStep` lets the
+// popup draw its progress indicator.
+export function ConnectGarmin({ cooldownUntil, onConnected, onStep }: {
   cooldownUntil: number | null
   onConnected: () => void
+  onStep?: (s: GarminStep) => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -51,6 +57,10 @@ export function ConnectGarmin({ cooldownUntil, onConnected }: {
   const poll = useRef<ReturnType<typeof setTimeout> | null>(null)
   const now = useNow(until !== null)
   const coolingDown = until !== null && until > now
+  const step: GarminStep = job?.state === 'pending' ? 'connecting' : job?.state === 'needs_mfa' ? 'code' : 'signin'
+  const stepCb = useRef(onStep)
+  stepCb.current = onStep
+  useEffect(() => { stepCb.current?.(step) }, [step])
 
   // Polling stops once this form is gone (a poll already in flight is ignored).
   const mounted = useRef(false)

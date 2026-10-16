@@ -77,6 +77,12 @@ class LiveSync:
             self._last[user_id] = (self._clock(), out)
             return out
 
+    def last(self, user_id: str) -> dict[str, Any] | None:
+        """The newest check's result (in memory; None before the first one). Connected apps
+        reads it for "last sync" and "needs attention" without calling Garmin."""
+        hit = self._last.get(user_id)
+        return dict(hit[1]) if hit else None
+
     def _check(self, user_id: str) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat(timespec="seconds")
         base: dict[str, Any] = {"checked_at": now, "new": [], "changed": False}
@@ -85,7 +91,7 @@ class LiveSync:
         try:
             raw = self._fetch(user_id) or []
         except ReauthRequired:
-            return {**base, "error": "Reconnect Garmin in settings to sync workouts."}
+            return {**base, "error": "Reconnect Garmin to sync workouts.", "code": "reauth"}
         except RateLimited:
             return {**base, "error": "Garmin is busy. Workouts will sync in a minute."}
         except GarminError:

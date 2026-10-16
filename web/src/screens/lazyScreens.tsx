@@ -13,7 +13,7 @@ function Fallback({ kind, onClose }: { kind: Kind; onClose?: () => void }) {
   return kind === 'tab'
     ? <div className="flex min-h-0 flex-1 items-center justify-center p-8"><RabbitLoader label="Loading…" /></div>
     : (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-(--bg)/70">
+      <div className="fixed inset-0 z-(--z-page) flex items-center justify-center bg-(--bg)/70">
         <RabbitLoader label="Loading…" />
         {onClose && (
           <button type="button" className="modal-close absolute right-3 top-[max(10px,env(safe-area-inset-top))]" aria-label="Close" onClick={onClose}>
@@ -33,7 +33,7 @@ class LoadFailed extends Component<{ kind: Kind; onClose?: () => void; children:
     const { kind, onClose } = this.props
     return (
       <div className={kind === 'tab' ? 'flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center'
-        : 'fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-(--bg) p-8 text-center'} role="alert">
+        : 'fixed inset-0 z-(--z-page) flex flex-col items-center justify-center gap-3 bg-(--bg) p-8 text-center'} role="alert">
         <p className="text-[0.8235rem] text-(--text-secondary)">This screen didn't load. Check your connection.</p>
         <div className="flex gap-2">
           <button type="button" className="hit-44 rounded-lg border border-(--border) px-4 py-2 text-[0.8235rem] text-(--text)"
@@ -102,7 +102,10 @@ export const FindCoachScreen = split(() => import('@/components/coach/FindCoachS
 export const CoachApp = split(() => import('@/components/coach/CoachApp').then((m) => m.CoachApp))
 export const WorkoutDayScreen = split(() => import('@/components/workout/WorkoutDayScreen').then((m) => m.WorkoutDayScreen))
 export const SettingsPanels = split(() => import('@/components/SettingsPanels').then((m) => m.SettingsPanels), 'tab')
-export const DataSourcesSheet = split(() => import('@/components/settings/DataSourcesSheet').then((m) => m.DataSourcesSheet))
+// Me -> Connected apps (hub page) and the one connect popup per app
+export const ConnectionsScreen = split(() => import('@/components/connect/ConnectionsScreen').then((m) => m.ConnectionsScreen))
+export const ConnectSheet = split(() => import('@/components/connect/ConnectSheet').then((m) => m.ConnectSheet))
+export const AccessScreen = split(() => import('@/components/settings/AccessScreen').then((m) => m.AccessScreen))
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
 export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))
 export const MonthRecapSheet = split(() => import('@/components/reward/MonthRecapSheet').then((m) => m.MonthRecapSheet))

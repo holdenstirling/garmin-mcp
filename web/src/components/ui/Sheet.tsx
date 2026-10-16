@@ -30,7 +30,7 @@ const own = (e: React.SyntheticEvent) => e.stopPropagation()
 
 export function Sheet({
   title, header, actions, below, children, footer, extra, onClose, onDismissed, closing, dismissible = true,
-  closeLabel = 'Close', label, className, bodyClassName, bodyDrags, portal = false, zIndex,
+  closeLabel = 'Close', label, className, bodyClassName, bodyDrags, portal = false,
 }: {
   title?: React.ReactNode
   /** replaces the title (e.g. a tappable goal header); keep a `.modal-title` inside to name the dialog */
@@ -56,7 +56,6 @@ export function Sheet({
   bodyDrags?: boolean
   /** render into <body> (for sheets opened from inside another overlay) */
   portal?: boolean
-  zIndex?: number
 }) {
   const [exiting, setExiting] = useState(false)
   const controlled = closing !== undefined
@@ -84,7 +83,7 @@ export function Sheet({
   const { ref, ...touch } = drag
 
   const sheet = (
-    <div className={cn('modal-overlay', shut && 'modal-overlay--exit')} style={zIndex ? { zIndex } : undefined}
+    <div className={cn('modal-overlay', shut && 'modal-overlay--exit')}
       onClick={(e) => { e.stopPropagation(); requestClose() }}
       onTouchStart={own} onTouchMove={own} onTouchEnd={own} onTouchCancel={own}
       {...(portal ? { onKeyDown: own } : {})}>

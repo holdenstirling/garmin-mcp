@@ -390,7 +390,7 @@ function BadgesCard({ s }: { s: Stats }) {
   )
 }
 
-// Recovery follows Settings -> Data sources: Oura-only keeps the baseline tiles below;
+// Recovery follows the source chosen in Me -> Connected apps -> Oura: Oura-only keeps the baseline tiles below;
 // Garmin, mixed sources or "Show both" render RecoveryCompare.
 import { RecoveryCompare, RecoveryRow } from './RecoveryCompare'
 import { useDataSources } from '@/lib/sources'

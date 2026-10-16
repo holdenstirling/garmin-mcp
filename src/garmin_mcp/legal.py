@@ -46,7 +46,7 @@ PRIVACY = """
 <p>Data is stored encrypted on a private Google Cloud server. Connection tokens for Garmin, Oura and Google Calendar are encrypted and used only to read your data (and, for Garmin, to send planned workouts you ask for).</p>
 <h2>Your choices</h2>
 <ul>
-<li>Disconnect Garmin, Oura or Google Calendar at any time in Settings; Rabbit stops reading from them and deletes the stored tokens.</li>
+<li>Disconnect Garmin, Oura or Google Calendar at any time in Me &rarr; Connected apps; Rabbit stops reading from them and deletes the stored tokens.</li>
 <li>Ask for a copy or deletion of your data by contacting {CONTACT}.</li>
 </ul>
 <h2>Contact</h2><p>Questions: {CONTACT}.</p>

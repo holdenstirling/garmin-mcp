@@ -1,12 +1,13 @@
-import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upload } from 'lucide-react'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, DataSourcesSheet, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RecapSheet, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RecapSheet, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
-import { Screen, TabScreen } from '@/components/plan/ui'
+import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
+import { Sheet as BottomSheet } from '@/components/ui/Sheet'
+import type { ConnApp, ConnectRequest } from '@/lib/connections'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
 import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
@@ -24,7 +25,7 @@ import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
-import { MonthRecapSheet, RewardSheet } from '@/screens/lazyScreens'
+import { MonthRecapSheet, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -108,8 +109,15 @@ function toRows(items: ChatItem[], hideTools = false): Row[] {
 
 
 type Sheet = 'settings' | 'threads' | 'memory' | 'plan'
-// Full-screen pages over the tabs (each with its own close): plan setup, profile, people, gear.
+// Full-screen pages over the tabs: plan setup, profile, people, gear.
 type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'racepack' | 'quests' | 'gear' | 'findcoach'
+// Pages over the tabs are ONE stack and only its top page is drawn (nothing piles up): a page
+// opened from a page is pushed (back arrow to the previous one + X), a top-level destination
+// (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
+// Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
+type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string }
+  | { k: 'connections' } | { k: 'access' } | { k: 'usage' }
+const pageKey = (p: Page) => p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
@@ -127,7 +135,24 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     useCoach(threadId, { turn: me.chat.active_turn, thread: me.chat.active_thread }, queued, () => setQueued(null))
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const [closing, setClosing] = useState(false)
-  const [planScreen, setPlanScreen] = useState<PlanScreen | null>(null)
+  const [pages, setPages] = useState<Page[]>([])
+  const [revealed, setRevealed] = useState(false) // the top page came back from a pop: no slide-in
+  const topPage = pages[pages.length - 1] ?? null
+  const meOpen = topPage?.k === 'me'
+  // At most one sheet: opening a page closes the sheet that opened it first.
+  const dropSheet = () => { setSheet(null); setClosing(false); setCoachAsk(false) }
+  const pushPage = (pg: Page) => {
+    dropSheet(); setRevealed(false)
+    setPages((st) => {
+      const i = st.findIndex((x) => pageKey(x) === pageKey(pg))
+      return i >= 0 ? [...st.slice(0, i), pg] : [...st, pg]
+    })
+  }
+  const showPage = (pg: Page) => { dropSheet(); setRevealed(false); setPages([pg]) }
+  const popPage = () => { setRevealed(true); setPages((st) => st.slice(0, -1)) }
+  const closePages = () => setPages([])
+  // The one connect popup (components/connect/ConnectSheet): any screen via requestConnect(app).
+  const [connect, setConnect] = useState<ConnectRequest | null>(null)
   const [addPlan, setAddPlan] = useState(false)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
@@ -137,7 +162,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
-  const [fitEvent, setFitEvent] = useState<string | null>(null) // race readiness from a moment
   const [ringShown, setRingShown] = useState(false) // home week ring is up: Up next drops its dots
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
@@ -155,7 +179,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [progressView, setProgressView] = useState<ProgressView>(openParam === 'recap' ? 'recap' : 'overview')
   const [recapWeek, setRecapWeek] = useState<string | undefined>(undefined)
   const [racesView, setRacesView] = useState<RacesView>('mine')
-  const [meOpen, setMeOpen] = useState(false) // Me: from the avatar in the tab headers
   const [communityView, setCommunityView] = useState<CommunityView>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [composerFocus, setComposerFocus] = useState(false)
@@ -248,17 +271,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (coachId) setThreadId(coachId)
     setDraft((d) => ({ text, n: (d?.n ?? 0) + 1 }))
     if (sheet) { setSheet(null); setClosing(false) }
-    setPlanScreen(null)
+    closePages()
     setTab('rabbit')
   }
   const builtPlan = goal?.plan_source === 'builder'
-  const showScreen = (sc: PlanScreen) => { if (sheet) { setSheet(null); setClosing(false) } setPlanScreen(sc) }
+  const showScreen = (sc: PlanScreen) => pushPage({ k: 'screen', s: sc })
   const startSetup = () => showScreen('setup')
   // A tab, with whatever was open on top of it closed.
   const goTab = (t: TabId) => {
     if (sheet) { setSheet(null); setClosing(false) }
-    setPlanScreen(null)
-    setMeOpen(false)
+    closePages()
     setTab(t)
   }
   const openPlan = () => goTab('plan')
@@ -269,7 +291,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setCommunityView(v); setCommunityClub(club ?? null); goTab('community')
   }
   // Nothing open over the tabs: progress, Today and live sync refresh.
-  const overlayFree = !planScreen && !sheet
+  const overlayFree = !pages.some((p) => p.k === 'screen') && !sheet && !connect
   const homeInView = tab === 'rabbit' && overlayFree
   // Gamification: level, streak, this week and setup quests (status banner, Me, Progress).
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -287,12 +309,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [upnextTried, setUpNextTried] = useState(false) // first load done (skeleton until then)
   const loadToday = useCallback(() => { getUpNext().then((u) => { setUpNext(u); setToday(u.today) }, () => {}).finally(() => setUpNextTried(true)) }, [])
   useEffect(() => {
-    const onConnect = () => open('settings') // GarminEmpty / any screen: "Connect Garmin"
+    // GarminEmpty, setup quests, any screen: that app's connect popup (lib/connections).
+    const onConnect = (e: Event) => setConnect({ app: ((e as CustomEvent<ConnApp | undefined>).detail) ?? 'garmin' })
     window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
     return () => window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // Workout day: the pre-workout screen (from Today / the plan) and the post-workout reaction.
-  const [workout, setWorkout] = useState<{ sessionId?: string } | null>(null)
+  // Workout day: the pre-workout screen (a page: from Today / the plan) and the post-workout reaction.
+  const setWorkout = (w: { sessionId?: string }) => showPage({ k: 'workout', sessionId: w.sessionId })
   const [reaction, setReaction] = useState<number | null>(null)
   // Post-workout reward (reward.py): once per workout, on the next open, after a sync or from
   // the workout push (?open=reward&activity=<id>); the monthly share card (Progress, moment).
@@ -321,7 +344,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }, [overlayFree, me.garmin.connected]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (homeInView) loadToday() }, [homeInView, me, loadToday])
   const todayAction = (kind: TodayActionKind) => {
-    if (kind === 'open_racepack') { openRaces(); setPlanScreen('racepack') }
+    if (kind === 'open_racepack') { openRaces(); pushPage({ k: 'screen', s: 'racepack' }) }
     else if (kind === 'review_adjust') openPlan()
     else if (kind === 'open_session') { if (today?.session?.id) setWorkout({ sessionId: today.session.id }); else openPlan() }
     else if (kind === 'build_plan') startSetup()
@@ -393,7 +416,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     try { window.localStorage.setItem('rabbit.recap.dismissed', wk) } catch { /* this session only */ }
   }
   const doQuest = (q: QuestId) => {
-    if (q === 'garmin' || q === 'notify' || q === 'calendar' || q === 'oura') { setPlanScreen(null); open('settings'); return }
+    if (q === 'garmin' || q === 'calendar' || q === 'oura') { setConnect({ app: q }); return }
+    if (q === 'notify') { open('settings'); return }
     if (q === 'sports') { showScreen('profile'); return }
     if (q === 'coach') { showScreen('coaches'); return }
     if (q === 'coach_status') { setCoachAsk(true); return }
@@ -410,13 +434,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       if (!c) return
       const r = await athleteChat.open({ coach: c.email, session_id: s.id })
       setCoachMsgThread(r.thread.id)
-      setPlanScreen('coach')
+      showScreen('coach')
     } catch (e) { showToast((e as Error).message) }
   }
   const close = () => { setClosing(true); setTimeout(() => { setSheet(null); setClosing(false) }, 200) }
   // Drag-dismiss animates itself out, then unmounts at once (no second exit animation).
   const dismissNow = useCallback(() => { setSheet(null); setClosing(false) }, [])
-  const settingsDrag = useSheetDrag(dismissNow)
 
   function newThread(from?: { thread_id: string; turn_id: string }, seedMsg?: ChatMessage) {
     setPending({ seed: from, seedMsg })
@@ -425,23 +448,29 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   const openThread = (id: string) => { setPending(null); setThreadId(id) }
 
-  const [sourcesAsk, setSourcesAsk] = useState(false)
-  // Back from connecting Google Calendar or Oura.
+  // Back from connecting Google Calendar or Oura: the same popup reopens in its success
+  // (import, then Done) or failure state.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const cal = params.get('calendar'), oura = params.get('oura')
     if (!cal && !oura) return
     window.history.replaceState(null, '', '/app/')
-    if (cal) showToast(cal === 'connected' ? 'Google Calendar connected' : "Couldn't connect Google Calendar")
-    if (oura) showToast(oura === 'connected' ? 'Oura connected' : "Couldn't connect Oura")
-    if (oura === 'connected') setSourcesAsk(true)
+    if (oura) setConnect({ app: 'oura', result: oura === 'connected' ? 'connected' : 'failed' })
+    else if (cal) setConnect({ app: 'calendar', result: cal === 'connected' ? 'connected' : 'failed' })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // Data sources (lib/sources.ts): screens read the current choice; ask once how to use Oura
-  // (right after connecting it, or on the next open for anyone connected before this existed).
+  // Data sources (lib/sources.ts): screens read the current choice; the Oura popup asks once
+  // how to use Oura (right after connecting it, or on the next open for anyone connected before).
   useEffect(() => { setCurrentSources(me.settings.data_sources) }, [me.settings.data_sources])
   useEffect(() => {
-    if (me.oura.connected && me.settings.data_sources_asked === false) setSourcesAsk(true)
+    if (me.oura.connected && me.settings.data_sources_asked === false) setConnect((c) => c ?? { app: 'oura', ask: true })
   }, [me.oura.connected, me.settings.data_sources_asked])
+  const closeConnect = () => {
+    // Closing the Oura popup without saving keeps the defaults and doesn't ask again.
+    if (connect?.app === 'oura' && me.oura.connected && me.settings.data_sources_asked === false) {
+      void putSettings({ data_sources_asked: true }).then(onChange, () => {})
+    }
+    setConnect(null)
+  }
   // Tapping a brief or workout-note notification opens Rabbit's log: from a cold start via
   // ?open=coach, or (app already running) via a message from the service worker.
   const openCoach = useRef(openParam === 'coach')
@@ -462,7 +491,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setThreadId(coachId)
     setSheet(null)
     setClosing(false)
-    setPlanScreen(null)
+    closePages()
     setTab('rabbit')
   }, [coachId, threads, setTab])
 
@@ -565,8 +594,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const momentAction = (a: MomentAction) => {
     if (a.id === 'checkin') setVoice({ activityId: a.activity_id, title: a.title })
     else if (a.id === 'reaction') { if (a.activity_id != null) setReaction(a.activity_id) }
-    else if (a.id === 'readiness') { if (a.event_id) setFitEvent(a.event_id); else openRaces() }
-    else if (a.id === 'racepack') { openRaces(); setPlanScreen('racepack') }
+    else if (a.id === 'readiness') { if (a.event_id) showPage({ k: 'fit', id: a.event_id }); else openRaces() }
+    else if (a.id === 'racepack') { openRaces(); pushPage({ k: 'screen', s: 'racepack' }) }
     else if (a.id === 'plan') openPlan()
     else if (a.id === 'progress') openProgress()
     else if (a.id === 'community_share' && a.draft_id) {
@@ -598,7 +627,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const tapBanner = () => {
     if (!banner) return
     if (banner.kind === 'error') void refreshThreads(threadsError?.select)
-    else if (banner.kind === 'garmin') open('settings')
+    else if (banner.kind === 'garmin') setConnect({ app: 'garmin' })
     else if (banner.kind === 'plan') startSetup()
     else if (banner.kind === 'quest' && quest) doQuest(quest.id)
     else if (banner.kind === 'recap') openRecap(recapPillWeek ?? undefined)
@@ -609,7 +638,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
   const meButton = (
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
-      me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => setMeOpen(true)}>
+      me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
       {me.coach_unread > 0 && <span className="absolute right-1 top-1 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
@@ -696,7 +725,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
   const shell = useRef<HTMLDivElement>(null)
-  useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !meOpen && !typing && !inChat && !pending, onSwipe: setTab })
+  useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !pages.length && !typing && !inChat && !pending, onSwipe: setTab })
   useEffect(() => { setUsageOff(me.settings.usage_off === true); trackAppOpen() }, [me.settings.usage_off])
   useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
@@ -705,8 +734,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     community: friendsDot && 'new from friends',
   }
   const openMeRow = (r: MeRow) => {
-    if (r === 'friends') { setMeOpen(false); openCommunity('people') }
+    if (r === 'friends') openCommunity('people')
     else if (r === 'settings') open('settings')
+    else if (r === 'connections' || r === 'access' || r === 'usage') pushPage({ k: r })
     else if (r === 'memory') open('memory')
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
     else if (r === 'coachstatus') setCoachAsk(true)
@@ -797,6 +827,43 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )
   }
 
+  function renderPage(pg: Page) {
+    switch (pg.k) {
+      case 'me': return <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onClose={closePages} />
+      case 'connections': return <ConnectionsScreen onClose={closePages} />
+      case 'access': return <AccessScreen onClose={closePages} />
+      case 'usage': return <UsageScreen onClose={closePages} />
+      case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
+      case 'workout':
+        return (
+          <WorkoutDayScreen sessionId={pg.sessionId} imperial={imperial}
+            onClose={closePages} onAsk={tellRabbit} onCheckIn={(c) => setVoice(c)} />
+        )
+    }
+    switch (pg.s) {
+      case 'setup':
+        return (
+          <SetupWizard me={{ ...me, goal }} onClose={closePages}
+            onDone={() => { onChange(); void refreshThreads(); loadWeek(); celebrate(null, 'plan') }}
+            onOpenPlan={openPlan}
+            onUploadPlan={() => { closePages(); setAddPlan(true) }}
+            onMeChanged={onChange} />
+        )
+      case 'coach': return <CoachInbox openThreadId={coachMsgThread} onClose={closePages} onChanged={onChange} />
+      case 'coaches': return <CoachesScreen onClose={closePages} onChanged={onChange} onFindCoach={() => showScreen('findcoach')} />
+      case 'findcoach': return <FindCoachScreen athleteName={me.profile.name} onClose={closePages} onAsk={tellRabbit} onInvited={onChange} />
+      case 'athletes': return <CoachApp me={me} onClose={closePages} />
+      case 'racepack': return <RacePackScreen imperial={imperial} onClose={closePages} />
+      case 'gear': return <GearScreen imperial={imperial} onClose={closePages} onAsk={tellRabbit} />
+      case 'quests': return progress ? <SetupScreen p={progress} onClose={closePages} onAction={doQuest} /> : null
+      case 'profile':
+        return (
+          <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={closePages}
+            onSaved={onChange} onRebuild={() => showScreen('setup')} onOpenEvents={openRaces} onOpenGear={() => showScreen('gear')} />
+        )
+    }
+  }
+
   return (
     <div ref={shell} className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${typing ? '' : 'with-tabbar'}`}>
       {/* Rabbit stays mounted under the other tabs (its chat, scroll and stream live on). */}
@@ -825,10 +892,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} />
       )}
       {isCoach && !typing && (
-        <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={setFitEvent} onRing={setRingShown} />
+        <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={(id) => showPage({ k: 'fit', id })} onRing={setRingShown} />
       )}
       {isCoach && !typing && (
-        <FirstVisitCard connected={me.garmin.connected} onConnect={() => open('settings')}
+        <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
           onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
       )}
 
@@ -988,6 +1055,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {tab === 'races' && <div className="tab-page flex min-h-0 flex-1 flex-col">{racesTab()}</div>}
       {tab === 'progress' && <div className="tab-page flex min-h-0 flex-1 flex-col">{progressTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
+      {topPage && (
+        <div key={pageKey(topPage)} className={`page-stack${revealed ? ' page-stack--revealed' : pages.length > 1 ? ' page-stack--pushed' : ''}`}>
+          <PageStack back={pages.length > 1 ? popPage : undefined}>{renderPage(topPage)}</PageStack>
+        </div>
+      )}
 
       {menu && (
         <MessageMenu target={menu} onClose={() => setMenu(null)} onToast={showToast}
@@ -1007,10 +1079,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           }} />
       )}
       <VoiceCheckIn open={!!voice} sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
-      {sourcesAsk && me.oura.connected && (
-        <DataSourcesSheet me={me} onClose={() => { setSourcesAsk(false); onChange() }}
-          onSaved={(msg) => { setSourcesAsk(false); showToast(msg); onChange() }} />
-      )}
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
@@ -1036,21 +1104,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onEdit={() => open('memory')} onBuild={startSetup} />
       )}
       {addPlan && <AddPlanLauncher onClose={() => setAddPlan(false)} onApplied={() => { setAddPlan(false); onChange(); void refreshThreads(); loadWeek() }} />}
-      {meOpen && <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onClose={() => setMeOpen(false)} />}
-      {planScreen === 'setup' && (
-        <SetupWizard me={{ ...me, goal }} onClose={() => setPlanScreen(null)}
-          onDone={() => { onChange(); void refreshThreads(); loadWeek(); celebrate(null, 'plan') }}
-          onOpenPlan={openPlan}
-          onUploadPlan={() => { setPlanScreen(null); setAddPlan(true) }}
-          onMeChanged={onChange} />
-      )}
-      {planScreen === 'coach' && (
-        <CoachInbox openThreadId={coachMsgThread} onClose={() => setPlanScreen(null)} onChanged={onChange} />
-      )}
-      {planScreen === 'coaches' && <CoachesScreen onClose={() => setPlanScreen(null)} onChanged={onChange} onFindCoach={() => setPlanScreen('findcoach')} />}
-      {planScreen === 'findcoach' && (
-        <FindCoachScreen athleteName={me.profile.name} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} onInvited={onChange} />
-      )}
       {coachAsk && (
         <CoachStatusSheet current={me.athlete.coach_status} onClose={() => setCoachAsk(false)}
           onSaved={(s) => {
@@ -1060,13 +1113,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             else showToast('Going solo. Rabbit has your back.')
           }} />
       )}
-      {planScreen === 'athletes' && <CoachApp me={me} onClose={() => setPlanScreen(null)} />}
-      {fitEvent && <RaceFitScreen eventId={fitEvent} onClose={() => setFitEvent(null)} />}
-      {planScreen === 'racepack' && <RacePackScreen imperial={imperial} onClose={() => setPlanScreen(null)} />}
-      {workout && (
-        <WorkoutDayScreen key={workout.sessionId ?? 'today'} sessionId={workout.sessionId} imperial={imperial}
-          onClose={() => setWorkout(null)} onAsk={(t) => { setWorkout(null); tellRabbit(t) }} onCheckIn={(c) => setVoice(c)} />
-      )}
       {reward && (
         <RewardSheet key={reward.id} activityId={reward.id} initial={reward.data} onClose={() => setReward(null)}
           onBreakdown={(id) => setReaction(id)} onCheckIn={(c) => setVoice(c)}
@@ -1075,31 +1121,19 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}
-          onClose={() => setReaction(null)} onOpenSession={(id) => setWorkout({ sessionId: id })}
+          onClose={() => setReaction(null)} onOpenSession={(id) => { setReaction(null); setWorkout({ sessionId: id }) }}
           onCheckIn={(c) => { setReaction(null); setVoice(c) }} />
       )}
-      {planScreen === 'gear' && <GearScreen imperial={imperial} onClose={() => setPlanScreen(null)} onAsk={tellRabbit} />}
-      {planScreen === 'quests' && progress && (
-        <SetupScreen p={progress} onClose={() => setPlanScreen((sc) => (sc === 'quests' ? null : sc))} onAction={doQuest} />
-      )}
       {progress && overlayFree && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
-      {planScreen === 'profile' && (
-        <ProfileScreen me={me} hasBuiltPlan={builtPlan} onClose={() => setPlanScreen(null)}
-          onSaved={onChange} onRebuild={() => setPlanScreen('setup')} onOpenEvents={openRaces} onOpenGear={() => setPlanScreen('gear')} />
-      )}
       {sheet === 'settings' && (
-        <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>
-          <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...settingsDrag}>
-            <div className="sheet-handle" />
-            <div className="modal-header">
-              <h2 className="modal-title">Settings</h2>
-              <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
-            </div>
-            <div className="modal-body overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-              <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()} onToast={showToast} />
-            </div>
-          </div>
-        </div>
+        <BottomSheet title="Settings" closing={closing} onClose={close} onDismissed={dismissNow}>
+          <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()}
+            onOpenConnections={() => pushPage({ k: 'connections' })} />
+        </BottomSheet>
+      )}
+      {connect && (
+        <ConnectSheet key={`${connect.app}:${connect.result ?? ''}`} me={me} req={connect} onClose={closeConnect}
+          onChanged={onChange} onToast={showToast} />
       )}
     </div>
   )

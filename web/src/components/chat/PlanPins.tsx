@@ -213,7 +213,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
     <div className={cn('week-dim', open && 'week-dim--open')} onClick={() => setOpen(false)} aria-hidden />
     <div className="coach-pins shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-2.5 pt-0">
       {/* Only the card rises above the dimming; the drawer slides down over the feed. */}
-      <div className={cn('relative mx-auto max-w-2xl', raised && 'z-[46]')} style={headH ? { height: headH } : undefined}>
+      <div className={cn('relative mx-auto max-w-2xl', raised && 'z-(--z-drawer-raised)')} style={headH ? { height: headH } : undefined}>
       <div ref={cardRef} className={cn('overflow-hidden rounded-xl border border-border bg-(--bg-surface) transition-shadow duration-300',
         headH && 'absolute inset-x-0 top-0', raised ? 'shadow-lg' : 'shadow-sm')}>
         <button ref={headRef} onClick={() => (failed && onRetry ? onRetry() : setOpen((v) => !v))} aria-expanded={open}

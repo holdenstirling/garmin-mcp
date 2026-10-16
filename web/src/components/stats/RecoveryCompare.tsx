@@ -1,4 +1,4 @@
-// Progress recovery from the athlete's chosen source (Settings -> Data sources): readiness,
+// Progress recovery from the athlete's chosen source (Me -> Connected apps -> Oura): readiness,
 // HRV and resting HR from the recovery source, sleep from the sleep source. With "Show both",
 // a compact Garmin vs Oura table instead. App-only: Oura numbers never reach Rabbit's AI.
 import { useEffect, useState } from 'react'

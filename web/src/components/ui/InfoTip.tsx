@@ -32,7 +32,7 @@ export function InfoTip({ term, text, label, className, align = 'center' }: {
       </button>
       {open && (
         <span id={id} role="tooltip"
-          className={cn('absolute top-full z-50 mt-1.5 w-56 rounded-lg border border-(--border-strong) bg-(--bg-surface) px-3 py-2 text-left text-[0.7059rem] font-normal normal-case leading-snug tracking-normal text-(--text) shadow-lg',
+          className={cn('absolute top-full z-(--z-popover) mt-1.5 w-56 rounded-lg border border-(--border-strong) bg-(--bg-surface) px-3 py-2 text-left text-[0.7059rem] font-normal normal-case leading-snug tracking-normal text-(--text) shadow-lg',
             align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2')}>
           {g && !text && <span className="mb-0.5 block font-semibold">{g.title}</span>}
           {body}

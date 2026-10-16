@@ -3151,6 +3151,82 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             Route("/app/api/racegrade/live", _api(racegrade_live, mutating=False), methods=["GET"]),
         ]
 
+    # ------------------------------------------------------- connected apps --
+    # connections.py: one status row per integration (Garmin, Oura, Google Calendar) for the
+    # Me -> Connected apps hub and its connect popups, without calling any provider: Garmin's
+    # last sync/attention come from LiveSync's in-memory result, Oura/Calendar from their read
+    # caches. POST .../{app}/sync re-reads Oura or Calendar now (Garmin uses /app/api/sync).
+    # Athletes only (coach 403 in _api).
+    from . import connections as _conn
+    _conn_errors: dict[tuple[str, str], str] = {}  # (user, app) -> last "Sync now" problem
+
+    def _conn_rows(uid: str) -> dict[str, Any]:
+        g_on = _garmin_connected(uid)
+        last = live_sync.last(uid) if live_sync is not None else None
+        g_doc = store.user_doc(uid, "sync").load() if store is not None else {}
+        g_err = (last or {}).get("error") if g_on else None
+        o, cal = auth.oura, auth.calendar
+        o_on = bool(o and o.connected(uid))
+        c_on = bool(cal and cal.connected(uid))
+        return {
+            "garmin": _conn.status(
+                "garmin", available=logins is not None, connected=g_on,
+                last_sync=(last or {}).get("checked_at") if last and not g_err else g_doc.get("checked_at"),
+                error=g_err, attention=bool(g_on and last and last.get("code") == "reauth")),
+            "oura": _conn.status(
+                "oura", available=o is not None, connected=o_on,
+                last_sync=(o.last_read(uid) if o is not None else None),
+                error=_conn_errors.get((uid, "oura")), attention=(uid, "oura") in _conn_errors),
+            "calendar": _conn.status(
+                "calendar", available=cal is not None, connected=c_on,
+                last_sync=(cal.last_read(uid) if cal is not None else None),
+                error=_conn_errors.get((uid, "calendar")), attention=(uid, "calendar") in _conn_errors),
+        }
+
+    def _conn_sources(uid: str) -> dict[str, Any] | None:
+        if store is None:
+            return None
+        return prefs_for(store, uid, bool(auth.oura and auth.oura.connected(uid)))[0]
+
+    async def connections_get(request: Request, user_id: str) -> Response:
+        rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
+        return JSONResponse(_conn.view(rows, _conn_sources(user_id)))
+
+    async def connections_sync(request: Request, user_id: str) -> Response:
+        app_id = request.path_params["app"]
+        if app_id not in ("oura", "calendar"):
+            return _err(400, "Use /app/api/sync for Garmin.")
+        today = plans.today(user_id) if plans else date.today()
+        key = (user_id, app_id)
+        try:
+            if app_id == "oura":
+                if auth.oura is None or not auth.oura.connected(user_id):
+                    return _err(409, "Oura isn't connected.")
+                auth.oura.forget(user_id)
+                await auth.oura.recovery(user_id, today, 28)
+            else:
+                cal = auth.calendar
+                if cal is None or not cal.connected(user_id):
+                    return _err(409, "Google Calendar isn't connected.")
+                prof = store.user_doc(user_id, "profile").load() if store else {}
+                cal.forget(user_id)
+                await cal.summary(user_id, today, 42, prof.get("timezone") or default_tz)
+            _conn_errors.pop(key, None)
+        except (OuraNotConnected, CalendarNotConnected):
+            _conn_errors.pop(key, None)  # the token is gone: the row says "Not connected"
+        except (OuraError, CalendarError) as e:
+            _conn_errors[key] = str(e)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "connection_sync_failed", app=app_id, error=type(e).__name__)
+            _conn_errors[key] = "Didn't answer just now. Try again later."
+        rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
+        return JSONResponse({"app": rows[app_id]})
+
+    home_routes += [
+        Route("/app/api/connections", _api(connections_get, mutating=False), methods=["GET"]),
+        Route("/app/api/connections/{app}/sync", _api(connections_sync, mutating=True), methods=["POST"]),
+    ]
+
     # ---------------------------------------- workout reward + month recap --
     # reward.py: one headline insight per new workout (records, streak, week closed, plan
     # nailed), shown once on the next open / from the workout note's push; the monthly recap

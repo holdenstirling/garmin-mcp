@@ -105,6 +105,15 @@ class OuraClient:
                                            "redirect_uri": self.redirect_uri, "scope": SCOPES,
                                            "state": state})
 
+    def last_read(self, user_id: str) -> float | None:
+        """When data was last read for this user (wall clock; in memory, None after a restart)."""
+        hit = self._cache.get(user_id)
+        return hit[0] if hit else None
+
+    def forget(self, user_id: str) -> None:
+        """Drop the cached read so the next one goes to the provider ("Sync now")."""
+        self._cache.pop(user_id, None)
+
     def _client(self) -> httpx2.AsyncClient:
         return self._http or httpx2.AsyncClient(timeout=15)
 

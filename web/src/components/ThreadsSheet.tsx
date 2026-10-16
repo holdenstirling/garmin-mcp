@@ -74,7 +74,7 @@ function ConfirmDelete({ title, onCancel, onConfirm }: { title: string; onCancel
   const box = useRef<HTMLDivElement>(null)
   useDialog(box, onCancel)
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-(--z-dialog) flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
       <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="del-chat-title" aria-describedby="del-chat-desc"
         className="relative z-10 mx-4 w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">

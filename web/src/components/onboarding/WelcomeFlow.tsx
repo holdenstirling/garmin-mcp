@@ -200,7 +200,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
 
   if (mode === 'full') {
     return (
-      <div ref={box} className="fixed inset-0 flex flex-col bg-(--bg) pt-[max(10px,env(safe-area-inset-top))]" style={{ zIndex: 65 }}
+      <div ref={box} className="fixed inset-0 flex flex-col bg-(--bg) pt-[max(10px,env(safe-area-inset-top))]" style={{ zIndex: 'var(--z-dialog)' }}
         role="dialog" aria-modal="true" aria-label="Welcome to Rabbit">
         <div className="flex items-center justify-between px-2">
           <span className="w-11" />
@@ -217,7 +217,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     )
   }
   return (
-    <div className="modal-overlay" style={{ zIndex: 65 }} onClick={() => { if (!saving && step !== 'yours') skip() }}>
+    <div className="modal-overlay" style={{ zIndex: 'var(--z-dialog)' }} onClick={() => { if (!saving && step !== 'yours') skip() }}>
       <div ref={box} className="modal" role="dialog" aria-modal="true" aria-labelledby="wf-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="modal-header">

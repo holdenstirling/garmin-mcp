@@ -30,6 +30,16 @@ export function TabScreen({ title, top, lead, action, children }: {
   return <EmbedCtx.Provider value={{ claim, title, top, lead, action }}>{children}</EmbedCtx.Provider>
 }
 
+// Page stack (screens/Chat.tsx): a page pushed from another page gets `back` (one level) from
+// PageStack and keeps its own onClose (the whole stack). A Screen opened inside an overlay
+// Screen is a child page too: with no onBack of its own its close becomes a back arrow.
+type Stack = { back?: () => void; nested?: boolean }
+const StackCtx = createContext<Stack | null>(null)
+const NESTED: Stack = { nested: true }
+export function PageStack({ back, children }: { back?: () => void; children: React.ReactNode }) {
+  return <StackCtx.Provider value={back ? { back } : null}>{children}</StackCtx.Provider>
+}
+
 /** Full-screen page that slides up over the app (setup wizard, plan editor), or a tab page
  *  inside a TabScreen. Close model: a child screen whose back is its close (onBack === onClose)
  *  shows only a back arrow, a root screen only an X, a screen with a separate back step and
@@ -54,6 +64,8 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
     return () => { if (c.owner === id) c.owner = null }
   }, [embed?.claim, id]) // eslint-disable-line react-hooks/exhaustive-deps
   const embedded = !!embed && page
+  const stack = useContext(StackCtx)
+  if (!embedded && !onBack) onBack = stack?.back ?? (stack?.nested ? onClose : undefined)
   // Escape and the phone's Back go one level back (child screen) or close (root screen).
   useDialog(embedded ? none : ref, onBack ?? onClose)
   const name = embedded && embed.title ? embed.title : title
@@ -101,7 +113,11 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
     </>
   )
   // Whatever a screen opens inside itself is an overlay again, never the tab page.
-  const inner = <EmbedCtx.Provider value={null}>{body}</EmbedCtx.Provider>
+  const inner = (
+    <EmbedCtx.Provider value={null}>
+      <StackCtx.Provider value={embedded ? null : NESTED}>{body}</StackCtx.Provider>
+    </EmbedCtx.Provider>
+  )
   if (embedded) {
     return <section className="plan-screen plan-screen--tab" aria-label={name}>{inner}</section>
   }
