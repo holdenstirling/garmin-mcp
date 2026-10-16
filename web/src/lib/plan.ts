@@ -31,7 +31,7 @@ export type BuiltPlan = {
   events_changed: boolean
   race_changed: boolean
   /** set when a coach (or the athlete) loaded the plan from outside the builder */
-  origin?: { kind: 'coach' | 'athlete'; by_name: string; at: number; source: string; name: string | null } | null
+  origin?: { kind: 'coach' | 'athlete' | 'block'; by_name: string; at: number; source: string; name: string | null } | null
   trips: { id: string; start: string; end: string; label: string; has: Record<'gym' | 'treadmill' | 'pool' | 'bike', boolean> }[]
 }
 export type SyncResult = {

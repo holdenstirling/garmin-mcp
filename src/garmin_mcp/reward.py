@@ -488,7 +488,7 @@ def top_club_of(store: "AppStore", clubs: Any, uid: str, start: date, end: date)
     """The club ``uid`` posted to most between ``start`` and ``end`` (local dates, compared
     as UTC days: close enough for a monthly card), else their first club by name."""
     try:
-        ids = [c for c in clubs.ids_of(uid) if not c.startswith("r-")]
+        ids = [c for c in clubs.ids_of(uid) if not c.startswith(("r-", "b-"))]
     except Exception:
         return None
     if not ids:

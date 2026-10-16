@@ -110,4 +110,6 @@ export const MePage = split(() => import('@/components/nav/MePage').then((m) => 
 export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))
 export const MonthRecapSheet = split(() => import('@/components/reward/MonthRecapSheet').then((m) => m.MonthRecapSheet))
 // Me -> Usage (owners only)
+// Shared training blocks (blocks.py): the block page and the create flow
+export const BlockScreen = split(() => import('@/components/blocks/BlockScreen').then((m) => m.BlockScreen))
 export const UsageScreen = split(() => import('@/components/settings/UsageScreen').then((m) => m.UsageScreen))
