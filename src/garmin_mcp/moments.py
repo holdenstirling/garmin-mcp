@@ -269,6 +269,8 @@ class Moments:
         self.on_workouts: Callable[[str, list[dict[str, Any]]], Any] | None = None
         # Called from tick outside quiet hours (club meetup reminders).
         self.on_tick: Callable[[str], Any] | None = None
+        # Countdown steps another feature replaces for an event (raceweek.py: "week", "eve").
+        self.skip_steps: Callable[[dict[str, Any]], set[str]] | None = None
 
     def _doc(self, uid: str):
         return self._s.user_doc(uid, "moments")
@@ -542,6 +544,8 @@ class Moments:
         try:
             days = (date.fromisoformat(ev["date"]) - today).days
         except (KeyError, ValueError):
+            return "skipped"
+        if self.skip_steps is not None and race_step(days) in self.skip_steps(ev):
             return "skipped"
         return self.post(uid, race_moment(ev, days))
 

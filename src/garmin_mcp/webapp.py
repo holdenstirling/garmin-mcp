@@ -3106,6 +3106,51 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             _social_push(inviter, f"invite-joined:{inviter}:{new_uid}", 86400, "New friend on Rabbit",
                          f"{first} joined Rabbit from your invite.")
 
+    # ------------------------------------------------------- race-week mode --
+    # raceweek.py (routes in raceweek_web.py): the 7 days before an A/B/main race take over the
+    # Rabbit home; pacing plan, course, packing (stored per event), nutrition, logistics, an
+    # opt-in "Track me" for mutual followers (status only, no location), race-week moments
+    # (replacing the countdown's week/eve lines) and friend pushes at start/finish. Athletes only.
+    from . import raceweek as _rwk, raceweek_web as _rwkw
+    raceweek_routes: list[BaseRoute] = []
+    if soc is not None and chat is not None and plans is not None and store is not None:
+        _rk = chat.agent
+
+        def _rk_push(to: str, title: str, body: str, url: str) -> None:
+            if push is not None and push_allowed(f"raceweek:{to}:{title}:{body[:40]}", 1, 6 * 3600):
+                push.send(to, title, body, url=url)
+        rk = _rwk.RaceWeek(store, events=_rk.events.list, now=_rk._now, follows=soc.follows,
+                           blocked=soc.blocked_between, is_athlete=soc.is_athlete, followers=soc.follower_ids,
+                           activities=lambda u: _rk.stats.activities(u)[1], push=_rk_push,
+                           quiet=lambda u: _rk.moments.quiet(_rk._now(u)), name=_soc_name)
+        _rk.moments.skip_steps = _rwk.RaceWeek.skip_countdown
+        _rk_tick_prev, _rk_after_prev = _rk.moments.on_tick, _rk.moments.after_workouts
+
+        def _rk_gear(uid: str) -> list[dict[str, Any]]:
+            return _gear_items(uid)[0] if gear_store is not None else []
+
+        def _rk_counts(uid: str, ev: dict[str, Any]) -> tuple[int, int]:
+            v = _rwk.packing_view(_rwk.packing_defaults(ev, _rk_gear(uid),
+                                                        imperial=_coach().athlete(uid).get("units") == "imperial"),
+                                  rk.saved(uid, ev["id"]).get("packing"))
+            return v["done"], v["total"]
+
+        def _rk_tick(uid: str) -> None:
+            if _rk_tick_prev is not None:
+                _rk_tick_prev(uid)
+            rk.check_moments(uid, _rk.moments, packing=_rk_counts)
+            rk.check_start(uid)
+
+        def _rk_after(uid: str) -> None:
+            if _rk_after_prev is not None:
+                _rk_after_prev(uid)
+            rk.check_finish(uid)
+        _rk.moments.on_tick, _rk.moments.after_workouts = _rk_tick, _rk_after
+        raceweek_routes = _rwkw.make_routes(
+            svc=rk, plan_api=_plan_api, read_json=read_json, now=_rk._now, athlete=_coach().athlete,
+            plan_of=plans.get, gear=_rk_gear, basis=_pred_basis,
+            grade=lambda u, e: _readiness.get(u, e) if _readiness is not None else None, person=_soc_person)
+
     home_routes: list[BaseRoute] = [
         Route("/app/api/upnext", _plan_api(upnext_get, mutating=False), methods=["GET"]),
         Route("/app/api/firstvisit", _api(firstvisit_get, mutating=False), methods=["GET"]),
@@ -3509,6 +3554,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),
         Route("/app/s/{token}", share_page, methods=["GET"]),
         *race_routes,
+        *raceweek_routes,
         *directory_routes,
         *community_routes,
         *friends_routes,

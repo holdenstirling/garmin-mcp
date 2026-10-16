@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upl
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RecapSheet, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
@@ -16,6 +16,7 @@ import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekGoalsCard } from '@/components/home/WeekGoalsCard'
+import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions } from '@/components/home/QuickActions'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
@@ -116,8 +117,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string }
-  | { k: 'connections' } | { k: 'access' } | { k: 'usage' }
-const pageKey = (p: Page) => p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k
+  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'raceweek'; id: string; section?: string }
+const pageKey = (p: Page) => p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
 
@@ -596,6 +597,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'reaction') { if (a.activity_id != null) setReaction(a.activity_id) }
     else if (a.id === 'readiness') { if (a.event_id) showPage({ k: 'fit', id: a.event_id }); else openRaces() }
     else if (a.id === 'racepack') { openRaces(); pushPage({ k: 'screen', s: 'racepack' }) }
+    else if (a.id === 'raceweek') { if (a.event_id) showPage({ k: 'raceweek', id: a.event_id, section: a.section }); else openRaces() }
     else if (a.id === 'plan') openPlan()
     else if (a.id === 'progress') openProgress()
     else if (a.id === 'community_share' && a.draft_id) {
@@ -834,6 +836,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'access': return <AccessScreen onClose={closePages} />
       case 'usage': return <UsageScreen onClose={closePages} />
       case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
+      case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />
       case 'workout':
         return (
           <WorkoutDayScreen sessionId={pg.sessionId} imperial={imperial}
@@ -881,6 +884,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
       {isCoach && !upnext && !upnextTried && me.garmin.connected && !typing && <HomeCardSkeleton />}
+      {isCoach && !typing && me.role === 'athlete' && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
       {isCoach && upnext && !typing && (
         <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={goal && !ringShown ? week?.days : null} insight={topInsight} onOpenInsight={openProgress}
           onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}

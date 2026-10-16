@@ -93,6 +93,7 @@ export const AddPlanLauncher = split(() => import('@/components/plan/PlanImport'
 export const SetupWizard = split(() => import('@/components/plan/SetupWizard').then((m) => m.SetupWizard))
 export const ProfileScreen = split(() => import('@/components/plan/ProfileScreen').then((m) => m.ProfileScreen))
 export const RacePackScreen = split(() => import('@/components/events/RacePackScreen').then((m) => m.RacePackScreen))
+export const RaceWeekScreen = split(() => import('@/components/raceweek/RaceWeekScreen').then((m) => m.RaceWeekScreen))
 export const RaceFitScreen = split(() => import('@/components/events/RaceFitScreen').then((m) => m.RaceFitScreen))
 export const GearScreen = split(() => import('@/components/gear/GearScreen').then((m) => m.GearScreen))
 export const CoachInbox = split(() => import('@/components/coach/CoachInbox').then((m) => m.CoachInbox))
