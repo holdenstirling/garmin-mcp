@@ -147,7 +147,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <Input aria-label="Experience" className="text-base" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
                   <Input aria-label="Hours / week" className="text-base" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
-                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-base" value={a.units ?? 'metric'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
+                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-base" value={a.units ?? 'imperial'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
                     <option value="metric">Metric</option><option value="imperial">Imperial</option>
                   </select>
                 </div>

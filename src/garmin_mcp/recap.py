@@ -173,9 +173,9 @@ class RecapService:
         out = build(start=start, today=today, acts=acts, plan=plan, ledger=a.progress.ledger(user_id),
                     challenges=ch)
         try:
-            out["units"] = "imperial" if a.coach.athlete(user_id).get("units") == "imperial" else "metric"
+            out["units"] = "imperial" if a.coach.athlete(user_id).get("units") != "metric" else "metric"
         except Exception:
-            out["units"] = "metric"
+            out["units"] = "imperial"  # miles by default
         return out
 
 

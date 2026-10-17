@@ -29,7 +29,7 @@ function markCelebrated(ids: string[]) {
   try { localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...celebratedIds(), ...ids])].slice(-60))) } catch { /* private mode */ }
 }
 
-export function ChallengesCard({ imperial = false, loadKey = 0, collapsible = false }: {
+export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = false }: {
   imperial?: boolean
   /** bump to re-read (Progress refresh) */
   loadKey?: number

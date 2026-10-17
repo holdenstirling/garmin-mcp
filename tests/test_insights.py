@@ -233,7 +233,7 @@ SHOE = {"id": "g1", "kind": "shoes", "brand": "Nike", "model": "Pegasus", "retir
 
 
 def test_shoes_near_retirement_before_key_race() -> None:
-    i = one(compute(today=TODAY, acts=[], gear=[SHOE], events=[marathon(4)]), "gear")
+    i = one(compute(today=TODAY, acts=[], gear=[SHOE], events=[marathon(4)], athlete={"units": "metric"}), "gear")
     assert i and i["impact"] == "action" and "640 of 700 km" in i["explanation"] and "4 weeks" in i["explanation"]
     assert i["action"] == {"kind": "open_gear", "label": "Open your gear", "payload": {"gear_id": "g1"}}
     check_shape(i)

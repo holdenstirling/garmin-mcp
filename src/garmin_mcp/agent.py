@@ -644,7 +644,7 @@ class Agent:
                 user_id, int(days) if isinstance(days, int | float) else 7,
                 sport if isinstance(sport, str) and sport.strip() else None)
             out = _with_weekdays(out)
-            if self.coach.athlete(user_id).get("units") == "imperial":
+            if self.coach.athlete(user_id).get("units") != "metric":
                 out["activities"] = [to_imperial(a) for a in out.get("activities", [])]
             return out
         if name == "training_history":
@@ -659,7 +659,7 @@ class Agent:
                 user_id, start - timedelta(days=365 * years), start - timedelta(days=1),
                 activitytype="multi_sport") if years else [])
             return summarize(acts, start, end, older_events=older,
-                             imperial=self.coach.athlete(user_id).get("units") == "imperial")
+                             imperial=self.coach.athlete(user_id).get("units") != "metric")
         if name == "search":
             query = args.get("query")
             limit = args.get("limit", 8)

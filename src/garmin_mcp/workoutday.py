@@ -128,7 +128,7 @@ def _amount(s: dict[str, Any]) -> str:
 def targets(sport: str, zone: int, athlete: dict[str, Any]) -> list[dict[str, str]]:
     """Concrete targets for one zone: the sport's own metric first, then heart rate."""
     zone = min(5, max(1, int(zone or 2)))
-    imp = athlete.get("units") == "imperial"
+    imp = athlete.get("units") != "metric"
     out: list[dict[str, str]] = []
     pace, ftp, css, lthr = (athlete.get("run_threshold_pace"), athlete.get("ftp_w"),
                             athlete.get("swim_css"), athlete.get("threshold_hr"))
@@ -142,7 +142,8 @@ def targets(sport: str, zone: int, athlete: dict[str, Any]) -> list[dict[str, st
         out.append({"kind": "power", "label": f"{round(ftp * lo)}–{round(ftp * hi)} W"})
     elif sport == "swim" and num(css):
         slow, fast = SWIM_ZONES[zone]
-        out.append({"kind": "pace", "label": f"{_mmss(css + fast)}–{_mmss(css + slow)} /100m"})
+        f = 0.9144 if imp else 1.0  # per 100 yd for imperial
+        out.append({"kind": "pace", "label": f"{_mmss((css + fast) * f)}–{_mmss((css + slow) * f)} /100{'yd' if imp else 'm'}"})
     if sport != "swim" and num(lthr):
         lo, hi = HR_ZONES[zone]
         out.append({"kind": "hr", "label": f"{round(lthr * lo)}–{round(lthr * hi)} bpm"})
@@ -407,7 +408,7 @@ class WorkoutDay:
         plan = await anyio.to_thread.run_sync(a.plans.get, user_id)
         goal = a.coach.active_goal(user_id)
         athlete = a.coach.athlete(user_id)
-        imperial = athlete.get("units") == "imperial"
+        imperial = athlete.get("units") != "metric"
         acts = await self._acts(user_id)
         found = _find(plan, session_id) if session_id else None
         day = date.fromisoformat(found[1]) if found else today
@@ -554,7 +555,8 @@ def check_effort(session: dict[str, Any], act: dict[str, Any], athlete: dict[str
     if sport == "run" and spk and isinstance(pace, int | float) and pace > 0:
         lo, hi = PACE_ZONES[zone]
         fast, slow = pace * lo, pace * hi
-        res.update(basis="pace", target=f"{_mmss(fast)}–{_mmss(slow)} /km", actual=f"{_mmss(spk)} /km")
+        f, u = (KM_MI, "/mi") if athlete.get("units") != "metric" else (1.0, "/km")
+        res.update(basis="pace", target=f"{_mmss(fast * f)}–{_mmss(slow * f)} {u}", actual=f"{_mmss(spk * f)} {u}")
         if spk < fast * 0.97:
             res.update(in_zone=False, direction="harder")
         elif spk > slow * 1.06:
@@ -638,7 +640,7 @@ def build_reaction(act: dict[str, Any], acts: list[dict[str, Any]], dview: dict[
                    gear: list[dict[str, Any]], tomorrow: dict[str, Any] | None) -> dict[str, Any]:
     """Pure: the post-workout card for ``act`` given its merged day (``weekplan.merge``)."""
     aid = act.get("activity_id")
-    imperial = athlete.get("units") == "imperial"
+    imperial = athlete.get("units") != "metric"
     sessions = (dview or {}).get("sessions") or []
     hit = next((s for s in sessions if (s.get("activity") or {}).get("id") == aid), None)
     matched = None
@@ -669,7 +671,7 @@ def build_reaction(act: dict[str, Any], acts: list[dict[str, Any]], dview: dict[
     if spk and sport in ("run", "hike"):
         pace = f"{_mmss(spk * (KM_MI if imperial else 1))} /{'mi' if imperial else 'km'}"
     elif spk and sport == "swim":
-        pace = f"{_mmss(spk / 10)} /100m"
+        pace = f"{_mmss(spk / 10 * (0.9144 if imperial else 1))} /100{'yd' if imperial else 'm'}"
     return {
         "activity": {"id": aid, "name": act.get("name") or "Workout", "sport": sport, "date": str(act.get("date") or "")[:10],
                      "minutes": round(minutes), "distance_km": round(km, 2) if km else None,

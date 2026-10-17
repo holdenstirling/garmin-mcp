@@ -546,7 +546,7 @@ def fit_hints(race: dict[str, Any], main: dict[str, Any] | None, athlete: dict[s
         home = athlete.get("home_elevation_m")
         if not (isinstance(home, int | float) and home >= alt[0] - 600) and alt[0] >= 1500:
             ft = int(round(alt[0] / FT_M, -2))
-            label = f"Altitude ({ft:,} ft)" if athlete.get("units") == "imperial" else f"Altitude ({alt[0]:,} m)"
+            label = f"Altitude ({ft:,} ft)" if athlete.get("units") != "metric" else f"Altitude ({alt[0]:,} m)"
             hints.append({"id": "altitude", "label": label, "tone": "watch"})
     return hints
 

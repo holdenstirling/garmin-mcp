@@ -411,4 +411,4 @@ def test_training_history_tool_reads_garmin(env) -> None:
     go(agent, "friend", "I'm training for a 70.3", events.append)
     result = json.loads(backend.calls[1][-1]["content"][0]["content"])
     assert result["consistency"]["weeks"] in (8, 9) and result["by_sport"]
-    assert result["units"] == "metric"
+    assert result["units"] == "imperial (swim in yards)"  # miles unless they pick km

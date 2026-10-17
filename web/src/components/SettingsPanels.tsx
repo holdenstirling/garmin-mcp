@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { UnitsGroup } from '@/components/settings/UnitsRow'
 import { Bell, Compass, LogOut, Plug } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
@@ -98,6 +99,8 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
         <ShareRow />
       </Group>
+
+      {me.role === 'athlete' && <UnitsGroup me={me} onChange={onChange} />}
 
       <Group label="Location" footer="Used by Explore to find races and local activities near you."><LocationRow /></Group>
 

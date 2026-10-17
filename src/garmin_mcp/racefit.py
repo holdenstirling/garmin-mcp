@@ -154,7 +154,7 @@ def _alt_str(m: float, imperial: bool) -> str:
 
 def analyze(event: dict[str, Any], athlete: dict[str, Any]) -> dict[str, Any]:
     a = athlete or {}
-    imperial = a.get("units") == "imperial"
+    imperial = a.get("units") != "metric"
     strengths, limiters = set(a.get("strengths") or []), set(a.get("limiters") or [])
     terrain = set(a.get("terrain_access") or []) | {"open_water" for e in (a.get("equipment") or []) if e == "open_water"}
     etype = event.get("type") or "other"

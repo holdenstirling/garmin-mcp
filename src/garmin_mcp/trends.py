@@ -220,7 +220,7 @@ class SleepLog:
 
 def build(*, acts: list[dict[str, Any]], today: date, plan: dict[str, Any] | None, athlete: dict[str, Any],
           nights: dict[str, float], sleep_source: str | None) -> dict[str, Any]:
-    imperial = athlete.get("units") == "imperial"
+    imperial = athlete.get("units") != "metric"
     return {"today": today.isoformat(), "units": "imperial" if imperial else "metric",
             "distance": distance(acts, today, plan=plan, athlete=athlete, imperial=imperial),
             "pace": pace(acts, today, imperial=imperial),

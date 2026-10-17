@@ -166,7 +166,7 @@ export function PaceHost({ onChanged }: { onChanged?: (patch: Record<string, num
         const s = v.pending.find((p) => p.id === open.sid) ?? (open.sid ? null : v.pending.find((p) => p.sport === open.sport) ?? null)
         let accepted: PaceAccepted | null = null
         if (s && open.accept) { accepted = await acceptPace(s.id); onChanged?.({ [accepted.field]: accepted.value }) }
-        if (live) setState({ s, imperial: v.units === 'imperial', accepted })
+        if (live) setState({ s, imperial: v.units !== 'metric', accepted })
       } catch (e) { if (live) setErr((e as Error).message) }
     })()
     return () => { live = false }

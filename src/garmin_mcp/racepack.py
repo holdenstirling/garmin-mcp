@@ -65,7 +65,7 @@ def _altitude(event: dict[str, Any]) -> bool:
 def pacing(event: dict[str, Any], athlete: dict[str, Any]) -> list[dict[str, str]]:
     dist = (event.get("distance") or "other").lower()
     etype = event.get("type") or "other"
-    imp = athlete.get("units") == "imperial"
+    imp = athlete.get("units") != "metric"
     ftp, thr_pace, css, lthr = (athlete.get("ftp_w"), athlete.get("run_threshold_pace"),
                                 athlete.get("swim_css"), athlete.get("threshold_hr"))
     out: list[dict[str, str]] = []
@@ -177,7 +177,7 @@ def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] |
         "info": event.get("info") or {},
         "pacing": pacing(event, athlete),
         "fueling": fueling(event, athlete),
-        "your_gear": for_race(gear or [], etype, imperial=athlete.get("units") == "imperial"),
+        "your_gear": for_race(gear or [], etype, imperial=athlete.get("units") != "metric"),
         "gear": GEAR.get(etype if etype in GEAR else ("trail" if etype in ("trail", "mountaineering") else "other"), GEAR["other"]),
         "weather": wx, "weather_tips": tips,
         "week": week,

@@ -154,13 +154,13 @@ export function fmtPace(sec: number | null | undefined): string {
 }
 /** Seconds from "4:30" (or bare minutes). */
 /** First guess for someone who hasn't chosen: US customary in the US (and Liberia, Myanmar). */
+/** Units when the athlete hasn't chosen: miles by default (km is a setting in Me). */
 export function guessUnits(): 'imperial' | 'metric' {
-  try {
-    const langs = [...(navigator.languages ?? []), navigator.language].filter(Boolean)
-    const region = langs.map((l) => { try { return new Intl.Locale(l).maximize().region } catch { return undefined } }).find(Boolean)
-    return region && ['US', 'LR', 'MM'].includes(region) ? 'imperial' : 'metric'
-  } catch { return 'metric' }
+  return 'imperial'
 }
+
+/** The athlete's units: miles unless they picked kilometers. */
+export const isImperial = (units: string | null | undefined) => units !== 'metric'
 
 export function parsePace(v: string): number | null {
   const m = v.trim().match(/^(\d{1,2})(?::([0-5]?\d))?$/)

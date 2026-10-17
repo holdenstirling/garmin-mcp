@@ -22,6 +22,7 @@ import { PACES_CHANGED_EVENT } from '@/lib/paces'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
+import { OPEN_TRAVEL_EVENT, takeTravelRequest } from '@/lib/plantools'
 import { TravelSheet } from './TravelSheet'
 import { AdjustCard } from './AdjustCard'
 import { getAdjust, type Proposal } from '@/lib/adjust'
@@ -96,12 +97,20 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [cal, setCal] = useState<CalendarSummary | null>(null)
   const [travel, setTravel] = useState<{ start: string; end: string; label: string } | 'new' | null>(null)
   const [travelClosing, setTravelClosing] = useState(false)
+  // Travel mode from "+ Add", Adjust my plan or anywhere else (lib/plantools openTravel).
+  useEffect(() => {
+    if (coachMode || readOnly) return
+    if (takeTravelRequest()) setTravel('new')
+    const on = () => { takeTravelRequest(); setTravel('new') }
+    window.addEventListener(OPEN_TRAVEL_EVENT, on)
+    return () => window.removeEventListener(OPEN_TRAVEL_EVENT, on)
+  }, [coachMode, readOnly])
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [note, setNote] = useState<string | null>(null)
   // Plan calendar data (athlete only: status, distance, pace, notes, mileage) and the Move sheet.
   const [planCal, setPlanCal] = useState<CalView | null>(null)
   const [moving, setMoving] = useState<MoveTarget | null>(null)
-  const imperial = coachMode ? false : me.athlete?.units === 'imperial'
+  const imperial = coachMode ? false : me.athlete?.units !== 'metric'
   const loadCal = useCallback(() => { if (!coachMode) getPlanCal().then((r) => setPlanCal(r.cal), () => {}) }, [coachMode])
   // Sessions with a coach reply the athlete hasn't read yet (athlete side only).
   const [unread, setUnread] = useState<string[]>([])
@@ -356,7 +365,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       <BlocksEntry compact />
 
       {/* Plan actions */}
-      <Group label="Plan settings">
+      <Group label="Plan tools">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close?.(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"

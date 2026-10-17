@@ -78,7 +78,7 @@ export function TrainingPaces({ refreshKey, onChanged }: {
 
   if (err) return <ErrorState compact message={err} onRetry={load} />
   if (!v) return <Skeleton className="h-40 rounded-xl" />
-  const imperial = v.units === 'imperial'
+  const imperial = v.units !== 'metric'
   const changed = (patch: Record<string, number | null>) => { load(); onChanged?.(patch) }
 
   async function undo() {

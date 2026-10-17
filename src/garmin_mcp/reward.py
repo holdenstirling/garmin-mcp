@@ -285,7 +285,7 @@ def agent_context(agent: Any, uid: str, aid: int) -> dict[str, Any] | None:
     r = build_reaction(act, acts, dview, plan=plan, athlete=athlete, today=today,
                        streak=stats.get("streak") or {}, gear=[], tomorrow=None)
     matched = r.get("planned") is not None
-    return {"act": act, "acts": acts, "today": today, "imperial": athlete.get("units") == "imperial",
+    return {"act": act, "acts": acts, "today": today, "imperial": athlete.get("units") != "metric",
             "streak": stats.get("streak") or {}, "ring": ring_closed(stats, day, today, matched),
             "verdict": r.get("verdict"), "planned_title": (r.get("planned") or {}).get("title"),
             "session_id": r.get("session_id"), "plan_xp": int((r.get("xp") or {}).get("plan") or 0)}

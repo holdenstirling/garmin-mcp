@@ -3199,7 +3199,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             base_url=settings.public_base_url, person=_soc_person, first_name=_soc_name, push=_social_push,
             moment=chat.agent.moments.post, grade=lambda u, e: (_readiness.get(u, e) if _readiness else {}).get("grade"),
             finish=_pred_event, today=plans.today, plan_of=plans.get,
-            imperial=lambda u: chat.agent.coach.athlete(u).get("units") == "imperial",
+            imperial=lambda u: chat.agent.coach.athlete(u).get("units") != "metric",
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json)
 
     # ---------------------------------------------------------- community --
@@ -3229,7 +3229,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if workouts:
                 _, acts = _ag.stats.activities(uid)
                 cm.auto_share_workouts(uid, acts, today)  # "Share my workouts with friends"
-                cm.scan_bests(uid, acts, today, imperial=_ag.coach.athlete(uid).get("units") == "imperial")
+                cm.scan_bests(uid, acts, today, imperial=_ag.coach.athlete(uid).get("units") != "metric")
             # The raw doc, not events.list: this runs inside an events write (list may write).
             evs = list((store.user_doc(uid, "events").load().get("events") or {}).values())
             cm.scan_events(uid, evs, today, acts)
@@ -3587,7 +3587,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         bloom_routes = _bloomw.make_routes(
             trends=_trends.TrendsService(_trend_inputs),
             celebrations=_cel.Celebrations(store, now=_tg._now, events=_tg.events.list, acts=_cel_acts,
-                                           imperial=lambda u: _tg.coach.athlete(u).get("units") == "imperial"),
+                                           imperial=lambda u: _tg.coach.athlete(u).get("units") != "metric"),
             api=_api, no_garmin=_no_garmin)
 
     # ------------------------------------------------------- race-week mode --
@@ -3615,7 +3615,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         def _rk_counts(uid: str, ev: dict[str, Any]) -> tuple[int, int]:
             v = _rwk.packing_view(_rwk.packing_defaults(ev, _rk_gear(uid),
-                                                        imperial=_coach().athlete(uid).get("units") == "imperial"),
+                                                        imperial=_coach().athlete(uid).get("units") != "metric"),
                                   rk.saved(uid, ev["id"]).get("packing"))
             return v["done"], v["total"]
 
@@ -4113,7 +4113,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def build() -> dict[str, Any]:
             today, acts = agent.stats.activities(user_id)
             club = _rw.top_club_of(store, clb, user_id, start, _rw.month_end(start)) if community_routes else None
-            return _rw.month_recap(acts, start, today, imperial=agent.coach.athlete(user_id).get("units") == "imperial",
+            return _rw.month_recap(acts, start, today, imperial=agent.coach.athlete(user_id).get("units") != "metric",
                                    top_club=club)
         return JSONResponse(await _plan_call(build))
 

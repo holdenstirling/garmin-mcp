@@ -50,7 +50,7 @@ def make_routes(*, svc: rw.RaceWeek, plan_api: Callable[..., Any], read_json: Ca
         return await anyio.to_thread.run_sync(fn)
 
     def imperial(uid: str) -> bool:
-        return athlete(uid).get("units") == "imperial"
+        return athlete(uid).get("units") != "metric"
 
     def defaults(uid: str, ev: dict[str, Any]) -> list[dict[str, Any]]:
         try:
@@ -129,7 +129,7 @@ def make_routes(*, svc: rw.RaceWeek, plan_api: Callable[..., Any], read_json: Ca
         body = {
             "event": {k: ev.get(k) for k in ("id", "name", "type", "distance", "date", "location", "url", "priority",
                                              "main", "target_time")},
-            "days": days, "race_day": days == 0, "imperial": ath.get("units") == "imperial",
+            "days": days, "race_day": days == 0, "imperial": ath.get("units") != "metric",
             "taper": rw.taper(plan, race_day, today),
             "today": rw.today_sessions(plan_of(user_id), today) if days >= 0 else [],
             "pacing": pacing,

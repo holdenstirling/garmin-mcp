@@ -151,7 +151,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
   const g = draft.goal
   const a = draft.athlete
-  const imperial = a.units === 'imperial'
+  const imperial = a.units !== 'metric'
   const sports = sportsFor(g.distance)
   const setG = (p: Partial<GoalFull>) => setDraft((d) => ({ ...d, goal: { ...d.goal, ...p } }))
   const setA = (p: Partial<AthleteFull>) => setDraft((d) => ({ ...d, athlete: { ...d.athlete, ...p } }))

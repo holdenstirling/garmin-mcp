@@ -72,7 +72,7 @@ def test_fallbacks_and_missing_data() -> None:
     g = predict.predict(predict.make_basis(garmin=GARMIN), distance_km=21.0975, type_="road")
     assert g["estimate"]["mid_s"] == 6020 and g["confidence"] == "medium"
     assert g["basis"] == ["Based on Garmin's race predictor (half marathon 1:40:20)"]
-    t = predict.predict(predict.make_basis(athlete={"run_threshold_pace": 270}), distance_km=10, type_="running")
+    t = predict.predict(predict.make_basis(athlete={"run_threshold_pace": 270, "units": "metric"}), distance_km=10, type_="running")
     assert t["confidence"] == "low" and t["basis"] == ["Based on your threshold pace (4:30/km)"]
     imp = predict.make_basis(athlete={"run_threshold_pace": 270, "units": "imperial"})
     assert "/mi" in predict.predict(imp, distance_km=10, type_="running")["basis"][0]
@@ -84,7 +84,7 @@ def test_fallbacks_and_missing_data() -> None:
 
 # ----------------------------------------------------------------- trail --
 def test_trail_climbing_altitude_and_heat() -> None:
-    b = predict.make_basis(garmin=GARMIN, athlete={"home_elevation_m": 10})
+    b = predict.make_basis(garmin=GARMIN, athlete={"home_elevation_m": 10, "units": "metric"})
     road = predict.predict(b, distance_km=21.1, type_="road")["estimate"]["mid_s"]
     trail = predict.predict(b, distance_km=21.1, type_="trail")
     assert trail["estimate"]["mid_s"] == round(road * 1.07) and trail["kind"] == "trail"
@@ -157,7 +157,7 @@ def test_triathlon_splits_from_ftp_and_css() -> None:
     # Air density: same power is faster up high (flat), slower with more drag.
     assert predict.bike_speed(250, 81, elevation_m=2000) > predict.bike_speed(250, 81) > predict.bike_speed(250, 81, cda=0.40)
     # Missing FTP/CSS: defaults, said plainly, low confidence; recent swims stand in for CSS.
-    g = predict.predict(predict.make_basis(garmin=GARMIN, acts=ACTS, today=TODAY), distance_km=113, type_="triathlon")
+    g = predict.predict(predict.make_basis(garmin=GARMIN, acts=ACTS, athlete={"units": "metric"}, today=TODAY), distance_km=113, type_="triathlon")
     assert g["confidence"] == "low" and g["label"] == "rough guide"
     assert g["basis"][0].startswith("Based on your recent swims") and g["basis"][1].startswith("Bike: your 60 km ride")
     assert predict.predict(full, distance_km=80, type_="triathlon") is None  # not a standard format
@@ -172,7 +172,7 @@ def test_cycling_from_ftp_or_ride_speed() -> None:
     assert road["kind"] == "bike" and 5 * 3600 < road["estimate"]["mid_s"] < 8 * 3600
     gravel = predict.predict(full, distance_km=160, type_="gravel", climb_m=1500)
     assert gravel["estimate"]["mid_s"] > road["estimate"]["mid_s"] and any("Gravel" in a for a in gravel["assumptions"])
-    rides = predict.make_basis(acts=ACTS, today=TODAY)
+    rides = predict.make_basis(acts=ACTS, athlete={"units": "metric"}, today=TODAY)
     r = predict.predict(rides, distance_km=100, type_="cycling")
     assert r["confidence"] == "low" and r["basis"][0].startswith("Based on your 60 km ride at 30.0 km/h on Oct 3")
     assert predict.predict(predict.make_basis(athlete={"swim_css": 100}), distance_km=3.8, type_="swim")[
@@ -226,7 +226,7 @@ def test_event_and_generic_api_and_coach_access(env, tmp_path) -> None:
     _fixed_clock(agent)
     agent.plans._pause = 0
     today = agent._now("friend").date()
-    agent.coach.update_athlete("friend", _athlete(threshold_hr=165))
+    agent.coach.update_athlete("friend", _athlete(threshold_hr=165, units="metric"))
     race_day = (today + timedelta(weeks=16)).isoformat()
     agent.coach.create_goal("friend", {"title": "Spring Half", "distance": "half marathon", "date": race_day})
     agent.plans.build("friend")

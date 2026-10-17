@@ -22,6 +22,7 @@ import { WeekPanel } from '@/components/home/WeekPanel'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
+import { OPEN_TRAVEL_EVENT, openTravel } from '@/lib/plantools'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_ACTIVITY_EVENT, type OpenActivity } from '@/lib/activitynav'
 import { CONVERT_PLAN_EVENT, startPlanConversion } from '@/lib/planconvert'
@@ -396,6 +397,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(OPEN_PLACE_EVENT, onPlace)
     return () => window.removeEventListener(OPEN_PLACE_EVENT, onPlace)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // lib/plantools openTravel (Add sheet, Adjust my plan, anywhere): Schedule > Plan, where
+    // PlanEditor opens travel mode (it also reads the pending request when it mounts).
+    const onTravel = () => { setSheet(null); setClosing(false); closePages(); setSchedView('plan'); setTab('plan') }
+    window.addEventListener(OPEN_TRAVEL_EVENT, onTravel)
+    return () => window.removeEventListener(OPEN_TRAVEL_EVENT, onTravel)
+  }, [setTab])
   useEffect(() => {
     // lib/events openEvent (a plan day's "From your events", search): Schedule > Events, where
     // EventsScreen opens that event (it reads the stored id on mount and listens while shown).
@@ -789,7 +797,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
   const meButton = (<>
-    <SearchButton imperial={me.athlete.units === 'imperial'} />
+    <SearchButton imperial={me.athlete.units !== 'metric'} />
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
     <Button variant="ghost" size="icon" aria-label="Chats with Rabbit" data-tour="chat" onClick={() => open('threads')}>
       <MessagesSquare className="size-5" />
@@ -947,7 +955,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
 
   // ------------------------------------------------------------------ tabs ---
-  const imperial = me.athlete.units === 'imperial'
+  const imperial = me.athlete.units !== 'metric'
   const selectTab = (t: TabId) => {
     if (t === tab && t === 'rabbit') {
       // Rabbit again: back to the log from a chat, else to its newest entries.
@@ -978,7 +986,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (r === 'coachstatus') setCoachAsk(true)
     else showScreen(r)
   }
-  const weekLead = goal ? <WeekList imperial={me.athlete.units === 'imperial'} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} onAskDay={askDay} /> : null
+  const weekLead = goal ? <WeekList imperial={me.athlete.units !== 'metric'} week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} onAskDay={askDay} /> : null
 
   function planTab() {
     if (builtPlan) {
@@ -1014,7 +1022,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </button>
           )}
           {weekLead}
-          <TPPlanSection imperial={me.athlete.units === 'imperial'} />
+          <TPPlanSection imperial={me.athlete.units !== 'metric'} />
           {goal?.plan ? (
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Your plan file" subtitle={planLine(week, goal)}
@@ -1301,6 +1309,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
           onEvent={() => { setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }}
+          onTravel={openTravel}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
       )}
       {visited.has('feed') && (

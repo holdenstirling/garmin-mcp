@@ -59,7 +59,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
   // Refresh = stats + every card below; resolves when all of them have landed (pull rabbit).
   const refresh = useCallback(() => group.refresh(() => setLoadKey((k) => k + 1), load(true)), [group, load])
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
-  const imperial = s?.units === 'imperial'
+  const imperial = s?.units !== 'metric'
 
   return (
     <Screen title="Progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}

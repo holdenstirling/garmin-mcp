@@ -729,7 +729,7 @@ class PlanCal:
             today, acts = self._plans.today(uid), []
         athlete = self._coach.athlete(uid) or {}
         thr, src = threshold_pace(athlete, acts)
-        return today, acts, athlete, thr, src, athlete.get("units") == "imperial"
+        return today, acts, athlete, thr, src, athlete.get("units") != "metric"
 
     def view(self, uid: str) -> dict[str, Any] | None:
         plan = self._plans.get(uid)

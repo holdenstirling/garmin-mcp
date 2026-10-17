@@ -1,8 +1,9 @@
 // Schedule's "+ Add": the one place to add anything to your schedule, plan or not.
 //   A workout -> the session editor on a day (with a start time), on the plan calendar;
 //   An event -> the event editor (races, group sessions, trips; can repeat), linked to the plan;
+//   Travel / days away -> travel mode (lib/plantools openTravel);
 //   A plan -> build one in Rabbit, or import a plan you already have.
-import { CalendarPlus, ChevronRight, Dumbbell, FileUp } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Dumbbell, FileUp, Plane } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { RabbitLogo } from '@/components/RabbitLogo'
 
@@ -20,11 +21,13 @@ function Option({ icon, title, sub, onClick }: { icon: React.ReactNode; title: s
   )
 }
 
-export function AddSheet({ hasPlan, onWorkout, onEvent, onBuildPlan, onImportPlan, onClose }: {
+export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onBuildPlan, onImportPlan, onClose }: {
   /** a Rabbit-built plan exists (workouts are added to it) */
   hasPlan: boolean
   onWorkout: () => void
   onEvent: () => void
+  /** travel mode: days away (a built plan only) */
+  onTravel?: () => void
   onBuildPlan: () => void
   onImportPlan: () => void
   onClose: () => void
@@ -42,6 +45,10 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onBuildPlan, onImportPla
       )}
       <Option icon={<CalendarPlus className="size-5" />} title="An event"
         sub="A race, group run, league night or trip; it can repeat every week and goes into your plan" onClick={pick(onEvent)} />
+      {hasPlan && onTravel && (
+        <Option icon={<Plane className="size-5" />} title="Travel / days away"
+          sub="Hotel gym, treadmill or runs only: Rabbit swaps those days' sessions" onClick={pick(onTravel)} />
+      )}
       <p className="mt-2 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">A plan</p>
       <Option icon={<RabbitLogo size={20} current />} title={hasPlan ? 'Rebuild my plan' : 'Build my plan'}
         sub={hasPlan ? 'New race or new answers; your events stay' : 'Race, goals, your week: about 3 minutes'} onClick={pick(onBuildPlan)} />

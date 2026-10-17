@@ -8,10 +8,11 @@
 //   * WeekCheckCard: "How was this week?" (Friday to Monday, or on demand) -> suggested
 //     changes to next week, accepted or skipped in one tap.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarCheck, Check, ChevronDown, Flag, MessageCircleHeart, Plus, SlidersHorizontal, Trophy, Undo2 } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Check, ChevronDown, Flag, MessageCircleHeart, Plane, Plus, SlidersHorizontal, Trophy, Undo2 } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
+import { openTravel } from '@/lib/plantools'
 import { cn } from '@/lib/utils'
 import { fmtDuration } from '@/lib/format'
 import { PHASE_LABEL, fmtMin, type AthleteFull, type BuiltPlan } from '@/lib/plan'
@@ -276,6 +277,14 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
           </span>
         </button>
       )}
+      <button type="button" onClick={() => { onClose(); openTravel() }}
+        className="flex min-h-12 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
+        <Plane className="size-4 shrink-0 text-(--accent)" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[0.8235rem] text-(--text)">Travelling or away?</span>
+          <span className="block text-[0.7059rem] text-(--text-muted)">Travel mode swaps those days for a hotel gym, treadmill or runs.</span>
+        </span>
+      </button>
       {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )

@@ -139,7 +139,7 @@ export function NearYouSection({ imperial, onAsk, reloadKey = 0 }: { imperial: b
 }
 
 /** Search -> "Local" chip: places and groups near you, filterable by kind. */
-export function LocalActivities({ onAsk, imperial = false, onLocationChanged }: {
+export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
   onAsk: (text: string) => void
   imperial?: boolean
   onLocationChanged?: () => void

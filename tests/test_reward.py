@@ -283,6 +283,7 @@ def test_api_shapes_and_coach_403(env, tmp_path) -> None:
     acts = [act(101, today - timedelta(weeks=8), km=14), act(102, today - timedelta(weeks=2), km=9),
             act(103, today, km=16, minutes=80)]
     agent.stats.activities = lambda uid, fresh=False: (today, acts)  # type: ignore[method-assign]
+    agent.coach.update_athlete("friend", {"units": "metric"})  # the headline below is in km
     settings = Settings(public_base_url=BASE, data_dir=tmp_path, app_enabled=True, mcp_enabled=False,
                         allowed_google_users={"friend@example.com": "friend"})
     from garmin_mcp.webchat import ChatRunner

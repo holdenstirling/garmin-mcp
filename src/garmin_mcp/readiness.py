@@ -184,7 +184,7 @@ def compute(event: dict[str, Any], athlete: dict[str, Any] | None, *, today: dat
             load: dict[str, Any] | None = None, checkins: list[dict[str, Any]] | None = None,
             fit: dict[str, Any] | None = None, clock: Callable[[], float] = time.time) -> dict[str, Any]:
     a = athlete or {}
-    imperial = a.get("units") == "imperial"
+    imperial = a.get("units") != "metric"
     race_day = date.fromisoformat(event["date"])
     days = (race_day - today).days
     weeks = max(0, days // 7)

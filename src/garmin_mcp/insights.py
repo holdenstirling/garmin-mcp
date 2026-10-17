@@ -532,7 +532,7 @@ def rule_gear(*, today: date, gear: list[dict[str, Any]] | None, events: list[di
     if not shoes:
         return None
     g = max(shoes, key=lambda x: x.get("pct_of_alert") or 0)
-    imperial = athlete.get("units") == "imperial"
+    imperial = athlete.get("units") != "metric"
     unit = "mi" if imperial else "km"
     f = KM_MI if imperial else 1.0
     used, limit = float(g.get("total_km") or 0) * f, float(g["alert_km"]) * f

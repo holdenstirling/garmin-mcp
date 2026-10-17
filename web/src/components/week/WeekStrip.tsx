@@ -48,7 +48,7 @@ export function WeekDots({ days, className }: { days: WeekDay[]; className?: str
 }
 
 /** The week, day by day: tap a session for the day's full details (PlanDaySheet). */
-export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = false }: {
+export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = true }: {
   week: PlanWeek | null; loading: boolean; error: boolean; onRetry: () => void
   onAskDay: (day: WeekDay, session?: PlannedSession) => void
   imperial?: boolean

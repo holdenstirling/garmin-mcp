@@ -81,7 +81,7 @@ export function DayDot({ day }: { day: WeekDay }) {
 type Item = { key: string; sport: Sport; title: string; minutes: number | null; detail: string
   status: 'done' | 'missed' | 'planned' | 'rest' | 'extra'; doneMinutes?: number; session?: PlannedSession }
 
-function items(day: WeekDay, imperial = false): Item[] {
+function items(day: WeekDay, imperial = true): Item[] {
   return [
     ...day.sessions.map((s, i) => ({ key: `s${i}`, sport: s.sport, title: s.title, minutes: s.minutes,
       detail: s.detail, status: s.status, doneMinutes: s.activity?.minutes, session: s })),
@@ -92,7 +92,7 @@ function items(day: WeekDay, imperial = false): Item[] {
 
 /** One day: a line per session; tapping a session opens its details and an Ask button.
  *  Only the Ask button starts a chat, so opening and closing details never does. */
-export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = false }: {
+export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = true }: {
   day: WeekDay; openKey: string | null; imperial?: boolean
   onToggle: (key: string | null) => void
   onAsk: (day: WeekDay, session?: PlannedSession) => void
@@ -155,7 +155,7 @@ export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = false
   )
 }
 
-export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPlan, onAskDay, imperial = false }: {
+export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPlan, onAskDay, imperial = true }: {
   goal: Goal
   /** athlete units (extra activities' distance) */
   imperial?: boolean

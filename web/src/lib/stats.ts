@@ -38,10 +38,10 @@ export const SPORT_NAME: Record<Sport, string> = {
 }
 
 export function dist(km: number, units: Stats['units'], sport?: Sport): string {
-  return fmtDist(km, units === 'imperial', sport)
+  return fmtDist(km, units !== 'metric', sport)
 }
 export function climb(m: number, units: Stats['units']): string {
-  return fmtClimb(m, units === 'imperial')
+  return fmtClimb(m, units !== 'metric')
 }
 export function hours(h: number): string {
   return fmtDuration(h * 60)

@@ -777,7 +777,7 @@ class Paces:
         today = self._now(uid).date()
         doc = self._doc(uid).load()
         athlete = self._athlete(uid)
-        imperial = athlete.get("units") == "imperial"
+        imperial = athlete.get("units") != "metric"
         acts = self._acts(uid) if acts is None else acts
         g10 = None
         out = []
@@ -873,7 +873,7 @@ class Paces:
         undo = doc.get("undo")
         if undo and self._clock() >= float(undo.get("until") or 0):
             undo = None
-        return {"units": "imperial" if athlete.get("units") == "imperial" else "metric",
+        return {"units": "imperial" if athlete.get("units") != "metric" else "metric",
                 "threshold_hr": athlete.get("threshold_hr"), **rows,
                 "pending": self._fresh_pending(doc, athlete, today),
                 "undo": {k: undo[k] for k in ("id", "sport", "summary", "until")} if undo else None}
@@ -891,7 +891,7 @@ class Paces:
         p = self._pending(uid, sid)
         sport, field, new, old = p["sport"], p["field"], p["new"], p["old"]
         athlete = self._athlete(uid)
-        imperial = athlete.get("units") == "imperial"
+        imperial = athlete.get("units") != "metric"
         today = self._now(uid).date()
         prev_source = (self._doc(uid).load().get("source") or {}).get(field)
         self._set_athlete(uid, {field: new})

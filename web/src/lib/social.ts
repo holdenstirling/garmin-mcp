@@ -58,7 +58,7 @@ export function friendPhotoUrl(u: SocialUser): string | null {
 }
 
 /** "45 min · 8.2 km" from whatever the person shares. */
-export function workoutLine(it: Pick<FeedItem, 'minutes' | 'km' | 'climb_m'>, imperial = false): string {
+export function workoutLine(it: Pick<FeedItem, 'minutes' | 'km' | 'climb_m'>, imperial = true): string {
   const parts: string[] = []
   if (it.minutes != null) parts.push(fmtDuration(it.minutes))
   if (it.km) parts.push(fmtDist(it.km, imperial))

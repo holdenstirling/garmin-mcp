@@ -51,12 +51,14 @@ def ract(minutes: int, hr: int | None = None, km: float = 9.0, aid: int = 7, d: 
 
 # ---------------------------------------------------------------- targets --
 def test_targets_in_athlete_units() -> None:
-    assert targets("run", 4, ATHLETE)[0] == {"kind": "pace", "label": "4:27–4:44 /km"}
-    assert targets("run", 4, ATHLETE)[1]["label"] == "160–170 bpm"
+    km = ATHLETE | {"units": "metric"}
+    assert targets("run", 4, km)[0] == {"kind": "pace", "label": "4:27–4:44 /km"}
+    assert targets("run", 4, km)[1]["label"] == "160–170 bpm"
+    assert targets("run", 4, ATHLETE)[0]["label"].endswith("/mi")  # miles by default
     mi = targets("run", 2, ATHLETE | {"units": "imperial"})[0]["label"]
     assert mi.endswith("/mi") and mi.startswith("8:")
     assert targets("bike", 2, ATHLETE)[0]["label"] == "140–188 W"
-    assert targets("swim", 4, ATHLETE) == [{"kind": "pace", "label": "1:38–1:42 /100m"}]
+    assert targets("swim", 4, km) == [{"kind": "pace", "label": "1:38–1:42 /100m"}]
     assert targets("run", 2, {}) == [{"kind": "rpe", "label": "RPE 3-4 · conversational"}]
 
 

@@ -265,7 +265,7 @@ export function RaceWeekScreen({ eventId, section, onClose, onAsk }: {
     setMsg(null)
     try { await putRaceWeek(eventId, x); load() } catch (e) { setMsg((e as Error).message) }
   }
-  const imperial = p?.imperial ?? false
+  const imperial = p?.imperial ?? true
   const temp = (c: number | null) => c == null ? '–' : imperial ? `${cToF(c)}°F` : `${Math.round(c)}°C`
   const c = p?.course
   const hasCourse = !!c && !!(c.text || c.profile || c.climb_m || c.elevation_m || c.terrain || c.weather || c.typical_weather)

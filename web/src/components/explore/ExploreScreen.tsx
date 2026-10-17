@@ -52,7 +52,7 @@ function restore(): ExploreFilters | null {
   }
 }
 
-export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
+export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
   /** none when it is the Events tab page (no X) */
   onClose?: () => void
   onAsk: (text: string) => void

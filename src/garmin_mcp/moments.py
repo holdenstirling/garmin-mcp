@@ -422,7 +422,7 @@ class Moments:
         if not fresh:
             return 0
         athlete = self._coach.athlete(uid)
-        imperial = athlete.get("units") == "imperial"
+        imperial = athlete.get("units") != "metric"
         if ai_note is None:
             ai_note = self._profile(uid).get("workout_feedback", True) is not False
         streak = None

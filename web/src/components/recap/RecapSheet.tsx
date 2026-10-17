@@ -69,7 +69,7 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
   const pct = Math.max(2, Math.min(100, Math.round((100 * r.level.level_xp) / Math.max(1, r.level.level_span))))
   const ad = r.adherence
   const nw = r.next_week
-  const imperial = r.units === 'imperial'
+  const imperial = r.units !== 'metric'
   const planned = ad && ad.planned > 0 ? ad : null
   return (
     <>

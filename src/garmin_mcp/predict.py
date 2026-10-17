@@ -296,7 +296,7 @@ def make_basis(*, garmin: Any = None, acts: list[dict[str, Any]] | None = None,
         "weight_kg": _num(a.get("weight_kg")), "home_elevation_m": _num(a.get("home_elevation_m")),
         "altitude_acclimatized": a.get("altitude_acclimatized") is True,
         "heat_tolerance": a.get("heat_tolerance"),
-        "imperial": a.get("units") == "imperial",
+        "imperial": a.get("units") != "metric",
     }
 
 

@@ -251,7 +251,7 @@ function sleepTakeaway(t: Trends['sleep']): string {
 
 // ---------------------------------------------------------------- table --
 function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport | null }) {
-  const imperial = t.units === 'imperial'
+  const imperial = t.units !== 'metric'
   const cls = 'border-b border-(--border) px-2 py-1 text-left'
   if (view === 'distance' && sport) {
     const u = unitWord(imperial, sport.sport)
@@ -308,7 +308,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
     return () => { live = false }
   }, [loadKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const imperial = t?.units === 'imperial'
+  const imperial = t?.units !== 'metric'
   const ORDER = ['run', 'bike', 'swim']
   const rank = (x: string) => { const i = ORDER.indexOf(x); return i < 0 ? 9 : i }
   const sports = useMemo(() => [...(t?.distance.sports ?? [])].sort((a, b) => rank(a.sport) - rank(b.sport)), [t])  // runs first

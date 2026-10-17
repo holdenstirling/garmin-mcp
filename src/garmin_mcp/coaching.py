@@ -83,6 +83,11 @@ class CoachError(ValueError):
     """Validation error whose message is safe to show the user."""
 
 
+def is_imperial(athlete: dict[str, Any] | None) -> bool:
+    """Miles by default: only an explicit "metric" choice shows km (swims: yards vs meters)."""
+    return (athlete or {}).get("units") != "metric"
+
+
 def _clean_text(v: Any, limit: int, field: str) -> str:
     if not isinstance(v, str):
         raise CoachError(f"{field} must be text")
@@ -708,6 +713,8 @@ class CoachStore:
         lines.append("Athlete profile: " + (
             "; ".join(f"{_ATHLETE_LABEL.get(k, k.replace('_', ' '))}: {_fmt_athlete(k, v)}" for k, v in a.items()) if a
             else "not set up yet (ask about experience, weekly hours and injuries when it's useful)."))
+        lines.append("Units: metric (km, min/km, meters for swims, °C)." if not is_imperial(a)
+                     else "Units: imperial (miles, min/mi, feet, yards for swims, °F).")
         if interests_line(interests):
             lines.append(interests_line(interests))
         from .intent import context_line as _intent_line  # "Uses Rabbit mainly for: ..."

@@ -246,7 +246,7 @@ def pacing_plan(event: dict[str, Any], athlete: dict[str, Any], estimate: dict[s
     """Target + splits. ``estimate``: ``predict.predict_event`` output (or None);
     ``inputs``: ``predict.event_inputs(event)["kwargs"]``."""
     from .predict import TRI
-    imperial = athlete.get("units") == "imperial"
+    imperial = athlete.get("units") != "metric"
     est_mid = ((estimate or {}).get("estimate") or {}).get("mid_s")
     goal = parse_target(event.get("target_time"), est_mid)
     if saved_target:

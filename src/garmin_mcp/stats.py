@@ -360,7 +360,7 @@ class StatsService:
             return hit[2]
         today, acts = self.activities(user_id, fresh=fresh)
         a = self._athlete(user_id)
-        out = compute(acts, today, imperial=a.get("units") == "imperial", plan=self._plan(user_id),
+        out = compute(acts, today, imperial=a.get("units") != "metric", plan=self._plan(user_id),
                       favorites=a.get("favorite_sports"))
         self._cache[user_id] = (self._clock(), today, out)
         return out

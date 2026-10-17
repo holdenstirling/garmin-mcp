@@ -46,7 +46,7 @@ const TYPE_ICON: Record<EventType, typeof Bike> = {
   swimming: Waves, mountaineering: Mountain, team_sport: Volleyball, other: Activity,
 }
 
-export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false, request, onRequestHandled, onDiscover }: {
+export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = true, request, onRequestHandled, onDiscover }: {
   hasBuiltPlan: boolean
   /** Schedule > Discover: races and meetups near my area */
   onDiscover?: () => void

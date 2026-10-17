@@ -159,7 +159,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
 
 function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan: () => void; onMessage: () => void }) {
   const a = o.athlete as Record<string, unknown>
-  const imperial = a.units === 'imperial'
+  const imperial = a.units !== 'metric'
   const facts: [string, string | null][] = [
     ['Level', typeof a.level === 'string' ? ({ new: 'New', intermediate: 'A few seasons', advanced: 'Experienced' } as Record<string, string>)[a.level] ?? null : null],
     ['Hours now', typeof a.weekly_hours === 'number' ? `${a.weekly_hours} h/week` : null],
