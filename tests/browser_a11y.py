@@ -31,8 +31,14 @@ import sys
 AUDIT_JS = r"""
 () => {
   const out = [];
+  // Only the top layer is reachable: with a sheet or dialog open, what's behind it is out of play.
+  const modals = [...document.querySelectorAll('[aria-modal="true"]')].filter((m) => {
+    const r = m.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(m).visibility !== 'hidden';
+  });
+  const top = modals[modals.length - 1] || null;
   const vis = (el) => {
     if (!(el instanceof Element)) return false;
+    if (top && !top.contains(el)) return false;
     if (el.closest('[inert],[aria-hidden="true"],.hidden,[hidden]')) return false;
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) return false;
@@ -133,6 +139,10 @@ AUDIT_JS = r"""
   }
 
   // stolen taps: another control's hit area lies over part of this one
+  const layer = (e) => {
+    for (; e && e !== document.body; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'fixed' || p === 'sticky') return e }
+    return null;
+  };
   for (const el of inter) {
     if (!vis(el)) continue;
     const q = el.getBoundingClientRect();
@@ -142,6 +152,8 @@ AUDIT_JS = r"""
       const hit = document.elementFromPoint(x, y);
       if (!hit || el.contains(hit) || hit.contains(el)) continue;
       const other = hit.closest('button, a[href], [role=button], [role=tab], input, select, textarea, summary, label');
+      // Content scrolled under a fixed/sticky header or the tab bar is fine (scroll it into view).
+      if (other && layer(other) && layer(other) !== layer(el)) continue;
       if (other && other !== el && !other.contains(el) && !el.contains(other)) {
         out.push(['overlap', desc(el), `part of it is covered by ${desc(other)}`]); break;
       }

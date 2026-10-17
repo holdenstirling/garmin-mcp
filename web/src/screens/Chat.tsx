@@ -996,7 +996,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           </Button>
         )}
         <h1 className="sr-only">{isLog ? 'Rabbit' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
-        <button className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+        <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
           aria-label={isLog ? 'Rabbit' : 'Back to Rabbit'} onClick={isLog ? goBack : slideBack}>
           {/* App-icon tile, like the Home Screen icon (hops while Rabbit is replying) */}
           <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm">

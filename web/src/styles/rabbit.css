@@ -254,7 +254,7 @@ html.kb-open .tab-bar { display: none; }
 }
 .plan-chip { position: relative; flex-shrink: 0; white-space: nowrap; } /* chip rows that scroll sideways keep chips one line high */
 /* 44px tap target around the 36px chip. */
-.plan-chip::after { content: ''; position: absolute; inset: -4px 0; }
+.plan-chip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%); }
 .plan-chip:active { transform: scale(0.97); }
 .plan-chip:disabled { opacity: 0.45; cursor: default; }
 .plan-chip--on { border-color: var(--accent); background: var(--accent); color: var(--on-fill); }
