@@ -76,7 +76,7 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const logged = up.tone === 'done' ? up.today?.activity_id : undefined
   const primary = () => {
     const k = up.primary.kind
-    if (logged != null && todayKind === 'ask' && k === 'today') { openActivity(logged); return } // "How did it go?": its page
+    if (logged != null && (k === 'ask' || (k === 'today' && todayKind === 'ask'))) { openActivity(logged); return } // "How did it go?": its page
     if (k === 'start' && up.session?.id) onStart(up.session.id)
     else if (k === 'today') { if (todayKind) onToday(todayKind); else onAsk('About today: ') }
     else if (k === 'open_plan') onPlan()
