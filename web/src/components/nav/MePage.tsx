@@ -101,7 +101,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
       <AppearanceGroup />
 
       <Group>
-        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Garmin, Oura, Google Calendar"
+        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Garmin, Oura, Apple Watch, WHOOP, Calendar"
           onClick={() => onOpen('connections')} />
         <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Notifications, privacy, account"
           onClick={() => onOpen('settings')} />
