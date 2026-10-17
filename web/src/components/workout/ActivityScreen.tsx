@@ -102,7 +102,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
   return (
     <>
       <Hero icon={ICON[v.sport] ?? Activity} title={v.name} meta={metaBits.filter(Boolean).join(' · ')}
-        line={v.planned ? `Counted for your planned ${v.planned.title}.` : n.te_label ? `Garmin calls this ${n.te_label.toLowerCase().replace(/_/g, ' ')}.` : ''}
+        line={v.planned ? `Counted for your planned ${v.planned.title}.` : n.te_label ? `Garmin training effect: ${n.te_label.charAt(0) + n.te_label.slice(1).toLowerCase().replace(/_/g, ' ')}.` : ''}
         chip={{ label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' }} />
 
       {v.planned && (
