@@ -121,24 +121,33 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
   const max = Math.max(30, ...per.map((x) => Math.max(x.planned, x.done)))
   const goals = miles ? (Object.entries(miles) as [DistSport, Mileage][]).filter(([, v]) => v.goal > 0) : []
   const sport = goals.length === 1 ? goals[0] : null  // one distance sport: its miles; multisport: hours
+  // Plan progress counts planned sessions only (extra workouts don't make up a missed long run);
+  // the headline still shows everything you did.
   const doneMin = per.reduce((n, x) => n + x.done, 0)
   const planMin = per.reduce((n, x) => n + x.planned, 0)
-  // Expected by now: everything planned before today, plus today's if it's already done.
+  const planDone = week.days.reduce((n, d) => n + d.sessions.reduce((m, s) => m + (s.status === 'done' ? s.minutes ?? s.activity?.minutes ?? 0 : 0), 0), 0)
   const ti = week.days.findIndex((d) => d.today)
-  const dueMin = per.reduce((n, x, i) => n + (i < ti || (i === ti && x.done >= x.planned) ? x.planned : 0), 0)
+  // Expected by now: everything planned before today, plus today's if it's already done.
+  const dueMin = week.days.reduce((n, d, i) => n + d.sessions.reduce((m, s) =>
+    m + (s.status !== 'rest' && (i < ti || (i === ti && s.status === 'done')) ? s.minutes ?? 0 : 0), 0), 0)
+  const allDone = week.totals.planned_sessions > 0 && week.totals.done_sessions >= week.totals.planned_sessions
   const head = sport
     ? `${fmtDist(sport[1].done, imperial, sport[0])} of ${fmtDist(sport[1].goal, imperial, sport[0])}`
-    : planMin > 0 ? `${fmtDuration(doneMin)} of ${fmtDuration(planMin)}` : doneMin > 0 ? `${fmtDuration(doneMin)} done` : 'No sessions yet'
+    : planMin > 0 && doneMin <= planMin ? `${fmtDuration(doneMin)} of ${fmtDuration(planMin)}`
+    : planMin > 0 ? `${fmtDuration(doneMin)} done · ${fmtDuration(planMin)} planned`
+    : doneMin > 0 ? `${fmtDuration(doneMin)} done` : 'No sessions yet'
   const unit = sport ? `${SPORT_DIST_LABEL[sport[0]].toLowerCase()} this week` : planMin > 0 ? 'training this week' : 'this week'
   let trend = ''
   let tone: 'ok' | 'behind' | 'ahead' = 'ok'
-  if (planMin > 0 && ti >= 0) {
-    const gap = dueMin - doneMin
-    if (doneMin >= planMin) { trend = 'Week done. Nice work.'; tone = 'ahead' }
-    else if (gap <= dueMin * 0.1 + 5) { trend = doneMin > dueMin + 15 ? 'Ahead of plan' : 'On track'; tone = doneMin > dueMin + 15 ? 'ahead' : 'ok' }
-    else {
+  if (allDone) { trend = 'Week done. Nice work.'; tone = 'ahead' }
+  else if (planMin > 0 && ti >= 0) {
+    const gap = dueMin - planDone
+    if (gap <= dueMin * 0.1 + 5) {
+      const left = week.days.slice(ti).reduce((n, d) => n + d.sessions.filter((x) => x.status === 'planned').length, 0)
+      trend = left ? `On track · ${left} session${left === 1 ? '' : 's'} left` : 'On track'
+    } else {
       tone = 'behind'
-      const later = week.days.slice(ti + 1).flatMap((d) => d.sessions.filter((s) => s.status === 'planned' && (s.minutes ?? 0) > 0).map((s) => ({ d, s })))
+      const later = week.days.slice(ti + 1).flatMap((d) => d.sessions.filter((x) => x.status === 'planned' && (x.minutes ?? 0) > 0).map((x) => ({ d, s: x })))
       const big = later.sort((x, y) => (y.s.minutes ?? 0) - (x.s.minutes ?? 0))[0]
       const short = sport && planMin > 0 ? fmtDist(sport[1].goal * (gap / planMin), imperial, sport[0]) : fmtDuration(gap)
       trend = `Behind by ${short}${big ? `: ${big.d.weekday.slice(0, 3)} ${big.s.title.toLowerCase()} makes up most of it` : ''}`
@@ -214,14 +223,12 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
       </section>
     )
   }
-  const { done_sessions: done, planned_sessions: planned } = week.totals
   return (
     <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       <div className="flex items-center gap-2 border-b border-(--border) px-3.5 py-2">
         <h2 className="min-w-0 flex-1 truncate font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
           {weekTitle(week)}
         </h2>
-        {planned > 0 && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-secondary)">{done >= planned ? 'All done' : `${planned - done} to go`}</span>}
       </div>
       <WeekGlance week={week} miles={miles} imperial={imperial} onOpen={onOpenWeek ?? onOpenPlan} />
       {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}

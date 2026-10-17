@@ -32,8 +32,9 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
   const days = daysUntil(race.date)
   if (days <= 7 && race.main) return null
   const Arrow = !trend ? null : trend.delta >= 2 ? ArrowUpRight : trend.delta <= -2 ? ArrowDownRight : ArrowRight
-  const trendWord = !trend ? '' : trend.delta >= 2 ? `Fitness up ${trend.delta} in 4 weeks` : trend.delta <= -2 ? `Fitness down ${-trend.delta} in 4 weeks` : 'Fitness steady over 4 weeks'
-  const label = `${race.name}: ${days} days to go. Race grade ${race.grade}, ${STATUS_LABEL[race.status]}. ${trendWord}. Open race readiness`
+  const trendWord = !trend ? '' : trend.delta >= 2 ? `Fitness +${trend.delta} in 4 wks` : trend.delta <= -2 ? `Fitness ${trend.delta} in 4 wks` : 'Fitness steady'
+  const spoken = !trend ? '' : trend.delta >= 2 ? `Fitness up ${trend.delta} over 4 weeks` : trend.delta <= -2 ? `Fitness down ${-trend.delta} over 4 weeks` : 'Fitness steady over 4 weeks'
+  const label = `${race.name}: ${days} days to go. Race grade ${race.grade}, ${STATUS_LABEL[race.status]}. ${spoken}. Open race readiness`
   return (
     <button type="button" onClick={() => onOpen(race.event_id)} aria-label={label}
       className="flex min-h-[76px] w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
