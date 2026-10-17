@@ -169,3 +169,12 @@ def test_http_insights_apply_undo_dismiss_and_coach_403(env, tmp_path) -> None:
             assert (await a.post("/app/api/calendar/insights", headers=h, json={"action": "nope"})).status_code == 400
             assert (await c.get("/app/api/calendar/insights")).status_code == 403
     asyncio.run(go_())
+
+
+def test_two_sessions_on_one_packed_day_get_different_slots() -> None:
+    d1 = (T + timedelta(days=1)).isoformat()
+    plan = _plan({d1: [_s("a", "easy", 40, sport="strength"), _s("b", "recovery", 30)]})
+    cal = {"connected": True, "busy": {d1: 520}, "blocks": {d1: [[450, 990]]}, "travel": []}
+    recs = [r for r in ci.analyze(plan, cal, T)["recs"] if r["kind"] == "time"]
+    times = [r["action"]["time"] for r in recs]
+    assert len(times) == 2 and len(set(times)) == 2

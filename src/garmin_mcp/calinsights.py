@@ -219,10 +219,10 @@ def analyze(plan: dict[str, Any] | None, cal: dict[str, Any] | None, today: date
     for d in dates:
         if in_trip(d):
             continue
-        bl = blocks.get(d) or []
+        bl = list(blocks.get(d) or [])  # grows as sessions get slots, so two don't share one
         for s in work[d]:
             sid = s.get("id")
-            if not sid:
+            if not sid or sid in used:
                 continue
             need = _mins(s)
             st = _start(s)
@@ -238,6 +238,7 @@ def analyze(plan: dict[str, Any] | None, cal: dict[str, Any] | None, today: date
                                          f"whole {need} min.",
                                  "label": f"Move to {nice_time(slot)}", "action": {"type": "time", "session_id": sid,
                                                                                     "time": hhmm(slot)}})
+                    bl.append([slot, slot + need])
                     used.add(sid)
                     continue
             # b. Hard or long on a heavy / packed day.
@@ -253,6 +254,7 @@ def analyze(plan: dict[str, Any] | None, cal: dict[str, Any] | None, today: date
                                          f"is {load[alt]}{' and that time is free' if slot is not None else ''}.",
                                  "label": "Move it", "action": {"type": "move", "session_id": sid, "date": alt,
                                                                 "time": hhmm(slot) if slot is not None else None}})
+                    work[alt].append(s)  # later picks see that day as taken
                     used.add(sid)
                     continue
                 if not longish(s) and load[d] == "packed":
@@ -265,7 +267,7 @@ def analyze(plan: dict[str, Any] | None, cal: dict[str, Any] | None, today: date
                     used.add(sid)
                     continue
             # c. Packed or early-meeting days without a start time: suggest a free slot.
-            if st is None and wins and (load[d] in ("heavy", "packed") or days[dates.index(d)]["early"] >= 2):
+            if st is None and wins and (load[d] == "packed" or days[dates.index(d)]["early"] >= 2):
                 early = days[dates.index(d)]["early"]
                 prefer = 12 * 60 if early >= 2 else None
                 slot = best_slot(wins, need, prefer=prefer)
@@ -277,6 +279,7 @@ def analyze(plan: dict[str, Any] | None, cal: dict[str, Any] | None, today: date
                              "body": f"{nice_time(slot)}-{nice_time(slot + need)} is free on your calendar.",
                              "label": f"Set {nice_time(slot)}", "action": {"type": "time", "session_id": sid,
                                                                            "time": hhmm(slot)}})
+                bl.append([slot, slot + need])
                 used.add(sid)
 
     # 3. Long sessions keep landing on busy days: suggest a different long day.
