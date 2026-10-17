@@ -1,4 +1,5 @@
 // Everything for race week on one page. Gear checkboxes are remembered on this device.
+import { openBody } from '@/lib/body'
 import { useEffect, useState } from 'react'
 import { CheckSquare, CloudSun, Gauge, ListChecks, Square, Utensils } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -91,6 +92,11 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
               </p>
               {p.fueling.carbs_g_per_h > 0 && <p className="text-[0.7059rem] text-(--text-muted)">Fluid {p.fueling.fluid_ml_per_h} ml/h · sodium {p.fueling.sodium_mg_per_h} mg/h</p>}
               <ul className="mt-1 flex flex-col gap-1 text-[0.7647rem] leading-snug text-(--text-secondary)">{p.fueling.steps.map((s) => <li key={s}>• {s}</li>)}</ul>
+              {p.fueling.carbs_g_per_h > 0 && (
+                <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>
+                  {p.fueling.practised_g_per_h != null ? `You've practised ${p.fueling.practised_g_per_h} g/h well · see your fueling log` : 'Log fueling on long sessions so Rabbit learns your rate'}
+                </button>
+              )}
             </Field>
           </Card>
           <Card>

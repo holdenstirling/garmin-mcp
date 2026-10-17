@@ -469,6 +469,23 @@ class PlanService:
                     recompute_week(w0)
                     recompute_week(w1)
                     continue
+                if c["action"] == "swap_sport":
+                    # Niggle tracker (body.py): an easy session in a sport the niggle doesn't
+                    # affect replaces this one (same day).
+                    try:
+                        w0, day0, i0 = self._find(plan, c["session_id"])
+                    except PlanError:
+                        continue
+                    if day0 < today.isoformat():
+                        continue
+                    self._orphan(plan, w0["days"][day0][i0])
+                    new = make_session(to["sport"], to.get("kind") or "easy", int(to.get("minutes") or 30),
+                                       swim_pace=swim_pace, phase=w0["phase"])
+                    new["edited"], new["adjusted"] = True, True
+                    new["adjust_why"] = str(c.get("why") or "")[:200]
+                    w0["days"][day0][i0] = new
+                    recompute_week(w0)
+                    continue
                 if c["action"] == "move":
                     w = week_for(plan, date.fromisoformat(c["date"]))
                     if w is None or c["date"] < today.isoformat():

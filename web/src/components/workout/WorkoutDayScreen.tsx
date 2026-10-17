@@ -12,6 +12,8 @@ import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, Clo
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { RabbitNote } from '@/components/ui/brand'
+import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
+import { openBody } from '@/lib/body'
 import { celebrate } from '@/components/fx'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
@@ -372,6 +374,10 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
             onVoice={onCheckIn ? () => onCheckIn({ sessionId: s.id ?? undefined, activityId: s.activity?.id ?? undefined, title: s.title }) : undefined} />
         </div>
       )}
+      {s.id && (status === 'done' || d.date <= d.today) && wantsFuelLog(s.minutes, s.kind, s.sport) && (
+        <FuelLog fuelKey={`s:${s.id}`} minutes={c?.went?.actual?.minutes ?? s.minutes ?? 60} sport={s.sport} title={s.title}
+          date={d.date} imperial={imperial} plannedGh={s.fuel?.carbs_g_per_h ?? null} />
+      )}
       {status !== 'done' && isToday && <Checklist day={d.today} sport={s.sport} />}
     </>
   )
@@ -412,6 +418,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
       await createCheckin({ text: note.trim(), session_id: sid, activity_id: s.activity?.id ?? undefined, date, rpe,
         feel: f?.feel, pain: feel === 'pain' })
       if (feel !== 'pain') celebrate(saveBtn.current, 'xp') // a little hop for logging it
+      else openBody({ view: 'log-niggle', affects: s.sport }) // "Something hurts": log where (body.py)
       setEditing(false); setNote(''); load()
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }

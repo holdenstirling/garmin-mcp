@@ -45,6 +45,8 @@ import { markReactionShown, reactionShown } from '@/lib/workout'
 import { MonthRecapSheet, PartnersScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
 import { RaceSwitcher } from '@/components/plan/PlanFlow'
 import { CelebrationHost } from '@/components/reward/CelebrationHost'
+import { BodyHost } from '@/components/body/BodyHost'
+import { NiggleNudge } from '@/components/home/NiggleNudge'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -967,6 +969,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
             {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
+            {athlete && <NiggleNudge refreshKey={feedTick} />}
             {upnext && (
               <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                 onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
@@ -1479,6 +1482,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
       {me.role === 'athlete' && <CelebrationHost ready={overlayFree && !reward && reaction == null && !monthCard} />}
+      {me.role === 'athlete' && <BodyHost imperial={imperial} />}
       <PaceHost />
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}

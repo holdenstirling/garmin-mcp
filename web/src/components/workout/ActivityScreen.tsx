@@ -2,6 +2,8 @@
 // rate zones, the plan session it counted for ("How it went"), your check-in and Rabbit's
 // feedback. Opened from anywhere a finished workout shows (lib/activitynav openActivity).
 // Workouts another app recorded (Oura) are display-only: no "Ask Rabbit" for them.
+import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
+import { openBody } from '@/lib/body'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
 import { Activity, Bike, CalendarDays, ExternalLink, Footprints, HeartPulse, MessageCircle, Mountain, Send, Sparkles, Waves } from 'lucide-react'
@@ -137,6 +139,10 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       {v.zones && <ZonesCard z={v.zones} />}
       {v.laps.length > 0 && <LapsCard laps={v.laps} imperial={imperial} sport={v.sport} />}
       <ActivityFeedback v={v} onAsk={onAsk} onSaved={onSaved} />
+      {wantsFuelLog(v.numbers.moving_s ? Math.round(v.numbers.moving_s / 60) : null, v.planned?.kind, v.sport) && (
+        <FuelLog fuelKey={`a:${v.key}`} minutes={Math.round((v.numbers.moving_s ?? v.numbers.elapsed_s ?? 3600) / 60)} sport={v.sport}
+          title={v.planned?.title ?? v.name} date={v.start?.slice(0, 10) ?? ''} imperial={imperial} />
+      )}
       {v.garmin_url && (
         <a href={v.garmin_url} target="_blank" rel="noopener noreferrer"
           className="flex min-h-11 items-center justify-center gap-1.5 text-[0.7647rem] font-medium text-(--accent)">
@@ -224,6 +230,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
       await createCheckin({ text: note.trim(), activity_id: checkinRef(String(v.key)), session_id: v.planned?.id,
         date: v.start?.slice(0, 10), rpe, feel: f?.feel, pain: feel === 'pain' })
       setEditing(false); setNote(''); onSaved()
+      if (feel === 'pain') openBody({ view: 'log-niggle', affects: v.sport }) // "Something hurts": log where
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
