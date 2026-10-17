@@ -103,7 +103,7 @@ def test_auto_shared_card_has_no_hr_gps_or_location(fx) -> None:
     pid = cm.auto_share_workouts("ann", _acts(today), today)[0]
     post = cm.get("bob", pid)
     assert set(post["workout"]) == {"activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                                    "pace_s_km", "auto"}
+                                    "pace_s_km", "auto", "source"}
     blob = json.dumps(post).lower()
     for k in ("avg_hr", "max_hr", "151", '"lat', '"lon', "latitude", "39.7", "104.9", "denver", "power", "230"):
         assert k not in blob, k
@@ -265,3 +265,23 @@ def test_http_unread_quick_and_coach_403(env, tmp_path) -> None:  # noqa: F811
         for x in c.values():
             await x.aclose()
     asyncio.run(go())
+
+
+def test_auto_share_any_source_with_label_and_once_per_activity(fx) -> None:
+    """Workouts from other sources ("<source>:<id>") auto-post too, labelled with where they came
+    from; Garmin stays the default label; unknown sources fall back to Garmin; odd ids are skipped."""
+    from garmin_mcp.community import activity_key, source_of
+    cm, today = fx.cm, NOON.date()
+    cm.put_settings("ann", {"share_workouts": True})
+    g = act(today, 11, km=5)
+    o = act(today, 12, km=7)
+    o.update(activity_id="oura:abc123", source="oura")
+    bad = act(today, 13, km=3)
+    bad.update(activity_id="../etc")
+    posted = cm.auto_share_workouts("ann", [g, o, bad], today)
+    assert len(posted) == 2
+    srcs = sorted(p["workout"]["source"] for p in cm.feed("bob")["items"])
+    assert srcs == ["garmin", "oura"]
+    assert cm.auto_share_workouts("ann", [g, o, bad], today) == []  # once per activity, any source
+    assert activity_key(5) == "5" and activity_key("whoop:x1") == "whoop:x1" and activity_key(True) is None
+    assert source_of({"source": "nope"}) == "garmin" and source_of(None) == "garmin"

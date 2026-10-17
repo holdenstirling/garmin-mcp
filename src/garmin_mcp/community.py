@@ -105,7 +105,25 @@ FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First h
 RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto")
+                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source")
+# Where a workout came from ("via Garmin" on its card). Garmin ids are ints; other sources use
+# "<source>:<id>" (workout ingestion adds ``source`` to each activity).
+SOURCES = ("garmin", "oura", "whoop", "apple", "coros", "strava", "polar", "suunto", "wahoo")
+_SRC_ID = re.compile(r"^[a-z]{2,12}:[A-Za-z0-9_.-]{1,64}$")
+
+
+def activity_key(aid: Any) -> str | None:
+    """A stable key for an activity id from any source: Garmin's int or "<source>:<id>"."""
+    if isinstance(aid, int) and not isinstance(aid, bool):
+        return str(aid)
+    if isinstance(aid, str) and _SRC_ID.fullmatch(aid):
+        return aid
+    return None
+
+
+def source_of(act: dict[str, Any] | None) -> str:
+    src = str((act or {}).get("source") or "garmin").lower()
+    return src if src in SOURCES else "garmin"
 MAX_SPLITS = 40
 PIN_S = 3600              # the author's fresh auto-shared workout leads their feed this long
 LATEST_N = 3
@@ -288,7 +306,7 @@ def pb_text(best: dict[str, Any], imperial: bool) -> str:
     return f"New personal best: {what} this year, {val}."
 
 
-def workout_card(acts: list[dict[str, Any]], aid: int, today: date) -> dict[str, Any] | None:
+def workout_card(acts: list[dict[str, Any]], aid: int | str, today: date) -> dict[str, Any] | None:
     """A compact, shareable workout: sport, title, date, distance, time, climb and a
     highlight line. Never HR, power, location or health data."""
     from .workoutday import new_bests
@@ -297,7 +315,8 @@ def workout_card(acts: list[dict[str, Any]], aid: int, today: date) -> dict[str,
         return None
     bests = new_bests(acts, aid, today)
     hl = bests[0]["label"] if bests else ""
-    return {"activity_id": aid, "sport": r["sport"], "title": _clip(str(r["name"] or "Workout"), 80),
+    act = next((a for a in acts if a.get("activity_id") == aid), None)
+    return {"activity_id": aid, "source": source_of(act), "sport": r["sport"], "title": _clip(str(r["name"] or "Workout"), 80),
             "date": r["date"].isoformat(), "km": round(r["km"], 2) if r["km"] else None,
             "minutes": round(r["min"]) if r["min"] else None, "climb_m": int(r["climb"]) if r["climb"] else None,
             "highlight": hl, **pace_fields(r["sport"], r["km"], r["min"])}
@@ -1018,12 +1037,12 @@ class Community:
         if not self.sharing_workouts(s):
             return []
         since = s["share_since"] or today.isoformat()
-        rows = [r for r in _rows(acts) if isinstance(r["id"], int) and not isinstance(r["id"], bool)
+        rows = [r for r in _rows(acts) if activity_key(r["id"]) is not None
                 and 0 <= (today - r["date"]).days <= AUTO_DAYS and r["date"].isoformat() >= since]
-        rows.sort(key=lambda r: r["id"])
+        rows.sort(key=lambda r: (r["date"], str(r["id"])))
         out: list[str] = []
         for r in rows[-AUTO_PER_SYNC:]:
-            key = f"auto:{r['id']}"
+            key = f"auto:{activity_key(r['id'])}"
 
             def claim(d: dict[str, Any], key: str = key) -> bool:
                 if self._seen(d, key, today, None):
@@ -1041,7 +1060,8 @@ class Community:
                 continue
             card["title"] = SPORT_TITLE.get(card["sport"], "Workout")
             card["auto"] = True
-            card.update(self._extras(uid, r["id"]))
+            if isinstance(r["id"], int):  # Garmin: lap splits and the reward headline
+                card.update(self._extras(uid, r["id"]))
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])
@@ -1421,8 +1441,11 @@ __all__ = [
     "POSTS_PER_DAY",
     "REACTIONS",
     "TEXT_LEN",
+    "SOURCES",
     "Community",
     "CommunityError",
+    "activity_key",
+    "source_of",
     "check_photo",
     "event_class",
     "from_moment_text",
