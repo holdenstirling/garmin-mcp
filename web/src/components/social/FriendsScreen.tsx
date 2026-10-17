@@ -3,10 +3,10 @@
 import type React from 'react'
 import { openPerson } from '@/lib/people'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain, Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X } from 'lucide-react'
+import { Ban, Check, Copy, Flag, Flame, Heart, MessageCircle, Send, Share2, Trash2, UserMinus, UserPlus, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
-import { EmptyRabbit, PullToRefresh, burst } from '@/components/anim'
+import { EmptyRabbit, PullToRefresh, burst, HopIn } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { messagePeople } from '@/lib/dm'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -22,11 +22,8 @@ import {
   unblockUser, unfollow, workoutLine,
   type FeedItem, type FriendCard as FriendCardData, type People, type PersonEdge, type SocialSettings, type SocialUser,
 } from '@/lib/social'
+import { sportIcon } from '@/lib/sportIcon'
 
-const SPORT_ICON: Record<string, typeof Bike> = {
-  run: Footprints, bike: Bike, swim: Waves, brick: Layers, strength: Dumbbell, ski: Snowflake,
-  climb: Mountain, hike: Mountain, paddle: Ship, other: Activity,
-}
 const LOADING = ['Finding your crew…', 'Lacing up…', 'Checking who trained today…']
 const SEEN_EVENT = 'rabbit:social-seen'
 
@@ -112,7 +109,7 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
         <p className="px-1 text-center text-[0.7647rem] text-(--text-muted)">No workouts from your friends in the last two weeks yet.</p>
       )}
       <div className="flex flex-col gap-3">
-        {items.map((it) => <FeedCard key={`${it.user.id}:${it.id}`} it={it} imperial={imperial} onOpen={onOpen} onUpdate={(p) => update(it, p)} />)}
+        {items.map((it, i) => <HopIn key={`${it.user.id}:${it.id}`} index={i}><FeedCard it={it} imperial={imperial} onOpen={onOpen} onUpdate={(p) => update(it, p)} /></HopIn>)}
       </div>
     </>
   )
@@ -121,7 +118,7 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
 function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
   it: FeedItem; imperial: boolean; onOpen?: (id: string) => void; onUpdate: (p: Partial<FeedItem>) => void; compact?: boolean
 }) {
-  const Icon = SPORT_ICON[it.sport] ?? Activity
+  const Icon = sportIcon(it.sport)
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')

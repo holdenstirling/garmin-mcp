@@ -1,10 +1,10 @@
 // Agree before using Rabbit: on first sign-in or join, and again when the terms change
 // (server consent.py, legal.VERSION). All four boxes are required; the documents open in-app.
 import { useState } from 'react'
-import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { DocScreen } from '@/components/legal/PrivacyLegalScreen'
 import { acceptConsent, type ConsentView, type LegalSlug } from '@/lib/legal'
+import { RabbitNap } from '@/components/anim'
 
 type Box = 'terms' | 'privacy' | 'age16' | 'health'
 
@@ -34,7 +34,7 @@ export function ConsentScreen({ consent, onDone, onSignOut }: {
   return (
     <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(24px,env(safe-area-inset-top))]">
       <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-        <RabbitLogo size={40} />
+        <RabbitNap size={44} mode={consent.first ? 'wave' : 'peek'} className="self-start" />
         <h1 className="font-display text-[1.6471rem] leading-tight text-(--brand)">
           {consent.first ? 'Before you start' : 'Our terms changed'}
         </h1>

@@ -4,7 +4,7 @@
 // details (coach notes, structure, the linked Garmin workout) and lets the athlete move it,
 // which moves it in TrainingPeaks too. With no Rabbit plan, TPCalendarList is the calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Bike, CalendarDays, Check, ClipboardList, Dumbbell, Flag, Footprints, Layers, RefreshCw, TriangleAlert, Waves } from 'lucide-react'
+import { CalendarDays, Check, ClipboardList, RefreshCw, TriangleAlert } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { Card, Field, inputCls } from './ui'
@@ -15,10 +15,8 @@ import { cn } from '@/lib/utils'
 import {
   TP_CHANGED, TP_SOURCE_LABEL, getTP, moveTP, syncTP, type TPItem, type TPView,
 } from '@/lib/trainingpeaks'
+import { sportIcon } from '@/lib/sportIcon'
 
-const ICON: Record<string, typeof Bike> = {
-  swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, race: Flag,
-}
 
 export type TPState = {
   view: TPView | null
@@ -57,7 +55,7 @@ function meta(it: TPItem, imperial: boolean): string {
 
 /** One TrainingPeaks workout as a session-like line with a "TrainingPeaks" tag. */
 export function TPLine({ it, imperial, onClick }: { it: TPItem; imperial: boolean; onClick: () => void }) {
-  const Icon = ICON[it.sport] ?? Activity
+  const Icon = sportIcon(it.sport)
   const m = meta(it, imperial)
   return (
     <button type="button" onClick={onClick} className="flex min-h-11 w-full items-center gap-2.5 py-1.5 text-left">

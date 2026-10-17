@@ -36,6 +36,7 @@ import {
   type ConnApp, type ConnState, type Connection, type ConnectRequest,
 } from '@/lib/connections'
 import { cn } from '@/lib/utils'
+import { RabbitNap } from '@/components/anim'
 
 const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
@@ -373,9 +374,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
     body = (
       <>
         <div className="flex flex-col items-center gap-2 py-3 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)" aria-hidden>
-            <Check className="size-7" />
-          </span>
+          <RabbitNap size={52} mode="cheer" />
           <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
           <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to Rabbit.`}</p>
         </div>

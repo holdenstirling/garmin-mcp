@@ -20,6 +20,7 @@ import {
   type Band, type BuddyMatch, type BuddyProfile, type BuddySport, type BuddyState,
 } from '@/lib/buddies'
 import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
+import { HopIn } from '@/components/anim'
 
 const KM_PER_MI = 1.609344
 const LOADING = ['Looking for people your pace…', 'Lacing up…']
@@ -94,8 +95,10 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
               No matches yet. As more people near you turn this on, they'll show up here. A wider area (Change, at the top of Local) finds more.
             </p>
           )}
-          {!p.paused && matches?.map((m) => (
-            <MatchCard key={m.person.id} m={m} imperial={imperial} onHi={() => setHi(m)} onNotNow={() => void notNow(m)} />
+          {!p.paused && matches?.map((m, i) => (
+            <HopIn key={m.person.id} index={i}>
+              <MatchCard m={m} imperial={imperial} onHi={() => setHi(m)} onNotNow={() => void notNow(m)} />
+            </HopIn>
           ))}
         </div>
       )}

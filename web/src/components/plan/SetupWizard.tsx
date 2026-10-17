@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DurationInput } from '@/components/ui/DurationInput'
 import { expectForDistance } from '@/lib/duration'
-import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
+import { CalendarDays, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { celebrate } from '@/components/fx/motion'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -25,6 +25,7 @@ import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
 import { track } from '@/lib/usage'
 import { clearDraft, readDraft, writeDraft } from '@/lib/drafts'
+import { RabbitNap } from '@/components/anim'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
@@ -465,7 +466,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       {step === 'done' && plan && (
         <>
           <div className="flex flex-col items-center px-2 pt-2 text-center">
-            <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-6" strokeWidth={3} /></span>
+            <RabbitNap size={56} mode="cheer" className="mb-2" />
             <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Your plan is ready</h3>
             <p className="mt-1.5 text-[0.8235rem] text-(--text-secondary)">
               {plan.weeks.length} weeks to {g.title || 'race day'}, building from about {plan.start_hours} to {plan.peak_hours} hours a week.
