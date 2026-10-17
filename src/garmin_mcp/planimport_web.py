@@ -46,6 +46,7 @@ from starlette.routing import Route
 from . import planlinks
 from .attachments import MAX_UPLOAD
 from .logs import log_event
+from .coaching import plan_week
 from .planbuilder import PlanError
 from .planformats import (
     MERGE_MODES,
@@ -90,7 +91,9 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
                 notify: Callable[..., None], coach_chat: Any,
                 structured: Callable[..., Awaitable[dict[str, Any]]] | None,
                 now: Callable[[str], datetime],
-                moment: Callable[[str, str], Any] | None = None) -> list[Route]:
+                moment: Callable[[str, str], Any] | None = None,
+                goal_files: Callable[[str], tuple[dict[str, Any], list[tuple[str, bytes]]]] | None = None,
+                ) -> list[Route]:
 
     def err(status: int, message: str) -> JSONResponse:
         return JSONResponse({"error": message}, status_code=status)
@@ -578,7 +581,39 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
         resp.headers["Cache-Control"] = "no-store"
         return resp
 
-    out: list[Route] = []
+    async def from_goal(request: Request, user_id: str) -> Response:
+        """The active race's plan FILE (the files and summary a coach or app plan came from)
+        -> the same preview as an upload, so the review/apply flow turns it into a real
+        Rabbit plan (targets, moves, Garmin sync). Athletes only; files + today's date only
+        go to the model, never health data."""
+        await read_body(request)
+        if goal_files is None:
+            raise user_error("Turning a plan file into workouts isn't available on this server.", 503)
+        goal, parts = await plan_call(lambda: goal_files(user_id))
+        if not goal:
+            raise user_error("Pick a race first: there's no active race to read a plan for.", 404)
+        summary = str(goal.get("plan") or "").strip()
+        if not parts and summary:
+            parts = [("plan summary.txt", summary.encode("utf-8"))]
+        if not parts:
+            raise user_error("Your race doesn't have a plan file yet. Add one from Schedule > Add > Import a plan.", 404)
+        if sum(len(b) for _, b in parts) > MAX_UPLOAD:
+            raise user_error("Your plan files are too large to read together (max 10 MB). "
+                             "Import the main file from Schedule > Add > Import a plan.", 413)
+        today = plans.today(user_id)
+        pw = plan_week(goal, today)
+        week1 = (date.fromisoformat(pw["start"]) - timedelta(weeks=pw["index"] - 1)) if pw.get("index") else today
+        start = monday_of(week1)
+        try:
+            pv = await preview_parts(request, user_id, parts, body={"start": start.isoformat()})
+        except PlanImportError as e:
+            raise user_error(str(e)) from None
+        if "mapping" in pv:  # a sheet whose columns need picking: hand it to the upload flow
+            raise user_error("Rabbit needs you to pick the columns in that sheet. "
+                             "Import it from Schedule > Add > Import a plan.")
+        return JSONResponse({"preview": pv}, status_code=201, headers={"Cache-Control": "no-store"})
+
+    out: list[Route] = [Route("/app/api/plan/import/from-goal", plan_api(from_goal, mutating=True), methods=["POST"])]
     for base in ("/app/api/coach/athletes/{athlete_id}/plan/import", "/app/api/plan/import"):
         out += [
             Route(base, plan_api(status, mutating=False), methods=["GET"]),

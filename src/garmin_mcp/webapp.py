@@ -40,6 +40,7 @@ from .planbuilder import PlanError, build_plan
 from .plans import public_plan
 from . import planimport_web
 from .planimport import ImportService
+from .weekplan import MAX_PLAN_FILES_READ
 from .events import KINDS, TYPE_DISTANCES, TYPES
 from .events import MAIN_KINDS as _EV_MAIN_KINDS
 from .events import is_race as _ev_is_race
@@ -1649,13 +1650,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # Plan imports (planimport.py, routes in planimport_web.py): coach with can_edit_plan,
     # or the athlete themself; grid, CSV/XLSX/ICS (TrainingPeaks exports) or AI file reads.
     import_routes: list[BaseRoute] = []
+
+    def _goal_plan_files(uid: str) -> tuple[dict[str, Any], list[tuple[str, bytes]]]:
+        """The active race and its plan files (the newest few, as the weekly reader uses them)."""
+        assert chat is not None
+        goal = chat.agent.coach.active_goal(uid) or {}
+        parts: list[tuple[str, bytes]] = []
+        for f in (goal.get("plan_files") or [])[-MAX_PLAN_FILES_READ:]:
+            got = chat.agent.attachments.load(uid, f.get("id")) if isinstance(f, dict) else None
+            if got is not None:  # a removed file is skipped; the rest still convert
+                meta, data = got
+                parts.append((str(meta.get("name") or f.get("name") or "plan")[:120], data))
+        return goal, parts
+
     if plans is not None and store is not None and chat is not None:
         import_routes = planimport_web.make_routes(
             importer=ImportService(store, plans, chat.agent.coach), plans=plans, coach=chat.agent.coach,
             links=links, auth=auth, settings=settings, host_ok=host_ok, plan_api=_plan_api,
             plan_call=_plan_call, user_error=_UserError, public_plan=public_plan, notify=_notify,
             coach_chat=coach_chat, structured=getattr(chat.agent._backend, "structured", None),
-            now=chat.agent._now, moment=chat.agent.moments.coach_plan)
+            now=chat.agent._now, moment=chat.agent.moments.coach_plan, goal_files=_goal_plan_files)
 
     async def coach_threads(request: Request, user_id: str) -> Response:
         aid = _aid(request)

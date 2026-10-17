@@ -5,7 +5,7 @@ import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
@@ -24,6 +24,7 @@ import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_ACTIVITY_EVENT, type OpenActivity } from '@/lib/activitynav'
+import { CONVERT_PLAN_EVENT, startPlanConversion } from '@/lib/planconvert'
 import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
@@ -179,6 +180,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // The one connect popup (components/connect/ConnectSheet): any screen via requestConnect(app).
   const [connect, setConnect] = useState<ConnectRequest | null>(null)
   const [addPlan, setAddPlan] = useState(false)
+  // A plan file -> full Rabbit workouts (lib/planconvert): read, review, apply.
+  const [converting, setConverting] = useState(false)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
   const [busy, setBusy] = useState(false)
@@ -417,6 +420,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     window.addEventListener(OPEN_ACTIVITY_EVENT, onActivity)
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onActivity)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const onConvert = () => { dropSheet(); closePages(); setConverting(true) }
+    window.addEventListener(CONVERT_PLAN_EVENT, onConvert)
+    return () => window.removeEventListener(CONVERT_PLAN_EVENT, onConvert)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Search everywhere (components/search): a picked result -> its tab or page.
@@ -901,7 +909,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {goal && (
               <div className="mx-4 mt-3">
                 <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
-                  refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} />
+                  refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay} />
               </div>
             )}
             {athlete && (
@@ -991,13 +999,25 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     return (
       <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
         <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
-          {goal && <RaceSwitcher title={goal.title} date={goal.date} sub="No plan for this race yet"
+          {goal && <RaceSwitcher title={goal.title} date={goal.date}
+            sub={goal.plan ? `Plan from your file${week?.index ? ` · week ${week.index}${week.weeks ? ` of ${week.weeks}` : ''}` : ''}` : 'No plan for this race yet'}
             onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
+          {goal?.plan && (
+            <button type="button" onClick={startPlanConversion}
+              className="flex min-h-12 items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3 text-left active:opacity-80">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><RabbitLogo size={18} current /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.8824rem] font-semibold text-(--accent)">Turn your plan into full workouts</span>
+                <span className="block text-[0.7059rem] text-(--text-muted)">Zones, pace and cadence for every day. You review it first.</span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+            </button>
+          )}
           {weekLead}
           <TPPlanSection imperial={me.athlete.units === 'imperial'} />
           {goal?.plan ? (
             <Group label="Your plan">
-              <SettingsRow icon={<Icon><FileText /></Icon>} title="Plan from your coach or app" subtitle={planLine(week, goal)}
+              <SettingsRow icon={<Icon><FileText /></Icon>} title="Your plan file" subtitle={planLine(week, goal)}
                 onClick={() => open('plan')} />
               <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in Rabbit"
                 subtitle="Editable sessions you can send to your Garmin" onClick={startSetup} />
@@ -1349,6 +1369,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onAsk={() => tellRabbit('About my plan: ')}
           onUploadPlan={() => tellRabbit("Here's my updated training plan.")}
           onEdit={() => open('memory')} onBuild={startSetup} />
+      )}
+      {converting && (
+        <ConvertPlanScreen onClose={() => setConverting(false)}
+          onImportOther={() => { setConverting(false); setAddPlan(true) }}
+          onApplied={() => { setConverting(false); onChange(); void refreshThreads(); loadWeek(); setSchedView('plan'); setTab('plan') }} />
       )}
       {addPlan && <AddPlanLauncher onClose={() => setAddPlan(false)} onApplied={() => { setAddPlan(false); onChange(); void refreshThreads(); loadWeek() }} />}
       {coachAsk && (

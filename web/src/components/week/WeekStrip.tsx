@@ -5,6 +5,7 @@ import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PlannedSession, PlanWeek, WeekDay } from '@/lib/api'
 import { DayRow, cap, dayState, fmtRange } from '@/components/chat/PlanPins'
+import { PlanDaySheet } from './PlanDaySheet'
 
 const STATE_LABEL = {
   done: 'done', partial: 'partly done', missed: 'missed', planned: 'planned', rest: 'rest day',
@@ -46,13 +47,15 @@ export function WeekDots({ days, className }: { days: WeekDay[]; className?: str
   )
 }
 
-/** The week, day by day: tap a session for its details and an "Ask Rabbit" button. */
+/** The week, day by day: tap a session for the day's full details (PlanDaySheet). */
 export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = false }: {
   week: PlanWeek | null; loading: boolean; error: boolean; onRetry: () => void
   onAskDay: (day: WeekDay, session?: PlannedSession) => void
   imperial?: boolean
 }) {
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [dayOpen, setDayOpen] = useState<string | null>(null)
+  const shown = week?.days.find((d) => d.date === dayOpen) ?? null
   if (!week) {
     return (
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
@@ -78,8 +81,10 @@ export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = f
       {week.plan_status === 'error' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Couldn't read this week from your plan. Showing what you've done.</p>}
       {week.plan_status === 'over_budget' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Planned sessions show up tomorrow (today's limit is used up).</p>}
       <div className="divide-y divide-(--border)">
-        {week.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey} onAsk={onAskDay} />)}
+        {week.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey} onAsk={onAskDay}
+          onOpen={(day) => setDayOpen(day.date)} />)}
       </div>
+      {shown && <PlanDaySheet day={shown} imperial={imperial} onClose={() => setDayOpen(null)} onAsk={onAskDay} />}
     </section>
   )
 }

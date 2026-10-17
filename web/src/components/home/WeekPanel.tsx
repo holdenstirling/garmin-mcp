@@ -12,6 +12,7 @@ import { weekTitle } from '@/components/week/WeekStrip'
 import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
+import { PlanDaySheet } from '@/components/week/PlanDaySheet'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
 
@@ -34,7 +35,11 @@ function StateMark({ st }: { st: PlannedSession['status'] }) {
   return <span className={cn('size-4 shrink-0 rounded-full border', st === 'rest' ? 'border-transparent bg-(--bg-elevated)' : 'border-(--border-strong)')} aria-hidden />
 }
 
-function DayLine({ d, imperial, onOpen }: { d: WeekDay; imperial: boolean; onOpen: (date: string) => void }) {
+function DayLine({ d, imperial, onOpen, onSheet }: {
+  d: WeekDay; imperial: boolean; onOpen: (date: string) => void
+  /** a plan-file day (sessions without ids): its full details sheet */
+  onSheet: (d: WeekDay) => void
+}) {
   const work = d.sessions.filter((s) => s.status !== 'rest')
   const dayLabel = `${d.weekday}${d.today ? ', today' : ''}`
   const summary = `${dayLabel}: ${work.length
@@ -64,7 +69,7 @@ function DayLine({ d, imperial, onOpen }: { d: WeekDay; imperial: boolean; onOpe
           const Icon = SPORT_ICON[s.sport] ?? Activity
           const line = sessionLine(s, imperial)
           return (
-            <button key={s.id ?? i} type="button" onClick={() => (s.id ? openWorkout(s.id, d.date) : onOpen(d.date))}
+            <button key={s.id ?? i} type="button" onClick={() => (s.id ? openWorkout(s.id, d.date) : onSheet(d))}
               aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`}
               className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
               <StateMark st={s.status} />
@@ -125,8 +130,10 @@ function MileageBars({ m, imperial }: { m: Partial<Record<DistSport, Mileage>>; 
   )
 }
 
-export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey, onOpenDay, onOpenPlan }: {
+export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey, onOpenDay, onOpenPlan, onAskDay }: {
   week: PlanWeek | null; loading: boolean; error: boolean; onRetry: () => void
+  /** Ask Rabbit from a plan-file day's sheet */
+  onAskDay: (day: WeekDay, session?: PlannedSession) => void
   imperial: boolean
   /** bump to re-read the mileage */
   refreshKey?: number
@@ -134,6 +141,8 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
   onOpenPlan: () => void
 }) {
   const [miles, setMiles] = useState<Partial<Record<DistSport, Mileage>> | null>(null)
+  const [sheetDay, setSheetDay] = useState<string | null>(null)
+  const sheet = week?.days.find((x) => x.date === sheetDay) ?? null
   useEffect(() => {
     if (!week) return
     let live = true
@@ -169,8 +178,9 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
       </div>
       {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
       <ul className="divide-y divide-(--border)">
-        {week.days.map((d) => <DayLine key={d.date} d={d} imperial={imperial} onOpen={onOpenDay} />)}
+        {week.days.map((d) => <DayLine key={d.date} d={d} imperial={imperial} onOpen={onOpenDay} onSheet={(x) => setSheetDay(x.date)} />)}
       </ul>
+      {sheet && <PlanDaySheet day={sheet} imperial={imperial} onClose={() => setSheetDay(null)} onAsk={onAskDay} />}
       {miles && <MileageBars m={miles} imperial={imperial} />}
       <button type="button" onClick={onOpenPlan}
         className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-(--border) text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">

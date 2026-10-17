@@ -92,10 +92,12 @@ function items(day: WeekDay, imperial = false): Item[] {
 
 /** One day: a line per session; tapping a session opens its details and an Ask button.
  *  Only the Ask button starts a chat, so opening and closing details never does. */
-export function DayRow({ day, openKey, onToggle, onAsk, imperial = false }: {
+export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = false }: {
   day: WeekDay; openKey: string | null; imperial?: boolean
   onToggle: (key: string | null) => void
   onAsk: (day: WeekDay, session?: PlannedSession) => void
+  /** tap a session: the day's full details (components/week/PlanDaySheet) instead of the inline toggle */
+  onOpen?: (day: WeekDay) => void
 }) {
   const date = new Date(`${day.date}T12:00:00`)
   const list = items(day, imperial)
@@ -112,12 +114,15 @@ export function DayRow({ day, openKey, onToggle, onAsk, imperial = false }: {
           const id = `${day.date}:${it.key}`
           const expanded = openKey === id
           const canOpen = it.status !== 'rest'
+          const sheet = !!onOpen && canOpen
           const dur = it.minutes && !hasDuration(it.title) ? fmtMinutes(it.minutes) : ''
           return (
             <span key={it.key} className="flex flex-col">
-              <button type="button" disabled={!canOpen} aria-expanded={canOpen ? expanded : undefined}
-                onClick={() => onToggle(expanded ? null : id)}
-                className="flex w-full items-center gap-2 py-1 text-left disabled:cursor-default">
+              <button type="button" disabled={!canOpen} aria-expanded={canOpen && !sheet ? expanded : undefined}
+                aria-haspopup={sheet ? 'dialog' : undefined}
+                aria-label={sheet ? `${it.title}${it.status === 'missed' ? ', missed' : it.status === 'done' || it.status === 'extra' ? ', done' : ''}: see everything` : undefined}
+                onClick={() => sheet ? onOpen!(day) : onToggle(expanded ? null : id)}
+                className={cn('flex w-full items-center gap-2 py-1 text-left disabled:cursor-default', sheet && 'min-h-11 active:opacity-70')}>
                 <Icon className={cn('size-3.5 shrink-0', it.status === 'done' || it.status === 'extra' ? 'text-(--accent)' : 'text-muted-foreground')} />
                 <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', it.status === 'rest' ? 'text-muted-foreground' : 'text-foreground')}>
                   {it.title}{dur && <span className="text-muted-foreground"> · {dur}</span>}
@@ -126,8 +131,9 @@ export function DayRow({ day, openKey, onToggle, onAsk, imperial = false }: {
                   it.status === 'done' || it.status === 'extra' ? 'text-(--accent)' : it.status === 'missed' ? 'text-(--danger)' : 'text-muted-foreground')}>
                   {it.status === 'done' || it.status === 'extra' ? `✓ ${fmtMinutes(it.doneMinutes ?? 0)}` : it.status === 'missed' ? 'Missed' : ''}
                 </span>
+                {sheet && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
               </button>
-              {canOpen && (
+              {canOpen && !sheet && (
                 <span className={cn('session-detail', expanded && 'session-detail--open')}>
                   <span className="min-h-0 overflow-hidden">
                     <span className="flex flex-col gap-2 pb-2 pl-5.5">
