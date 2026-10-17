@@ -4,7 +4,7 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { openEvent } from '@/lib/events'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,8 @@ import { paceText } from './PlanCalendar'
 
 export type DayActions = {
   onEdit: (s: PlanSession) => void
+  /** the full workout page */
+  onOpenPage?: (s: PlanSession) => void
   onMove?: (s: PlanSession, mode: 'move' | 'swap') => void
   onFix?: (s: PlanSession) => void
   onStart?: (s: PlanSession) => void
@@ -126,7 +128,11 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           <Icon className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className={cn('text-[0.9412rem] font-semibold leading-tight text-(--text)', status === 'skipped' && 'line-through')}>{s.title}</h3>
+          <h3 className={cn('text-[0.9412rem] font-semibold leading-tight text-(--text)', status === 'skipped' && 'line-through')}>
+            {a.onOpenPage ? (
+              <button type="button" onClick={() => a.onOpenPage!(s)} className="text-left underline-offset-2 hover:underline">{s.title}</button>
+            ) : s.title}
+          </h3>
           <p className="mt-0.5 text-[0.7059rem] text-(--text-muted)">
             {s.time && <span className="mr-1 inline-flex items-center gap-0.5 font-semibold text-(--text)"><Clock className="size-3" aria-hidden />{fmtTime(s.time)} ·</span>}
             {SPORT_LABEL[s.sport]}{s.kind !== s.sport && KIND_LABEL[s.kind] ? ` · ${KIND_LABEL[s.kind]}` : ''}
@@ -206,6 +212,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         {a.onFix && <Button variant="primary" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => a.onFix!(s)}><Wrench className="size-4" aria-hidden />Fix my week</Button>}
         {a.onMove && <Button variant="default" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onMove!(s, 'move')} aria-label={`Move ${s.title} to another day`}><MoveRight className="size-4" aria-hidden />Move</Button>}
         {a.onMove && <Button variant="default" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onMove!(s, 'swap')} aria-label={`Swap ${fmtDay(date, { weekday: 'long' })} with another day`}><ArrowLeftRight className="size-4" aria-hidden />Swap</Button>}
+        {a.onOpenPage && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onOpenPage!(s)} aria-label={`Open ${s.title} in full`}><Maximize2 className="size-4" aria-hidden />Full workout</Button>}
         <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onEdit(s)} aria-label={`Edit ${s.title}`}><Pencil className="size-4" aria-hidden />Edit</Button>
         {a.onAsk && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onAsk!(s)} aria-label={`Ask Rabbit about ${s.title}`}><MessageCircle className="size-4" aria-hidden />Ask Rabbit</Button>}
       </div>
