@@ -197,7 +197,7 @@ class UpNextService:
 
     async def get(self, user_id: str) -> dict[str, Any]:
         from .today import TodayService
-        from .workoutday import _find, _tomorrow, session_view
+        from .workoutday import _find, _tomorrow, clean_fuel_plan, session_view
         a = self._a
         now = a._now(user_id)
         today = now.date()
@@ -210,6 +210,7 @@ class UpNextService:
         goal = a.coach.active_goal(user_id)
         has_plan = bool(plan) or bool(goal and goal.get("plan"))
         session = None
+        fuel_line: str | None = None
         sid = ((card or {}).get("session") or {}).get("id")
         if plan and sid:
             found = _find(plan, sid)
@@ -220,6 +221,10 @@ class UpNextService:
                 t = (v.get("main_targets") or [None])[0]
                 session = {"target": (str(t.get("label") or "") or None) if isinstance(t, dict) else None,
                            "on_watch": v["garmin"]["on_watch"], "syncable": v["garmin"]["syncable"]}
+                fp = v.get("fuel_plan") or {}
+                b = fp.get("before") or {}
+                if b and not b.get("optional") and ((card or {}).get("session") or {}).get("status") != "done":
+                    fuel_line = f"{b['when']}: {b['headline']}"
         group = None
         if not has_plan and not goal and self._group is not None:
             try:
@@ -227,8 +232,18 @@ class UpNextService:
             except Exception as e:
                 log_event(logger, logging.INFO, "upnext_group_failed", user_id=user_id, error=type(e).__name__)
         garmin = self._garmin(user_id) if self._garmin is not None else bool((card or {}).get("garmin"))
-        return choose(card=card, has_plan=has_plan, goal=goal, session=session,
-                      tomorrow=_tomorrow(plan, today) if plan else None, group=group, garmin=garmin)
+        tomorrow = _tomorrow(plan, today) if plan else None
+        if fuel_line is None and plan and tomorrow and tomorrow.get("id") and now.hour >= 12:
+            found = _find(plan, tomorrow["id"])
+            if found is not None:
+                fp2 = clean_fuel_plan(found[0], found[1], a.coach.athlete(user_id), plan) or {}
+                if fp2.get("night_before"):
+                    fuel_line = f"Tonight: a carb-rich dinner for tomorrow's {str(found[0].get('title') or 'session').lower()}"
+        out = choose(card=card, has_plan=has_plan, goal=goal, session=session,
+                     tomorrow=tomorrow, group=group, garmin=garmin)
+        if fuel_line and out.get("kind") in ("session", "rest", "today"):
+            out["fuel"] = fuel_line
+        return out
 
 
 __all__ = ["NO_GARMIN", "UpNextService", "choose", "first_visit", "pick_group"]

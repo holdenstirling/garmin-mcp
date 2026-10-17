@@ -4,7 +4,7 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Sparkles, Utensils, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitNote } from '@/components/ui/brand'
 import { RabbitNap } from '@/components/anim'
@@ -212,9 +212,12 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           {s.exercises!.map((e) => <li key={e.name} className="flex gap-2 text-[0.7647rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>)}
         </ul>
       )}
-      {s.fuel && (
-        <p className="mx-3.5 mt-3 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          <span className="font-semibold text-(--text)">Fuel:</span> about {s.fuel.carbs_g_per_h} g carbs an hour{s.fuel.note ? `. ${s.fuel.note}` : ''}
+      {(s.fuel_hint || s.fuel) && (
+        <p className="mx-3.5 mt-3 flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
+          <Utensils className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+          <span>{s.fuel_hint
+            ? <><span className="font-semibold text-(--text)">Fuel:</span>{s.fuel_hint.replace(/^Fuel:/, '')}. Full before, during and after on the workout page.</>
+            : <><span className="font-semibold text-(--text)">Fuel:</span> about {s.fuel!.carbs_g_per_h} g carbs an hour{s.fuel!.note ? `. ${s.fuel!.note}` : ''}</>}</span>
         </p>
       )}
 

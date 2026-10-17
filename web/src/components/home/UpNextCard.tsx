@@ -3,7 +3,7 @@
 // your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
 // that card isn't shown separately.
 import { Suspense, lazy, useState } from 'react'
-import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap } from 'lucide-react'
+import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap, Utensils } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { WeekDots } from '@/components/week/WeekStrip'
@@ -120,6 +120,11 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
         {week && week.length === 7 && <WeekDots days={week} />}
       </div>
       {up.detail && <p className="mt-1.5 line-clamp-2 text-[0.7647rem] leading-snug text-(--text-secondary)">{up.detail}</p>}
+      {up.fuel && (
+        <p className="mt-1.5 flex items-start gap-1.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
+          <Utensils className="mt-px size-3.5 shrink-0 text-(--accent)" aria-hidden /><span>{up.fuel}</span>
+        </p>
+      )}
       {(s?.target || s?.on_watch || (rest && t) || (t && up.tone === 'done') || g?.club || signals.length > 0) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {s?.target && <span className="rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] font-medium text-(--text)">{s.target}</span>}

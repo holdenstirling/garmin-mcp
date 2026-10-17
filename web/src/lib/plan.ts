@@ -14,6 +14,8 @@ export type PlanSession = {
   event_id?: string | null
   exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
   fuel?: { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string } | null
+  /** one line, e.g. "Fuel: 1 gel every 30 min · recovery snack after" (null when water is enough) */
+  fuel_hint?: string | null
   steps: Step[]; legs: { sport: Sport; minutes: number; steps: Step[] }[]
 }
 export type PlanDay = { date: string; sessions: PlanSession[] }
@@ -65,7 +67,13 @@ export type AthleteTraits = {
   strengths: Trait[]; limiters: Trait[]; heat_tolerance: 'low' | 'normal' | 'high' | null
   sweat: 'light' | 'average' | 'heavy' | 'salty' | null; altitude_acclimatized: boolean | null
   terrain_access: Terrain[]; race_history: PastRace[]; motivation: string; season_goal: string
+  /** fueling suggestions (server nutrition.fuel_plan): which examples lead, caffeine, diet filters */
+  fuel_style: FuelStyle | null; caffeine: boolean | null; diet: Diet[]
 }
+export const FUEL_STYLES = [['gels', 'Gels & chews'], ['real_food', 'Real food'], ['mix', 'A mix']] as const
+export const DIETS = [['vegetarian', 'Vegetarian'], ['vegan', 'Vegan'], ['gluten_free', 'Gluten-free'], ['dairy_free', 'Dairy-free']] as const
+export type FuelStyle = typeof FUEL_STYLES[number][0]
+export type Diet = typeof DIETS[number][0]
 export type GoalFull = Goal & {
   target_time?: string | null; goal_type?: 'finish' | 'time' | 'compete' | null
   priority?: 'A' | 'B' | 'C' | null; limiters?: string[]; course?: string; plan_source?: 'builder' | 'uploaded'

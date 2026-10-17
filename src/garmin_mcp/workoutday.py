@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING, Any
 import anyio
 import httpx2
 
-from .nutrition import fuel
+from .nutrition import fuel, fuel_plan
 from .paces import athlete_for
 from .planbuilder import PACE_ZONES, POWER_ZONES, ZONE_NAMES, iter_sessions, step_minutes, week_for
 from .progress import PLAN_SESSION_XP, workout_xp
@@ -296,6 +296,27 @@ def _clean_fuel(session: dict[str, Any], day: str, plan: dict[str, Any] | None) 
         return None
 
 
+def _later_today(s: dict[str, Any], day: str, plan: dict[str, Any] | None) -> bool:
+    """Another real session after ``s`` on the same day (refuel faster)."""
+    try:
+        w = week_for(plan, date.fromisoformat(day)) if plan else None
+    except ValueError:
+        return False
+    same = [x for x in ((w or {}).get("days") or {}).get(day, []) if x.get("sport") not in ("rest",)]
+    if len(same) < 2 or s not in same:
+        return False
+    order = sorted(same, key=lambda x: x.get("time") or "~")
+    return order.index(s) < len(order) - 1
+
+
+def clean_fuel_plan(s: dict[str, Any], day: str, athlete: dict[str, Any], plan: dict[str, Any] | None,
+                    *, hot: bool = False) -> dict[str, Any] | None:
+    try:
+        return fuel_plan(s, day, athlete, plan, later_today=_later_today(s, day, plan), hot=hot)
+    except Exception:
+        return None
+
+
 def session_view(s: dict[str, Any], day: str, athlete: dict[str, Any], *, phase: str | None = None,
                  recovery: bool = False, plan: dict[str, Any] | None = None) -> dict[str, Any]:
     """Pure: everything the "Ready to go" screen shows for one planned session."""
@@ -323,6 +344,7 @@ def session_view(s: dict[str, Any], day: str, athlete: dict[str, Any], *, phase:
         if sport not in ("strength", "rest") else [],
         "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
         "fuel": _clean_fuel(s, day, plan),
+        "fuel_plan": clean_fuel_plan(s, day, athlete, plan),
         "garmin": {"on_watch": bool((s.get("garmin") or {}).get("workout_ids")),
                    "syncable": sport not in ("rest",) and kind != "race"},
     }
@@ -445,6 +467,10 @@ class WorkoutDay:
             if s.get("sport") == "rest":
                 return out | {"state": "rest"}
             view = session_view(s, d, athlete_for(athlete, s), phase=w.get("phase"), recovery=bool(w.get("recovery")), plan=plan)
+            wx = out.get("weather") or {}
+            if d == today.isoformat() and max((v for v in (wx.get("temp_c"), wx.get("feels_c"))
+                                               if isinstance(v, int | float)), default=0) >= 25:
+                view["fuel_plan"] = clean_fuel_plan(s, d, athlete_for(athlete, s), plan, hot=True)
             st = status.get(s.get("id")) or {}
             view["status"] = st.get("status") or ("planned" if d >= today.isoformat() else "missed")
             view["activity"] = st.get("activity")
@@ -456,7 +482,7 @@ class WorkoutDay:
             view = {"id": None, "date": day.isoformat(), "title": s.get("title") or "Session", "sport": s.get("sport"),
                     "kind": None, "minutes": s.get("minutes"), "detail": s.get("detail") or "",
                     "purpose": purpose(None, None), "cue": CUE["easy"], "sections": [], "warmup_min": 0,
-                    "cooldown_min": 0, "main_targets": [], "exercises": [], "prehab": [], "fuel": None,
+                    "cooldown_min": 0, "main_targets": [], "exercises": [], "prehab": [], "fuel": None, "fuel_plan": None,
                     "garmin": {"on_watch": False, "syncable": False}, "status": s.get("status"),
                     "activity": s.get("activity")}
             g = await self._gear_views(user_id)

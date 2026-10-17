@@ -11,6 +11,16 @@ export type WStep =
 export type WSection = { kind: 'warmup' | 'main' | 'cooldown'; name: string; minutes: number; steps: WStep[] }
 export type WGear = { id: string; kind: string; name: string; total_km: number; total_label: string; status: 'ok' | 'soon' | 'retire'; warning: string | null }
 export type WFuel = { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string }
+export type FuelPart = { when?: string; headline: string; items: string[]; optional?: boolean; tip?: string | null; hydration?: string }
+export type FuelPlan = {
+  before: FuelPart
+  during: FuelPart & { plan: string; carbs_g_per_h: number; total_carbs_g?: number; start?: string; note?: string
+    fluids?: string; sodium?: string; heat?: string | null }
+  after: FuelPart
+  night_before: string | null; caffeine: string | null; hint: string | null; style: 'gels' | 'real_food' | 'mix'
+  learn_more: string; minutes: number | null
+  prefs?: { fuel_style: 'gels' | 'real_food' | 'mix' | null; caffeine: boolean | null; diet: ('vegetarian' | 'vegan' | 'gluten_free' | 'dairy_free')[] }
+}
 export type Weather = {
   place: string; temp_c: number | null; feels_c: number | null; wind_kmh: number | null; summary: string
   rain_pct: number | null; next: { time: string; temp_c: number | null; rain_pct: number | null; summary: string }[]
@@ -22,7 +32,7 @@ export type WorkoutSession = {
   meters?: number | null; detail: string; purpose: string; cue: string; sections: WSection[]
   warmup_min: number; cooldown_min: number; main_targets: Target[]
   exercises: { name: string; dose: string }[]; prehab: { name: string; dose: string }[]
-  fuel: WFuel | null; garmin: { on_watch: boolean; syncable: boolean }
+  fuel: WFuel | null; fuel_plan?: FuelPlan | null; garmin: { on_watch: boolean; syncable: boolean }
   status: 'planned' | 'done' | 'missed'; activity?: { id: number | null; name: string; minutes: number } | null
   gear: WGear[]
 }

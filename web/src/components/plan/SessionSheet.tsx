@@ -237,6 +237,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
               {session.fuel.sodium_mg_per_h && <span className="text-(--text-muted)">{session.fuel.sodium_mg_per_h} mg sodium/h</span>}
             </div>
             <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{session.fuel.note}</p>
+            {session.fuel_hint && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{session.fuel_hint}. Food ideas before, during and after are on the workout page.</p>}
           </Field>
         </Card>
       )}

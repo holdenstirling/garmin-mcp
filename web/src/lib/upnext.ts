@@ -22,6 +22,8 @@ export type UpNext = {
   /** the Today card it wraps (null when it couldn't be built) */
   today: Today | null
   garmin: boolean
+  /** one fueling line: before today's session, or "Tonight: a carb-rich dinner for tomorrow's long run" */
+  fuel?: string | null
 }
 export const getUpNext = () => getJSON<UpNext>('/api/upnext')
 

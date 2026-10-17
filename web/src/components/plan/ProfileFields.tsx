@@ -5,7 +5,7 @@ import { DurationInput } from '@/components/ui/DurationInput'
 import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
-  EQUIPMENT, FAVORITE_SPORTS, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, guessUnits, ftInToCm, kgToLb, lbToKg, parsePace,
+  DIETS, EQUIPMENT, FAVORITE_SPORTS, FUEL_STYLES, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, guessUnits, ftInToCm, kgToLb, lbToKg, parsePace,
   type AthleteFull, type PastRace,
 } from '@/lib/plan'
 import { Button } from '@/components/ui/button'
@@ -190,6 +190,7 @@ export function TraitsFields({ a, setA }: Props) {
             onChange={(v) => setA({ sweat: v })} />
         </Field>
       </Card>
+      <FuelFields a={a} setA={setA} />
       <Card>
         <Field label="Why you race" hint="Rabbit reminds you of this when training gets hard.">
           <textarea className={areaCls} value={a.motivation ?? ''} maxLength={200} onChange={(e) => setA({ motivation: e.target.value })} />
@@ -197,6 +198,25 @@ export function TraitsFields({ a, setA }: Props) {
       </Card>
       <RaceHistoryField races={a.race_history ?? []} onChange={(v) => setA({ race_history: v })} />
     </>
+  )
+}
+
+/** Fueling preferences: shape the Before / During / After suggestions on every workout. */
+export function FuelFields({ a, setA }: Pick<Props, 'a' | 'setA'>) {
+  return (
+    <Card>
+      <Field label="Fueling during workouts" hint="Which suggestions lead on your workout pages.">
+        <Choice value={a.fuel_style ?? null} allowNone options={FUEL_STYLES} onChange={(v) => setA({ fuel_style: v })} />
+      </Field>
+      <Field label="Caffeine" className="border-t border-(--border)" hint="Coffee before, or caffeinated gels on long and hard days.">
+        <Choice value={a.caffeine == null ? null : a.caffeine ? 'yes' : 'no'} allowNone
+          options={[['yes', 'I use it'], ['no', 'Skip it']] as const}
+          onChange={(v) => setA({ caffeine: v == null ? null : v === 'yes' })} />
+      </Field>
+      <Field label="Food you eat" className="border-t border-(--border)" hint="Food ideas skip anything that doesn't fit.">
+        <MultiChoice value={a.diet ?? []} options={DIETS} onChange={(v) => setA({ diet: v })} />
+      </Field>
+    </Card>
   )
 }
 

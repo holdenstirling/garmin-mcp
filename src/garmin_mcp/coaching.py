@@ -53,7 +53,9 @@ _ATHLETE_ENUM = {"sex": ("female", "male", "other"), "level": ("new", "intermedi
                  "sweat": ("light", "average", "heavy", "salty"),
                  "coach_status": ("have_coach", "looking", "self_coached"),
                  # Plan feel (planbuilder.inputs_from): gentle = one level easier, push = one harder.
-                 "plan_intensity": ("gentle", "normal", "push")}
+                 "plan_intensity": ("gentle", "normal", "push"),
+                 # Fueling suggestions (nutrition.fuel_plan): which examples lead.
+                 "fuel_style": ("gels", "real_food", "mix")}
 _WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
 _FAVORITES = ("run", "trail", "bike", "gravel", "mtb", "swim", "open_water", "strength", "yoga",
@@ -64,10 +66,13 @@ TRAITS = ("climbing", "descending", "flats", "speed", "endurance", "heat", "cold
 TERRAIN = ("flat_roads", "rolling", "hills", "mountains", "trails", "track", "pool", "open_water", "trainer")
 MAX_RACE_HISTORY = 10
 _RACE_HISTORY_TEXT = {"name": 60, "distance": 20, "result": 40}
-_ATHLETE_LABEL = {"home_elevation_m": "home elevation", "altitude_acclimatized": "lives/trains at altitude",
+_ATHLETE_LABEL = {"fuel_style": "fueling preference", "caffeine": "uses caffeine when fueling",
+                  "diet": "diet (for food suggestions)", "home_elevation_m": "home elevation", "altitude_acclimatized": "lives/trains at altitude",
                   "motivation": "why they race", "terrain_access": "terrain they can train on"}
 _LISTS = {"available_days": None, "equipment": None, "favorite_sports": None,
-          "strengths": TRAITS, "limiters": TRAITS, "terrain_access": TERRAIN}
+          "strengths": TRAITS, "limiters": TRAITS, "terrain_access": TERRAIN,
+          # Diet tags that filter fueling examples (nutrition.fuel_plan).
+          "diet": ("vegetarian", "vegan", "gluten_free", "dairy_free")}
 # Goal field -> its main event's field (kept in step both ways).
 GOAL_EVENT_FIELDS = {"event": "name", "date": "date", "distance": "distance",
                      "goal_type": "goal_type", "target_time": "target_time", "course": "course"}
@@ -306,9 +311,9 @@ class CoachStore:
                 if not isinstance(v, list) or any(x not in allowed for x in v):
                     raise CoachError(f"{k.replace('_', ' ')} must be a list from {', '.join(allowed)}")
                 upd[k] = [x for x in allowed if x in v]
-            elif k == "altitude_acclimatized":
+            elif k in ("altitude_acclimatized", "caffeine"):
                 if v is not None and not isinstance(v, bool):
-                    raise CoachError("altitude acclimatized must be true or false")
+                    raise CoachError(f"{k.replace('_', ' ')} must be true or false")
                 upd[k] = v
             elif k == "race_history":
                 upd[k] = _race_history(v)
