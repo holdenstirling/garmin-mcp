@@ -20,6 +20,7 @@ import { listGroups, type FeedGroup } from '@/lib/community2'
 import { Sheet } from '@/components/ui/Sheet'
 import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
+import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
 import { openActivity } from '@/lib/activitynav'
 import { messagePeople } from '@/lib/dm'
 import {
@@ -562,10 +563,10 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   return (
     <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
       <header className="flex items-center gap-2.5">
-        <PersonAvatar u={p.user} />
+        {!p.mine && p.user ? <TapAvatar p={p.user} size={36} /> : <PersonAvatar u={p.user} />}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[0.8235rem] font-medium text-(--text)">
-            {name}{p.feeling && <span className="ml-1" aria-label={`feeling ${p.feeling}`}>{p.feeling}</span>}
+            {!p.mine && p.user ? <PersonLink id={p.user.id} name={name} /> : name}{p.feeling && <span className="ml-1" aria-label={`feeling ${p.feeling}`}>{p.feeling}</span>}
           </span>
           <span className="flex items-center gap-1 text-[0.6471rem] text-(--text-muted)" title={audienceLabel(p.audience, p.club)}>
             {ago(p.created)}{p.edited ? ' · edited' : ''}{audience && <><span>·</span>{audience}</>}
@@ -697,7 +698,7 @@ function CommentLine({ c, onReply, onDelete }: { c: PostComment; onReply: () => 
   return (
     <div className="flex items-start gap-1.5 text-[0.7647rem] leading-snug">
       <span className="min-w-0 flex-1 break-words">
-        <span className="font-medium text-(--text)">{c.mine ? 'You' : c.by.name}</span>{' '}
+        {c.mine ? <span className="font-medium text-(--text)">You</span> : <PersonLink id={c.by.id} name={c.by.name} className="font-medium text-(--text)" />}{' '}
         <span className="text-(--text-secondary)">{c.text}</span>{' '}
         <span className="whitespace-nowrap text-[0.6471rem] text-(--text-muted)">{ago(c.ts)}</span>
       </span>

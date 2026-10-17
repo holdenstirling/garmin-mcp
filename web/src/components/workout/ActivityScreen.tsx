@@ -21,6 +21,9 @@ import { checkinChips, createCheckin } from '@/lib/checkins'
 import { fmtDist, fmtDuration, fmtPaceKm, fmtSpeed, fmtSwim100 } from '@/lib/format'
 import { openWorkout } from '@/lib/workoutnav'
 import { cn } from '@/lib/utils'
+import { openPlanDay } from '@/lib/plancal'
+import { Related } from '@/components/nav/Related'
+import { WhoElse } from '@/components/people/WhoElse'
 
 const ICON: Record<string, typeof Bike> = { run: Footprints, walk: Footprints, hike: Mountain, bike: Bike, swim: Waves }
 const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch' }
@@ -78,6 +81,19 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
         </div>
       )}
       {v && <ActivityBody v={v} imperial={imperial} onAsk={ask} onSaved={load} onClose={close} />}
+      {v && v.start && typeof v.id === 'number' && (
+        <WhoElse sport={v.sport} date={v.start.slice(0, 10)}
+          share={{ type: 'workout', ref: { kind: 'activity', id: String(v.id) }, label: v.name ?? 'Workout' }} />
+      )}
+      {v && (
+        <Related items={[
+          { key: 'planned', icon: <CalendarDays className="size-4" />, label: v.planned ? `The planned ${v.planned.title}` : '', sub: 'What the plan asked for',
+            onClick: v.planned ? () => { const p = v.planned!; close(); window.setTimeout(() => openWorkout(p.id, p.date), 220) } : null },
+          { key: 'day', icon: <CalendarDays className="size-4" />, label: 'This day in your plan', sub: v.start ? fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' }) : undefined,
+            onClick: v.start ? () => { const d = v.start!.slice(0, 10); close(); window.setTimeout(() => openPlanDay(d), 220) } : null },
+          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask Rabbit about it', onClick: ask ?? null },
+        ]} link={{ kind: 'activity', id: String(v.id) }} />
+      )}
     </Screen>
   )
 }

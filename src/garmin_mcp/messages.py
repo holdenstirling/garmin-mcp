@@ -39,6 +39,7 @@ from .appstore import AppStore
 
 MAX_TEXT = 2000
 MAX_GROUP = 12            # people in a conversation, including you
+CLUB_CHAT_MAX = 200       # a club's group chat (linked to the club, not started by hand)
 MAX_KEEP = 2000           # messages kept per conversation
 PAGE = 40                 # messages per page
 MAX_CONVS = 300           # conversations a person can be in
@@ -262,6 +263,39 @@ class Messages:
             if not existing:
                 self._rate(self._starts, uid, None, NEW_PER_DAY)
             c, _new = self._index.update(apply)
+        return self._view(c, uid)
+
+    def club_chat(self, uid: str, club_id: str, name: str, members: list[str]) -> dict[str, Any]:
+        """The club's group chat (one per club, created on first open): every current member,
+        up to ``CLUB_CHAT_MAX``; members who joined later are added when they open it."""
+        self.require(uid)
+        if uid not in members:
+            raise DMError("Join the club to see its chat.", 404)
+        people = [m for m in dict.fromkeys(members) if isinstance(m, str) and _UID.fullmatch(m)
+                  and self._is_athlete(m)][:CLUB_CHAT_MAX]
+        nm = " ".join(str(name or "Club chat").split())[:NAME_LEN]
+        now = self._clock()
+
+        def apply(d: dict[str, Any]) -> dict[str, Any]:
+            convs = d.setdefault("convs", {})
+            c = next((c for c in convs.values() if c.get("club_id") == club_id), None)
+            if c is None:
+                cid = secrets.token_hex(8)
+                c = {"id": cid, "kind": "group", "club_id": club_id, "name": nm, "owner": uid, "created": now,
+                     "members": [uid] + [m for m in people if m != uid], "state": {}, "last": None}
+                convs[cid] = c
+            st = c.setdefault("state", {})
+            for m in people:
+                if m not in c["members"] and len(c["members"]) < CLUB_CHAT_MAX:
+                    c["members"].append(m)
+            for m in c["members"]:
+                cur = st.setdefault(m, {"status": "active", "read": 0 if m != uid else now})
+                if m == uid and cur.get("status") in ("left", "declined", "request"):
+                    cur["status"] = "active"
+            c["name"] = nm
+            return c
+        with self._lock:
+            c = self._index.update(apply)
         return self._view(c, uid)
 
     def _attachment(self, uid: str, att: Any) -> dict[str, Any] | None:

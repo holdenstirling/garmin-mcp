@@ -76,7 +76,7 @@ export function MotionLab() {
           {leap > 0 && <span className="fx-leap"><RabbitLogo size={28} /></span>}
         </span></span>
         <button type="button" className={chip} onClick={() => setLeap((n) => n + 1)}>Leap</button>
-        <Button variant="primary" className="h-9 px-4">Press me</Button>
+        <Button variant="primary" className="h-9 px-4" onClick={() => setLeap((n) => n + 1)}>Press me</Button>
       </Lab>
       <p className="text-[0.6471rem] text-(--text-muted)">Pull to refresh: pull down at the top of Progress (touch only).</p>
     </div>

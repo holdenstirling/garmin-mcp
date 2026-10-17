@@ -1,6 +1,7 @@
 // One direct-message conversation (page): messages newest at the bottom, shared workout / event
 // cards inline, reactions on long-press (or the … button), a request banner when someone you
 // don't know wrote first, and a composer pinned above the safe area.
+import { PersonLink } from '@/components/people/PersonLink'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BellOff, Bell, Flag, LogOut, Ellipsis, Send, SmilePlus } from 'lucide-react'
 import { Screen } from '@/components/plan/ui'
@@ -94,7 +95,8 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
       headerExtra={conv && (
         <div className="mx-auto flex w-full max-w-xl items-center gap-2 px-4 pb-1.5">
           <p className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-muted)">
-            {group ? conv.members.map((p) => p.name).join(', ') : conv.muted ? 'Notifications muted' : 'Direct message'}
+            {group ? conv.members.map((p, i) => <span key={p.id}>{i > 0 && ', '}<PersonLink id={p.id} name={p.name} /></span>)
+              : <>{conv.muted ? 'Notifications muted · ' : ''}{conv.members[0] ? <PersonLink id={conv.members[0].id} name={conv.members[0].name}>View profile</PersonLink> : 'Direct message'}</>}
           </p>
           <button type="button" className="hit-44 inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)"
             aria-label="Chat options" onClick={() => setMenu(true)}><Ellipsis className="size-4" aria-hidden /> Options</button>

@@ -33,6 +33,11 @@ import { ClubDirectory } from './Directory'
 import { FeatureSwitch } from './Featured'
 import { CommunityFeed, PersonAvatar } from './Feed'
 import { Sheet } from '@/components/ui/Sheet'
+import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
+import { Related } from '@/components/nav/Related'
+import { openClubChat } from '@/lib/people'
+import { openConversation } from '@/lib/dm'
+import { MessagesSquare, Users } from 'lucide-react'
 
 const LOADING = ['Rounding up the crew…', 'Finding clubs near you…', 'Lacing up…']
 const EMOJIS = ['🐇', '🏃', '🏃‍♀️', '🚴', '🏊', '⛰️', '🏔️', '🌅', '🔥', '🏁', '💪', '🌲', '☕', '🍻']
@@ -260,6 +265,12 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
       if (after) after(); else void load()
     } catch (e) { setMsg({ text: (e as Error).message, ok: false }) }
   }
+  const [chatBusy, setChatBusy] = useState(false)
+  async function groupChat() {
+    if (!c) return
+    setChatBusy(true)
+    try { const r = await openClubChat(c.id); openConversation(r.conv.id) } catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setChatBusy(false) }
+  }
   async function copy(code: string) {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) }
     catch { setMsg({ text: `The code is ${code}`, ok: true }) }
@@ -304,6 +315,9 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
         <>
           {view === 'feed' && (
             <>
+              <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" loading={chatBusy} onClick={() => void groupChat()}>
+                <MessagesSquare className="size-4" aria-hidden /> {c.kind === 'race' ? 'Crew chat' : 'Club chat'}
+              </Button>
               {c.upcoming.length > 0 && (
                 <section aria-label="Upcoming races" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
                   {c.upcoming.map((u) => (
@@ -380,7 +394,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
               {admin && c.pending.length > 0 && (
                 <Group label="Asking to join">
                   {c.pending.filter((u): u is SocialUser => !!u).map((u) => (
-                    <Row key={u.id} icon={<PersonAvatar u={u} size={30} />} title={u.name}
+                    <Row key={u.id} icon={<TapAvatar p={u} size={30} />} title={<PersonLink id={u.id} name={u.name} />}
                       trailing={
                         <span className="flex gap-1.5">
                           <Button variant="default" className="h-11 w-11 p-0" aria-label={`Decline ${u.name}`}
@@ -420,7 +434,8 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
               )}
               <Group label={c.kind === 'race' ? 'Racing together' : 'Members'}>
                 {c.people.map((p) => (
-                  <Row key={p.user_id} icon={<PersonAvatar u={p.user} size={30} />} title={p.user?.name ?? 'Member'}
+                  <Row key={p.user_id} icon={p.user ? <TapAvatar p={p.user} size={30} /> : <PersonAvatar u={null} size={30} />}
+                    title={<PersonLink id={p.user ? p.user_id : null} name={p.user?.name ?? 'Member'} />}
                     subtitle={p.role === 'member' ? undefined : p.role === 'owner' ? 'Owner' : 'Admin'}
                     trailing={c.kind === 'club' && admin && p.role !== 'owner' && !(c.role === 'admin' && p.role === 'admin') ? (
                       <span className="flex gap-1">
@@ -453,6 +468,12 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
             </>
           )}
         </>
+      )}
+      {c && member && (
+        <Related items={[
+          { key: 'chat', icon: <MessagesSquare className="size-4" />, label: c.kind === 'race' ? 'Crew chat' : 'Club chat', sub: 'One group chat for everyone in it', onClick: () => void groupChat() },
+          { key: 'members', icon: <Users className="size-4" />, label: c.kind === 'race' ? 'The crew' : 'Members', sub: `${c.members} in it`, onClick: view !== 'members' ? () => setView('members') : null },
+        ]} link={{ kind: 'club', id: c.id }} />
       )}
       {sheet === 'edit' && c && <ClubSheet initial={c} onClose={() => setSheet(null)} onSaved={() => { setSheet(null); void load() }} />}
       {sheet === 'invite' && c && <InviteSheet club={c} onClose={() => { setSheet(null); void load() }} />}

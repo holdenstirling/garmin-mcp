@@ -2,6 +2,8 @@
 // sheet (Friends / Share link / Pending), "Racing together" (teammates, opt-in grade and
 // finish, group chat, cheers), the invites inbox and "Events you're following" on the Events tab,
 // and "Invite to an event" from a friend's card.
+import { PersonLink } from '@/components/people/PersonLink'
+import { openPerson } from '@/lib/people'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, Flag, Link2, Megaphone, Send, UserPlus, Users, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -345,9 +347,9 @@ export function RacingTogether({ eventId }: { eventId: string }) {
         <div className="flex flex-col gap-2">
           {t.members.map((m, i) => m.user && (
             <div key={m.user.id + i} className="flex min-h-11 items-center gap-2.5">
-              <PersonAvatar u={m.user} size={36} />
+              <button type="button" className="shrink-0 rounded-full" aria-label={`Open ${m.user.name}'s profile`} onClick={() => openPerson(m.user!.id)}><PersonAvatar u={m.user} size={36} /></button>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8824rem] font-medium text-(--text)">{m.user.name}</span>
+                <PersonLink id={m.user.id} name={m.user.name} className="block truncate text-[0.8824rem] font-medium text-(--text)" />
                 <span className="block text-[0.7059rem] text-(--text-muted)">{countdown(m.date)}{m.finish ? ` · ~${m.finish}` : ''}</span>
               </span>
               {m.grade && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-[0.7059rem] font-semibold text-(--accent)">{m.grade}</span>}

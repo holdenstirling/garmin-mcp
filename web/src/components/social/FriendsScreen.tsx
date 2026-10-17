@@ -1,5 +1,6 @@
 // Friends: a feed of the people you follow (their recent workouts, kudos, short cheers) and
 // People (invite code, add by email/code, requests, following/followers, privacy settings).
+import { openPerson } from '@/lib/people'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain, Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -39,7 +40,6 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
   const [following, setFollowing] = useState(0)
   const [people, setPeople] = useState<People | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [friend, setFriend] = useState<string | null>(null)
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   const loadFeed = useCallback(() => {
@@ -75,16 +75,15 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
       {error && <ErrorState compact message={error} onRetry={() => { void loadFeed(); void loadPeople() }} />}
       {tab === 'feed' ? (
         feed == null ? (error ? null : <RabbitLoader className="py-10" label="Loading your friends' workouts" cycle={LOADING} />) : (
-          <FeedList items={feed} following={following} imperial={imperial} onOpen={setFriend}
+          <FeedList items={feed} following={following} imperial={imperial} onOpen={openPerson}
             onInvite={() => setTab('people')} onChange={setFeed} />
         )
       ) : (
         people == null ? (error ? null : <RabbitLoader className="py-10" label="Loading people" cycle={LOADING} />) : (
-          <PeopleTab people={people} onOpen={setFriend}
+          <PeopleTab people={people} onOpen={openPerson}
             onChanged={() => { void loadPeople(); void loadFeed(); onChanged?.() }} setPeople={setPeople} />
         )
       )}
-      {friend && <FriendCard id={friend} imperial={imperial} onClose={() => setFriend(null)} />}
     </Screen>
   )
 }
