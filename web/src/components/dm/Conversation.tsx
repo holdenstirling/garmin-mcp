@@ -92,10 +92,16 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
   return (
     <Screen title={title} subtitle={group && conv ? `${conv.members.length + 1} people` : undefined} onClose={onClose}
       headerExtra={conv && (
-        <Button variant="ghost" size="icon" aria-label="Chat options" onClick={() => setMenu(true)}><Ellipsis className="size-5" /></Button>
+        <div className="mx-auto flex w-full max-w-xl items-center gap-2 px-4 pb-1.5">
+          <p className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-muted)">
+            {group ? conv.members.map((p) => p.name).join(', ') : conv.muted ? 'Notifications muted' : 'Direct message'}
+          </p>
+          <button type="button" className="hit-44 inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)"
+            aria-label="Chat options" onClick={() => setMenu(true)}><Ellipsis className="size-4" aria-hidden /> Options</button>
+        </div>
       )}
       footer={!request && conv && (
-        <form className="flex items-end gap-2 border-t border-(--border) bg-(--bg) px-3 pt-2 pb-[max(10px,env(safe-area-inset-bottom))]"
+        <form className="flex w-full items-end gap-2"
           onSubmit={(e) => { e.preventDefault(); void send() }}>
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 2000))} rows={1} enterKeyHint="send"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); void send() } }}
