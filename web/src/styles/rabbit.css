@@ -403,3 +403,12 @@ html.kb-open .tab-bar { display: none; }
 
 /* Sheet (components/ui/Sheet.tsx): header actions sit together on the right. */
 .sheet-actions { display: flex; flex-shrink: 0; align-items: center; gap: 4px; }
+
+/* Connect popups (components/connect/ConnectSheet): Rabbit ··· App. The dots pulse in turn
+   while signing in or importing; still under reduced motion. */
+.conn-dots > span { width: 6px; height: 6px; border-radius: 9999px; background: var(--border-strong); }
+.conn-dots--busy > span { background: var(--accent); animation: conn-dot 1.2s ease-in-out infinite; }
+.conn-dots--busy > span:nth-child(2) { animation-delay: .15s; }
+.conn-dots--busy > span:nth-child(3) { animation-delay: .3s; }
+@keyframes conn-dot { 0%, 100% { opacity: .25; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .conn-dots--busy > span { animation: none; opacity: .8; } }

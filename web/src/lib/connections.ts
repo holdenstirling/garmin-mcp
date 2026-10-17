@@ -54,5 +54,5 @@ export function syncedAgo(iso: string | null, now = Date.now()): string {
 }
 
 export const STATE_LABEL: Record<ConnState, string> = {
-  connected: 'Connected', attention: 'Needs attention', not_connected: 'Not connected', unavailable: 'Not available',
+  connected: 'Connected', attention: 'Needs attention', not_connected: 'Not connected', unavailable: 'Coming soon',
 }
