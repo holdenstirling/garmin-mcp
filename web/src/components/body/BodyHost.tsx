@@ -109,7 +109,7 @@ function NiggleCard({ n, onChanged }: { n: Niggle; onChanged: (d: Niggles) => vo
           <h3 className="m-0 text-[0.9412rem] font-semibold text-(--text)">{n.label}</h3>
           <p className="m-0 text-[0.7059rem] text-(--text-muted)">
             {[n.type[0]!.toUpperCase() + n.type.slice(1), n.affects.map((s) => SPORTS.find(([v]) => v === s)?.[1] ?? s).join(', '),
-              a ? `${a.age_days} day${a.age_days === 1 ? '' : 's'}` : '', a?.trend ? `last: ${a.trend}` : ''].filter(Boolean).join(' · ')}
+              a ? (a.age_days ? `day ${a.age_days + 1}` : 'new today') : '', a?.trend ? `last: ${a.trend}` : ''].filter(Boolean).join(' · ')}
           </p>
         </div>
       </header>
@@ -123,7 +123,7 @@ function NiggleCard({ n, onChanged }: { n: Niggle; onChanged: (d: Niggles) => vo
         </div>
       )}
       {a && !a.red_flag.length && a.ease && (
-        <p className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={`**Easy for ${a.days} days** on ${n.affects.join(' and ')}: no hard efforts, shorter sessions${a.swap ? ', and swap runs for an easy ride or swim' : ''}.`} /></p>
+        <p className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={`**Easy for ${a.days} days** for ${n.affects.map((s) => SPORTS.find(([v]) => v === s)?.[1].toLowerCase() ?? s).join(' and ')}: no hard efforts, shorter sessions${a.swap ? ', and runs swapped for an easy ride or swim' : ''}.`} /></p>
       )}
       {n.needs_update && (
         <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3">

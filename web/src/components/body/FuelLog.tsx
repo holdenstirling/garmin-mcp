@@ -132,11 +132,12 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
                 const n = counts[id] ?? 0
                 return (
                   <li key={id} className="flex min-h-11 items-center gap-2">
-                    <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text)">{p.label}
-                      <span className="ml-1 text-[0.7059rem] text-(--text-muted)">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[0.8235rem] text-(--text)">{p.label}</span>
+                      <span className="flex items-center gap-1 text-[0.7059rem] text-(--text-muted)">
                         <input type="number" inputMode="numeric" min={0} max={150} aria-label={`${p.label}: grams of carbs each`}
                           value={grams[id] ?? p.g} onChange={(e) => setGrams((g) => ({ ...g, [id]: Number(e.target.value) || 0 }))}
-                          className="mx-1 w-11 rounded border border-input bg-transparent px-1 text-center text-[0.7059rem] tabular-nums" />g each
+                          className="h-9 w-14 rounded border border-input bg-transparent px-1 text-center text-[0.7059rem] tabular-nums" />g carbs each
                       </span>
                     </span>
                     <button type="button" className="flex size-11 items-center justify-center rounded-md border border-input disabled:opacity-40"
