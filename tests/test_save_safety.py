@@ -203,7 +203,7 @@ def test_audit_and_infra_scripts_parse() -> None:
 
 def test_deploy_workflow_still_checks_the_app_is_up() -> None:
     wf = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
-    assert "Check it's up" in wf and "/app/privacy" in wf
+    assert "Check it's up" in wf and "/app/assets/index-" in wf and "serving this build" in wf
 
 
 # ------------------------------------------------------------------ healthz --
