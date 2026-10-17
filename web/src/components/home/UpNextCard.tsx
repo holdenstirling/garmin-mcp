@@ -65,7 +65,9 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const [moved, setMoved] = useState(false)
   const Icon = iconFor(up)
   const rest = up.kind === 'rest' || up.tone === 'rest'
-  const signals = (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 2)
+  // One readiness signal at most, and only before today's session (details live in Progress).
+  const signals = up.kind === 'session' && up.tone !== 'done'
+    ? (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 1) : []
   const todayKind = up.today?.action.kind
 
   const primary = () => {

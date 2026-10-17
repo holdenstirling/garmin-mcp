@@ -123,11 +123,14 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                 {showPast && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
             )}
-            <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-              Your <Star className="inline size-3 -translate-y-px fill-current" /> main event is what your plan builds toward.
-              Other races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
-              Group activities count as sessions, trips keep those days light and life events get rest days.
-            </p>
+            <details className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+              <summary className="hit-44 inline-flex min-h-11 cursor-pointer items-center font-medium text-(--text-secondary)">How events shape your plan</summary>
+              <p>
+                Your <Star className="inline size-3 -translate-y-px fill-current" /> main event is what your plan builds toward.
+                Other races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
+                Group activities count as sessions, trips keep those days light and life events get rest days.
+              </p>
+            </details>
           </>
         )}
       </Screen>

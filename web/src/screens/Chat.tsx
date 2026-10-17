@@ -17,12 +17,11 @@ import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
-import { WeekGoalsCard } from '@/components/home/WeekGoalsCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
-import { HomeGreeting, NextRaceCard, ProgressGlance } from '@/components/home/HomeGlance'
+import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
-import { QuickActions } from '@/components/home/QuickActions'
+import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
@@ -178,7 +177,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [peek, setPeek] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null)
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
-  const [, setRingShown] = useState(false) // home week ring is up (Home shows the full week panel, so Up next has no dots)
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
   const feed = useRef<HTMLDivElement>(null)
@@ -198,6 +196,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [communityView, setCommunityView] = useState<CommunityView>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
+  const [shareAsk, setShareAsk] = useState(false)  // Home: the share-workouts question is showing
   const [composerFocus, setComposerFocus] = useState(false)
   // Rabbit tab: Home (dashboard) or Chat (Rabbit's log + composer); kept for this browser session.
   const [homeView, setHomeViewState] = useState<'home' | 'chat'>(() => {
@@ -809,10 +808,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <div className="mx-auto flex w-full max-w-2xl flex-col pb-4">
             <PullToRefresh onRefresh={refreshHome} />
             <div className="mx-4 mt-2"><HomeGreeting name={me.profile.name} /></div>
-            {banner && (
-              <StatusBanner banner={banner} onTap={tapBanner}
-                onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
-            )}
             {(logNew > 0 || waiting > 0) && (
               <button type="button" onClick={() => setHomeView('chat')}
                 className="mx-4 mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2 text-left active:opacity-80">
@@ -846,16 +841,22 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
                 skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
             )}
-            <WeekGoalsCard refreshKey={feedTick} onOpenPlan={openPlan} onOpenGrade={(id) => showPage({ k: 'fit', id })} onRing={setRingShown} />
-            {athlete && <div className="mx-4 mt-3"><NextRaceCard refreshKey={feedTick} onOpen={openRaces} /></div>}
-            {athlete && <div className="mx-4 mt-3"><ProgressGlance progress={progress} onOpen={openProgress} /></div>}
-            {athlete && <div className="mt-3"><FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} /></div>}
-            <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
-              onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
-            {!stripFirst(intents) && intents.length > 1 && (
-              <IntentStrip intents={intents.slice(1)} me={me} progress={progress} refreshKey={feedTick}
-                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
+            {/* One "next step" at a time, most useful first: setup / recap banner, then the
+                share-workouts question, then first-visit suggestions. Streak, level, race grade
+                and the week ring live in Progress; the race countdown is in the header. */}
+            {banner ? (
+              <StatusBanner banner={banner} onTap={tapBanner}
+                onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
+            ) : (
+              <>
+                {athlete && <div className="px-4"><div className="mx-auto max-w-2xl"><SharePrompt onShown={setShareAsk} /></div></div>}
+                {!shareAsk && (
+                  <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
+                    onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
+                )}
+              </>
             )}
+            {athlete && <div className="mt-3"><FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} /></div>}
           </div>
         </div>
         {/* Ask Rabbit: switches to Chat with the composer focused. */}
@@ -907,7 +908,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" lead={<BlocksEntry compact />} action={meButton}>
+        <TabScreen key="planner" title="Plan" action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             onRebuild={startSetup}
             onAsk={tellRabbit}
@@ -1052,9 +1053,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {showHome ? renderHome() : (
         <>
-      {banner && !typing && (
+      {/* Chat keeps only problems (errors, Garmin); setup steps and the recap are Home's next step. */}
+      {banner && !typing && (banner.kind === 'error' || banner.kind === 'garmin') && (
         <StatusBanner banner={banner} onTap={tapBanner}
-          onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
+          />
       )}
       {pending ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
