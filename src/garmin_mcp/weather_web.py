@@ -49,6 +49,16 @@ class WeatherService:
         today, _acts, athlete, thr, _src, imperial = self._pcal._ctx(uid)
         return today, athlete, thr, imperial
 
+    def _hour_now(self, uid: str, day: str, today: date) -> int | None:
+        """For today: the next full hour (no suggesting a time that's already gone)."""
+        if day != today.isoformat():
+            return None
+        try:
+            now = self._pcal._now(uid)
+            return now.hour + (1 if now.minute else 0)
+        except Exception:
+            return None
+
     @staticmethod
     def _opts(athlete: dict[str, Any], wx: dict[str, Any]) -> dict[str, Any]:
         home = athlete.get("home_elevation_m")
@@ -74,7 +84,7 @@ class WeatherService:
                 item: dict[str, Any] = {"id": s.get("id"), "title": s.get("title"), "sport": s.get("sport"),
                                         "minutes": s.get("minutes"), "time": s.get("time"), "badges": [], "pct": 0.0}
                 if wx:
-                    hrs = hours_for(wx["hours"], d, s.get("time"), s.get("minutes"))
+                    hrs = hours_for(wx["hours"], d, s.get("time"), s.get("minutes"), self._hour_now(uid, d, today))
                     pace = target_pace(s, thr)
                     adj = adjust(s, hrs, pace=(pace["fast"], pace["slow"]) if pace else None, imperial=imperial,
                                  **self._opts(athlete, wx))
@@ -97,8 +107,9 @@ class WeatherService:
         wx = await self._wx(uid, today)
         if wx is None:
             return {"available": False, "reason": "unreachable", "date": d, "units": units}
-        bt = best_time(wx["hours"], d, s.get("minutes"), s.get("time"))
-        hrs = hours_for(wx["hours"], d, s.get("time"), s.get("minutes"))
+        nb = self._hour_now(uid, d, today)
+        bt = best_time(wx["hours"], d, s.get("minutes"), s.get("time"), not_before=nb)
+        hrs = hours_for(wx["hours"], d, s.get("time"), s.get("minutes"), nb)
         pace = target_pace(s, thr)
         adj = adjust(s, hrs, pace=(pace["fast"], pace["slow"]) if pace else None, imperial=imperial,
                      **self._opts(athlete, wx))

@@ -67,14 +67,15 @@ export function WeatherSection({ sessionId, imperial, onShown }: { sessionId: st
       )}
 
       {a.pace && w.planned_pace && (
-        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-(--bg-inset) px-3 py-2">
-          <span className="text-[0.7647rem] text-(--text-secondary)">
-            Pace today <span className="text-(--text-muted)">(adjusted +{a.pct}% for {a.reasons.slice(0, 2).join(' and ')})</span>
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-(--bg-inset) px-3 py-2">
+          <span className="min-w-0 text-[0.7647rem] leading-snug text-(--text-secondary)">
+            <span className="block font-semibold text-(--text)">Today's pace</span>
+            Adjusted +{a.pct}% for the weather
           </span>
-          <span className="text-right">
-            <b className="block font-mono text-[0.8824rem] tabular-nums text-(--text)">{paceText(a.pace[0], imperial)}–{paceText(a.pace[1], imperial)}/{u}</b>
-            <span className="block font-mono text-[0.6471rem] tabular-nums text-(--text-muted) line-through" aria-label="Planned pace">
-              {paceText(w.planned_pace.fast, imperial)}–{paceText(w.planned_pace.slow, imperial)}/{u}
+          <span className="shrink-0 text-right">
+            <b className="block whitespace-nowrap font-mono text-[0.8235rem] tabular-nums text-(--text)">{paceText(a.pace[0], imperial)}–{paceText(a.pace[1], imperial)}/{u}</b>
+            <span className="block whitespace-nowrap font-mono text-[0.6471rem] tabular-nums text-(--text-muted)">
+              <span className="sr-only">Planned </span><s>{paceText(w.planned_pace.fast, imperial)}–{paceText(w.planned_pace.slow, imperial)}/{u}</s>
             </span>
           </span>
         </div>

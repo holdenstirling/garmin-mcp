@@ -228,10 +228,11 @@ def adjust(session: dict[str, Any], hours: list[dict[str, Any]], *, elevation_m:
         out["badges"].append("heat")
         out["safety"].append(f"Very hot and humid ({deg(temp)}): skip hard running. Go easy by heart rate, or move it to early morning.")
         pct += hp
-        out["reasons"].append(f"heat {deg(temp)}")
+        out["reasons"].append(f"heat ({deg(temp)})")
     elif hp > 0:
         pct += hp
-        out["reasons"].append(f"heat {deg(temp)}")
+        humid = dew is not None and dew >= 15
+        out["reasons"].append(f"warm, humid air ({deg(temp)}, dew point {deg(dew)})" if humid else f"heat ({deg(temp)})")
         if hp >= 1.5:
             out["badges"].append("heat")
 
@@ -324,10 +325,11 @@ def _penalty(h: dict[str, Any]) -> float:
 
 
 def best_time(hours: list[dict[str, Any]], day: str, minutes: int | None, planned: str | None = None,
-              window: tuple[int, int] = WINDOW) -> dict[str, Any] | None:
+              window: tuple[int, int] = WINDOW, not_before: int | None = None) -> dict[str, Any] | None:
     """Best start hour on ``day`` for a session of ``minutes``: the lowest average penalty over
-    the hours it covers. Returns {"start", "end", "why", "better"}; ``better`` is True when it
-    clearly beats the planned start (or nothing was planned and the day varies)."""
+    the hours it covers (from ``not_before`` on, for today). Returns {"start", "end", "why",
+    "better"}; ``better`` is True when it clearly beats the planned start (or nothing was planned
+    and the day varies)."""
     day_hours = [h for h in hours if h.get("t", "").startswith(day)]
     if len(day_hours) < 3:
         return None
@@ -339,7 +341,8 @@ def best_time(hours: list[dict[str, Any]], day: str, minutes: int | None, planne
         if any(h is None for h in hs):
             return None
         return sum(_penalty(h) for h in hs if h) / span  # type: ignore[arg-type]
-    cands = [(s, sc) for s in range(window[0], window[1] - span + 2) if (sc := score(s)) is not None]
+    first = max(window[0], not_before if not_before is not None else 0)
+    cands = [(s, sc) for s in range(first, window[1] - span + 2) if (sc := score(s)) is not None]
     if not cands:
         return None
     best_s, best_sc = min(cands, key=lambda x: (round(x[1], 2), x[0]))
@@ -362,7 +365,8 @@ def best_time(hours: list[dict[str, Any]], day: str, minutes: int | None, planne
             "why": " and ".join(bits) if bits else "the best conditions of the day", "better": better}
 
 
-def hours_for(hours: list[dict[str, Any]], day: str, start: str | None, minutes: int | None) -> list[dict[str, Any]]:
+def hours_for(hours: list[dict[str, Any]], day: str, start: str | None, minutes: int | None,
+              not_before: int | None = None) -> list[dict[str, Any]]:
     """The forecast hours a session covers (its start time, or the hour picked by ``best_time``,
     or mid-morning when the day has nothing better)."""
     day_hours = [h for h in hours if h.get("t", "").startswith(day)]
@@ -370,8 +374,8 @@ def hours_for(hours: list[dict[str, Any]], day: str, start: str | None, minutes:
         return []
     s = int(start[:2]) if start and start[:2].isdigit() else None
     if s is None:
-        bt = best_time(hours, day, minutes)
-        s = int(bt["start"][:2]) if bt else 8
+        bt = best_time(hours, day, minutes, not_before=not_before)
+        s = int(bt["start"][:2]) if bt else max(8, not_before or 0)
     span = max(1, -(-int(minutes or 60) // 60))
     return [h for h in day_hours if s <= int(h["t"][11:13]) < s + span]
 
@@ -379,7 +383,7 @@ def hours_for(hours: list[dict[str, Any]], day: str, start: str | None, minutes:
 def strip(hours: list[dict[str, Any]], day: str, center: int, width: int = 6) -> list[dict[str, Any]]:
     """A few hours around the planned time for the hourly strip on the workout page."""
     day_hours = [h for h in hours if h.get("t", "").startswith(day)]
-    lo = max(0, center - width // 2)
+    lo = max(0, center - 1)
     return [h for h in day_hours if lo <= int(h["t"][11:13]) < lo + width]
 
 

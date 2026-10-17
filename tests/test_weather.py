@@ -126,3 +126,12 @@ def test_routes_next_days_and_session(env, tmp_path, monkeypatch) -> None:  # no
             assert (await a.get("/app/api/weather/session?session_id=../x")).status_code == 400
             assert (await c.get("/app/api/weather/next")).status_code == 403
     asyncio.run(go_())
+
+
+def test_best_time_never_suggests_an_hour_already_gone() -> None:
+    day = "2026-07-01"
+    hours = [_h(f"{day}T{hh:02d}:00", 18 + 14 * max(0.0, 1 - abs(hh - 15) / 8), 18) for hh in range(24)]
+    bt = wx.best_time(hours, day, 60, not_before=11)
+    assert bt is not None and int(bt["start"][:2]) >= 11
+    late = wx.hours_for(hours, day, None, 60, not_before=20)
+    assert len(late) == 1 and int(late[0]["t"][11:13]) >= 20
