@@ -70,6 +70,17 @@ class PlanService:
         self._sync_locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
         self._listeners: list[Callable[[str, list[dict[str, Any]]], Any]] = []
+        # Recent training (planbuilder.fitness_from over Garmin activities), set by the agent:
+        # plans start from what the athlete actually does now.
+        self.fitness_of: Callable[[str], dict[str, Any] | None] | None = None
+
+    def fitness(self, user_id: str) -> dict[str, Any] | None:
+        if self.fitness_of is None:
+            return None
+        try:
+            return self.fitness_of(user_id)
+        except Exception:  # Garmin down or not connected: build from the profile alone
+            return None
 
     # ------------------------------------------------------------ storage --
     def _doc(self, user_id: str, goal_id: str):
@@ -169,7 +180,7 @@ class PlanService:
             raise PlanError("Start date must be YYYY-MM-DD.") from None
         events = self._events.plan_events(user_id) if self._events is not None else []
         plan = build_plan(self._coach.athlete(user_id), goal, today=today, start=first,
-                          events=events)
+                          events=events, fitness=self.fitness(user_id))
         if self._events is not None:
             plan["events_sig"] = self._events.signature(events)
         plan["created"] = plan["updated"] = int(self._clock())

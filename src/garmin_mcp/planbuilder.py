@@ -327,6 +327,9 @@ class Inputs:
     title: str
     favorites: list[str] = field(default_factory=list)
     injuries: str = ""
+    level_given: bool = True
+    longest_run_min: float | None = None
+    longest_ride_min: float | None = None
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
@@ -343,7 +346,11 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
         days.append(long_day)
     css = athlete.get("swim_css")
     pace = float(css) + 12 if isinstance(css, int | float) and 50 <= css <= 240 else 125.0
-    level = athlete.get("level") if athlete.get("level") in LEVELS else "intermediate"
+    level_given = athlete.get("level") in LEVELS
+    level = athlete.get("level") if level_given else "intermediate"
+    def _pos(k: str) -> float | None:
+        v = athlete.get(k)
+        return float(v) if isinstance(v, int | float) and not isinstance(v, bool) and v > 0 else None
     return Inputs(race_date=race, distance=(goal.get("distance") or "other").lower(),
                   level=level, weekly_hours=athlete.get("weekly_hours"),
                   days=sorted(set(days), key=DAYS.index), long_day=long_day,
@@ -351,7 +358,8 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   equipment=list(athlete.get("equipment") or []), swim_pace=pace,
                   title=goal.get("title") or "Race",
                   favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS],
-                  injuries=str(athlete.get("injuries") or "")[:500])
+                  injuries=str(athlete.get("injuries") or "")[:500], level_given=level_given,
+                  longest_run_min=_pos("longest_run_min"), longest_ride_min=_pos("longest_ride_min"))
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -369,28 +377,83 @@ def phases(n: int, taper: int) -> list[str]:
     return ["base"] * base + ["build"] * build + ["peak"] * peak + ["taper"] * t + ["race"]
 
 
+# Safe-progression rules (every plan, every distance):
+GROWTH = 1.10            # a week's volume is at most 10% above the last full (non-recovery) week
+RECOVERY_EVERY = 4       # every 4th build week is lighter
+RECOVERY_FACTOR = 0.7
+FIRST_WEEK_FACTOR = 0.9  # week 1 sits a little under where you are now
+LONG_SHARE = {"run": 0.35, "bike": 0.45}   # long session vs that sport's weekly minutes
+# With nothing to go on (no Garmin history, no hours given), start like this.
+DEFAULT_START_H = {"new": 1.5, "intermediate": 2.5, "advanced": 4.0}
+DEFAULT_LONG = {"run": {"new": 30, "intermediate": 40, "advanced": 50},
+                "bike": {"new": 45, "intermediate": 60, "advanced": 75}}
+# The smallest week that still makes a plan for each race kind (3 x ~25' runs, etc.).
+MIN_START_H = {"run": 1.25, "bike": 1.75, "tri": 2.5, "general": 1.5}
+# Weeks a new / experienced athlete needs to build safely for the distance.
+MIN_WEEKS = {"5k": (6, 4), "10k": (8, 6), "half marathon": (12, 8), "marathon": (18, 12),
+             "ultra": (20, 14), "sprint triathlon": (8, 6), "olympic triathlon": (12, 8),
+             "70.3": (16, 12), "140.6": (24, 18), "century ride": (10, 8), "other": (6, 4)}
+
+
+def long_growth(prev: float, sport: str) -> float:
+    """The most a long session may grow in one week: 10%, between 5 and 10 minutes for runs
+    (10-15 for rides)."""
+    lo, hi = (5.0, 10.0) if sport != "bike" else (10.0, 15.0)
+    return max(lo, min(hi, prev * 0.10))
+
+
 def week_hours(ph: list[str], start_h: float, peak_h: float) -> list[tuple[float, bool]]:
-    """(hours, recovery?) per week."""
+    """(hours, recovery?) per week. Base/build weeks grow geometrically from ``start_h`` to at
+    most ``peak_h``, never more than 10% over the last full week; long runways hold the
+    early base flat (up to half the growth steps) instead of ramping early; every 4th build
+    week is a recovery week; then peak, taper and race week."""
     ramp = [i for i, p in enumerate(ph) if p in ("base", "build")]
+    n = len(ramp)
+    rec_flags = [(k + 1) % RECOVERY_EVERY == 0 and k != n - 1 for k in range(n)]
+    steps = sum(1 for k in range(2, n) if not rec_flags[k])
+    rate = 1.0
+    hold = 0
+    if steps and peak_h > start_h:
+        need = math.ceil(math.log(peak_h / start_h) / math.log(1.07))  # ~7% a week is plenty
+        active = min(steps, max(need, math.ceil(steps / 2)))
+        hold = steps - active
+        rate = min(GROWTH, (peak_h / start_h) ** (1.0 / active))
     out: list[tuple[float, bool]] = []
-    taper_seen = 0
+    cur = start_h
+    grown = 0
+    for k in range(n):
+        if k == 0:
+            h = start_h * FIRST_WEEK_FACTOR
+        elif k == 1:
+            h = start_h  # the first full week: where you are now, no growth yet
+        elif rec_flags[k]:
+            out.append((round(cur * RECOVERY_FACTOR, 2), True))
+            continue
+        else:
+            grown += 1
+            if grown > hold:
+                cur = cur * rate
+            h = cur
+        out.append((round(h, 2), False))
+    top = max([h for h, r in out if not r] or [start_h])
+    taper_curve = {1: [0.6], 2: [0.7, 0.5], 3: [0.8, 0.65, 0.5]}
     t_total = ph.count("taper")
-    taper_curve = {1: [0.6], 2: [0.7, 0.5], 3: [0.8, 0.65, 0.5]}.get(t_total, [0.6] * t_total)
-    for i, p in enumerate(ph):
+    curve = taper_curve.get(t_total, [0.6] * t_total)
+    full: list[tuple[float, bool]] = []
+    it = iter(out)
+    taper_seen = 0
+    peak_level = min(peak_h, top * GROWTH)
+    for p in ph:
         if p in ("base", "build"):
-            k = ramp.index(i)
-            frac = k / max(1, len(ramp) - 1)
-            h = start_h + (peak_h - start_h) * frac
-            rec = (k + 1) % 4 == 0 and k != len(ramp) - 1
-            out.append((round(h * (0.68 if rec else 1.0), 1), rec))
+            full.append(next(it))
         elif p == "peak":
-            out.append((round(peak_h, 1), False))
+            full.append((round(peak_level, 2), False))
         elif p == "taper":
-            out.append((round(peak_h * taper_curve[min(taper_seen, len(taper_curve) - 1)], 1), False))
+            full.append((round(peak_level * curve[min(taper_seen, len(curve) - 1)], 2), False))
             taper_seen += 1
         else:
-            out.append((round(peak_h * 0.35, 1), False))
-    return out
+            full.append((round(peak_level * 0.35, 2), False))
+    return full
 
 
 def _split(kind: str, limiters: list[str], favorites: list[str] | None = None) -> dict[str, float]:
@@ -433,9 +496,9 @@ def _sport_kinds(sport: str, race_kind: str, phase: str, minutes: int, eq: list[
         else:
             kinds = ["long", "vo2" if race_kind != "tri" else "racepace", "easy", "threshold"]
         return kinds[:n]
-    # run
+    # run: enough sessions that none is tiny or bigger than the long run (~30-45' each)
     if race_kind == "run":
-        n = 2 if minutes < 120 else 3 if minutes < 210 else 4 if minutes < 300 else 5
+        n = 2 if minutes < 60 else 3 if minutes < 150 else 4 if minutes < 240 else 5
     else:
         n = 2 if minutes < 100 else 3
     if recovery or phase == "base":
@@ -523,9 +586,231 @@ def _race_week(inp: Inputs, race_kind: str, week_start: date, plan_start: date,
     return days
 
 
+# ------------------------------------------------------- starting point ---
+FITNESS_DAYS = 42
+
+
+def _act_sport(t: Any) -> str:
+    k = str(t or "").lower()
+    if "swim" in k:
+        return "swim"
+    if any(w in k for w in ("cycl", "bik", "ride")):
+        return "bike"
+    if any(w in k for w in ("run", "treadmill")):
+        return "run"
+    return "other"
+
+
+def _hms_min(v: Any) -> float | None:
+    """"1:02:03" / "39:12" (compact activities) or seconds -> minutes."""
+    if isinstance(v, int | float) and not isinstance(v, bool):
+        return v / 60.0
+    if isinstance(v, str):
+        try:
+            p = [int(x) for x in v.strip().split(":")]
+        except ValueError:
+            return None
+        if len(p) == 3:
+            return p[0] * 60 + p[1] + p[2] / 60.0
+        if len(p) == 2:
+            return p[0] + p[1] / 60.0
+    return None
+
+
+def fitness_from(acts: list[dict[str, Any]] | None, today: date) -> dict[str, Any] | None:
+    """Recent training from Garmin's compact activities (the last 6 weeks): average weekly
+    hours, and per sport weekly minutes, the longest session and sessions a week. Weeks are
+    counted from the first recorded week (at least 3), so a new watch doesn't look like a
+    big training load. None with nothing recorded."""
+    since = today - timedelta(days=FITNESS_DAYS)
+    by: dict[str, dict[str, float]] = {}
+    weeks: set[date] = set()
+    for a in acts or []:
+        if (a.get("multisport") or {}).get("is_parent"):
+            continue
+        try:
+            day = date.fromisoformat(str(a.get("date") or "")[:10])
+        except ValueError:
+            continue
+        if not since <= day <= today:
+            continue
+        mins = _hms_min(a.get("moving_duration")) or _hms_min(a.get("duration"))
+        if not mins or mins < 5:
+            continue
+        x = by.setdefault(_act_sport(a.get("sport")), {"total": 0.0, "longest": 0.0, "n": 0})
+        x["total"] += mins
+        x["longest"] = max(x["longest"], mins)
+        x["n"] += 1
+        weeks.add(day - timedelta(days=day.weekday()))
+    if not by:
+        return None
+    first = min(weeks)
+    span = max(3, min(6, ((today - first).days // 7) + 1))
+    sports = {sp: {"weekly_min": round(x["total"] / span, 1), "longest_min": round(x["longest"], 1),
+                   "per_week": round(x["n"] / span, 2)} for sp, x in by.items()}
+    return {"weekly_h": round(sum(v["weekly_min"] for v in sports.values()) / 60.0, 2),
+            "weeks": span, "sports": sports}
+
+
+def starting_point(inp: Inputs, race_kind: str, fitness: dict[str, Any] | None
+                   ) -> tuple[float, dict[str, float], dict[str, Any]]:
+    """(week-1 hours, first long session per sport, {known, source}). The plan starts from
+    what the athlete does now: the hours they told us (never more), checked against Garmin's
+    last 6 weeks when both exist (the lower, within reason), else a conservative start for
+    their level. The first long run/ride is at most their recent longest."""
+    declared = float(inp.weekly_hours) if isinstance(inp.weekly_hours, int | float) and inp.weekly_hours > 0 else None
+    measured = fitness.get("weekly_h") if fitness and (fitness.get("weekly_h") or 0) >= 0.5 else None
+    lvl = inp.level if inp.level_given else "new"
+    if declared is not None and measured is not None:
+        base, source = min(declared, max(measured, measured * 1.3)), "profile+garmin"
+    elif declared is not None:
+        base, source = declared, "profile"
+    elif measured is not None:
+        base, source = float(measured), "garmin"
+    else:
+        base, source = DEFAULT_START_H[lvl], "default"
+    start_h = max(MIN_START_H.get(race_kind, 1.5), base)
+    if declared is not None:
+        start_h = min(start_h, max(declared, MIN_START_H.get(race_kind, 1.5)))
+    sp = (fitness or {}).get("sports") or {}
+    long0: dict[str, float] = {}
+    for sport, given in (("run", inp.longest_run_min), ("bike", inp.longest_ride_min)):
+        seen = (sp.get(sport) or {}).get("longest_min")
+        known = [v for v in (given, seen) if v]
+        default = float(DEFAULT_LONG[sport][lvl])
+        if source != "default":
+            # Hours known but not the longest session: about a quarter of that sport's week.
+            share = SPLIT.get(race_kind, SPLIT["general"]).get(sport, 0.0)
+            default = max(default, min(0.25 * start_h * 60 * share, 2 * default))
+        # Known: start at (not above) the longest recent one. Unknown: a conservative start.
+        long0[sport] = max(20.0, min(known)) if known else default
+    return start_h, long0, {"known": source != "default", "source": source}
+
+
+ENDURANCE = ("run", "bike", "swim", "brick")
+
+
+def _week_min(week: dict[str, Any], endurance: bool = False) -> float:
+    """A week's training minutes (``endurance``: run/bike/swim/brick only; strength and
+    mobility are short, fixed sessions that don't drive the build)."""
+    return sum((x.get("minutes") or 0) for ss in week["days"].values() for x in ss
+               if x["sport"] != "rest" and (not endurance or x["sport"] in ENDURANCE))
+
+
+def _trim(week: dict[str, Any], target: float, swim_pace: float) -> None:
+    """Bring a week's endurance minutes down to ``target``: other sessions first (5' at a
+    time, not under 20'), then the long session; bricks and races are left alone."""
+    floor = {"swim": 30}
+    for _ in range(200):
+        if _week_min(week, endurance=True) <= target + 2:
+            return
+        cands = [x for ss in week["days"].values() for x in ss
+                 if x["sport"] in ("run", "bike", "swim") and x.get("kind") not in ("race",)
+                 and (x.get("minutes") or 0) > floor.get(x["sport"], 20)]
+        easy = [x for x in cands if x.get("kind") != "long"]
+        if easy:
+            x = max(cands, key=lambda y: y.get("minutes") or 0)
+        else:
+            return
+        new = dict(x, minutes=max(floor.get(x["sport"], 20), (x.get("minutes") or 0) - 5))
+        fresh = rebuild_session(new, swim_pace=swim_pace, phase=week["phase"])
+        if (fresh.get("minutes") or 0) >= (x.get("minutes") or 0):
+            fresh["minutes"] = new["minutes"]
+        x.clear()
+        x.update(fresh)
+
+
+def enforce_progression(weeks: list[dict[str, Any]], start_h: float, swim_pace: float) -> None:
+    """Whatever rounding and minimum session lengths did, no full week is more than 10%
+    over the last full week, the first full week isn't more than where the athlete is now,
+    recovery weeks are clearly lighter, and the taper stays under the peak."""
+    last: float | None = None
+    long_last: dict[str, float] = {}
+    for w in weeks:
+        if w["phase"] == "race":
+            continue
+        partial = len(w["days"]) < 7
+        if last is None:
+            strength = _week_min(w) - _week_min(w, endurance=True)
+            cap = max(60.0, start_h * 60 * (FIRST_WEEK_FACTOR if partial else 1.0) - strength)
+        elif w["recovery"]:
+            cap = last * 0.8
+        elif w["phase"] == "taper":
+            cap = last * 0.85
+        else:
+            cap = last * GROWTH
+        if _week_min(w, endurance=True) > cap:
+            _trim(w, cap, swim_pace)
+        # Long sessions: grow at most ~10% (5-10') a week from the last actual one, ease off in
+        # recovery weeks, and a runner's long run stays under ~40% of the week's running.
+        for sport in ("run", "bike"):
+            sess = [x for ss in w["days"].values() for x in ss if x["sport"] == sport]
+            longs = [x for x in sess if x.get("kind") == "long"]
+            if sport == "bike":
+                longs += [x for ss in w["days"].values() for x in ss if x.get("kind") == "brick" and x.get("legs")]
+            if not longs:
+                continue
+            leg = lambda y: float(y["legs"][0]["minutes"]) if y.get("kind") == "brick" else float(y.get("minutes") or 0)  # noqa: E731
+            lx = max(longs, key=leg)
+            lm = leg(lx)
+            limit = lm
+            prev = long_last.get(sport)
+            if prev is not None:
+                limit = min(limit, prev * 0.85 if w["recovery"] else prev if w["phase"] == "taper"
+                            else prev + long_growth(prev, sport))
+            if sport == "run" and len(sess) >= 3:
+                limit = min(limit, 0.4 * sum((x.get("minutes") or 0) for x in sess))
+            if limit < lm - 2:
+                if lx.get("kind") == "brick":
+                    run_off = int(lx["legs"][1]["minutes"])
+                    fresh = make_session("brick", "brick", max(30, int(limit // 5 * 5)) + run_off,
+                                         swim_pace=swim_pace, phase=w["phase"], run_off=run_off)
+                    fresh["id"] = lx["id"]
+                else:
+                    fresh = rebuild_session(dict(lx, minutes=max(20, int(limit // 5 * 5))), swim_pace=swim_pace, phase=w["phase"])
+                lx.clear()
+                lx.update(fresh)
+            if not w["recovery"] and w["phase"] != "taper":
+                cur = leg(lx)
+                long_last[sport] = cur if prev is None else max(prev, cur)
+        recompute_week(w)
+        if not partial and not w["recovery"] and w["phase"] != "taper":
+            e = _week_min(w, endurance=True)
+            last = e if last is None else max(last, e)
+
+
+def ease_first_day(week: dict[str, Any], swim_pace: float) -> set[str]:
+    """The plan's first training day is never its biggest or hardest: a long or quality
+    session there becomes a short easy one (at most 30'). Returns the sports whose long
+    session was eased."""
+    days = sorted(d for d, ss in week["days"].items() if any(x["sport"] != "rest" for x in ss))
+    eased: set[str] = set()
+    if not days:
+        return eased
+    first = days[0]
+    biggest = max((x.get("minutes") or 0) for d in days for x in week["days"][d] if x["sport"] != "rest")
+    out = []
+    for x in week["days"][first]:
+        hard = x.get("kind") in QUALITY or x.get("kind") in ("long", "brick", "vo2", "strides")
+        big = (x.get("minutes") or 0) >= biggest and len(days) > 1
+        if x["sport"] in ("run", "bike", "swim", "brick") and (hard or big or (x.get("minutes") or 0) > 30):
+            sport = "bike" if x["sport"] == "brick" else x["sport"]
+            if x.get("kind") in ("long", "brick"):
+                eased.add(sport)
+            kind = "technique" if sport == "swim" else "easy"
+            out.append(make_session(sport, kind, min(30, int(x.get("minutes") or 30)), swim_pace=swim_pace))
+        else:
+            out.append(x)
+    week["days"][first] = out
+    return eased
+
+
 def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                start: date | None = None,
-               events: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+               events: list[dict[str, Any]] | None = None,
+               fitness: dict[str, Any] | None = None) -> dict[str, Any]:
+    """``fitness``: recent training from Garmin (``fitness_from``), when available; the plan
+    then starts from what the athlete actually does now."""
     inp = inputs_from(athlete, goal)
     prof = race_profile(inp.distance)
     race_kind = prof["kind"]
@@ -545,20 +830,26 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
         note = (f"Your race is more than {MAX_WEEKS} weeks out, so the plan starts on "
                 f"{week1:%b %-d}. Until then, keep training the way you are.")
     ph = phases(n, prof["taper"])
-    peak_h = prof["peak"][LEVELS.index(inp.level)]
-    start_h = inp.weekly_hours if isinstance(inp.weekly_hours, int | float) and inp.weekly_hours > 0 \
-        else peak_h * 0.6
-    start_h = max(peak_h * 0.4, min(peak_h, float(start_h)))
-    if n < 6:  # short runway: hold near current volume
-        peak_h = max(start_h, min(peak_h, start_h * 1.15))
+    profile_peak = prof["peak"][LEVELS.index(inp.level if inp.level_given else "new")]
+    start_h, long0, how = starting_point(inp, race_kind, fitness)
+    peak_h = max(profile_peak, min(start_h, profile_peak * 1.3))
+    min_weeks = MIN_WEEKS.get(inp.distance, MIN_WEEKS["other"])[0 if inp.level == "new" or not how["known"] else 1]
+    if n < min_weeks and note is None:
+        note = (f"{n} week{'s' if n != 1 else ''} is a short runway for this race, so the plan builds "
+                f"slowly from where you are instead of cramming. Treat race day as a strong training "
+                f"day, or pick a later race to build more.")
     hours = week_hours(ph, start_h, peak_h)
+    peak_h = max([h for (h, _), p in zip(hours, ph, strict=True) if p == "peak"] or
+                 [h for (h, r) in hours if not r] or [start_h])
     split = _split(race_kind, inp.limiters, inp.favorites)
     if race_kind == "tri" and inp.equipment and not {"pool", "open_water"} & set(inp.equipment):
         split.pop("swim", None)  # no water access: skip swims rather than plan the impossible
         tot = sum(split.values())
         split = {k: v / tot for k, v in split.items()}
+    beginner = inp.level == "new" or not how["known"]
 
     weeks: list[dict[str, Any]] = []
+    long_prev: dict[str, float | None] = {sp: None for sp in ("run", "bike")}
     for idx, (phase, (h, rec)) in enumerate(zip(ph, hours, strict=True), start=1):
         ws = week1 + timedelta(weeks=idx - 1)
         if phase == "race":
@@ -567,28 +858,65 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
             minutes = h * 60
             sessions: list[dict[str, Any]] = []
             run_off = 0
+            st_m = (30 if minutes * split["strength"] < 45 else 40) if "strength" in split else 0
+            if st_m and minutes < 120:
+                st_m = 0  # under 2 hours a week it's all endurance; strength comes in as it grows
+            endurance = max(0.0, minutes - st_m)
+            e_frac = sum(f for sp_, f in split.items() if sp_ != "strength") or 1.0
             for sport, frac in split.items():
-                sm = int(minutes * frac)
-                if sport == "strength":
-                    sm = 30 if sm < 45 else 40
+                sm = st_m if sport == "strength" else int(endurance * frac / e_frac)
+                if sport == "strength" and not sm:
+                    continue
                 kinds = _sport_kinds(sport, race_kind, phase, sm, inp.equipment, rec)
                 if race_kind == "tri" and sport == "bike" and phase in ("build", "peak") and not rec \
                         and "long" in kinds:
                     kinds[kinds.index("long")] = "brick"
                     run_off = 25 if phase == "peak" else 15
+                if beginner and idx <= 2:
+                    kinds = ["easy" if k in QUALITY or k == "strides" else k for k in kinds]
                 if not kinds:
                     continue
-                wsum = sum(WEIGHT[k] for k in kinds)
                 cap = prof["long"].get(sport, 240)
-                for k in kinds:
-                    m = sm * WEIGHT[k] / wsum
-                    if sport == "run" and run_off and k == "long":
-                        m -= run_off
-                    if k in ("long", "brick"):
-                        m = min(m, cap + (run_off if k == "brick" else 0))
+                floor = 30 if sport == "swim" else 20
+                plan_m: list[tuple[str, float]] = []
+                rest_m = float(sm)
+                long_kind = "brick" if "brick" in kinds else "long" if "long" in kinds else None
+                if long_kind and sport in long_prev:
+                    # The long session: its share of the week, capped by the race's cap and by
+                    # safe growth from last week's long (or where the athlete is now).
+                    share = sm * WEIGHT[long_kind] / sum(WEIGHT[k] for k in kinds)
+                    share = min(share, sm * LONG_SHARE.get(sport, 0.4) if len(kinds) > 1 else share)
+                    prev = long_prev[sport]
+                    if prev is None:
+                        allowed = long0[sport]
+                    elif rec:
+                        allowed = prev * 0.8
+                    elif phase == "taper":
+                        allowed = prev
                     else:
-                        m = min(m, cap * 0.75 if sport != "swim" else cap)
-                    m = max(30 if sport == "swim" else 20, m)
+                        allowed = prev + long_growth(prev, sport)
+                    lm = max(floor, min(share, allowed, cap))
+                    if not rec and phase != "taper":
+                        long_prev[sport] = lm if prev is None else max(prev, lm)
+                    plan_m.append((long_kind, lm))
+                    rest_m -= lm
+                    kinds = [k for k in kinds if k != long_kind]
+                    top = lm
+                else:
+                    top = cap
+                # Other sessions share what's left; none longer than the long one, none tiny.
+                while kinds and rest_m / len(kinds) < floor and len(kinds) > 1:
+                    kinds = kinds[:-1]
+                if kinds:
+                    wsum = sum(WEIGHT[k] for k in kinds)
+                    for k in kinds:
+                        m = rest_m * WEIGHT[k] / wsum
+                        m = min(m, top, cap * 0.75 if sport != "swim" else cap)
+                        plan_m.append((k, max(floor, m)))
+                order = {k: i for i, k in enumerate(_sport_kinds(sport, race_kind, phase, sm, inp.equipment, rec) + ["easy", "brick"])}
+                for k, m in sorted(plan_m, key=lambda x: order.get(x[0], 99)):
+                    if sport == "run" and run_off and k == "long":
+                        m = max(floor, m - run_off)
                     sessions.append(make_session("brick" if k == "brick" else sport, k, _r5(m),
                                                  swim_pace=inp.swim_pace, phase=phase,
                                                  run_off=run_off or 20))
@@ -602,15 +930,20 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                 days[d.isoformat()] = day_sessions or [make_session("rest", "rest", 0)]
         week = {"index": idx, "start": ws.isoformat(), "phase": phase, "recovery": rec,
                 "hours": h, "focus": week_focus(phase, rec, race_kind), "days": days}
+        if idx == 1 and phase != "race":
+            for sp_ in ease_first_day(week, inp.swim_pace):
+                if sp_ in long_prev:
+                    long_prev[sp_] = None  # that long never happened: week 2 starts from the first long
         recompute_week(week)
         weeks.append(week)
+    enforce_progression(weeks, start_h, inp.swim_pace)
     apply_strength(weeks, inp, race_kind)
     placed_events = apply_events(weeks, events or [], inp, start)
     return {"events": placed_events, "start": week1.isoformat(), "first_day": start.isoformat(),
             "race_date": inp.race_date.isoformat(), "distance": inp.distance,
             "race_kind": race_kind, "level": inp.level, "peak_hours": round(peak_h, 1),
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
-            "note": note, "weeks": weeks}
+            "start_from": how["source"], "note": note, "weeks": weeks}
 
 
 def apply_strength(weeks: list[dict[str, Any]], inp: Inputs, race_kind: str) -> None:

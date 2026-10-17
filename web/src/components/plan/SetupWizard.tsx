@@ -77,6 +77,7 @@ function initialDraft(me: Me): Draft {
       resting_hr: a.resting_hr ?? null, max_hr: a.max_hr ?? null, threshold_hr: a.threshold_hr ?? null,
       ftp_w: a.ftp_w ?? null, run_threshold_pace: a.run_threshold_pace ?? null, swim_css: a.swim_css ?? null,
       weekly_hours: a.weekly_hours ?? null,
+      longest_run_min: a.longest_run_min ?? null, longest_ride_min: a.longest_ride_min ?? null,
       available_days: a.available_days?.length ? a.available_days : ['tue', 'wed', 'thu', 'sat', 'sun'],
       long_day: a.long_day ?? 'sat', equipment: a.equipment ?? [],
     },

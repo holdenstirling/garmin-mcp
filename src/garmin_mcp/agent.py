@@ -40,6 +40,7 @@ from .toolspec import AGENT_TOOLS
 from .tools import GarminService
 from .history import summarize
 from .weekplan import WeekPlanner
+from .planbuilder import fitness_from
 from .plans import PlanService
 from .progress import Progress
 from .moments import Moments
@@ -395,6 +396,8 @@ class Agent:
                                  events=self.events)
         self.stats = StatsService(service, now=self._now, athlete=self.coach.athlete,
                                   plan=self.plans.get, clock=clock)
+        # New plans start from the last 6 weeks of Garmin training (planbuilder.fitness_from).
+        self.plans.fitness_of = lambda uid: fitness_from(*reversed(self.stats.activities(uid)))
         self.progress = Progress(store, clock=clock)
         self.checkins = CheckinStore(store, clock=clock, today=lambda uid: self._now(uid).date())
         # Rabbit moments (moments.py): deterministic updates in the Rabbit log; push is set by the app.

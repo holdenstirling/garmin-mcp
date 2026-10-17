@@ -112,6 +112,18 @@ export function WeekFields({ a, setA, sports }: Props) {
           <NumberStepper label="hours per week" value={a.weekly_hours} min={1} max={30} step={0.5} decimals={1} typical={[4, 6, 8, 10, 12]} 
             onChange={(v) => setA({ weekly_hours: v })} suffix="hours" />
         </Field>
+        {sports.includes('run') && (
+          <Field label="Longest run in the last month (optional)" hint="Your first long run starts here, not above it. Skip it if you're not sure.">
+            <NumberStepper label="minutes" value={a.longest_run_min} min={10} max={240} step={5} typical={[20, 30, 45, 60, 90]}
+              onChange={(v) => setA({ longest_run_min: v })} suffix="min" />
+          </Field>
+        )}
+        {sports.includes('bike') && (
+          <Field label="Longest ride in the last month (optional)" hint="Your first long ride starts here, not above it.">
+            <NumberStepper label="minutes" value={a.longest_ride_min} min={15} max={420} step={15} typical={[30, 60, 90, 120, 180]}
+              onChange={(v) => setA({ longest_ride_min: v })} suffix="min" />
+          </Field>
+        )}
         <Field label="Training days" hint={(a.available_days ?? []).length < 3 ? 'Three or more days works best.' : `${(a.available_days ?? []).length} days a week. The rest are rest days.`}>
           <MultiChoice value={a.available_days ?? []} options={WEEKDAYS} onChange={(v) => setA({ available_days: v, long_day: v.includes(a.long_day ?? '') ? a.long_day : v[v.length - 1] ?? null })} />
         </Field>
