@@ -16,6 +16,7 @@ import {
 import { ClubsTab } from './Clubs'
 import { CommunityFeed } from './Feed'
 import { PeopleSection } from './People'
+import { BuddiesSection } from './Buddies'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { markSeen } from '@/lib/unread'
 import { Sheet } from '@/components/ui/Sheet'
@@ -59,6 +60,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {newGroup && <GroupSheet onClose={() => setNewGroup(false)}
         onSaved={(g) => { setNewGroup(false); setGroupsKey((k) => k + 1); setGroup(g.id) }} />}
       {group && <GroupPage id={group} imperial={imperial} onClose={() => setGroup(null)} onChanged={() => setGroupsKey((k) => k + 1)} />}
+      {view === 'people' && <BuddiesSection imperial={imperial} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
       {view === 'people' && <BlocksEntry compact />}
       {settings && <SharingSheet onClose={() => setSettings(false)} />}

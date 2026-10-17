@@ -3609,6 +3609,24 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         community_routes += _dmw.make_routes(dm=dms, wrap=_cd_wrap, read_json=read_json, person=_soc_person,
                                              candidates=_dm_candidates, notify=_dm_notify, first_name=_soc_name)
 
+        # Training buddies (buddies.py, routes in buddies_web.py): opt-in matching by area, easy
+        # pace band and usual times; "Say hi" opens a DM (a request unless already connected).
+        # Others see a pace band, slots, race, note, city and a rounded distance: never
+        # coordinates, heart rate or single workouts.
+        from . import buddies as _bud, buddies_web as _budw
+
+        def _bud_say(uid: str, other: str, text: str) -> dict[str, Any]:
+            conv = dms.start(uid, [other])
+            msg, to = dms.send(uid, conv["id"], text)
+            for p in to:
+                _dm_notify(p, f"dm:{p}:{conv['id']}", _soc_name(uid), (msg.get("text") or "")[:140],
+                           f"/app/?open=dm&c={conv['id']}")
+            return {"id": conv["id"]}
+        buddies = _bud.Buddies(store, is_athlete=soc.is_athlete, blocked=soc.blocked_between, follows=soc.follows,
+                               activities=lambda u: _ag.stats.activities(u), area=_cd_area, home=_cm_home,
+                               person=_soc_person, first_name=_soc_name, say=_bud_say)
+        community_routes += _budw.make_routes(buddies=buddies, wrap=_cd_wrap, read_json=read_json)
+
         featured = _ft.Featured(store, is_owner=auth.is_owner,
                                 club_card=lambda c, u: clb.featured_card(c, u, _ag._now(u)), listing_card=_f2_listing)
         community_routes += _f2w.make_routes(
