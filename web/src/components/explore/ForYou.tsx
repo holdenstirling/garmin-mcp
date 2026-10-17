@@ -20,7 +20,8 @@ import {
 import { MONTH_LONG, saveZipLocation, type RaceX } from '@/lib/explore2'
 import { CATEGORY_ICON, HINT_CLS } from './icons'
 import { EstimateLine } from './Estimate'
-import { LocationLine, LocationPrompt } from './LocationPrompt'
+import { LocationPrompt } from './LocationPrompt'
+import { useAreaChanged } from '@/components/local/AreaBar'
 import { NearYouSection } from './LocalActivities'
 import { FeaturedStrip } from '@/components/community/Featured'
 
@@ -102,6 +103,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
   const [hideChip, setHideChip] = useState(chipDismissed)
   const [locKey, setLocKey] = useState(0)
   const changed = () => { setLocKey((k) => k + 1); load(true) }
+  useAreaChanged(useCallback(() => { setLocKey((k) => k + 1); load(true) }, [load])) // eslint-disable-line react-hooks/exhaustive-deps
   if (!feed && (loading || !error)) {
     return <div className="flex justify-center py-16"><RabbitLoader label="Scouting races for you" cycle={SCOUT} /></div>
   }
@@ -127,7 +129,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
           </button>
         </div>
       )}
-      {loc?.searchable && <LocationLine loc={loc} onChanged={changed} />}
+      {/* Where: Discover's AreaBar above (one place to change it); picks reload when it changes. */}
       {feed.failed && (
         <div className="flex items-center gap-2 rounded-xl bg-(--warning-subtle) px-3 py-2 text-[0.7059rem] text-(--warning-text)" role="status">
           <span className="flex-1">Race search isn't answering right now, so picks are missing. Showing what we have.</span>

@@ -337,7 +337,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openProgress = () => { setProgressView('overview'); goTab('progress') }
   const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
   const openCommunity = (v: CommunityView = 'feed', club?: string) => {
-    // Feed is its own tab; clubs and people share the Clubs tab.
+    // Feed is its own tab; clubs and people share the Local tab (id 'clubs').
     if (v === 'feed') { goTab('feed'); return }
     setCommunityView(v); setCommunityClub(club ?? null); goTab('clubs')
   }
@@ -1045,7 +1045,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (schedView === 'plan') return planTab()
     return schedView === 'events' ? (
       <TabScreen key="events" title="Schedule" top={scheduleTop} action={meButton}>
-        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} request={eventReq} onRequestHandled={() => setEventReq(null)}
+        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} request={eventReq} onRequestHandled={() => setEventReq(null)} onDiscover={openDiscover}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={() => setSchedView('plan')} onBuildPlan={startSetup} />
       </TabScreen>

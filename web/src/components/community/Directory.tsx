@@ -11,7 +11,7 @@
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Bike, CalendarPlus, Check, Clock, ExternalLink, Flag, Footprints, Globe, MapPin, Medal, Megaphone, Mountain, Plus, Search as SearchIcon, Users, Volleyball, Waves, X,
+  CalendarPlus, Check, ChevronDown, Clock, ExternalLink, Flag, Globe, MapPin, Megaphone, Plus, Search as SearchIcon, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Segmented } from '@/components/nav/Segmented'
@@ -24,16 +24,16 @@ import { ErrorState } from '@/components/ui/ErrorState'
 import { Chip, Field, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
-  DIR_CHIPS, calendarUrl, getDirectory, lookUpClub, markGoing, nextLabel, reportListing, searchDirectory, suggestClub,
-  type DirChip, type DirGoing, type DirKind, type DirListing, type DirLookup, type DirSearch, type DirView, type Partner,
+  TIME_OF_DAY, WEEKDAY_LABEL, calendarUrl, getDirectory, lookUpClub, markGoing, nextLabel, reportListing, searchDirectory, suggestClub,
+  type DirFilters, type DirGoing, type DirListing, type DirLookup, type DirSearch, type DirView, type Partner, type TimeOfDay, type Weekday,
 } from '@/lib/clubdir'
+import { ACTIVITIES, ACTIVITY_LABEL, distanceLabel, radiusLabel, type ActivityId } from '@/lib/activity'
+import { ActivityTile } from '@/components/local/ActivityIcon'
+import { AreaBar, useAreaChanged } from '@/components/local/AreaBar'
 import { Sheet } from '@/components/ui/Sheet'
 import { FeatureSheet, useIsOwner } from './Featured'
 import { PartnerRow, PartnerSheet, PartnersNearYou } from './Partners'
 
-const ICON: Record<DirKind, typeof Bike> = {
-  run_club: Footprints, trail: Mountain, tri: Medal, ride: Bike, swim: Waves, league: Volleyball, other: Users,
-}
 const CRAWLING = ['Lacing up…', 'Reading club pages…', 'Finding the Tuesday group run…', 'Checking league schedules…', 'Hopping between parks…']
 const POLL_MS = 8000
 const POLL_MAX = 15
@@ -77,24 +77,26 @@ function GoingRow({ l, onGoing }: { l: DirListing; onGoing: (g: DirGoing) => voi
   )
 }
 
-function ListingCard({ l, onStart, onReport, onGoing, busy, onFeature }: {
-  l: DirListing; onStart: () => void; onReport: () => void; onGoing: (g: DirGoing) => void; busy: boolean
+function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature }: {
+  l: DirListing; imperial: boolean; onStart: () => void; onReport: () => void; onGoing: (g: DirGoing) => void; busy: boolean
   /** the app owner's "Feature this club" */
   onFeature?: () => void
 }) {
-  const Icon = ICON[l.kind] ?? Users
+  const [more, setMore] = useState(false)
   const when = nextLabel(l.next)
+  const what = [l.type_label ?? l.kind_label, l.activity && l.activity !== 'other' ? ACTIVITY_LABEL[l.activity] : null].filter(Boolean).join(' · ')
   const meta = [l.pace, l.cost === 'free' ? 'Free' : l.cost === 'paid' ? 'Paid' : ''].filter(Boolean).join(' · ')
   return (
     <article className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
       <div className="flex items-start gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)" aria-hidden>
-          <Icon className="size-5" />
-        </span>
+        <ActivityTile activity={l.activity} />
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-[0.8824rem] font-medium leading-snug text-(--text)">{l.name}</h3>
-          <p className="truncate text-[0.7059rem] text-(--text-muted)">{l.kind_label}{l.sports.length ? ` · ${l.sports.slice(0, 2).join(', ')}` : ''}</p>
+          <p className="truncate text-[0.7059rem] text-(--text-muted)">{what}</p>
         </div>
+        {l.distance_km !== undefined && (
+          <span className="shrink-0 pt-0.5 text-[0.6471rem] font-medium text-(--text-secondary)">{distanceLabel(l.distance_km, imperial)}</span>
+        )}
       </div>
       {when && (
         <p className="flex items-center gap-1.5 text-[0.7647rem] font-medium text-(--text)">
@@ -118,24 +120,30 @@ function ListingCard({ l, onStart, onReport, onGoing, busy, onFeature }: {
             <CalendarPlus className="size-3.5" aria-hidden /> Add to calendar
           </a>
         )}
-        {l.linked_club ? (
-          <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>
-        ) : (
-          <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
-            <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
-          </button>
-        )}
-        {onFeature && (
-          <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
-            <Megaphone className="size-3.5" aria-hidden /> Feature
-          </button>
-        )}
-        {!l.reported && (
-          <button type="button" className={cn(linkCls, 'text-(--text-muted)')} disabled={busy} onClick={onReport}>
-            <Flag className="size-3.5" aria-hidden /> Report outdated
-          </button>
-        )}
+        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>}
+        <button type="button" aria-expanded={more} className={cn(linkCls, 'ml-auto text-(--text-muted)')} onClick={() => setMore((v) => !v)}>
+          More <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden />
+        </button>
       </div>
+      {more && (
+        <div className="flex flex-wrap items-center gap-x-4 border-t border-(--border) pt-1">
+          {!l.linked_club && (
+            <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
+              <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
+            </button>
+          )}
+          {onFeature && (
+            <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
+              <Megaphone className="size-3.5" aria-hidden /> Feature
+            </button>
+          )}
+          {!l.reported && (
+            <button type="button" className={cn(linkCls, 'text-(--text-muted)')} disabled={busy} onClick={onReport}>
+              <Flag className="size-3.5" aria-hidden /> Report outdated
+            </button>
+          )}
+        </div>
+      )}
       <p className="text-[0.6471rem] text-(--text-muted)">
         {l.link_only ? `From web search · ${l.source}` : `Checked ${verified(l.last_verified)} · ${l.source}`}
         {l.found_by === 'search' ? ' · Added by a search' : ''}
@@ -178,7 +186,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
 const LOOKING = ['Searching the web…', 'Checking the club\'s site…', 'Reading their schedule…', 'Almost there…']
 
 /** Results for a typed club name: partners pinned, matching listings, then "Look it up". */
-function ClubSearch({ q, card, onSuggest }: { q: string; card: (l: DirListing) => React.ReactNode; onSuggest: () => void }) {
+function ClubSearch({ q, filters, card, onSuggest }: { q: string; filters: DirFilters; card: (l: DirListing) => React.ReactNode; onSuggest: () => void }) {
   const [res, setRes] = useState<DirSearch | null>(null)
   const [err, setErr] = useState(false)
   const [look, setLook] = useState<{ busy: boolean; out: DirLookup | null; err: string | null }>({ busy: false, out: null, err: null })
@@ -188,10 +196,10 @@ function ClubSearch({ q, card, onSuggest }: { q: string; card: (l: DirListing) =
     let live = true
     setLook({ busy: false, out: null, err: null })
     const t = window.setTimeout(() => {
-      searchDirectory(q).then((r) => { if (live) { setRes(r); setErr(false) } }, () => { if (live) setErr(true) })
+      searchDirectory(q, filters).then((r) => { if (live) { setRes(r); setErr(false) } }, () => { if (live) setErr(true) })
     }, 300)
     return () => { live = false; window.clearTimeout(t) }
-  }, [q, tick])
+  }, [q, tick, filters.activity, filters.weekday, filters.when]) // eslint-disable-line react-hooks/exhaustive-deps
   async function lookUp() {
     setLook({ busy: true, out: null, err: null })
     try { setLook({ busy: false, out: await lookUpClub(q), err: null }) } catch (e) { setLook({ busy: false, out: null, err: (e as Error).message }) }
@@ -226,6 +234,11 @@ function ClubSearch({ q, card, onSuggest }: { q: string; card: (l: DirListing) =
           )}
         </div>
       )}
+      {(res.farther ?? 0) > 0 && (
+        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+          {res.farther} more {res.farther === 1 ? 'match is' : 'matches are'} farther away. Widen your area above to see {res.farther === 1 ? 'it' : 'them'}.
+        </p>
+      )}
       {!look.busy && !look.out && rows.length > 0 && res.can_look_up && (
         <button type="button" className={cn(linkCls, 'justify-center text-(--accent)')} onClick={() => void lookUp()}>
           <Globe className="size-3.5" aria-hidden /> Not the one? Look up “{q}” online
@@ -236,8 +249,12 @@ function ClubSearch({ q, card, onSuggest }: { q: string; card: (l: DirListing) =
   )
 }
 
-export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing | null) => void }) {
-  const [chip, setChip] = useState<DirChip | null>(null)
+export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup: (l: DirListing | null) => void; imperial?: boolean }) {
+  const [activity, setActivity] = useState<ActivityId | null>(null)
+  const [weekday, setWeekday] = useState<Weekday | null>(null)
+  const [when, setWhen] = useState<TimeOfDay | null>(null)
+  const [more, setMore] = useState(false)
+  const filters: DirFilters = { activity, weekday, when }
   const [data, setData] = useState<DirView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -249,9 +266,10 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing |
   const searching = q.trim().length >= 2
   const owner = useIsOwner(data?.listings[0] ? { listing: data.listings[0].id } : null)
   const polls = useRef(0)
-  const load = useCallback(() => getDirectory(chip).then((d) => { setData(d); setError(null) },
-    (e) => setError((e as Error).message)), [chip])
+  const load = useCallback(() => getDirectory({ activity, weekday, when }).then((d) => { setData(d); setError(null) },
+    (e) => setError((e as Error).message)), [activity, weekday, when])
   useEffect(() => { polls.current = 0; void load() }, [load])
+  useAreaChanged(useCallback(() => { setData(null); void load() }, [load]))
   const crawling = data?.status === 'refreshing' || data?.status === 'queued'
   useEffect(() => {
     if (!crawling || polls.current >= POLL_MAX) return
@@ -268,51 +286,78 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing |
     setData((d) => d && { ...d, listings: d.listings.map((x) => (x.id === id ? { ...x, going: g } : x)) })
   }
   const card = (l: DirListing) => (
-    <ListingCard l={l} busy={busy === l.id} onStart={() => onStartGroup(l)} onReport={() => void report(l)}
+    <ListingCard l={l} imperial={imperial} busy={busy === l.id} onStart={() => onStartGroup(l)} onReport={() => void report(l)}
       onGoing={(g) => setGoing(l.id, g)} onFeature={owner ? () => setFeaturing(l) : undefined} />
   )
+  const bar = <AreaBar imperial={imperial} />
 
-  if (error && !data) return <ErrorState compact message={error} onRetry={() => void load()} />
-  if (!data) return <RabbitLoader className="py-6" label="Loading clubs and leagues" cycle={CRAWLING} />
+  if (error && !data) return <div className="flex flex-col gap-2">{bar}<ErrorState compact message={error} onRetry={() => void load()} /></div>
+  if (!data) return <div className="flex flex-col gap-2">{bar}<RabbitLoader className="py-6" label="Loading clubs and leagues" cycle={CRAWLING} /></div>
   if (data.status === 'needs_location' || !data.metro) {
     return (
-      <section aria-label="Clubs and leagues near you" className="flex flex-col gap-1.5">
-        <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Clubs & leagues near you</h2>
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Add your home city in your training profile to see run clubs and leagues near you.</p>
+      <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
+        {bar}
+        <p className="px-1 text-[0.7647rem] text-(--text-secondary)">Set your area above (your location or a zip) to see run clubs, leagues and meetups near you.</p>
       </section>
     )
   }
   const { metro, listings, fallback } = data
   const mappable = listings.some((l) => typeof l.lat === 'number')
+  const counts = data.activities ?? {}
+  const shownActs = ACTIVITIES.filter(([id]) => (counts[id] ?? 0) > 0 || id === activity)
+  const extraOn = (weekday ? 1 : 0) + (when ? 1 : 0)
+  const radius = data.area ? radiusLabel(data.area.radius_mi, imperial) : ''
   return (
-    <section aria-label="Clubs and leagues near you" className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-          Clubs & leagues near {metro.label}
-        </h2>
-        {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}
-      </div>
+    <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
+      {bar}
       <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
         <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
         <input type="text" inputMode="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 60))}
-          placeholder="Search clubs by name" aria-label={`Search clubs and leagues near ${metro.label}`}
+          placeholder="Search clubs, leagues and meetups" aria-label={`Search clubs, leagues and meetups near ${data.area?.label || metro.label}`}
           className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
         {q && (
-          <button type="button" aria-label="Clear club search" onClick={() => setQ('')}
+          <button type="button" aria-label="Clear search" onClick={() => setQ('')}
             className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>
         )}
       </label>
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label="Filter by activity">
+        <Chip selected={activity === null} onClick={() => setActivity(null)}>All</Chip>
+        {(shownActs.length ? shownActs : ACTIVITIES).map(([id, label]) => (
+          <Chip key={id} selected={activity === id} onClick={() => setActivity(activity === id ? null : id)}>
+            {label}{counts[id] ? <span className="ml-1 text-(--text-muted)">{counts[id]}</span> : null}
+          </Chip>
+        ))}
+        <Chip selected={more || extraOn > 0} onClick={() => setMore((v) => !v)}>
+          <span className="inline-flex items-center gap-1">{extraOn ? `Day & time · ${extraOn}` : 'Day & time'}
+            <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden /></span>
+        </Chip>
+      </div>
+      {more && (
+        <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day of the week">
+            <Chip selected={weekday === null} onClick={() => setWeekday(null)}>Any day</Chip>
+            {(Object.keys(WEEKDAY_LABEL) as Weekday[]).map((d) => (
+              <Chip key={d} selected={weekday === d} onClick={() => setWeekday(weekday === d ? null : d)}>{WEEKDAY_LABEL[d]}</Chip>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Time of day">
+            <Chip selected={when === null} onClick={() => setWhen(null)}>Any time</Chip>
+            {TIME_OF_DAY.map(([v, label]) => <Chip key={v} selected={when === v} onClick={() => setWhen(when === v ? null : v)}>{label}</Chip>)}
+          </div>
+        </div>
+      )}
       {searching ? (
-        <ClubSearch q={q.trim()} card={card} onSuggest={() => setSuggesting(true)} />
+        <ClubSearch q={q.trim()} filters={filters} card={card} onSuggest={() => setSuggesting(true)} />
       ) : (<>
       <PartnersNearYou partners={data.partners ?? []} metro={metro.label} />
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label="Filter clubs and leagues">
-        {DIR_CHIPS.map(([v, label]) => (
-          <Chip key={v} selected={chip === v} onClick={() => setChip(chip === v ? null : v)}>{label}</Chip>
-        ))}
+      <div className="flex items-center justify-between gap-2 px-1 pt-1">
+        <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+          {activity ? ACTIVITY_LABEL[activity] : 'Clubs, leagues & meetups'}{radius ? ` within ${radius}` : ''}
+        </h2>
+        {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}
       </div>
       {mappable && (
-        <Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} />
+        <div className="w-full"><Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} /></div>
       )}
       {msg && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{msg}</p>}
       {listings.length > 0 && mappable && view === 'map' ? (
@@ -329,12 +374,19 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing |
           <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">Rabbit is reading club pages for your city. This takes a few minutes.</p>
         </div>
       ) : (
-        chip ? (
-          <EmptyState compact title="Nothing in this filter yet" action="Show everything" onAction={() => setChip(null)} />
+        activity || weekday || when ? (
+          <EmptyState compact title={`Nothing like that within ${radius || 'your area'}`}
+            body={(data.farther ?? 0) > 0 ? 'There are more farther away: widen your area above.' : undefined}
+            action="Clear filters" onAction={() => { setActivity(null); setWeekday(null); setWhen(null) }} />
         ) : (
           <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
             body="Know a club, track night or league? Search for it above, or tap Suggest one below and Rabbit checks it." />
         )
+      )}
+      {listings.length > 0 && (data.farther ?? 0) > 0 && (
+        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+          {data.farther} more {data.farther === 1 ? 'is' : 'are'} farther than {radius}. Widen your area above to see {data.farther === 1 ? 'it' : 'them'}.
+        </p>
       )}
       {!listings.length && fallback.length > 0 && (
         <div className="flex flex-col gap-1">

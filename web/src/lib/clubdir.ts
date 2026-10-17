@@ -4,6 +4,7 @@ import { getJSON, postJSON, sendJSON } from '@/lib/api'
 import type { LocalGroup } from '@/lib/community'
 import type { SocialUser } from '@/lib/social'
 import { counted } from '@/lib/usage'
+import type { ActivityId, GroupType } from '@/lib/activity'
 
 const P = '/api/community/directory'
 
@@ -37,6 +38,23 @@ export type DirListing = {
   going?: DirGoing | null
   /** "search" when someone looked this club up by name (directory = found by Rabbit's own update). */
   found_by?: 'directory' | 'search'
+  /** What it's for (icon + filter) and what it is: Club | League | Meetup (activity.py) */
+  activity?: ActivityId; type?: GroupType; type_label?: string
+  /** From the middle of my area; null = no mapped spot ("in your city") */
+  distance_km?: number | null
+}
+/** My area (area.py): my spot or the city centre, and my radius. */
+export type DirArea = { label: string; radius_mi: number; radii_mi: number[]; has_point: boolean; source: 'device' | 'manual' | 'city' | null }
+export type TimeOfDay = 'morning' | 'midday' | 'evening'
+export const TIME_OF_DAY: [TimeOfDay, string][] = [['morning', 'Mornings'], ['midday', 'Midday'], ['evening', 'Evenings']]
+export type DirFilters = { activity?: ActivityId | null; weekday?: Weekday | null; when?: TimeOfDay | null }
+function filterQuery(f: DirFilters, extra: Record<string, string> = {}): string {
+  const p = new URLSearchParams(extra)
+  if (f.activity) p.set('activity', f.activity)
+  if (f.weekday) p.set('weekday', f.weekday)
+  if (f.when) p.set('when', f.when)
+  const q = p.toString()
+  return q ? `?${q}` : ''
 }
 export type DirView = {
   metro: { city: string; state: string; label: string } | null
@@ -49,6 +67,11 @@ export type DirView = {
   center?: { lat: number; lon: number } | null
   /** The owner's partners for this city (partners.py), always shown labelled "Partner". */
   partners?: Partner[]
+  area?: DirArea | null
+  /** listings per activity inside my area (filter chips) */
+  activities?: Partial<Record<ActivityId, number>>
+  /** left out for being farther than my radius */
+  farther?: number
 }
 
 // ------------------------------------------------------------------ partners --
@@ -81,13 +104,14 @@ export const removePartner = (id: string) => sendJSON<PartnerAdminList>('DELETE'
 export type DirSearch = {
   q: string; metro: { city: string; state: string; label: string } | null
   partners: Partner[]; listings: DirListing[]; can_look_up: boolean
+  area?: DirArea | null; farther?: number
 }
 export type DirLookup = { status: 'found' | 'none' | 'limit' | 'unavailable'; listings: DirListing[] }
-export const searchDirectory = (q: string) => getJSON<DirSearch>(`${P}/search?q=${encodeURIComponent(q)}`)
+export const searchDirectory = (q: string, f: DirFilters = {}) => getJSON<DirSearch>(`${P}/search${filterQuery(f, { q })}`)
 export const lookUpClub = (q: string) => postJSON<DirLookup>(`${P}/lookup`, { q })
 
-export function getDirectory(kind?: DirChip | null): Promise<DirView> {
-  return getJSON<DirView>(`${P}${kind ? `?kind=${kind}` : ''}`)
+export function getDirectory(f: DirFilters = {}): Promise<DirView> {
+  return getJSON<DirView>(`${P}${filterQuery(f)}`)
 }
 export const suggestClub = (b: { name: string; url: string; city?: string; state?: string }) =>
   postJSON<{ ok: boolean; message: string }>(`${P}/suggest`, b)

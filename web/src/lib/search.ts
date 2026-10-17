@@ -3,9 +3,10 @@
 import { getJSON } from '@/lib/api'
 import { openPlanDay } from '@/lib/plancal'
 import type { Partner } from '@/lib/clubdir'
+import type { ActivityId } from '@/lib/activity'
 
 export type SearchPerson = { id: string; name: string; photo?: number | null; picture?: string; relation: string }
-export type SearchClub = { id: string; name: string; city: string; members?: number | null; mine: boolean; source: 'club' | 'directory'; kind?: string }
+export type SearchClub = { id: string; name: string; city: string; members?: number | null; mine: boolean; source: 'club' | 'directory'; kind?: string; activity?: ActivityId }
 export type SearchEvent = { id: string; title: string; date: string | null; location: string; kind: string; past: boolean }
 export type SearchSession = { id: string; date: string; title: string; sport: string; kind: string; minutes?: number | null }
 export type SearchWorkout = { id: number; date: string; name: string; sport: string; minutes: number | null; km: number | null }
