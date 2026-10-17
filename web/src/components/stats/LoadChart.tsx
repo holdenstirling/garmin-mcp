@@ -61,7 +61,7 @@ function Stat({ label, term, value, color, signed }: { label: string; term: Term
   return (
     <div>
       <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">{label}<InfoTip term={term} /></span>
-      <span className="font-display text-[1.2rem]" style={{ color }}>{value == null ? '–' : `${signed && value > 0 ? '+' : ''}${Math.round(value)}`}</span>
+      <span className="font-display text-[1.1765rem]" style={{ color }}>{value == null ? '–' : `${signed && value > 0 ? '+' : ''}${Math.round(value)}`}</span>
     </div>
   )
 }

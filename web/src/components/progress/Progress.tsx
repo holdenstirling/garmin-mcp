@@ -15,7 +15,7 @@ import { markProgressSeen, nextQuest, type Progress, type Quest, type QuestId } 
 
 /** Round level badge. */
 export function LevelBadge({ level, size = 'md' }: { level: number; size?: 'sm' | 'md' | 'lg' }) {
-  const cls = size === 'lg' ? 'size-16 text-[1.6rem]' : size === 'sm' ? 'size-7 text-[0.8rem]' : 'size-11 text-[1.15rem]'
+  const cls = size === 'lg' ? 'size-16 text-[1.6471rem]' : size === 'sm' ? 'size-7 text-[0.8235rem]' : 'size-11 text-[1.1765rem]'
   return (
     <span className={cn('relative flex shrink-0 items-center justify-center rounded-full bg-(--brand) font-display leading-none text-(--on-fill) shadow-sm', cls)}
       aria-label={`Level ${level}`}>
@@ -81,7 +81,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
       <div className="flex items-center gap-3">
         <LevelBadge level={p.level} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[1.25rem] leading-tight text-(--brand)">{p.name}</p>
+          <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">{p.name}</p>
           <p className="text-[0.6471rem] text-(--text-muted)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
           <XpBar p={p} className="mt-3" rabbit />
           <p className="mt-1 text-[0.6471rem] text-(--text-muted)">
@@ -97,7 +97,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
           </span>
           <span className="min-w-0">
             <span className="flex items-baseline gap-1">
-              <CountUp value={s.current} storeKey="streak" className="font-display text-[1.3rem] leading-none text-(--text)" />
+              <CountUp value={s.current} storeKey="streak" className="font-display text-[1.2941rem] leading-none text-(--text)" />
               <span className="text-[0.7059rem] text-(--text-secondary)">day streak</span>
             </span>
             <span className="block text-[0.6471rem] text-(--text-muted)">Best {s.best}</span>
@@ -246,11 +246,11 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
           <>
             <span className="flex items-center gap-1 text-(--accent)" aria-hidden="true"><PartyPopper className="size-4" /><Star className="size-5" /><PartyPopper className="size-4 -scale-x-100" /></span>
             <LevelBadge level={p.level} size="lg" />
-            <p className="font-display text-[1.4rem] leading-tight text-(--brand)">Level {p.level}!</p>
+            <p className="font-display text-[1.4118rem] leading-tight text-(--brand)">Level {p.level}!</p>
             <p className="text-[0.8235rem] text-(--text-secondary)">You're a {p.name}. Every workout counts toward the next one.</p>
           </>
         ) : (
-          <p className="font-display text-[1.3rem] leading-tight text-(--brand)">New badge{p.new_badges.length > 1 ? 's' : ''}!</p>
+          <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">New badge{p.new_badges.length > 1 ? 's' : ''}!</p>
         )}
         {p.new_badges.length > 0 && (
           <div className="flex w-full flex-col gap-2">

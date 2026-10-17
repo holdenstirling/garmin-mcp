@@ -53,6 +53,28 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+
+  /* Type scale (root is 17px, so these are 11/12/13/14/15/16/20/24/28 px and follow the phone's
+     text size). Use these names in new code (text-caption ... text-display) instead of
+     arbitrary rem values; the existing text-[0.7647rem] style values are the same steps.
+       caption  11px  uppercase section labels, tiny meta
+       small    12px  secondary lines, chips
+       meta     13px  row subtitles, helper text
+       body     14px  default UI text, row titles
+       lead     15px  emphasized body, card titles
+       title    16px  sheet / section titles (sans)
+       heading  20px  display-font headings in cards
+       page     24px  screen titles (display font)
+       display  28px  hero numbers / big headings */
+  --text-caption: 0.6471rem;
+  --text-small: 0.7059rem;
+  --text-meta: 0.7647rem;
+  --text-body: 0.8235rem;
+  --text-lead: 0.8824rem;
+  --text-title: 0.9412rem;
+  --text-heading: 1.1765rem;
+  --text-page: 1.4118rem;
+  --text-display: 1.6471rem;
 }
 
 @layer base {

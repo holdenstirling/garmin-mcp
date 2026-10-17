@@ -85,7 +85,7 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
           <Card>
             <Field label="Fueling plan">
               <p className="flex items-center gap-2 text-[0.8235rem] text-(--text)"><Utensils className="size-4 text-(--accent)" />
-                {p.fueling.carbs_g_per_h ? <><b className="font-display text-[1.1rem]">{p.fueling.carbs_g_per_h}</b> g carbs/h · about {p.fueling.total_carbs_g} g over ~{fmtDuration(p.fueling.expected_hours * 60)}</> : 'Water and a good breakfast are enough.'}
+                {p.fueling.carbs_g_per_h ? <><b className="font-display text-[1.0588rem]">{p.fueling.carbs_g_per_h}</b> g carbs/h · about {p.fueling.total_carbs_g} g over ~{fmtDuration(p.fueling.expected_hours * 60)}</> : 'Water and a good breakfast are enough.'}
               </p>
               {p.fueling.carbs_g_per_h > 0 && <p className="text-[0.7059rem] text-(--text-muted)">Fluid {p.fueling.fluid_ml_per_h} ml/h · sodium {p.fueling.sodium_mg_per_h} mg/h</p>}
               <ul className="mt-1 flex flex-col gap-1 text-[0.7647rem] leading-snug text-(--text-secondary)">{p.fueling.steps.map((s) => <li key={s}>• {s}</li>)}</ul>

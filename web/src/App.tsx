@@ -14,6 +14,7 @@ import { OutboxPill, ResumeNote } from './components/ui/SaveSafety'
 import { UpdatePill } from './components/ui/UpdatePill'
 import { setDraftUser } from './lib/drafts'
 import { startOutbox } from './lib/outbox'
+import { hideSplash } from './lib/splash'
 
 const BOOT_MESSAGES = ['Lacing up…', 'Warming up…', 'Checking your watch…', 'Crunching the numbers…']
 
@@ -28,6 +29,7 @@ type State =
 const JOIN_TOKEN = /^\/app\/join\/([A-Za-z0-9_-]{20,100})\/?$/.exec(window.location.pathname)?.[1] ?? null
 
 export function App() {
+  useEffect(() => { if (JOIN_TOKEN) hideSplash() }, [])  // the join page has no loading step
   if (JOIN_TOKEN) return <div className="app-shell"><JoinScreen token={JOIN_TOKEN} /><FxHost /></div>
   return <MainApp />
 }
@@ -75,6 +77,7 @@ function MainApp() {
   }, [skipInstall])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => { if (state.kind !== 'loading') hideSplash() }, [state.kind])
 
   return (
     <div className="app-shell">

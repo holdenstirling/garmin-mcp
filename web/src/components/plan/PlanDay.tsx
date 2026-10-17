@@ -4,8 +4,10 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { RabbitNote } from '@/components/ui/brand'
+import { RabbitNap } from '@/components/anim'
 import { openEvent } from '@/lib/events'
 import { cn } from '@/lib/utils'
 import { openActivity } from '@/lib/activitynav'
@@ -176,14 +178,20 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       )}
       {status === 'missed' && c?.missed && <p className="mx-3.5 mt-2 text-[0.7647rem] leading-snug text-(--text-secondary)">{c.missed.why}</p>}
 
-      {c?.note && (
-        <div className="mx-3.5 mt-3 flex flex-col gap-1 border-l-2 border-(--accent) pl-3 text-[0.7647rem] leading-snug">
-          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{c.note.source === 'coach' ? 'Coach notes' : 'Why + how'}</p>
+      {c?.note && (c.note.source === 'coach' ? (
+        <div className="mx-3.5 mt-3 flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg) px-3.5 py-3 text-[0.7647rem] leading-snug">
+          <p className="section-label m-0">Coach notes</p>
           <p className="text-(--text)">{c.note.why}</p>
           {c.note.how && <p className="text-(--text-secondary)">{c.note.how}</p>}
           {c.note.cues && <p className="text-(--text-muted)">{c.note.cues}</p>}
         </div>
-      )}
+      ) : (
+        <RabbitNote title="Why + how" className="mx-3.5 mt-3">
+          <p className="m-0 text-(--text)">{c.note.why}</p>
+          {c.note.how && <p className="m-0 text-(--text-secondary)">{c.note.how}</p>}
+          {c.note.cues && <p className="m-0 text-(--text-muted)">{c.note.cues}</p>}
+        </RabbitNote>
+      ))}
 
       {c?.targets ? <WorkoutSteps t={c.targets} imperial={imperial} /> : groups.length > 0 && (
         <div className="mx-3.5 mt-3 flex flex-col gap-2">
@@ -341,7 +349,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       )}
       {!work.length && !extra && !did.length && (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-6 py-8 text-center">
-          {!did.length && <span className="flex size-12 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><Moon className="size-6" aria-hidden /></span>}
+          {!did.length && <RabbitNap size={44} mode="sleep" />}
           <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : 'Rest day'}</p>
           {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{did.length ? 'Nothing was on the plan today, and you got a workout in anyway.' : 'Fitness sinks in while you recover. A walk or some light stretching is plenty.'}</p>}
           {day && restAdd && date >= today && (

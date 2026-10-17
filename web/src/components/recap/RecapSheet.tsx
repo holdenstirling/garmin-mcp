@@ -76,8 +76,8 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
       <div className="celebrate flex items-center gap-4 rounded-2xl border border-(--border) bg-(--bg-surface) px-4 py-5">
         {planned ? <WeekRing done={planned.done} target={planned.planned} size={64} /> : <WeekRing done={r.active_days} target={7} size={64} />}
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[2.2rem] leading-none text-(--brand)">
-            {r.workouts} <span className="text-[1.1rem]">workout{r.workouts === 1 ? '' : 's'}</span>
+          <p className="font-display text-[2.1176rem] leading-none text-(--brand)">
+            {r.workouts} <span className="text-[1.0588rem]">workout{r.workouts === 1 ? '' : 's'}</span>
           </p>
           <p className="mt-1 text-[0.7647rem] text-(--text-secondary)">
             {[r.hours ? fmtDuration(r.hours * 60) : '', r.km ? fmtDist(r.km, imperial) : ''].filter(Boolean).join(' · ') || 'No training logged'}
@@ -175,7 +175,7 @@ function Tile({ label, value, icon, tip, children }: {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
       {icon}
-      <span className="font-display text-[1.15rem] leading-none text-(--text)">{value}</span>
+      <span className="font-display text-[1.1765rem] leading-none text-(--text)">{value}</span>
       <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{label}{tip && <> {tip}</>}</span>
       {children}
     </div>

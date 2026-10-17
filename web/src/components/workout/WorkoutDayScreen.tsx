@@ -13,6 +13,8 @@ import {
   MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { RabbitNote } from '@/components/ui/brand'
+import { celebrate } from '@/components/fx'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { fmtDay } from '@/components/plan/PlanParts'
@@ -317,14 +319,19 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
           </Field>
         </Card>
       )}
-      {note && (note.how || note.cues) ? (
-        <SectionCard title={note.source === 'coach' ? 'From your coach' : 'How to do it'} icon={Lightbulb}>
+      {note && (note.how || note.cues) ? (note.source === 'coach' ? (
+        <SectionCard title="From your coach" icon={Lightbulb}>
           <div className="flex flex-col gap-1.5 px-3.5 pt-2 text-[0.8235rem] leading-snug">
             {note.how && <p className="text-(--text)">{note.how}</p>}
             {note.cues && <p className="text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
           </div>
         </SectionCard>
-      ) : <CueCard cue={s.cue} />}
+      ) : (
+        <RabbitNote title="How to do it">
+          {note.how && <p className="m-0 text-[0.8235rem] text-(--text)">{note.how}</p>}
+          {note.cues && <p className="m-0 text-[0.8235rem] text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
+        </RabbitNote>
+      )) : <CueCard cue={s.cue} />}
       <FuelCard s={s} />
       {(s.gear.length > 0 || (isToday && d.weather)) && (
         <div className="flex flex-col gap-2">
@@ -379,6 +386,7 @@ export const TONE: Record<WorkoutFeedback['tone'], string> = {
 function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
   s: WorkoutSession; c: CalSession | undefined; date: string; imperial: boolean; onAsk?: (text: string) => void; onVoice?: () => void
 }) {
+  const saveBtn = useRef<HTMLButtonElement>(null)
   const [got, setGot] = useState<{ checkin: Checkin | null; feedback: WorkoutFeedback | null } | null>(null)
   const [editing, setEditing] = useState(false)
   const [rpe, setRpe] = useState(5)
@@ -396,6 +404,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
     try {
       await createCheckin({ text: note.trim(), session_id: sid, activity_id: s.activity?.id ?? undefined, date, rpe,
         feel: f?.feel, pain: feel === 'pain' })
+      if (feel !== 'pain') celebrate(saveBtn.current, 'xp') // a little hop for logging it
       setEditing(false); setNote(''); load()
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
@@ -454,18 +463,18 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
             className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
           {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void save()}>Save</Button>
+            <Button ref={saveBtn} variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void save()}>Save</Button>
             {editing && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={() => setEditing(false)}>Cancel</Button>}
             {onVoice && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={onVoice}>Say it instead</Button>}
           </div>
         </div>
       )}
       {fb && (
-        <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><Sparkles className="size-4 text-(--accent)" aria-hidden /> {fb.headline}</p>
-          <div className="flex flex-col gap-1">
-            {fb.lines.map((l) => <p key={l} className="m-0 text-[0.8235rem] leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
-          </div>
+        <div aria-live="polite">
+          <RabbitNote title="Rabbit's feedback" className={fb.tone === 'ease' || fb.tone === 'care' ? TONE[fb.tone] : undefined}>
+            <p className="m-0 text-[0.8235rem] font-semibold text-(--text)">{fb.headline}</p>
+            {fb.lines.map((l) => <p key={l} className="m-0 text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+          </RabbitNote>
         </div>
       )}
       {onAsk && (ck || c?.went) && (
@@ -563,7 +572,7 @@ function FuelCard({ s }: { s: WorkoutSession }) {
       {s.fuel ? (
         <div className="min-w-0 flex-1">
           <p className="text-[0.8235rem] text-(--text)">
-            <b className="font-display text-[1.05rem]">{s.fuel.carbs_g_per_h} g</b> carbs/h
+            <b className="font-display text-[1.0588rem]">{s.fuel.carbs_g_per_h} g</b> carbs/h
             {s.fuel.total_carbs_g != null && <span className="text-(--text-muted)"> · ≈{s.fuel.total_carbs_g} g total</span>}
             {s.fuel.fluid_ml_per_h && <span className="text-(--text-muted)"> · {s.fuel.fluid_ml_per_h} ml/h</span>}
           </p>

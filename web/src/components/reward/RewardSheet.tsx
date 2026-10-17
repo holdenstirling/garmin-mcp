@@ -100,7 +100,7 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
           {record ? <Award className="size-3.5" aria-hidden="true" /> : <RabbitLogo size={14} current />}
           {record ? 'New best' : 'Workout done'}
         </span>
-        <p className="rb-pop m-0 max-w-sm font-display text-[1.6rem] leading-tight" style={{ animationDelay: '120ms' }}>{r.headline.text}</p>
+        <p className="rb-pop m-0 max-w-sm font-display text-[1.6471rem] leading-tight" style={{ animationDelay: '120ms' }}>{r.headline.text}</p>
         <p className="m-0 text-[0.7647rem] opacity-90">
           {r.name} · {Number.isNaN(day.getTime()) ? '' : day.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
         </p>
@@ -119,7 +119,7 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
 
       <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-display text-[1.5rem] leading-none text-(--accent)" aria-label={`${r.xp.gained} XP earned`}>+{xp} XP</span>
+          <span className="font-display text-[1.5294rem] leading-none text-(--accent)" aria-label={`${r.xp.gained} XP earned`}>+{xp} XP</span>
           {r.streak > 0 && (
             <span className="flex items-center gap-1 text-[0.8235rem] font-semibold text-(--accent)">
               <Flame className="size-4" aria-hidden="true" />{r.streak}-day streak
@@ -204,7 +204,7 @@ function Feel({ r, onCheckIn, onFeel }: { r: Reward; onCheckIn?: () => void; onF
             aria-label={`${label} (${v} of 5)`} onClick={(e) => void pick(v, e.currentTarget)}
             className={cn('flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border py-1.5 transition-colors disabled:opacity-40',
               picked === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg)')}>
-            <span className="text-[1.3rem] leading-none" aria-hidden="true">{face}</span>
+            <span className="text-[1.2941rem] leading-none" aria-hidden="true">{face}</span>
             <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
           </button>
         ))}
