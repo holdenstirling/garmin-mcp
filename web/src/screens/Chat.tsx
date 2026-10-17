@@ -21,6 +21,7 @@ import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
+import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
@@ -365,6 +366,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const onDay = () => { setSheet(null); setClosing(false); closePages(); setSchedView('plan'); setTab('plan') }
     window.addEventListener(OPEN_PLAN_DAY_EVENT, onDay)
     return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, onDay)
+  }, [setTab])
+  useEffect(() => {
+    // lib/events openEvent (a plan day's "From your events", search): Schedule > Events, where
+    // EventsScreen opens that event (it reads the stored id on mount and listens while shown).
+    const onEvent = () => { setSheet(null); setClosing(false); closePages(); setSchedView('events'); setTab('plan') }
+    window.addEventListener(OPEN_EVENT_EVENT, onEvent)
+    return () => window.removeEventListener(OPEN_EVENT_EVENT, onEvent)
   }, [setTab])
   useEffect(() => {
     // Search everywhere (components/search): a picked result -> its tab or page.

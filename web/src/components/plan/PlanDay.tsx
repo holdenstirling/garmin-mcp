@@ -4,8 +4,9 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { openEvent } from '@/lib/events'
 import { cn } from '@/lib/utils'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
@@ -147,6 +148,13 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
             </div>
           ))}
         </dl>
+      )}
+      {s.event_id && (
+        <button type="button" onClick={() => openEvent(s.event_id!)}
+          className="mx-3.5 mt-2 flex min-h-11 items-center gap-1.5 text-left text-[0.7647rem] text-(--text-secondary)">
+          <CalendarDays className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
+          <span>From your events: <span className="font-medium text-(--accent) underline-offset-2 hover:underline">open the event</span></span>
+        </button>
       )}
       {c?.adjusted && (
         <p className="mx-3.5 mt-2 flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">

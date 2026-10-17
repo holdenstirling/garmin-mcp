@@ -11,7 +11,7 @@ import { Card, Choice, Field, NumberStepper, OptionCard, areaCls, inputCls } fro
 import { M_PER_FT } from '@/lib/plan'
 import {
   COURSE_PROFILES, DISTANCE_LABEL, EVENT_KINDS, EVENT_TYPES, INFO_LABEL, KIND_HINT, TYPE_DISTANCES, WEEKDAYS, kindOf, lookupEvent,
-  type EventFields, type EventInfo, type EventKind, type EventType, type Weekday,
+  type EventFields, type EventInfo, type EventKind, type EventType, type Recurring, type Weekday,
 } from '@/lib/events'
 import { cn } from '@/lib/utils'
 
@@ -67,11 +67,6 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
   if (kind === 'race' || kind === 'challenge') return null
   const group = kind === 'group_activity'
   const multi = kind === 'trip' || kind === 'milestone'
-  const rec = value.recurring ?? null
-  const weekdayOf = (d?: string): Weekday => {
-    const n = d ? new Date(`${d}T12:00:00`).getDay() : 2
-    return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as Weekday[])[Number.isNaN(n) ? 2 : n]!
-  }
   return (
     <Card>
       {multi && (
@@ -80,35 +75,31 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
             onChange={(e) => onChange({ end_date: e.target.value || null })} />
         </Field>
       )}
-      {group && (
-        <Field label="Repeats weekly" hint="Leagues and weekly group rides: Rabbit puts each one in your plan.">
-          <div className="flex flex-col gap-2">
-            <ChoiceRow on={!!rec} onToggle={(on) => onChange({ recurring: on ? { weekday: weekdayOf(value.date), until: value.date || todayIso() } : null })} />
-            {rec && (
-              <>
-                <Choice value={rec.weekday} options={WEEKDAYS} onChange={(v) => v && onChange({ recurring: { ...rec, weekday: v } })} />
-                <label className="flex flex-col gap-1 text-[0.7059rem] text-(--text-muted)">Until
-                  <input type="date" className={inputCls} value={rec.until} min={value.date || undefined}
-                    onChange={(e) => onChange({ recurring: { ...rec, until: e.target.value } })} />
-                </label>
-              </>
-            )}
-          </div>
-        </Field>
+      {(group || kind === 'other') && (
+        <RepeatFields date={value.date} value={value.recurring ?? null} onChange={(r) => onChange({ recurring: r })}
+          hint={group ? 'Leagues, weekly group rides, Tuesday volleyball: Rabbit puts each date on your schedule.' : undefined} />
       )}
       {(group || kind === 'other') && (
         <>
-          <Field label="Start time" className={cn((group || multi) && 'border-t border-(--border)')}>
+          <Field label="Start time" className="border-t border-(--border)">
             <input type="time" className={inputCls} value={value.time ?? ''} onChange={(e) => onChange({ time: e.target.value || null })} />
           </Field>
           <Field label="How long" className="border-t border-(--border)" hint={kind === 'other' ? 'Add a length and Rabbit counts it as a session.' : undefined}>
             <NumberStepper label="how long" value={value.duration_min ?? null} min={10} max={600} step={15} suffix="min"
               onChange={(v) => onChange({ duration_min: v })} />
           </Field>
-          <Field label="Effort" className="border-t border-(--border)">
-            <Choice value={value.intensity ?? 'moderate'} onChange={(v) => onChange({ intensity: v ?? 'moderate' })}
-              options={[['easy', 'Easy'], ['moderate', 'Moderate'], ['hard', 'Hard']]} />
+          <Field label="In your training" className="border-t border-(--border)"
+            hint={value.in_plan === false ? 'It stays on your calendar; your workouts that day don’t change.'
+              : 'Each date counts as a workout in your plan, in place of that day’s session of the same sport.'}>
+            <Choice value={value.in_plan === false ? 'no' : 'yes'} onChange={(v) => onChange({ in_plan: v === 'no' ? false : null })}
+              options={[['yes', 'Count as a workout'], ['no', 'Calendar only']]} />
           </Field>
+          {value.in_plan !== false && (
+            <Field label="Effort" className="border-t border-(--border)">
+              <Choice value={value.intensity ?? 'moderate'} onChange={(v) => onChange({ intensity: v ?? 'moderate' })}
+                options={[['easy', 'Easy'], ['moderate', 'Moderate'], ['hard', 'Hard']]} />
+            </Field>
+          )}
         </>
       )}
       {kind !== 'milestone' && (
@@ -118,8 +109,12 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
               onChange={(e) => onChange({ with: e.target.value })} />
           </Field>
           <Field label="Meeting spot" className="border-t border-(--border)">
-            <input className={inputCls} value={value.at ?? ''} maxLength={80} placeholder={group ? 'e.g. the shop, Washington Park' : 'Trailhead, hut, town'}
+            <input className={inputCls} value={value.at ?? ''} maxLength={80} placeholder={group ? 'e.g. Baker Park courts, the shop' : 'Trailhead, hut, town'}
               onChange={(e) => onChange({ at: e.target.value })} />
+          </Field>
+          <Field label="Neighborhood" className="border-t border-(--border)" hint="Optional. A public place or area, never a home address.">
+            <input className={inputCls} value={value.neighborhood ?? ''} maxLength={80} placeholder="e.g. Baker, Denver"
+              onChange={(e) => onChange({ neighborhood: e.target.value })} />
           </Field>
         </>
       )}
@@ -127,10 +122,100 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
   )
 }
 
-function ChoiceRow({ on, onToggle }: { on: boolean; onToggle: (on: boolean) => void }) {
+type RepeatMode = 'none' | 'weekly' | 'biweekly' | 'monthly'
+const ORD: [string, string][] = [['1', '1st'], ['2', '2nd'], ['3', '3rd'], ['4', '4th'], ['-1', 'Last']]
+const DAY_LONG: Record<Weekday, string> = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' }
+const weekdayOf = (d?: string | null): Weekday => {
+  const n = d ? new Date(`${d}T12:00:00`).getDay() : 2
+  return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as Weekday[])[Number.isNaN(n) ? 2 : n]!
+}
+const setposOf = (d?: string | null): 1 | 2 | 3 | 4 | -1 => {
+  const day = d ? new Date(`${d}T12:00:00`).getDate() : 1
+  const n = Math.floor((day - 1) / 7) + 1
+  return n >= 5 ? -1 : (n as 1 | 2 | 3 | 4)
+}
+export function repeatMode(r: Recurring | null | undefined): RepeatMode {
+  if (!r) return 'none'
+  if (r.freq === 'monthly') return 'monthly'
+  return r.interval === 2 ? 'biweekly' : 'weekly'
+}
+/** "Every Tuesday and Thursday until Mar 30" (the same words the server uses, for the form). */
+export function repeatSummary(r: Recurring): string {
+  const days = (r.weekdays?.length ? r.weekdays : r.weekday ? [r.weekday] : []).map((d) => DAY_LONG[d])
+  const list = days.length <= 1 ? days[0] ?? '' : `${days.slice(0, -1).join(', ')} and ${days[days.length - 1]}`
+  const head = r.freq === 'monthly' ? `Monthly on the ${(ORD.find(([v]) => Number(v) === (r.setpos ?? 1))?.[1] ?? '1st').toLowerCase()} ${days[0] ?? ''}`
+    : r.interval === 2 ? `Every 2 weeks on ${list}` : `Every ${list}`
+  const end = r.until ? ` until ${new Date(`${r.until}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : r.count ? `, ${r.count} times` : ''
+  return head + end
+}
+
+/** How an event repeats: once, weekly (one or more weekdays), every 2 weeks, or monthly on the
+ * nth weekday; ending never, on a date, or after a number of times. */
+export function RepeatFields({ date, value, onChange, hint }: {
+  date?: string | null; value: Recurring | null; onChange: (r: Recurring | null) => void; hint?: string
+}) {
+  const mode = repeatMode(value)
+  const days: Weekday[] = value?.weekdays?.length ? value.weekdays : value?.weekday ? [value.weekday] : [weekdayOf(date)]
+  const base = (m: RepeatMode): Recurring | null => {
+    const keep = { until: value?.until ?? null, count: value?.count ?? null, except: value?.except ?? [] }
+    if (m === 'none') return null
+    if (m === 'monthly') return { freq: 'monthly', interval: 1, weekdays: [days[0] ?? weekdayOf(date)], setpos: value?.setpos ?? setposOf(date), ...keep }
+    return { freq: 'weekly', interval: m === 'biweekly' ? 2 : 1, weekdays: days, ...keep }
+  }
+  const ends: 'never' | 'on' | 'after' = value?.until ? 'on' : value?.count ? 'after' : 'never'
+  const toggleDay = (d: Weekday) => {
+    if (!value) return
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d]
+    if (!next.length) return  // at least one day
+    onChange({ ...value, weekdays: next, weekday: undefined })
+  }
   return (
-    <Choice value={on ? 'yes' : 'no'} onChange={(v) => onToggle(v === 'yes')}
-      options={[['no', 'One time'], ['yes', 'Every week']]} />
+    <Field label="Repeats" hint={hint}>
+      <div className="flex flex-col gap-3">
+        <Choice value={mode} onChange={(m) => onChange(base(m ?? 'none'))}
+          options={[['none', 'Once'], ['weekly', 'Weekly'], ['biweekly', 'Every 2 weeks'], ['monthly', 'Monthly']]} />
+        {value && mode !== 'monthly' && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[0.7059rem] text-(--text-muted)">On</span>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days it repeats on">
+              {WEEKDAYS.map(([d, l]) => (
+                <button key={d} type="button" aria-pressed={days.includes(d)} aria-label={DAY_LONG[d]} onClick={() => toggleDay(d)}
+                  className={cn('flex size-11 items-center justify-center rounded-full border text-[0.7647rem] font-medium',
+                    days.includes(d) ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text)')}>
+                  {l.slice(0, 2)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {value && mode === 'monthly' && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[0.7059rem] text-(--text-muted)">Which week</span>
+            <Choice value={String(value.setpos ?? 1)} onChange={(v) => v && onChange({ ...value, setpos: Number(v) as Recurring['setpos'] })} options={ORD} />
+            <span className="text-[0.7059rem] text-(--text-muted)">Day</span>
+            <Choice value={days[0]!} onChange={(v) => v && onChange({ ...value, weekdays: [v], weekday: undefined })} options={WEEKDAYS} />
+          </div>
+        )}
+        {value && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[0.7059rem] text-(--text-muted)">Ends</span>
+            <Choice value={ends} onChange={(e) => onChange({ ...value,
+              until: e === 'on' ? (value.until ?? date ?? todayIso()) : null, count: e === 'after' ? (value.count ?? 10) : null })}
+              options={[['never', 'Never'], ['on', 'On a date'], ['after', 'After some dates']]} />
+            {ends === 'on' && (
+              <input type="date" aria-label="Last date" className={inputCls} value={value.until ?? ''} min={date || undefined}
+                onChange={(e) => onChange({ ...value, until: e.target.value || null })} />
+            )}
+            {ends === 'after' && (
+              <NumberStepper label="how many times" value={value.count ?? 10} min={1} max={200} step={1} suffix="times"
+                onChange={(v) => onChange({ ...value, count: v ?? 10 })} />
+            )}
+          </div>
+        )}
+        {value && <p className="text-[0.7647rem] font-medium text-(--accent)" aria-live="polite">{repeatSummary(value)}</p>}
+      </div>
+    </Field>
   )
 }
 

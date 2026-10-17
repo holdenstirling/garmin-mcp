@@ -31,6 +31,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
+from . import recur
+
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 LEVELS = ("new", "intermediate", "advanced")
 EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
@@ -662,26 +664,18 @@ def _span(ev: dict[str, Any], d: date) -> list[date]:
 
 
 def occurrences(ev: dict[str, Any], until: date) -> list[date]:
-    """The dates a (possibly weekly) event happens, before ``until``."""
+    """The dates a (possibly repeating) event happens, before ``until``: weekly on some
+    weekdays, every 2 weeks or monthly (recur.py), skipped dates left out."""
     try:
         d = date.fromisoformat(ev.get("date") or "")
     except ValueError:
         return []
-    rec = ev.get("recurring") if isinstance(ev.get("recurring"), dict) else None
-    if not rec:
+    rule = recur.loose(ev.get("recurring"), d)
+    if not rule:
         return [d] if d < until else []
-    wd = rec.get("weekday")
-    if wd in WEEKDAYS:
-        d += timedelta(days=(WEEKDAYS.index(wd) - d.weekday()) % 7)
-    try:
-        last = min(until - timedelta(days=1), date.fromisoformat(rec.get("until") or ""))
-    except ValueError:
-        last = until - timedelta(days=1)
-    out = []
-    while d <= last and len(out) < MAX_OCCURRENCES:
-        out.append(d)
-        d += timedelta(weeks=1)
-    return out
+    if until <= d:
+        return []
+    return recur.dates(rule, d, d, until - timedelta(days=1), limit=MAX_OCCURRENCES)
 
 
 def group_session(ev: dict[str, Any], swim_pace: float = 120.0) -> dict[str, Any]:
@@ -738,6 +732,8 @@ def apply_events(weeks: list[dict[str, Any]], events: list[dict[str, Any]], inp:
     blocked: set[str] = set()  # milestone and trip days: no group sessions there
     for ev in sorted(events, key=lambda e: (order.get(_ev_kind(e), 3), e.get("date") or "")):
         kind = _ev_kind(ev)
+        if ev.get("in_plan") is False:
+            continue  # on the calendar only ("Count as a workout" off)
         if kind in ("group_activity", "other"):
             if kind == "other" and not ev.get("duration_min"):
                 continue  # nothing to train: it stays on the calendar only

@@ -4,19 +4,20 @@
 // trips lighten those days and life events get rest days.
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Star, Trash2, Waves } from 'lucide-react'
+import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Repeat, Star, Trash2, Volleyball, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import {
-  DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, TYPE_LABEL, WEEKDAYS, countdown, deleteEvent, daysUntil, isRace, kindOf, listEvents,
-  makeMainEvent, writeDebrief,
+  DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, OPEN_EVENT_EVENT, TYPE_LABEL, countdown, deleteEvent, daysUntil, isRace, isUpcoming, kindOf,
+  listEvents, makeMainEvent, nextDate, takeOpenEvent, writeDebrief,
   type Debrief, type EventFields, type EventKind, type EventType, type RaceEvent,
 } from '@/lib/events'
 import { EventBasics, EventGoal, EventKindFields, InfoBlock, KIND_ICON, KindPicker, kindDefaults } from './EventForm'
 import { RacePackScreen, packTitle } from './RacePackScreen'
+import { AddToCalendar, CalendarSync, EventPlanCard, UpcomingDates } from './EventLinks'
 import { RaceFitScreen } from './RaceFitScreen'
 import { ReadinessRow } from './Readiness'
 import { FinishChip } from './FinishEstimate'
@@ -31,7 +32,7 @@ import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
-  swimming: Waves, mountaineering: Mountain, other: Activity,
+  swimming: Waves, mountaineering: Mountain, team_sport: Volleyball, other: Activity,
 }
 
 export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false, request, onRequestHandled }: {
@@ -74,10 +75,23 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
     else if (hit) setEditing(hit)
     onRequestHandled?.()
   }, [request?.n, events === null]) // eslint-disable-line react-hooks/exhaustive-deps
+  // An event opened from elsewhere (a plan day's "From: …", search): lib/events openEvent.
+  const [want, setWant] = useState<string | null>(() => takeOpenEvent())
+  useEffect(() => {
+    const on = (e: Event) => { takeOpenEvent(); setWant((e as CustomEvent<string>).detail || null) }
+    window.addEventListener(OPEN_EVENT_EVENT, on)
+    return () => window.removeEventListener(OPEN_EVENT_EVENT, on)
+  }, [])
+  useEffect(() => {
+    if (!want || !events) return
+    const hit = events.find((e) => e.id === want)
+    if (hit) setEditing(hit)
+    setWant(null)
+  }, [want, events])
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
-  const upcoming = (events ?? []).filter((e) => daysUntil(e.date) >= 0)
-  const past = (events ?? []).filter((e) => daysUntil(e.date) < 0).reverse()
+  const upcoming = (events ?? []).filter(isUpcoming).sort((a, b) => nextDate(a).localeCompare(nextDate(b)))
+  const past = (events ?? []).filter((e) => !isUpcoming(e)).reverse()
   const saved = (list: RaceEvent[]) => { setEvents(list); setChanged(true); onChanged() }
 
   // "Add" waits for the list: whether a new event becomes the main one depends on it.
@@ -133,6 +147,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                 {showPast && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
             )}
+            <CalendarSync />
             <details className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
               <summary className="hit-44 inline-flex min-h-11 cursor-pointer items-center font-medium text-(--text-secondary)">How events shape your plan</summary>
               <p>
@@ -145,8 +160,12 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         )}
       </Screen>
       {editing && (
-        <EventEditor event={editing === 'new' ? null : editing} isFirst={events !== null && events.length === 0} imperial={imperial}
-          onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }} />
+        <EventEditor key={editing === 'new' ? 'new' : editing.id} event={editing === 'new' ? null : editing}
+          isFirst={events !== null && events.length === 0} imperial={imperial}
+          onClose={() => setEditing(null)} onSaved={(list) => { saved(list) }}
+          onUpdated={(list) => { saved(list); setEditing((cur) => cur && cur !== 'new' ? list.find((x) => x.id === cur.id) ?? cur : cur) }}
+          onOpenEvent={(id) => { const hit = events?.find((x) => x.id === id); if (hit) setEditing(hit) }}
+          onOpenPlan={onOpenPlan} onBuildPlan={onBuildPlan} />
       )}
       {fit && <RaceFitScreen eventId={fit.id} race={isRace(fit)} onClose={() => setFit(null)} />}
       {pack && <RacePackScreen eventId={pack.id} kind={kindOf(pack)} imperial={imperial} onClose={() => setPack(null)} />}
@@ -159,11 +178,11 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
 function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
   e: RaceEvent; grade?: RaceGrade; people?: PeopleSummary; onPeople?: () => void; onClick: () => void; onFit?: () => void; onPack?: () => void
 }) {
-  const n = daysUntil(e.date)
+  const n = daysUntil(nextDate(e))
   const race = isRace(e)
   if (!onFit && !onPeople) return <EventCardButton e={e} onClick={onClick} />
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', n < 0 && 'opacity-70')}>
+    <div className={cn('overflow-hidden rounded-xl border bg-(--bg-surface)', e.main ? 'border-(--accent)' : 'border-(--border)', !isUpcoming(e) && 'opacity-70')}>
       <EventCardButton e={e} onClick={onClick} bare />
       {!onFit ? null : !race ? (
         <button type="button" onClick={onFit}
@@ -192,12 +211,13 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
 
 function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => void; bare?: boolean }) {
   const kind = kindOf(e)
-  const Icon = kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
-  const n = daysUntil(e.date)
+  const Icon = kind === 'race' ? TYPE_ICON[e.type] ?? Activity : e.type === 'team_sport' ? Volleyball : KIND_ICON[kind]
+  const when = nextDate(e)
+  const n = daysUntil(when)
   return (
     <button type="button" onClick={onClick}
       className={cn('flex w-full items-center gap-3 bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)',
-        !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && n < 0 && 'opacity-70')}>
+        !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && !isUpcoming(e) && 'opacity-70')}>
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
         e.main ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
         <Icon className="size-5" />
@@ -208,27 +228,36 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
           <span className="truncate text-[0.9412rem] font-medium text-(--text)">{e.name}</span>
         </span>
         <span className="block truncate text-[0.7059rem] text-(--text-muted)">
-          {new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+          {e.recurring && e.repeat_text ? `${e.repeat_text}${e.time ? ` · ${e.time}` : ''}`
+            : new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           {e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
-          {e.recurring ? ` · weekly on ${WEEKDAYS.find(([d]) => d === e.recurring!.weekday)?.[1] ?? e.recurring.weekday}` : ''}
           {kind === 'milestone' ? '' : ` · ${TYPE_LABEL[e.type]}`}
           {kind !== 'race' || !e.distance || e.distance === 'other' ? '' : ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}`}
-          {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}
+          {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}{e.neighborhood ? ` · ${e.neighborhood}` : ''}
         </span>
+        {e.plan && (e.plan.status === 'in_plan' || e.plan.status === 'pending') && (
+          <span className={cn('mt-0.5 flex items-center gap-1 text-[0.6471rem] font-medium', e.plan.status === 'in_plan' ? 'text-(--accent)' : 'text-(--warning-text)')}>
+            {e.recurring && <Repeat className="size-3" aria-hidden />}{e.plan.status === 'in_plan' ? 'In your plan' : 'Not in your plan yet'}
+          </span>
+        )}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
         <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
           {e.main ? 'Main' : kind !== 'race' ? KIND_LABEL[kind] : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
-        <span className="text-[0.6471rem] text-(--text-muted)">{e.result && n < 0 ? e.result : countdown(e.date)}</span>
+        <span className="text-[0.6471rem] text-(--text-muted)">{e.result && n < 0 ? e.result : e.recurring && isUpcoming(e) ? `Next: ${countdown(when)}` : countdown(when)}</span>
       </span>
     </button>
   )
 }
 
-function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
+function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent, onOpenPlan, onBuildPlan, imperial }: {
   event: RaceEvent | null; isFirst: boolean; imperial: boolean
   onClose: () => void; onSaved: (list: RaceEvent[]) => void
+  /** a change made on the page (skip a date) that keeps it open */
+  onUpdated: (list: RaceEvent[]) => void
+  onOpenEvent: (id: string) => void
+  onOpenPlan: () => void; onBuildPlan: () => void
 }) {
   const [closing, setClosing] = useState(false)
   // A new event starts with the kind picker; the rest of the form follows the kind.
@@ -249,7 +278,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
   const [fitOpen, setFitOpen] = useState(false)
   const set = (p: EventFields) => setV((x) => ({ ...x, ...p }))
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
-  const past = !!event && daysUntil(event.date) < 0
+  const past = !!event && !isUpcoming(event)
 
   async function run(kind: 'save' | 'delete' | 'main', fn: () => Promise<{ events: RaceEvent[] }>) {
     setBusy(kind); setError(null); setQueued(false)
@@ -261,9 +290,13 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
   function payload(): EventFields {
     const f: EventFields = {}
     for (const k of ['name', 'kind', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info', 'elevation_m', 'course_profile',
-      'end_date', 'time', 'recurring', 'with', 'at', 'duration_min', 'intensity'] as const) {
+      'end_date', 'time', 'recurring', 'with', 'at', 'duration_min', 'intensity', 'neighborhood', 'in_plan'] as const) {
       if (v[k] !== undefined && (!event || JSON.stringify(v[k]) !== JSON.stringify(event[k]))) (f as Record<string, unknown>)[k] = v[k]
     }
+    // Skipped dates are saved as you tap them (UpcomingDates): send the latest ones, never the
+    // copy the form opened with.
+    if (f.recurring && event?.recurring) f.recurring = { ...f.recurring, except: event.recurring.except ?? [] }
+    if (f.recurring && !event) f.recurring = { ...f.recurring, except: [] }
     if (f.goal_type !== undefined && f.goal_type !== 'time' && !event?.target_time) delete f.target_time
     if (v.goal_type !== 'time' && event?.target_time) f.target_time = null
     return f
@@ -292,6 +325,16 @@ function EventEditor({ event, isFirst, onClose, onSaved, imperial }: {
       </>}>
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
       {guard.dialog}
+      {event?.series_id && (
+        <button type="button" onClick={() => onOpenEvent(event.series_id!)}
+          className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 text-left text-[0.7647rem] text-(--text-secondary) active:bg-(--bg-inset)">
+          <Repeat className="size-4 text-(--accent)" aria-hidden /> <span className="flex-1">One date of a repeating event</span>
+          <span className="font-medium text-(--accent)">See the series</span>
+        </button>
+      )}
+      {event && <EventPlanCard event={event} onOpenPlan={() => { onOpenPlan(); close() }} onBuildPlan={() => { onBuildPlan(); close() }} />}
+      {event && !past && <UpcomingDates event={event} onSaved={onUpdated} />}
+      {event && !past && <AddToCalendar event={event} />}
       {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
       {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />

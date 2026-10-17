@@ -16,7 +16,7 @@ import re
 import secrets
 import threading
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
@@ -43,6 +43,9 @@ from .planimport import ImportService
 from .events import KINDS, TYPE_DISTANCES, TYPES
 from .events import MAIN_KINDS as _EV_MAIN_KINDS
 from .events import is_race as _ev_is_race
+from .events import EventStore as _EventStore
+from .events import plan_links as _ev_plan_links
+from . import calsub as _calsub
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
@@ -881,10 +884,95 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         assert chat is not None
         return chat.agent.events
 
+    def _ev_view(evs: list[dict[str, Any]], user_id: str) -> list[dict[str, Any]]:
+        """Events as the screens use them: repeat text / next dates / RRULE, Google's add link,
+        and how each one shows up in the plan (events.plan_links)."""
+        today = plans.today(user_id) if plans is not None else date.today()
+        plan = plans.get(user_id) if plans is not None else None
+        links = _ev_plan_links(evs, plan, today)
+        return [_EventStore.decorate(e, today) | {"plan": links.get(e.get("id")), "google_url": _calsub.google_url(e)}
+                for e in evs]
+
     def _events_resp(user_id: str, status: int = 200, **extra: Any) -> JSONResponse:
-        return JSONResponse({"events": _events().list(user_id),
+        evs = _ev_view(_events().list(user_id), user_id)
+        if isinstance(extra.get("event"), dict):
+            extra["event"] = next((e for e in evs if e.get("id") == extra["event"].get("id")), extra["event"])
+        return JSONResponse({"events": evs,
                              "types": {t: list(TYPE_DISTANCES[t]) for t in TYPES}, "kinds": list(KINDS), **extra},
                             status_code=status)
+
+    # Repeating events, calendar files and the private subscribe feed (recur.py, calsub.py).
+    _cal_sub = _calsub.CalSub(store) if store is not None else None
+
+    async def events_days(request: Request, user_id: str) -> Response:
+        """{days: {YYYY-MM-DD: [event, ...]}} for ?from=&to= (at most 120 days; default the next 6 weeks)."""
+        today = plans.today(user_id) if plans is not None else date.today()
+        try:
+            frm = date.fromisoformat(request.query_params.get("from") or today.isoformat())
+            to = date.fromisoformat(request.query_params.get("to") or (frm + timedelta(days=41)).isoformat())
+        except ValueError:
+            raise _UserError("from and to must be YYYY-MM-DD") from None
+        if to < frm or (to - frm).days > 120:
+            raise _UserError("Ask for up to 120 days at a time.")
+        days = await _plan_call(lambda: _events().days(user_id, frm, to))
+        return JSONResponse({"from": frm.isoformat(), "to": to.isoformat(), "days": days})
+
+    async def event_occurrence(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        eid, day = request.path_params["event_id"], request.path_params["day"]
+        out = await _plan_call(lambda: _events().edit_occurrence(user_id, eid, day, body))
+        return _events_resp(user_id, event=out["series"], one_off=out["event"])
+
+    async def event_end(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        ev = await _plan_call(lambda: _events().end_series(user_id, request.path_params["event_id"], str(body.get("after") or "")))
+        return _events_resp(user_id, event=ev)
+
+    async def event_ics(request: Request, user_id: str) -> Response:
+        ev = await _plan_call(lambda: _events().get(user_id, request.path_params["event_id"]))
+        return Response(_calsub.event_ics(ev).encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
+            "Content-Disposition": 'attachment; filename="rabbit-event.ics"', "Cache-Control": "no-store"})
+
+    def _feed_url(token: str) -> dict[str, str]:
+        base = settings.public_base_url.rstrip("/")
+        https = f"{base}/app/cal/{token}.ics"
+        return {"url": https, "webcal": "webcal://" + https.split("://", 1)[1]}
+
+    async def cal_feed_get(request: Request, user_id: str) -> Response:
+        if _cal_sub is None:
+            raise _UserError("Calendar links aren't available on this server.", 503)
+        st = await anyio.to_thread.run_sync(lambda: _cal_sub.status(user_id))
+        return JSONResponse({"on": bool(st), "created": (st or {}).get("created")})
+
+    async def cal_feed_post(request: Request, user_id: str) -> Response:
+        if _cal_sub is None:
+            raise _UserError("Calendar links aren't available on this server.", 503)
+        token = await anyio.to_thread.run_sync(lambda: _cal_sub.create(user_id))
+        return JSONResponse({"on": True, **_feed_url(token)})
+
+    async def cal_feed_delete(request: Request, user_id: str) -> Response:
+        if _cal_sub is not None:
+            await anyio.to_thread.run_sync(lambda: _cal_sub.revoke(user_id))
+        return JSONResponse({"on": False})
+
+    async def cal_feed_public(request: Request) -> Response:
+        """The subscribe feed itself: no sign-in (calendar apps can't), the secret token is the key."""
+        raw = request.path_params["token"]
+        token = raw[:-4] if raw.endswith(".ics") else raw
+        uid = await anyio.to_thread.run_sync(lambda: _cal_sub.lookup(token)) if _cal_sub is not None else None
+        if not uid or plans is None:
+            return Response("Not found", status_code=404, media_type="text/plain")
+
+        def build() -> str:
+            today = plans.today(uid)
+            return _calsub.feed_ics(_events().list(uid), plans.get(uid), today)
+        body = await anyio.to_thread.run_sync(build)
+        return Response(body.encode("utf-8"), media_type="text/calendar; charset=utf-8",
+                        headers={"Cache-Control": "private, max-age=900", "X-Robots-Tag": "noindex"})
 
     async def events_list(request: Request, user_id: str) -> Response:
         await _plan_call(lambda: _events().list(user_id))
@@ -3821,6 +3909,15 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/readiness", _plan_api(readiness_list, mutating=False), methods=["GET"]),
         Route("/app/api/coach/athletes/{athlete_id}/readiness", _plan_api(coach_athlete_readiness, mutating=False),
               methods=["GET"]),
+        Route("/app/api/events/days", _plan_api(events_days, mutating=False), methods=["GET"]),
+        Route("/app/api/events/{event_id}/occurrences/{day}", _plan_api(event_occurrence, mutating=True),
+              methods=["POST"]),
+        Route("/app/api/events/{event_id}/end", _plan_api(event_end, mutating=True), methods=["POST"]),
+        Route("/app/api/events/{event_id}/calendar.ics", _plan_api(event_ics, mutating=False), methods=["GET"]),
+        Route("/app/api/calendar/feed", _plan_api(cal_feed_get, mutating=False), methods=["GET"]),
+        Route("/app/api/calendar/feed", _plan_api(cal_feed_post, mutating=True), methods=["POST"]),
+        Route("/app/api/calendar/feed", _plan_api(cal_feed_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/cal/{token}", cal_feed_public, methods=["GET", "HEAD"]),
         Route("/app/api/events", _plan_api(events_list, mutating=False), methods=["GET"]),
         Route("/app/api/events", _plan_api(event_create, mutating=True), methods=["POST"]),
         Route("/app/api/events/lookup", _plan_api(event_lookup, mutating=True), methods=["POST"]),
