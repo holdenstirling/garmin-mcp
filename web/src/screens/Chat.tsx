@@ -679,7 +679,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     void run()
     const onVis = () => { if (document.visibilityState === 'visible') { setFeedTick((n) => n + 1); void run() } }
     document.addEventListener('visibilitychange', onVis)
-    const timer = window.setInterval(() => void run(), 60_000)
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void run() }, 60_000)  // hidden: the visibility handler catches up
     return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
   }, [overlayFree, me.garmin.connected, loadToday]) // eslint-disable-line react-hooks/exhaustive-deps
   // App icon badge (lib/unread.ts): unread cheers, requests, invites, coach messages.

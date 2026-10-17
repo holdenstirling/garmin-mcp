@@ -39,16 +39,22 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
   const end = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
 
+  const lastSeen = useRef<number | string | null>(null)  // newest message ts from the last load
   const load = useCallback(async (quiet = false) => {
     try {
       const r = await getConv(id)
       setConv(r.conv); setMore(r.more)
+      const last = r.msgs[r.msgs.length - 1]?.ts ?? null
+      const grew = !quiet || last !== lastSeen.current
+      lastSeen.current = last
       setMsgs((old) => {
         const older = old.filter((m) => r.msgs.length && m.ts < r.msgs[0]!.ts)
         return [...older, ...r.msgs]
       })
       setError(null)
-      dmChanged()
+      // Opening the chat marks it read: tell the header (unread dot) only when something changed,
+      // not on every quiet poll (each event re-fetches the DM and notification counts).
+      if (grew) dmChanged()
     } catch (e) { if (!quiet) setError((e as Error).message) }
   }, [id])
   useEffect(() => { void load() }, [load])
