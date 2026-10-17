@@ -1,5 +1,6 @@
 // Rabbit's one status slot: a single row (at most 44px) for the most important thing to
 // fix or see right now. Chat decides which one; this only draws it.
+import type React from 'react'
 import { CalendarCheck, ChevronRight, ListChecks, Route, Target, TriangleAlert, Watch, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -38,7 +39,7 @@ function SetupRing({ done, total }: { done: number; total: number }) {
       <svg viewBox="0 0 28 28" className="absolute inset-0 size-7 -rotate-90">
         <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" strokeOpacity={0.2} strokeWidth={2.5} />
         <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c * (1 - frac)} />
+          className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - frac)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
       <span className="font-mono text-[0.6471rem] font-medium leading-none tabular-nums">{done}/{total}</span>
     </span>

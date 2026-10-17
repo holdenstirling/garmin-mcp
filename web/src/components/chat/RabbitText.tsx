@@ -1,22 +1,18 @@
 // How Rabbit's words look everywhere: chat replies (full markdown) and short Rabbit lines in cards
 // (only **bold**). Safe by construction: react-markdown without rehype-raw renders no raw HTML,
 // and the inline form builds React text nodes, never HTML. Links open in a new tab.
-import { useState } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { Suspense, lazy, useState } from 'react'
 import { cn } from '@/lib/utils'
 import '@/styles/rabbit-md.css'
 
-const REMARK_PLUGINS = [remarkGfm]
-const SAFE_URL = /^(https?:|mailto:|\/app\/)/i
-type Kids = { children?: React.ReactNode }
-const COMPONENTS = {
-  a: ({ href, children }: Kids & { href?: string }) => SAFE_URL.test(href ?? '')
-    ? <a href={href} target={href?.startsWith('/app/') ? undefined : '_blank'} rel="noopener noreferrer">{children}</a>
-    : <span>{children}</span>,
-  table: ({ children }: Kids) => <div className="md-table"><table>{children}</table></div>,
-  img: () => null, // model output never embeds images
-}
+// react-markdown + remark-gfm are ~100 KB, so they load on first use (prefetched at idle below);
+// until then the reply shows as plain text in the same box, so nothing jumps.
+const loadBody = () => import('./RabbitMarkdownBody')
+const MarkdownBody = lazy(loadBody)
+try {
+  const idle = (window as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback
+  if (idle) idle(() => void loadBody()); else window.setTimeout(() => void loadBody(), 1500)
+} catch { /* ignore */ }
 
 /** Fold replies longer than this (characters) behind "Show more" once they're finished. */
 export const FOLD_AT = 1400
@@ -32,7 +28,9 @@ export function RabbitMarkdown({ text, foldable = false, className }: {
   return (
     <>
       <div className={cn('rabbit-md', fold && 'rabbit-md--folded', className)}>
-        <Markdown remarkPlugins={REMARK_PLUGINS} components={COMPONENTS}>{text}</Markdown>
+        <Suspense fallback={<p className="whitespace-pre-wrap">{text}</p>}>
+          <MarkdownBody text={text} />
+        </Suspense>
       </div>
       {foldable && text.length > FOLD_AT && (
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}

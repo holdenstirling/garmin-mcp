@@ -6,6 +6,7 @@ import { DurationInput } from '@/components/ui/DurationInput'
 import { expectForDistance } from '@/lib/duration'
 import { CalendarDays, Check, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { celebrate } from '@/components/fx/motion'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
@@ -226,6 +227,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       setPlan(r.plan)
       clearDraft(DRAFT_KEY)
       setStep('done')
+      celebrate(null, 'plan') // a new plan: carrots fly (haptic; nothing moves under reduced motion)
       track('setup_complete')
       onDone()
     } catch (e) {

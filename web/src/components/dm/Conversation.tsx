@@ -1,6 +1,8 @@
 // One direct-message conversation (page): messages newest at the bottom, shared workout / event
 // cards inline, reactions on long-press (or the … button), a request banner when someone you
 // don't know wrote first, and a composer pinned above the safe area.
+import { celebrate } from '@/components/fx/motion'
+import { hapticTap } from '@/lib/haptics'
 import { PersonLink } from '@/components/people/PersonLink'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BellOff, Bell, Flag, LogOut, Ellipsis, Send, SmilePlus } from 'lucide-react'
@@ -69,8 +71,12 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
     if (!t || sending) return
     setSending(true); stick.current = true
     try {
+      const first = !msgs.some((x) => x.mine)
       const r = await sendMsg(id, t)
       setMsgs((m) => [...m, r.msg]); setText('')
+      // The first message in a conversation gets a little hop (haptic too; still under reduced motion).
+      if (first) celebrate(document.activeElement, 'kudos')
+      else hapticTap()
       dmChanged()
     } catch (e) { setError((e as Error).message) } finally { setSending(false) }
   }

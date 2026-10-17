@@ -6,6 +6,7 @@
 // Each has a one-line takeaway, a "Why it matters" tip and a table view. Tap or arrow-key a
 // week/day to read its value (the readout line); the latest is selected by default. Plain SVG,
 // CSS-var colors, so light and dark both work.
+import type React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Table2 } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -334,11 +335,12 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
           </button>
         )}
       </div>
-      <div role="tablist" aria-label="Trend" className="flex gap-1 rounded-full bg-(--bg-inset) p-0.5">
+      <div role="tablist" aria-label="Trend" className="seg flex rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, views.findIndex(([v]) => v === view)), '--seg-n': views.length } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
         {views.map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
             className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
-              view === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+              view === v ? 'text-(--text)' : 'text-(--text-muted)')}>{l}</button>
         ))}
       </div>
       {view === 'distance' && sports.length > 1 && (

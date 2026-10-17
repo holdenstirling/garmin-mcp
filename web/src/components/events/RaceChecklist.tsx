@@ -3,6 +3,7 @@
 // hide items you don't need (Undo; they're listed at the bottom), add your own per window. A
 // little hop when a window is all done. Opened from the event page, race cards, the race pack,
 // race week and Home (lib/racechecklist openChecklist).
+import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, EyeOff, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ export function ProgressRing({ done, total, size = 64 }: { done: number; total: 
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={6} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={6} strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
+          className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
       <span className="absolute font-mono text-[0.7647rem] font-semibold tabular-nums text-(--text)" aria-hidden>
         {done}/{total}
@@ -201,7 +202,7 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
             {b.past && !all ? ' · window passed' : ''}
           </span>
         </span>
-        {all && <Check className="size-4 text-(--accent)" aria-hidden />}
+        {all && <Check className="rb-tick size-4 text-(--accent)" aria-hidden />}
         <ChevronDown className={cn('size-4 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
@@ -214,7 +215,7 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
                   className="flex min-h-12 min-w-0 flex-1 items-start gap-3 px-4 py-2.5 text-left active:bg-(--bg-inset)">
                   <span aria-hidden className={cn('mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                     i.checked ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                    {i.checked && <Check className="size-3.5" strokeWidth={3} />}
+                    {i.checked && <Check className="rb-tick size-3.5" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={cn('block text-[0.8235rem] leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>

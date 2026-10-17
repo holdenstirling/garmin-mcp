@@ -6,7 +6,7 @@
 export { HopIn, hopIn } from './HopIn'
 export { CarrotBurst, burst } from './CarrotBurst'
 export { RabbitHop } from './RabbitHop'
-export { EmptyRabbit, RabbitNap } from './EmptyRabbit'
+export { EmptyRabbit, RabbitNap, type RabbitPose } from './EmptyRabbit'
 export { Shake } from './Shake'
 export { CountUp, useCountUp } from './CountUp'
 export { useIdleLoop } from './useIdleLoop'

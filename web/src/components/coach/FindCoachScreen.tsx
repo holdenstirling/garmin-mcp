@@ -4,6 +4,7 @@
 // runs one web search (sport + city only), labelled as not verified. The athlete contacts
 // coaches directly (email, phone, website); Rabbit takes no cut. "Invite as my coach" only
 // for coaches who already use Rabbit.
+import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { BadgeCheck, ExternalLink, Globe, Mail, MapPin, MessageCircle, Phone, Quote, Target, UserPlus } from 'lucide-react'
@@ -69,11 +70,12 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
   return (
     <Screen title="Find a coach" subtitle="Human coaches who can work alongside Rabbit" closing={closing}
       onClose={close} onBack={onBack ? close : undefined}>
-      <div role="tablist" aria-label="Where" className="flex gap-1 rounded-full bg-(--bg-inset) p-0.5">
+      <div role="tablist" aria-label="Where" className="seg flex rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, scope === 'remote' ? 1 : 0), '--seg-n': 2 } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
         {([['local', 'Near you'], ['remote', 'Anywhere (remote)']] as const).map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={scope === v} onClick={() => setScope(v)}
             className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
-              scope === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+              scope === v ? 'text-(--text)' : 'text-(--text-muted)')}>{l}</button>
         ))}
       </div>
       <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">

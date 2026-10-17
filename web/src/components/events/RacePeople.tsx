@@ -2,6 +2,7 @@
 // sheet (Friends / Share link / Pending), "Racing together" (teammates, opt-in grade and
 // finish, group chat, cheers), the invites inbox and "Events you're following" on the Events tab,
 // and "Invite to an event" from a friend's card.
+import type React from 'react'
 import { PersonLink } from '@/components/people/PersonLink'
 import { openPerson } from '@/lib/people'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -63,11 +64,12 @@ function Sheet({ title, onClose, children, tabs }: { title: string; onClose: () 
 
 function Tabs<T extends string>({ value, options, onChange }: { value: T; options: [T, string, number?][]; onChange: (t: T) => void }) {
   return (
-    <div role="tablist" className="mx-4 mb-1 flex gap-1 rounded-full bg-(--bg-inset) p-0.5">
+    <div role="tablist" className="mx-4 mb-1 seg flex rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, options.findIndex(([t]) => t === value)), '--seg-n': options.length } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
       {options.map(([t, name, badge]) => (
         <button key={t} type="button" role="tab" aria-selected={value === t} onClick={() => onChange(t)}
           className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
-            value === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+            value === t ? 'text-(--text)' : 'text-(--text-muted)')}>
           {name}
           {!!badge && <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{badge}</span>}
         </button>

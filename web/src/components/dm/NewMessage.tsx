@@ -128,7 +128,7 @@ export function NewMessageSheet({ to, share, onClose, onOpened }: {
                   <PersonAvatar u={{ ...p, photo: p.photo ?? null, picture: p.picture ?? '' }} size={36} />
                   <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{p.name}</span>
                   <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')} aria-hidden>
-                    {on && <Check className="size-3.5" />}
+                    {on && <Check className="rb-tick size-3.5" />}
                   </span>
                 </button>
               </li>

@@ -461,7 +461,7 @@
   /* backwards, not forwards: a transform left on the panel would make it the containing block
      of every position:fixed overlay opened inside it (nested sheets, confirms, photo viewer),
      trapping them in the panel's box with their close buttons out of reach. */
-  animation: modal-slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: modal-slide-up 0.28s cubic-bezier(0.22, 1.08, 0.36, 1) backwards; /* a soft spring */
 }
 
 .modal:focus,
