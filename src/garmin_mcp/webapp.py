@@ -3450,6 +3450,70 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def _f2_notify(to: str, key: str, title: str, body: str) -> None:
             if not _ag.moments.quiet(_ag._now(to)):
                 _cm_push(to, key, 3600, title, body)
+        # Direct messages (messages.py, routes in messages_web.py): 1:1 and small group chats
+        # between athletes; mutual follows and club / group mates write freely, anyone else sends
+        # a request. Shared workouts and events are snapshots from the sender's own data (sport,
+        # title, date, distance, time, pace; never heart rate, location or Oura).
+        from . import messages as _dmm, messages_web as _dmw
+        from .plancal import _dur_min as _dm_min, sport_of as _dm_sport
+
+        def _dm_circle(a: str, b: str) -> bool:
+            if set(_groups.ids_of(a)) & set(_groups.ids_of(b)):
+                return True
+            return bool(set(clb.ids_of(a)) & set(clb.ids_of(b)))
+
+        def _dm_card(uid: str, ref: dict[str, Any]) -> dict[str, Any] | None:
+            kind, rid = ref.get("kind"), ref.get("id")
+            if ref.get("type") == "event":
+                ev = next((e for e in _ag.events.list(uid) if e.get("id") == rid), None) if isinstance(rid, str) else None
+                if ev is None:
+                    return None
+                return {"name": str(ev.get("name") or "Event")[:120], "date": ev.get("date"), "time": ev.get("time"),
+                        "neighborhood": ev.get("neighborhood") or "", "event_type": ev.get("type"),
+                        "activity": ev.get("activity"), "repeat_text": ev.get("repeat_text") or ""}
+            if kind == "session" and isinstance(rid, str):
+                plan = plans.get(uid)
+                hit = next(((d, x) for _, d, x in iter_sessions(plan or {}) if x.get("id") == rid), None) if plan else None
+                if hit is None:
+                    return None
+                d, x = hit
+                return {"title": str(x.get("title") or "Workout")[:80], "sport": x.get("sport"), "date": d,
+                        "minutes": x.get("minutes"), "km": None, "pace": None, "planned": True}
+            if kind == "activity" and rid is not None:
+                _, acts = _ag.stats.activities(uid)
+                a = next((x for x in acts if str(x.get("activity_id")) == str(rid)), None)
+                if a is None:
+                    return None
+                km = a.get("distance_km") if isinstance(a.get("distance_km"), int | float) else None
+                mins = _dm_min(a.get("duration"))
+                pace = round(mins * 60 / km) if km and mins and km > 0.2 else None
+                return {"title": str(a.get("name") or "Workout")[:80], "sport": _dm_sport(a.get("sport")),
+                        "date": str(a.get("date") or "")[:10], "minutes": mins, "km": km, "pace": pace, "planned": False}
+            return None
+
+        def _dm_candidates(uid: str) -> list[str]:
+            ids = list(soc.following_ids(uid, limit=200)) + soc.follower_ids(uid)
+            for cid in clb.ids_of(uid):
+                try:
+                    ids += clb.member_ids(cid, uid)
+                except Exception:
+                    pass
+            for gid in _groups.ids_of(uid):
+                ids += _groups.member_ids(gid, uid)
+            return ids
+
+        def _dm_notify(to: str, key: str, title: str, body: str, url: str) -> None:
+            if push is None or _ag.moments.quiet(_ag._now(to)) or not push_allowed(key, 1, 60):
+                return
+            try:
+                push.send(to, title, body[:140], url=url)
+            except Exception as e:  # best effort
+                log_event(logger, logging.WARNING, "dm_push_failed", error=type(e).__name__)
+        dms = _dmm.Messages(store, is_athlete=soc.is_athlete, follows=soc.follows, blocked=soc.blocked_between,
+                            shared_circle=_dm_circle, card_for=_dm_card)
+        community_routes += _dmw.make_routes(dm=dms, wrap=_cd_wrap, read_json=read_json, person=_soc_person,
+                                             candidates=_dm_candidates, notify=_dm_notify, first_name=_soc_name)
+
         featured = _ft.Featured(store, is_owner=auth.is_owner,
                                 club_card=lambda c, u: clb.featured_card(c, u, _ag._now(u)), listing_card=_f2_listing)
         community_routes += _f2w.make_routes(

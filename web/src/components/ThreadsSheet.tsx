@@ -6,6 +6,8 @@ import { MessageSquarePlus, Pin, Trash2 } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { goalCountdown, type Goal, type Thread } from '@/lib/api'
+import { Segmented } from '@/components/nav/Segmented'
+import { DmList } from '@/components/dm/DmList'
 
 function formatRelativeTime(ts: number): string {
   const diffMs = Date.now() - ts * 1000
@@ -19,33 +21,45 @@ function formatRelativeTime(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString()
 }
 
-export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelete, onEditGoal, onClose, onDismissed, closing }: {
+export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelete, onEditGoal, onClose, onDismissed, closing,
+  view = 'rabbit', onView, onOpenDm, onNewDm, dmUnread = 0 }: {
   goal: Goal | null; threads: Thread[]; activeId: string | null
   onSelect: (id: string) => void; onNew: () => void; onDelete: (id: string) => void
   onEditGoal: () => void; onClose: () => void; onDismissed: () => void; closing: boolean
+  /** Rabbit chats or direct messages with people (athletes only: no onView = Rabbit only) */
+  view?: 'rabbit' | 'people'; onView?: (v: 'rabbit' | 'people') => void
+  onOpenDm?: (id: string) => void; onNewDm?: () => void; dmUnread?: number
 }) {
   const [deleteTarget, setDeleteTarget] = useState<Thread | null>(null)
+  const people = view === 'people' && !!onView
   return (
     <Sheet closing={closing} onClose={onClose} onDismissed={onDismissed}
       bodyClassName="min-h-0 flex-1 gap-0 p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
       header={
         <div className="min-w-0">
-          <h2 className="modal-title truncate">Chats with Rabbit</h2>
+          <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with Rabbit'}</h2>
           <button type="button" className="hit-44 max-w-full truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
             {goal ? `Training for ${goal.title}${goalCountdown(goal) ? ` · ${goalCountdown(goal)}` : ''}` : 'Set what you’re training for'}
           </button>
         </div>
       }
       actions={
-        <button className="modal-close" aria-label="New chat" title="New chat" onClick={onNew}>
+        <button className="modal-close" aria-label={people ? 'New message' : 'New chat with Rabbit'} title={people ? 'New message' : 'New chat'}
+          onClick={people ? onNewDm : onNew}>
           <MessageSquarePlus className="size-4" />
         </button>
       }
+      below={onView && (
+        <div className="px-4 pb-2">
+          <Segmented label="Chats" value={view} onChange={onView}
+            options={[['rabbit', 'Rabbit'], ['people', dmUnread > 0 ? `People · ${dmUnread}` : 'People']] as const} />
+        </div>
+      )}
       extra={deleteTarget && (
         <ConfirmDelete title={deleteTarget.title || 'New chat'} onCancel={() => setDeleteTarget(null)}
           onConfirm={() => { onDelete(deleteTarget.id); setDeleteTarget(null) }} />
       )}>
-          {threads.map((t) => (
+          {people && onOpenDm && onNewDm ? <DmList onOpen={onOpenDm} onNew={onNewDm} /> : threads.map((t) => (
             <div key={t.id} role="button" tabIndex={0} onClick={() => onSelect(t.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(t.id) } }}
               className={`group flex w-full cursor-pointer items-start gap-2 border-b border-border/40 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${activeId === t.id ? 'bg-muted' : ''}`}>

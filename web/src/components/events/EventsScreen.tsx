@@ -5,8 +5,9 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Send, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { shareToFriends } from '@/lib/dm'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -383,6 +384,12 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {event && <EventPlanCard event={event} onOpenPlan={() => { onOpenPlan(); close() }} onBuildPlan={() => { onBuildPlan(); close() }} />}
       {event && !past && <UpcomingDates event={event} onSaved={onUpdated} />}
       {event && !past && <AddToCalendar event={event} />}
+      {event && !past && (
+        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"
+          onClick={() => shareToFriends({ type: 'event', ref: { id: event.id }, label: event.name })}>
+          <Send className="size-4" aria-hidden /> Send to friends
+        </Button>
+      )}
       {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
       {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />

@@ -1,14 +1,12 @@
 // Friends: a feed of the people you follow (their recent workouts, kudos, short cheers) and
 // People (invite code, add by email/code, requests, following/followers, privacy settings).
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain,
-  Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X,
-} from 'lucide-react'
+import { Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain, Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
+import { messagePeople } from '@/lib/dm'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row, Switch } from '@/components/settings/Grouped'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
@@ -335,6 +333,11 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => e.user && onOpen(e.user.id)}>
               {person(e, null)}
             </button>
+            {e.user && (
+              <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Message ${e.user.name}`} onClick={() => messagePeople([e.user!.id])}>
+                <MessageCircle className="size-4" aria-hidden />
+              </Button>
+            )}
             <Button variant="ghost" className="mr-2 h-8 px-2" aria-label={`Unfollow ${e.user?.name ?? ''}`} disabled={busy != null}
               onClick={() => void run(e.edge_id, () => unfollow(e.edge_id))}><UserMinus className="size-4" /></Button>
           </div>
@@ -417,9 +420,14 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
                 </div>
                 {u.level != null && <LevelBadge level={u.level} />}
               </div>
-              <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setRaceInvite(true)}>
-                <Flag className="size-4" /> Invite to an event
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" onClick={() => messagePeople([u.id])}>
+                  <MessageCircle className="size-4" aria-hidden /> Message
+                </Button>
+                <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" onClick={() => setRaceInvite(true)}>
+                  <Flag className="size-4" /> Invite to an event
+                </Button>
+              </div>
               {card.week && (
                 <div className="grid grid-cols-2 gap-2">
                   <Stat value={String(card.week.workouts)} label="workouts this week" />
