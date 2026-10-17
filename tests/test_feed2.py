@@ -382,3 +382,40 @@ def test_http_home_latest_groups_featured(env, tmp_path) -> None:
         for x in c.values():
             await x.aclose()
     asyncio.run(go())
+
+
+def test_http_group_full_flow_create_edit_add_remove_delete(env, tmp_path) -> None:
+    """Everything the New group / group page UI calls, in order: friends to pick, create with
+    people, rename, add someone, remove them, owner deletes (members then get 404)."""
+    apps, push, agent = _setup(env, tmp_path)
+
+    async def go() -> None:
+        c = _clients(apps)
+        ann = c["ann"]
+        for x in ("bob", "cat"):
+            for a, b in (("ann", x), (x, "ann")):
+                await c[a].post("/app/api/social/follow", headers=H, json={"email": f"{b}@x.com"})
+                eid = (await c[b].get("/app/api/social")).json()["pending_in"][0]["edge_id"]
+                await c[b].post(f"/app/api/social/requests/{eid}/accept", headers=H, json={})
+        friends = sorted(p["id"] for p in (await ann.get("/app/api/community/groups/friends")).json()["people"])
+        assert friends == ["bob", "cat"]
+        assert (await ann.post("/app/api/community/groups", headers=H, json={"name": "  ", "members": ["bob"]})).status_code == 400
+        r = await ann.post("/app/api/community/groups", headers=H, json={"name": "Sat crew", "emoji": "🏃", "members": ["bob"]})
+        assert r.status_code == 201
+        g = r.json()["group"]
+        gid = g["id"]
+        assert g["owner"] and sorted(m["id"] for m in g["members"]) == ["ann", "bob"]
+        r = await ann.patch(f"/app/api/community/groups/{gid}", headers=H, json={"name": "Sunday crew", "emoji": "🌅"})
+        assert r.status_code == 200 and r.json()["group"]["name"] == "Sunday crew" and r.json()["group"]["emoji"] == "🌅"
+        r = await ann.post(f"/app/api/community/groups/{gid}/members", headers=H, json={"user_ids": ["cat"]})
+        assert r.status_code == 200 and r.json()["added"] == 1 and r.json()["group"]["count"] == 3
+        r = await ann.request("DELETE", f"/app/api/community/groups/{gid}/members/cat", headers=H, json={})
+        assert r.status_code == 200 and r.json()["group"]["count"] == 2
+        assert (await c["cat"].get(f"/app/api/community/groups/{gid}")).status_code == 404
+        assert [x["id"] for x in (await ann.get("/app/api/community/groups")).json()["groups"]] == [gid]
+        assert (await ann.request("DELETE", f"/app/api/community/groups/{gid}", headers=H, json={})).status_code == 200
+        assert (await c["bob"].get(f"/app/api/community/groups/{gid}")).status_code == 404
+        assert (await ann.get("/app/api/community/groups")).json()["groups"] == []
+        for x in c.values():
+            await x.aclose()
+    asyncio.run(go())

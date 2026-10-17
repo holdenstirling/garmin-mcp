@@ -123,29 +123,29 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           onDismissed={(d) => setDrafts((xs) => xs.filter((x) => x.id !== d.id))} />
       )}
       {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
-      {main && ((items?.length ?? 0) > 0 || groups.length > 0 || filter !== 'all') && (
-        <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4" role="radiogroup" aria-label="Show">
-          {chips.map(([v, label]) => (
-            <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
-              className="hit-44 inline-flex min-h-8 shrink-0 items-center">
-              <span className={cn('whitespace-nowrap rounded-full px-3 py-1 text-[0.7059rem] font-medium',
-                filter === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>{label}</span>
-            </button>
-          ))}
+      {main && (
+        <nav aria-label="Whose feed" className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 no-scrollbar">
+          <div role="radiogroup" aria-label="Show" className="flex items-center gap-1.5">
+            {chips.map(([v, label]) => (
+              <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
+                className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-[0.7647rem] font-semibold transition-colors',
+                  filter === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary) active:bg-(--border)')}>{label}</button>
+            ))}
+          </div>
           {onNewGroup && (
-            <button type="button" onClick={onNewGroup} aria-label="New group"
-              className="hit-44 inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full border border-dashed border-(--border) px-3 py-1 text-[0.7059rem] font-medium text-(--text-secondary)">
-              <Plus className="size-3.5" aria-hidden /> Group
+            <button type="button" onClick={onNewGroup}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-(--border-strong) px-4 text-[0.7647rem] font-semibold text-(--accent) active:bg-(--bg-inset)">
+              <Plus className="size-4" aria-hidden /> New group
             </button>
           )}
-        </div>
+        </nav>
       )}
       {main && openGroup && onOpenGroup && (
         <button type="button" onClick={() => onOpenGroup(openGroup.id)}
           className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 text-left text-[0.7647rem] text-(--text-secondary) active:bg-(--bg-inset)">
           <UsersRound className="size-4 text-(--accent)" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">{openGroup.emoji} {openGroup.name} · {openGroup.count} people · only the group sees these</span>
-          <span className="text-(--accent)">Open</span>
+          <span className="min-w-0 flex-1 truncate">{openGroup.emoji} {openGroup.name} · {openGroup.count} {openGroup.count === 1 ? 'person' : 'people'} · only the group sees these</span>
+          <span className="font-semibold text-(--accent)">Members</span>
         </button>
       )}
       {pinned && (
@@ -166,14 +166,27 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
         <>
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
-              title={!main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
+              title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
               body={clubId ? 'Share the first news with the club: a meetup recap, a race, a welcome.'
-                : group ? 'Share the plan for Saturday, a photo from the run, a cheer. Only the group sees it.'
-                : 'First races, new PRs, comebacks, big life news. Share yours, and bring your friends so you can cheer each other on.'}
-              action={main && filter === 'all' && onInvite ? (
-                <Button variant="primary" className="mt-1 h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
-                  <UserPlus className="size-4" /> Find friends
+                : group ? "Members' workouts and posts show up here. Share the plan for Saturday, a photo from the run, a cheer. Only the group sees it."
+                : filter === 'clubs' ? 'Posts from clubs you join show up here. Find one in Clubs.'
+                : following === 0 ? "Follow friends to see their workouts here as soon as they sync. Then make a group for your crew."
+                : 'Workouts your friends share show up here as soon as they sync. First races, new PRs, comebacks: share yours too.'}
+              action={group ? (
+                <Button variant="primary" className="mt-1 h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={() => setComposer('blank')}>
+                  <SquarePen className="size-4" /> Post to the group
                 </Button>
+              ) : main && (filter === 'all' || filter === 'friends') && onInvite ? (
+                <div className="mt-1 flex flex-wrap justify-center gap-2">
+                  <Button variant="primary" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
+                    <UserPlus className="size-4" /> Find friends
+                  </Button>
+                  {onNewGroup && following > 0 && (
+                    <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={onNewGroup}>
+                      <Plus className="size-4" /> New group
+                    </Button>
+                  )}
+                </div>
               ) : undefined} />
           )}
           <div className="flex flex-col gap-3">
@@ -703,6 +716,10 @@ function PhotoGrid({ urls }: { urls: string[] }) {
 
 const SPORT_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', hike: '🥾', walk: '🚶', strength: '🏋️', ski: '⛷️', brick: '🔁', climb: '🧗', paddle: '🛶' }
 
+const SOURCE_LABEL: Record<string, string> = {
+  garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', coros: 'COROS', strava: 'Strava', polar: 'Polar', suunto: 'Suunto', wahoo: 'Wahoo',
+}
+
 function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperial: boolean }) {
   const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
     : w.pace_s_100m ? fmtSwim100(w.pace_s_100m, imperial) : null
@@ -711,18 +728,23 @@ function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperia
     [w.speed_kmh ? 'Speed' : 'Pace', pace], ['Climb', w.climb_m && w.climb_m >= 30 ? fmtClimb(w.climb_m, imperial) : null],
   ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1])
   const headline = w.headline || w.highlight
+  const via = SOURCE_LABEL[w.source ?? 'garmin'] ?? 'Garmin'
   return (
-    <div className="mt-2.5 rounded-xl border border-(--border) bg-(--bg-inset) px-3 py-2.5">
-      <p className="flex items-center gap-1.5 truncate text-[0.8235rem] font-semibold text-(--text)">
-        <span aria-hidden>{SPORT_EMOJI[w.sport] ?? '🐇'}</span>{w.title}
-      </p>
-      {headline && <p className="mt-0.5 text-[0.7647rem] font-medium text-(--accent)">{headline}</p>}
+    <div className="mt-2.5 rounded-xl border border-(--border) bg-(--bg-inset) px-3.5 py-3">
+      <div className="flex items-center gap-2.5">
+        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.25rem]">{SPORT_EMOJI[w.sport] ?? '🐇'}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[0.9412rem] font-semibold text-(--text)">{w.title}</span>
+          <span className="block text-[0.6471rem] text-(--text-muted)">{w.auto ? 'Synced' : 'Shared'} via {via}</span>
+        </span>
+      </div>
+      {headline && <p className="mt-1.5 text-[0.7647rem] font-medium text-(--accent)">{headline}</p>}
       {stats.length > 0 && (
-        <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
+        <dl className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1.5">
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="font-mono text-[0.6471rem] uppercase tracking-wider text-(--text-muted)">{k}</dt>
-              <dd className="truncate font-mono text-[0.8235rem] tabular-nums text-(--text)">{v}</dd>
+              <dd className="truncate font-mono text-[1rem] font-semibold tabular-nums text-(--text)">{v}</dd>
             </div>
           ))}
         </dl>

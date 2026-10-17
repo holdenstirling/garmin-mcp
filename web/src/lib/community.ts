@@ -51,7 +51,9 @@ export function audienceLabel(a: Audience, club?: { name: string } | null): stri
 
 export type PostEvent = { id: string; name: string; date: string; type?: string | null; distance?: string | null }
 export type PostWorkout = {
-  activity_id: number; sport: string; title: string; date: string
+  activity_id: number | string; sport: string; title: string; date: string
+  /** where it came from: garmin (default), oura, whoop, apple, coros, strava… */
+  source?: string
   km: number | null; minutes: number | null; climb_m: number | null; highlight: string
   /** s/km (runs, walks, hikes) · km/h (rides) · s/100 m (swims) */
   pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number

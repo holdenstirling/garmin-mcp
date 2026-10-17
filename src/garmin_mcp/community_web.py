@@ -63,7 +63,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from .clubs import MAX_MEMBERS, ClubError, Clubs, valid_cid, valid_mid
-from .community import PHOTO_MAX, Community, CommunityError, valid_pid, workout_card
+from .community import PHOTO_MAX, Community, CommunityError, activity_key, valid_pid, workout_card
 from .logs import log_event
 from .social import SocialError
 
@@ -139,7 +139,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         wid = b.get("workout_id")
         card = None
         if wid is not None:
-            if not isinstance(wid, int) or isinstance(wid, bool) or wid <= 0:
+            if activity_key(wid) is None or (isinstance(wid, int) and wid <= 0):  # Garmin int or "<source>:<id>"
                 raise CommunityError("workout not found", 404)
             day, acts = await run(lambda: activities(user_id))
             card = workout_card(acts, wid, day)

@@ -3,7 +3,7 @@
 // invite more, leave; the owner renames, removes people or deletes it. Group posts are only
 // seen by the group.
 import { useCallback, useEffect, useState } from 'react'
-import { Check, LogOut, Pencil, Trash2, UserPlus, X } from 'lucide-react'
+import { Check, LogOut, Pencil, Search as SearchIcon, Trash2, UserPlus, X } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,8 @@ import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
 const EMOJIS = ['👟', '🏃', '🌅', '🚴', '🏊', '⛰️', '🔥', '☕', '🍻', '🐇', '💪', '🏁']
 
-/** Create a group, or rename it (``initial``). */
+/** Create a group, or rename it (``initial``). The primary button is pinned in the sheet's
+ *  footer (always visible, above the keyboard) and says what's missing until it can go. */
 export function GroupSheet({ initial, onClose, onSaved }: {
   initial?: FeedGroup; onClose: () => void; onSaved: (g: FeedGroup) => void
 }) {
@@ -40,7 +41,9 @@ export function GroupSheet({ initial, onClose, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [queued, setQueued] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const missing = !name.trim() ? 'Give your group a name' : !initial && !picked.length ? 'Pick at least one person' : null
   async function save(el: HTMLElement) {
+    if (missing) return
     setBusy(true); setErr(null); setQueued(false)
     try {
       const r = await saveDurably<{ group: FeedGroup }>(initial
@@ -54,51 +57,118 @@ export function GroupSheet({ initial, onClose, onSaved }: {
   }
   return (
     <Sheet title={initial ? 'Edit group' : 'New group'} onClose={guard.wrap(onClose)} extra={guard.dialog}
-      bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      bodyClassName="settings flex flex-col gap-3 overflow-y-auto p-4"
+      footer={
+        <div className="flex flex-col gap-1.5">
+          {queued && <SaveStatus state="queued" />}
+          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+          {missing && !busy && <p className="text-center text-[0.7059rem] text-(--text-muted)" aria-live="polite">{missing}</p>}
+          <Button variant="primary" className="h-12 text-[0.8235rem]" loading={busy} disabled={!!missing}
+            onClick={(e) => void save(e.currentTarget)}>
+            {initial ? 'Save changes' : picked.length ? `Create group with ${picked.length} ${picked.length === 1 ? 'person' : 'people'}` : 'Create group'}
+          </Button>
+        </div>
+      }>
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
-      <Field label="Name">
-        <input className={inputCls} maxLength={40} value={name} autoFocus placeholder="Saturday long run crew" onChange={(e) => setName(e.target.value)} />
+      <Field label="Group name">
+        <input className={inputCls} maxLength={40} value={name} placeholder="Saturday long run crew" enterKeyHint="next"
+          onChange={(e) => setName(e.target.value)} />
       </Field>
-      <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Emoji">
+      <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Group emoji">
         {EMOJIS.map((e) => (
           <button key={e} type="button" role="radio" aria-checked={emoji === e} aria-label={`Emoji ${e}`} onClick={() => setEmoji(e)}
             className={cn('hit-44 flex size-10 items-center justify-center rounded-xl text-[1.2rem]', emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
         ))}
       </div>
       {!initial && <FriendPicker picked={picked} onPick={setPicked} />}
-      <p className="text-[0.6471rem] text-(--text-muted)">Only people in the group see what you post to it. They can leave any time.</p>
-      {queued && <SaveStatus state="queued" />}
-      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <Button variant="primary" className="h-11 text-[0.7647rem]" loading={busy} disabled={!name.trim()} onClick={(e) => void save(e.currentTarget)}>
-        {initial ? 'Save' : picked.length ? `Start group with ${picked.length}` : 'Start group'}
-      </Button>
+      <p className="text-[0.6471rem] text-(--text-muted)">Only people in the group see what's posted to it. Anyone can leave any time.</p>
     </Sheet>
   )
 }
 
+/** Searchable picker of mutual friends; picked people show as removable chips on top. */
 function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick: (ids: string[]) => void; skip?: string[] }) {
   const [people, setPeople] = useState<SocialUser[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  useEffect(() => {
+  const [q, setQ] = useState('')
+  const load = useCallback(() => {
+    setErr(null)
     groupFriends().then((r) => setPeople(r.people.filter((p): p is SocialUser => !!p)), (e) => setErr((e as Error).message))
   }, [])
-  if (err) return <ErrorState compact message={err} />
+  useEffect(() => { load() }, [load])
+  if (err) return <ErrorState compact message={err} onRetry={load} />
   if (!people) return <RabbitLoader className="py-4" label="Loading friends" />
   const list = people.filter((p) => !skip.includes(p.id))
   if (!list.length) {
-    return <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Add friends in People first.</p>
+    return <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Follow each other in People first, then come back.</p>
   }
+  const toggle = (id: string) => onPick(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])
+  const term = q.trim().toLowerCase()
+  const shown = term ? list.filter((p) => p.name.toLowerCase().includes(term)) : list
+  const chosen = list.filter((p) => picked.includes(p.id))
   return (
-    <Group label="Friends who follow you back">
-      {list.map((p) => {
-        const on = picked.includes(p.id)
-        return (
-          <Row key={p.id} icon={<PersonAvatar u={p} size={30} />} title={p.name}
-            trailing={on ? <Check className="size-5 text-(--accent)" aria-hidden /> : undefined}
-            onClick={() => onPick(on ? picked.filter((x) => x !== p.id) : [...picked, p.id])} />
-        )
-      })}
-    </Group>
+    <section aria-label="People in the group" className="flex flex-col gap-2">
+      <p className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        People {picked.length > 0 && `· ${picked.length} picked`}
+      </p>
+      {chosen.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Picked">
+          {chosen.map((p) => (
+            <li key={p.id}>
+              <button type="button" onClick={() => toggle(p.id)} aria-label={`Remove ${p.name}`}
+                className="hit-44 inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) py-1 pl-1 pr-2.5 text-[0.7647rem] font-medium text-(--accent)">
+                <PersonAvatar u={p} size={22} />{p.name}<X className="size-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.length > 6 && (
+        <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
+          <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          <input type="text" inputMode="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 40))} placeholder="Search friends"
+            aria-label="Search friends" className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+        </label>
+      )}
+      <ul className="flex flex-col divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
+        {shown.map((p) => {
+          const on = picked.includes(p.id)
+          return (
+            <li key={p.id}>
+              <button type="button" role="checkbox" aria-checked={on} onClick={() => toggle(p.id)}
+                className={cn('flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)', on && 'bg-(--accent-subtle)')}>
+                <PersonAvatar u={p} size={30} />
+                <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{p.name}</span>
+                <span aria-hidden className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border',
+                  on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
+                  {on && <Check className="size-3.5" />}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+        {shown.length === 0 && <li className="px-3.5 py-3 text-[0.7647rem] text-(--text-muted)">No friends match “{q.trim()}”.</li>}
+      </ul>
+    </section>
+  )
+}
+
+/** One consistent "are you sure?" for leaving, removing and deleting (no browser pop-ups). */
+function ConfirmSheet({ title, body, action, onConfirm, onClose }: {
+  title: string; body: string; action: string; onConfirm: () => Promise<void>; onClose: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <Sheet title={title} onClose={onClose} portal
+      footer={
+        <div className="flex gap-2">
+          <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="destructive" className="h-11 flex-1 text-[0.7647rem]" loading={busy}
+            onClick={() => { setBusy(true); void onConfirm().finally(() => setBusy(false)) }}>{action}</Button>
+        </div>
+      }>
+      <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">{body}</p>
+    </Sheet>
   )
 }
 
@@ -113,13 +183,16 @@ function AddPeopleSheet({ group, onClose, onAdded }: { group: FeedGroup; onClose
     catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <Sheet title={`Add to ${group.name}`} onClose={onClose}
-      bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title={`Add to ${group.name}`} onClose={onClose} bodyClassName="settings flex flex-col gap-3 overflow-y-auto p-4"
+      footer={
+        <div className="flex flex-col gap-1.5">
+          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+          <Button variant="primary" className="h-12 text-[0.8235rem]" loading={busy} disabled={!picked.length} onClick={(e) => void add(e.currentTarget)}>
+            {picked.length ? `Add ${picked.length} to the group` : 'Pick people to add'}
+          </Button>
+        </div>
+      }>
       <FriendPicker picked={picked} onPick={setPicked} skip={have} />
-      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <Button variant="primary" className="h-11 text-[0.7647rem]" loading={busy} disabled={!picked.length} onClick={(e) => void add(e.currentTarget)}>
-        Add {picked.length || ''}
-      </Button>
     </Sheet>
   )
 }
@@ -133,6 +206,7 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
   const [closing, setClosing] = useState(false)
   const [view, setView] = useState<'feed' | 'members'>('feed')
   const [sheet, setSheet] = useState<'edit' | 'add' | null>(null)
+  const [confirm, setConfirm] = useState<{ title: string; body: string; action: string; run: () => Promise<void> } | null>(null)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
   const load = useCallback(() => getGroup(id).then((r) => { setG(r.group); setError(null) }, (e) => setError((e as Error).message)), [id])
@@ -140,7 +214,8 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
 
   async function act(fn: () => Promise<unknown>, done?: () => void) {
     setMsg(null)
-    try { await fn(); onChanged?.(); if (done) done(); else void load() } catch (e) { setMsg({ text: (e as Error).message, ok: false }) }
+    try { await fn(); onChanged?.(); setConfirm(null); if (done) done(); else void load() }
+    catch (e) { setConfirm(null); setMsg({ text: (e as Error).message, ok: false }) }
   }
   const seg = (
     <div role="tablist" aria-label="Group" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
@@ -171,23 +246,27 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
                 subtitle={m?.id === g.owner_id ? 'Owner' : undefined}
                 trailing={g.owner && m && m.id !== g.owner_id ? (
                   <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Remove ${m.name}`}
-                    onClick={() => { if (window.confirm(`Remove ${m.name} from ${g.name}?`)) void act(() => removeFromGroup(g.id, m.id)) }}>
+                    onClick={() => setConfirm({ title: `Remove ${m.name}?`, body: `${m.name} won't see ${g.name}'s posts any more. You can add them back later.`,
+                      action: 'Remove', run: () => act(() => removeFromGroup(g.id, m.id)) })}>
                     <X className="size-4" />
                   </Button>
                 ) : undefined} />
             ))}
           </Group>
           <Group>
-            {g.owner && <Row icon={<Pencil className="size-4" />} title="Rename group" onClick={() => setSheet('edit')} />}
+            {g.owner && <Row icon={<Pencil className="size-4" />} title="Rename or change emoji" onClick={() => setSheet('edit')} />}
             <Row icon={<LogOut className="size-4" />} title="Leave group" danger
-              onClick={() => { if (window.confirm(`Leave ${g.name}? You won't see its posts any more.`)) void act(() => leaveGroup(g.id), close) }} />
+              onClick={() => setConfirm({ title: `Leave ${g.name}?`, body: "You won't see its posts any more. A member can add you back.",
+                action: 'Leave group', run: () => act(() => leaveGroup(g.id), close) })} />
             {g.owner && (
               <Row icon={<Trash2 className="size-4" />} title="Delete group" danger
-                onClick={() => { if (window.confirm(`Delete ${g.name} for everyone? Posts stay with their authors, seen by nobody else.`)) void act(() => deleteGroup(g.id), close) }} />
+                onClick={() => setConfirm({ title: `Delete ${g.name}?`, body: 'The group goes away for everyone. Posts stay with their authors, seen by nobody else.',
+                  action: 'Delete group', run: () => act(() => deleteGroup(g.id), close) })} />
             )}
           </Group>
         </>
       )}
+      {confirm && <ConfirmSheet title={confirm.title} body={confirm.body} action={confirm.action} onConfirm={confirm.run} onClose={() => setConfirm(null)} />}
       {sheet === 'edit' && g && <GroupSheet initial={g} onClose={() => setSheet(null)} onSaved={(ng) => { setG(ng); setSheet(null); onChanged?.() }} />}
       {sheet === 'add' && g && <AddPeopleSheet group={g} onClose={() => setSheet(null)}
         onAdded={(ng) => { setG(ng); setSheet(null); setMsg({ text: 'Added. They can see the group now.', ok: true }) }} />}
