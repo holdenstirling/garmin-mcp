@@ -140,7 +140,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           <p className="mt-0.5 text-[0.7059rem] text-(--text-muted)">
             {s.time && <span className="mr-1 inline-flex items-center gap-0.5 font-semibold text-(--text)"><Clock className="size-3" aria-hidden />{fmtTime(s.time)} ·</span>}
             {SPORT_LABEL[s.sport]}{s.kind !== s.sport && KIND_LABEL[s.kind] ? ` · ${KIND_LABEL[s.kind]}` : ''}
-            {s.synced ? ' · on your Garmin' : ''}{s.travel ? ' · travel version' : ''}
+            {s.synced ? ' · on your Garmin' : ''}{s.travel ? ' · travel version' : ''}{s.sick ? ' · sick mode' : ''}{s.sick_return ? ' · easing back' : ''}
             {unread && <span className="ml-1 font-semibold text-(--accent)">· new coach message</span>}
           </p>
         </div>
@@ -256,6 +256,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
   const week = plan.weeks.find((w) => w.days.some((d) => d.date === date))
   const day = week?.days.find((d) => d.date === date)
   const work = (day?.sessions ?? []).filter((s) => s.sport !== 'rest' && !hidden?.(s.id))
+  const sickRest = (day?.sessions ?? []).some((s) => s.sport === 'rest' && !!s.sick)
   const did = cal?.extra?.[date] ?? []
   const mon = mondayOf(date)
   const strip = Array.from({ length: 7 }, (_, i) => addDays(mon, i))
@@ -355,9 +356,9 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       {!work.length && !extra && !did.length && (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-6 py-8 text-center">
           {!did.length && <RabbitNap size={44} mode="sleep" />}
-          <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : 'Rest day'}</p>
-          {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{did.length ? 'Nothing was on the plan today, and you got a workout in anyway.' : 'Fitness sinks in while you recover. A walk or some light stretching is plenty.'}</p>}
-          {day && restAdd && date >= today && (
+          <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : sickRest ? 'Rest: sick' : 'Rest day'}</p>
+          {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{did.length ? 'Nothing was on the plan today, and you got a workout in anyway.' : sickRest ? 'Rest up: sleep, fluids, easy food. Training waits, and your streak is safe.' : 'Fitness sinks in while you recover. A walk or some light stretching is plenty.'}</p>}
+          {day && restAdd && date >= today && !sickRest && (
             <Button variant="default" className="mt-1 h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={restAdd}><Plus className="size-4" aria-hidden />Add a workout</Button>
           )}
         </div>

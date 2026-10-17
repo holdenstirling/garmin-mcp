@@ -2270,6 +2270,56 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         tid = request.path_params["trip_id"]
         return _plan_resp(user_id, await _plan_call(lambda: plans.remove_travel(user_id, tid)))
 
+    # --------------------------------------------------------------- sick --
+    # Sick mode (sick.py): rest or short easy days while ill, then an easy return.
+    async def sick_get(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: plans.sick_view(user_id)))
+
+    async def sick_preview(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        return JSONResponse(await _plan_call(lambda: plans.sick_preview(user_id, body)))
+
+    async def sick_post(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        act = body.get("action") or "start"
+        if act == "start":
+            plan = await _plan_call(lambda: plans.sick_start(user_id, body))
+        elif act == "extend":
+            days = body.get("days") if isinstance(body.get("days"), int) and not isinstance(body.get("days"), bool) else 2
+            plan = await _plan_call(lambda: plans.sick_extend(user_id, days))
+        elif act == "better":
+            plan = await _plan_call(lambda: plans.sick_better(user_id))
+        elif act == "undo":
+            plan = await _plan_call(lambda: plans.sick_undo(user_id))
+        else:
+            raise _UserError("Unknown sick-mode action.")
+        return _plan_resp(user_id, plan, sick=public_plan(plan, plans.today(user_id))["sick"] if plan else None)
+
+    if plans is not None and chat is not None:
+        _sk_m = chat.agent.moments
+
+        def _sick_active(uid: str) -> bool:
+            try:
+                return bool(plans.sick_view(uid).get("active"))
+            except Exception:
+                return False
+
+        def _sick_daily(uid: str) -> dict[str, Any] | None:
+            from .sick import checkin_moment
+            plans.sick_tick(uid)
+            raw = plans.get(uid)
+            s = (raw or {}).get("sick")
+            return checkin_moment(s, plans.today(uid)) if s else None
+        _sk_m.sick_active = _sick_active
+        _sk_m.sick_daily = _sick_daily
+
     # -------------------------------------------------------------- share --
     shares = Shares(store) if store is not None else None
     if shares is not None:
@@ -5229,6 +5279,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/oura/start", oura_start, methods=["GET"]),
         Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/sick", _plan_api(sick_get, mutating=False), methods=["GET"]),
+        Route("/app/api/plan/sick", _plan_api(sick_post, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/sick/preview", _plan_api(sick_preview, mutating=True), methods=["POST"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_get, mutating=False), methods=["GET"]),
         Route("/app/api/racepack", _plan_api(racepack_get, mutating=False), methods=["GET"]),
         Route("/app/api/events/{event_id}/checklist", _plan_api(checklist_get, mutating=False), methods=["GET"]),

@@ -55,6 +55,7 @@ QUIET_START, QUIET_END = 21, 7
 MAX_KEYS = 400
 MAX_QUEUE = 10
 STREAK_MILESTONES = (7, 14, 30, 50, 100)
+SICK_AT = dtime(8, 0)        # daily sick-mode upkeep and the one check-in
 RISK_AT = dtime(18, 30)
 RACE_FROM = dtime(8, 0)
 GRADE_FROM = dtime(9, 0)
@@ -65,6 +66,7 @@ RACE_STEPS = ((56, 3, "8w"), (28, 3, "4w"), (14, 2, "2w"), (7, 2, "week"), (1, 0
 GRADE_ORDER = ("F", "D", "C", "C+", "B-", "B", "B+", "A-", "A")
 WORKOUT_TYPES = frozenset({"workout"})  # exempt from the daily cap and quiet hours
 PUSH_TYPES = frozenset({"streak_risk", "race", "week_nudge", "block_checkin", "pace"})  # + blocks.py Sunday check-in, paces.py
+SICK_QUIET = frozenset({"streak_risk", "week_nudge"})  # held back while sick mode is on
 MILESTONE_TYPES = frozenset({"streak", "level", "badge", "challenge"})  # may become Community drafts
 
 _EMOJI = re.compile("[\U0001F000-\U0001FAFF☀-➿⭐⏳]")
@@ -274,6 +276,11 @@ class Moments:
         self.on_workouts: Callable[[str, list[dict[str, Any]]], Any] | None = None
         # Called from tick outside quiet hours (club meetup reminders).
         self.on_tick: Callable[[str], Any] | None = None
+        # Sick mode (sick.py, set by webapp): while it's on, no streak or close-your-week nudges;
+        # ``sick_daily(uid)`` runs once a day (keeps the plan covered, starts the easy return) and
+        # may return one gentle check-in moment.
+        self.sick_active: Callable[[str], bool] | None = None
+        self.sick_daily: Callable[[str], dict[str, Any] | None] | None = None
         # Countdown steps another feature replaces for an event (raceweek.py: "week", "eve").
         self.skip_steps: Callable[[dict[str, Any]], set[str]] | None = None
 
@@ -324,6 +331,12 @@ class Moments:
             return "skipped"
         local = self._now(uid)
         today = local.date()
+        if m["type"] in SICK_QUIET and self.sick_active is not None:
+            try:
+                if self.sick_active(uid):
+                    return "skipped"
+            except Exception:  # a broken check never blocks a moment
+                pass
         exempt = m["type"] in WORKOUT_TYPES
         quiet = self.quiet(local)
         if self.on_milestone is not None and m["type"] in MILESTONE_TYPES \
@@ -521,6 +534,11 @@ class Moments:
         if self.quiet(local):
             return
         t, today = local.time(), local.date()
+        if t >= SICK_AT and self.sick_daily is not None and self._claim(uid, "sick", today):
+            try:
+                self.post(uid, self.sick_daily(uid))
+            except Exception as e:  # sick mode never breaks the tick
+                log_event(logger, logging.WARNING, "sick_daily_failed", user_id=uid, error=type(e).__name__)
         if t >= RISK_AT and self._claim(uid, "risk", today):
             self.check_streak_risk(uid, today)
         if t >= RACE_FROM and self.events is not None and self._claim(uid, "race", today):

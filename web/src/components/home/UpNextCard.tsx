@@ -3,7 +3,8 @@
 // your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
 // that card isn't shown separately.
 import { Suspense, lazy, useState } from 'react'
-import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Users, Watch, Waves, Zap, Utensils } from 'lucide-react'
+import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Thermometer, Users, Watch, Waves, Zap, Utensils } from 'lucide-react'
+import { useSick } from '@/components/plan/SickHost'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { WeekDots } from '@/components/week/WeekStrip'
@@ -14,6 +15,7 @@ import type { TodayActionKind } from '@/lib/live'
 import { syncGarmin } from '@/lib/plan'
 import type { UpNext } from '@/lib/upnext'
 import { cn } from '@/lib/utils'
+import { openSick } from '@/lib/sick'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
 
@@ -93,6 +95,8 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
     finally { setSending(false) }
   }
   const s = up.session
+  const sick = useSick()
+  const sickOff = !!sick && !sick.active && !sick.returning
   const t = up.tomorrow
   const g = up.group
   const headline = s && up.kind === 'session' ? [s.title, fmtDuration(s.minutes)].filter(Boolean).join(' · ') : up.headline
@@ -178,6 +182,12 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
             className="hit-44 px-1 text-[0.7647rem] text-(--text-muted) underline-offset-2 hover:underline">Details</a>
         )}
       </div>
+      {s?.id && up.kind === 'session' && up.tone !== 'done' && sickOff && (
+        <button type="button" onClick={openSick}
+          className="hit-44 mt-0.5 flex items-center gap-1 px-1 text-[0.7059rem] text-(--text-muted) underline-offset-2 hover:underline">
+          <Thermometer className="size-3.5" aria-hidden /> Not feeling well? Sick mode
+        </button>
+      )}
       {sendMsg && <p className="mt-1.5 text-[0.7059rem] text-(--text-muted)" role="status">{sendMsg}</p>}
       {moving && (
         <Suspense fallback={null}>

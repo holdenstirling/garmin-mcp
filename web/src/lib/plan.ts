@@ -9,7 +9,7 @@ export type PlanSession = {
   id: string; sport: Sport; kind: string; title: string; minutes: number | null
   /** start time "HH:MM" (24 h), when the athlete set one */
   time?: string | null
-  detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null
+  detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null; sick?: string | null; sick_return?: string | null
   /** made from one of the athlete's events (group ride, B race, trip...): lib/events openEvent */
   event_id?: string | null
   exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
@@ -38,6 +38,7 @@ export type BuiltPlan = {
   race_changed: boolean
   /** set when a coach (or the athlete) loaded the plan from outside the builder */
   origin?: { kind: 'coach' | 'athlete' | 'block'; by_name: string; at: number; source: string; name: string | null } | null
+  sick?: import('./sick').SickView
   trips: { id: string; start: string; end: string; label: string; has: Record<'gym' | 'treadmill' | 'pool' | 'bike', boolean> }[]
 }
 export type SyncResult = {

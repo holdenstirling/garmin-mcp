@@ -621,7 +621,17 @@ class Agent:
                 s["title"] + (f" ({s['minutes']} min)" if s.get("minutes") else "")
                 + (f": {s['detail']}" if s.get("detail") else "") for s in sessions)
             lines.append(f"{label} ({day:%A}) in their plan: {desc or 'nothing scheduled'}.")
-        return lines + self._fuel_lines(user_id, now)
+        return self._sick_lines(user_id, now) + lines + self._fuel_lines(user_id, now)
+
+    def _sick_lines(self, user_id: str, now: datetime) -> list[str]:
+        """Sick mode (sick.py): severity and dates only, so Rabbit's tone matches."""
+        from .sick import ai_line
+        try:
+            plan = self.plans.get(user_id)
+        except Exception:
+            return []
+        line = ai_line(plan, now.date()) if plan else None
+        return [line] if line else []
 
     def _fuel_lines(self, user_id: str, now: datetime) -> list[str]:
         """The fueling plan the app shows (nutrition.fuel_plan) for today's and tomorrow's built-plan
