@@ -22,7 +22,7 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
   }, [base, attempt, track])
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h3>
+      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h2>
       {error && !l ? <ErrorState compact message="Couldn't load your fitness chart." onRetry={() => setAttempt((n) => n + 1)} /> : (
       <Card className="p-4">
         {l && <Legend />}

@@ -1,5 +1,6 @@
 // "Check-ins" under Stats > More stats: the last 30 days of voice check-ins, newest first,
 // with the summary, date, chips and delete.
+import { confirmAsk } from '@/lib/confirm'
 import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
@@ -16,7 +17,7 @@ export function CheckinsCard() {
   const [error, setError] = useState<string | null>(null)
   useEffect(() => { listCheckins(30).then((r) => setItems(r.checkins), (e) => setError((e as Error).message)) }, [])
   async function remove(id: string) {
-    if (!window.confirm('Delete this check-in?')) return
+    if (!(await confirmAsk('Delete this check-in?', { confirm: 'Delete', danger: true }))) return
     try {
       await deleteCheckin(id)
       setItems((cur) => cur?.filter((c) => c.id !== id) ?? null)
@@ -24,7 +25,7 @@ export function CheckinsCard() {
   }
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Check-ins · last 30 days</h3>
+      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Check-ins · last 30 days</h2>
       <Card>
         {error && <p className="px-4 py-3 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
         {items && items.length === 0 && (

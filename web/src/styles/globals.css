@@ -127,7 +127,7 @@
     --warning-text: #805600;
 
     /* Chart series */
-    --chart-fatigue: #c45d74;
+    --chart-fatigue: #a84560; /* 5:1 on the light surfaces (was #c45d74, 3.9:1) */
     --chart-form: #d0952f;
     --info: #1452db;
     --info-subtle: rgba(37, 99, 235, 0.08);
@@ -838,5 +838,18 @@
     width: max(100%, 44px);
     height: max(100%, 44px);
     transform: translate(-50%, -50%);
+  }
+}
+
+/* Reduced-motion safety net: anything animated that lacks its own reduce rule settles at once.
+   The loader and skeleton keep their gentle opacity pulse (rules above) so loading still reads. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  :where(*:not(.rabbit-loader, .rabbit-loader *, .skeleton)),
+  :where(*:not(.rabbit-loader, .rabbit-loader *, .skeleton))::before,
+  :where(*:not(.rabbit-loader, .rabbit-loader *, .skeleton))::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -330,7 +330,7 @@ export function EventVisibility({ value, onChange }: { value: EventFields; onCha
   const pub = value.visibility === 'public'
   return (
     <section aria-label="Who can see it" className="flex flex-col gap-2">
-      <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can see it</h3>
+      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can see it</h2>
       <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Who can see it">
         <OptionCard selected={!pub} title="Just me" description="Private: on your calendar and in your plan only."
           onClick={() => onChange({ visibility: 'private' })} />

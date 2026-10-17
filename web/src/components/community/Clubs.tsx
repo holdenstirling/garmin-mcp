@@ -2,6 +2,7 @@
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
 import type React from 'react'
+import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useState } from 'react'
 import { useDraft } from '@/lib/drafts'
@@ -224,7 +225,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         </div>
       </Field>
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
-        <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can find and join it</h3>
+        <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can find and join it</h2>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
           description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"
@@ -448,7 +449,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                           </Button>
                         )}
                         <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Remove ${p.user?.name ?? 'member'}`}
-                          onClick={() => { if (window.confirm(`Remove ${p.user?.name ?? 'them'} from ${c.name}?`)) void act(() => removeMember(c.id, p.user_id), 'Removed.') }}>
+                          onClick={() => { void confirmAsk(`Remove ${p.user?.name ?? 'them'} from ${c.name}?`, { confirm: 'Remove', danger: true }).then((ok) => { if (ok) void act(() => removeMember(c.id, p.user_id), 'Removed.') }) }}>
                           <X className="size-4" />
                         </Button>
                       </span>
@@ -459,10 +460,10 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                 <Group>
                   {admin && <Row title="Edit club" subtitle="Name, sport, city, who can join" onClick={() => setSheet('edit')} />}
                   <Row icon={<LogOut className="size-4" />} title="Leave club" danger
-                    onClick={() => { if (window.confirm(`Leave ${c.name}?`)) void act(() => leaveClub(c.id), undefined, close) }} />
+                    onClick={() => { void confirmAsk(`Leave ${c.name}?`, { confirm: 'Leave', danger: true }).then((ok) => { if (ok) void act(() => leaveClub(c.id), undefined, close) }) }} />
                   {c.role === 'owner' && (
                     <Row icon={<Trash2 className="size-4" />} title="Delete club" danger
-                      onClick={() => { if (window.confirm(`Delete ${c.name} for everyone? Posts stay with their authors.`)) void act(() => deleteClub(c.id), undefined, close) }} />
+                      onClick={() => { void confirmAsk(`Delete ${c.name} for everyone?`, { detail: 'Posts stay with their authors.', confirm: 'Delete', danger: true }).then((ok) => { if (ok) void act(() => deleteClub(c.id), undefined, close) }) }} />
                   )}
                 </Group>
               )}
@@ -501,7 +502,7 @@ function MeetupCard({ m, clubId, admin, onChanged, onError }: {
     } catch (e) { onError((e as Error).message) } finally { setBusy(false) }
   }
   async function cancel() {
-    if (!window.confirm(`Cancel "${mt.title}"? Anyone who said they're going gets a heads-up.`)) return
+    if (!(await confirmAsk(`Cancel "${mt.title}"?`, { detail: "Anyone who said they're going gets a heads-up.", confirm: 'Cancel it', cancel: 'Keep it', danger: true }))) return
     try { await deleteMeetup(clubId, mt.id); onChanged() } catch (e) { onError((e as Error).message) }
   }
   const going = mt.going.filter((u): u is SocialUser => !!u)

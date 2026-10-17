@@ -8,6 +8,7 @@
 // and + per day; press and hold drags a session to another day (touch: long-press). Every change
 // re-balances the week and can be undone. "Plan overview" shows the phases to race day.
 // Deep link: lib/plancal openPlanDay(date) (sessionStorage keys read on mount + an event).
+import { smooth } from '@/lib/scrollMotion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Map as MapIcon, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -439,7 +440,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   // Deep link (lib/plancal openPlanDay): keys read on mount (above), the event while mounted;
   // either way the calendar scrolls into view so the day is what you see.
   const rootRef = useRef<HTMLElement>(null)
-  const reveal = () => setTimeout(() => rootRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120)
+  const reveal = () => setTimeout(() => rootRef.current?.scrollIntoView({ block: 'start', behavior: smooth() }), 120)
   useEffect(() => {
     if (readKey(PLAN_DAY_KEY)) {
       reveal()
@@ -535,9 +536,9 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         className={cn('flex gap-3 px-3 transition-colors', quiet ? 'py-0.5' : 'py-2', isToday && 'bg-(--accent-subtle)',
           over && 'bg-(--accent)/15 outline-2 -outline-offset-2 outline-dashed outline-(--accent)',
           drag && !canDrop(d.date) && 'opacity-50')}>
-        <span className="w-10 shrink-0 text-center leading-tight">
+        <span className="w-11 shrink-0 text-center leading-tight">
           <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}`}
-            className={cn('flex w-10 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)', quiet ? 'min-h-11 flex-row gap-1' : 'min-h-11 pt-1')}>
+            className={cn('flex w-11 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)', quiet ? 'min-h-11 flex-row gap-1' : 'min-h-11 pt-1')}>
             <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
               {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
             </span>
@@ -817,10 +818,12 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
         </div>
         <button type="button" className="modal-close" aria-label="Next month" disabled={month >= hi} onClick={() => shift(1)}><ChevronRight className="size-4" /></button>
       </div>
-      <Card className="p-2">
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_auto] gap-1" role="grid" aria-label={label}>
-          {WD.map((w) => <span key={w} className="pb-1 text-center text-[0.6471rem] font-semibold uppercase text-(--text-muted)" role="columnheader">{w.charAt(0)}<span className="sr-only">{w.slice(1)}</span></span>)}
-          <span className="pb-1 text-right text-[0.6471rem] font-semibold uppercase text-(--text-muted)" role="columnheader">{imperial ? 'mi' : 'km'}</span>
+      <Card className="p-1">
+        {/* Day buttons carry the full date in their names; the letters above are visual only. Tight
+            gaps keep each day close to a 44px target on a 375px phone. */}
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_auto] gap-px" role="group" aria-label={label}>
+          {WD.map((w) => <span key={w} aria-hidden className="pb-1 text-center text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{w.charAt(0)}</span>)}
+          <span aria-hidden className="pb-1 pr-1 text-right text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{imperial ? 'mi' : 'km'}</span>
           {cells.map((d, i) => {
             const ss = byDate.get(d) ?? []
             const inMonth = d.slice(0, 7) === month

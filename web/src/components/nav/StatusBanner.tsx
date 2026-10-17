@@ -50,7 +50,7 @@ export function StatusBanner({ banner, onTap, onDismiss }: { banner: Banner; onT
   const look = LOOK[banner.kind]
   const Icon = banner.kind === 'plan' && !banner.goal ? Target : look.icon
   return (
-    <div className={cn('coach-pins mx-4 mt-2 flex h-11 shrink-0 items-center overflow-hidden rounded-xl border', look.cls)}
+    <div className={cn('coach-pins mx-4 mt-2 flex h-12 shrink-0 items-center overflow-hidden rounded-xl border', look.cls)}
       role={banner.kind === 'error' ? 'alert' : undefined}>
       <button type="button" onClick={onTap} className="flex h-full min-w-0 flex-1 items-center gap-2 pl-3 pr-2 text-left"
         aria-label={banner.kind === 'quest' ? `Setup ${banner.done} of ${banner.total}. Next: ${banner.title}` : undefined}>

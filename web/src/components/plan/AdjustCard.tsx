@@ -53,12 +53,12 @@ export function AdjustCard({ p, onDone }: { p: Proposal; onDone: (plan: BuiltPla
         </div>
       )}
       {error && <p className="text-[0.7059rem] text-(--danger)">{error}</p>}
-      <div className="flex gap-2">
-        <Button variant="primary" className="h-9 flex-1 text-[0.7647rem]" loading={busy === 'apply'} disabled={busy != null} onClick={() => void decide('apply')}>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" className="h-11 flex-1 text-[0.7647rem]" loading={busy === 'apply'} disabled={busy != null} onClick={() => void decide('apply')}>
           Apply {p.changes.length} change{p.changes.length === 1 ? '' : 's'}
         </Button>
-        <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'See changes'}</Button>
-        <Button variant="ghost" className="h-9 px-2 text-[0.7647rem]" loading={busy === 'dismiss'} disabled={busy != null} onClick={() => void decide('dismiss')}>Not now</Button>
+        <Button variant="default" className="h-11 px-3 text-[0.7647rem]" onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'See changes'}</Button>
+        <Button variant="ghost" className="h-11 px-2 text-[0.7647rem]" loading={busy === 'dismiss'} disabled={busy != null} onClick={() => void decide('dismiss')}>Not now</Button>
       </div>
     </div>
   )

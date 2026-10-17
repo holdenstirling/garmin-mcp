@@ -75,7 +75,7 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
         {embedded && !onBack ? (
           <div className="mx-auto flex max-w-xl items-center gap-2 px-1">
             <div className="min-w-0 flex-1">
-              <h1 className="truncate font-display text-[1.4118rem] leading-tight text-(--brand)">{name}</h1>
+              <h1 className="truncate font-display text-[min(1.4118rem,32px)] leading-tight text-(--brand)">{name}</h1>
               {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
             </div>
             {embed.action}
@@ -191,7 +191,7 @@ export function Chip({ selected, onClick, children, disabled, title }: {
 }
 
 export function ChipRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-2">{children}</div>
+  return <div className="flex flex-wrap gap-x-2 gap-y-2.5">{children}</div>
 }
 
 /** One-of chips. */
@@ -274,5 +274,5 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
   )
 }
 
-export const inputCls = 'h-10 w-full rounded-md border border-input bg-transparent px-3 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+export const inputCls = 'h-11 w-full rounded-md border border-input bg-transparent px-3 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 export const areaCls = 'min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'

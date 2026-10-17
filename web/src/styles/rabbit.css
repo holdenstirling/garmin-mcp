@@ -238,7 +238,9 @@ html.kb-open .empty-hero { transform: none; }
 }
 .tab-bar__item {
   position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-size: 0.6471rem; font-weight: 500;
+  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-weight: 500;
+  /* Labels grow with larger text only up to 14px, like iOS tab bars, so five still fit side by side. */
+  font-size: min(0.6471rem, 14px);
   transition: color 0.15s ease;
 }
 .tab-bar__item[aria-current="page"] { color: var(--accent); }
@@ -257,7 +259,7 @@ html.kb-open .tab-bar { display: none; }
 }
 .plan-chip { position: relative; flex-shrink: 0; white-space: nowrap; } /* chip rows that scroll sideways keep chips one line high */
 /* 44px tap target around the 36px chip. */
-.plan-chip::after { content: ''; position: absolute; inset: -4px 0; }
+.plan-chip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%); }
 .plan-chip:active { transform: scale(0.97); }
 .plan-chip:disabled { opacity: 0.45; cursor: default; }
 .plan-chip--on { border-color: var(--accent); background: var(--accent); color: var(--on-fill); }

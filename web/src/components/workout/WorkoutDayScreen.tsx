@@ -6,6 +6,7 @@
 // went (done), what to do about a miss, and feedback: the athlete's RPE / feel / pain / note
 // plus Rabbit's take (deterministic first, then "Ask Rabbit for more"). Actions stay pinned at
 // the bottom: Move, Edit, Ask Rabbit.
+import { smooth } from '@/lib/scrollMotion'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench } from 'lucide-react'
@@ -106,7 +107,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
           )}
           {s.id && status === 'done' ? (
             <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]"
-              onClick={() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              onClick={() => feedbackRef.current?.scrollIntoView({ behavior: smooth(), block: 'start' })}>
               How did it go?
             </Button>
           ) : onAsk && (

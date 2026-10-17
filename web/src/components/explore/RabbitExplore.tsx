@@ -20,7 +20,7 @@ const NEAR_HOPS = ['Peeking at courts and tracks nearby…', 'Asking around for 
 type Part<T> = { state: 'busy' } | { state: 'ok'; data: T } | { state: 'error'; message: string }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h3>
+  return <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h2>
 }
 
 function Stage({ label, cycle }: { label: string; cycle: string[] }) {

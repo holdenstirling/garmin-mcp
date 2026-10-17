@@ -54,7 +54,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
       ))}
       {notes.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Notes from your coach</h3>
+          <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Notes from your coach</h2>
           {notes.map((n) => (
             <Card key={n.id} className="px-4 py-3">
               <p className="flex items-start gap-2 text-[0.8235rem] leading-snug text-(--text)">
@@ -74,7 +74,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
 export function ThreadList({ threads, onOpen, me }: { threads: ThreadSummary[]; onOpen: (id: string) => void; me: 'athlete' | 'coach' }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Conversations</h3>
+      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Conversations</h2>
       <Card>
         <div className="divide-y divide-(--border)">
           {threads.map((t) => (

@@ -200,7 +200,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
 }
 
 const H = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h3>
+  <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h2>
 )
 
 function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {

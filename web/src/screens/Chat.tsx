@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
 import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
@@ -332,7 +333,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // An approval is waiting on you: bring it into view.
   const pendingCount = items.filter((it) => it.kind === 'approval' && it.status === 'pending').length
   useEffect(() => {
-    if (pendingCount) feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
+    if (pendingCount) feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
   }, [pendingCount])
 
   // Stick to the bottom while streaming, unless the user scrolled up to read.
@@ -340,7 +341,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const el = feed.current
     if (!el) return
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 150 || status !== 'streaming') {
-      el.scrollTo({ top: el.scrollHeight, behavior: status === 'streaming' ? 'instant' : 'smooth' })
+      el.scrollTo({ top: el.scrollHeight, behavior: status === 'streaming' ? 'instant' : smooth() })
     }
   }, [items, status])
 
@@ -1004,7 +1005,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           </Button>
         )}
         <h1 className="sr-only">{isLog ? 'Rabbit' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
-        <button className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+        <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
           aria-label={isLog ? 'Rabbit' : 'Back to Rabbit'} onClick={isLog ? goBack : slideBack}>
           {/* App-icon tile, like the Home Screen icon (hops while Rabbit is replying) */}
           <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm">
@@ -1175,8 +1176,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (t === tab && t === 'rabbit') {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
-      else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
-      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
+      else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: smooth() })
+      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
       return
     }
     if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
@@ -1405,7 +1406,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <div className="chat-empty flex flex-1 flex-col items-center justify-center py-6 text-center">
               <EmptyHero suggestions={pending.seedMsg ? undefined : TOPIC_SUGGESTIONS.map((q) => (
                     <button key={q} disabled={!me.chat.available || busy}
-                      className="w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                      className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                       onClick={() => void sendPending(q, [])}>{q}</button>
                   ))}>
                 {!pending.seedMsg && <RabbitLogo size={64} className="mb-3 opacity-40" />}
@@ -1473,7 +1474,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <div className="chat-empty flex flex-1 flex-col items-center justify-center px-6 text-center">
           <EmptyHero gap={20} suggestions={suggestions.map((s) => (
               <button key={s} disabled={!me.chat.available}
-                className="w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                 onClick={() => void (isCoach ? sendFromLog(s, []) : send(s))}>{s}</button>
             ))}>
           <RabbitLogo size={80} className="mb-3 opacity-40" />
