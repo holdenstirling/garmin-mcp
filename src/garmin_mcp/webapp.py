@@ -63,6 +63,8 @@ from .profilephoto import MAX_PHOTO, PhotoError, PhotoStore
 from .share import Shares
 from .share import render as render_share
 from . import legal
+from . import account as _account
+from . import consent as _consent
 from .planbuilder import iter_sessions
 from .checkins import XP as CHECKIN_XP, CheckinError, xp_bonus as checkin_xp_bonus
 from .gear import GearStore, catalog as gear_catalog, usage as gear_usage
@@ -81,7 +83,8 @@ from .webpush import WebPush, parse_subscription
 
 logger = logging.getLogger(__name__)
 # The only API paths a coach-only account (not an allowlisted athlete) may call.
-COACH_PATHS = ("/app/api/me", "/app/api/coach/", "/app/api/push/")
+COACH_PATHS = ("/app/api/me", "/app/api/coach/", "/app/api/push/", "/app/api/consent", "/app/api/legal/",
+               "/app/api/account/")
 # Goal fields a coach always sees; the athlete's private notes and Rabbit's plan for the goal
 # only with ``can_see_rabbit_chats``.
 COACH_GOAL_FIELDS = ("id", "title", "date", "distance", "type", "goal_type", "target_time", "priority",
@@ -191,6 +194,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # Optional Idempotency-Key on mutating calls (idempotency.py): the app's outbox retries
     # a save with the same key, and the first 2xx answer is replayed instead of running twice.
     idem = Idempotency(auth._store)
+    # Me -> Privacy & legal (account.py, consent.py): export / delete hooks, terms consent.
+    acct = _account.AccountData(auth._store)
+    consents = _consent.Consent(auth._store)
 
     async def _idem_settle(user_id: str, slot: str, raw: bytes, resp: Response | None) -> None:
         body = getattr(resp, "body", None)  # streamed responses have none: never replayed
@@ -256,6 +262,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         active = chat.active(user_id) if chat else None
         return JSONResponse({
             "user_id": user_id,
+            "consent": consents.view(user_id),
             "role": "coach" if user_id.startswith("coach_") else "athlete",
             "can_invite": auth.can_invite(user_id),
             "owner": auth.is_owner(user_id),
@@ -918,6 +925,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     # Repeating events, calendar files and the private subscribe feed (recur.py, calsub.py).
     _cal_sub = _calsub.CalSub(store) if store is not None else None
+    if _cal_sub is not None:
+        acct.on_delete("calendar feed", _cal_sub.revoke)
 
     async def events_days(request: Request, user_id: str) -> Response:
         """{days: {YYYY-MM-DD: [event, ...]}} for ?from=&to= (at most 120 days; default the next 6 weeks)."""
@@ -2241,6 +2250,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     # -------------------------------------------------------------- share --
     shares = Shares(store) if store is not None else None
+    if shares is not None:
+        acct.on_delete("plan share link", shares.revoke)
 
     def _share_url(token: str | None) -> str | None:
         return f"{settings.public_base_url.rstrip('/')}/app/s/{token}" if token else None
@@ -2277,8 +2288,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if not host_ok(request):
             return HTMLResponse("Not found", status_code=404, headers=headers)
         path = request.url.path
-        fn = legal.privacy if path.endswith("/privacy") else legal.about if path.endswith("/about") else legal.terms
-        return HTMLResponse(fn(settings.contact_email), headers=headers)
+        slug = path.rstrip("/").rsplit("/", 1)[-1]
+        page = legal.about(settings.contact_email) if slug == "about" else legal.page(
+            slug if slug in legal.DOCS else "terms", settings.contact_email)
+        return HTMLResponse(page, headers=headers)
 
     async def garmin_numbers(request: Request, user_id: str) -> Response:
         assert plans is not None
@@ -2581,6 +2594,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     soc = (_social.Social(store, athletes=auth.athlete_emails)
            if store is not None else None)
+    if soc is not None:
+        acct.on_delete("follows", soc.forget_user)
+        acct.add_extra("follows", soc.export_user)
 
     def _soc_name(uid: str) -> str:
         name = (auth.profile(uid).get("name") or "").strip()
@@ -3427,6 +3443,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         _ag = chat.agent
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
                            blocked=soc.blocked_between, race_groups=rp.groups_of if race_routes else None)
+        acct.on_delete("clubs", lambda u: [clb.leave(u, c) for c in clb.ids_of(u) if not str(c).startswith("r-")])
+        acct.add_extra("clubs", lambda u: [{"id": c, "name": clb.name_of(c, u)} for c in clb.ids_of(u)])
         cm = _cmm.Community(store, social=soc, clubs=clb, now=_ag._now, moment=_ag.moments.post, name=_soc_name,
                             quiet=lambda u: _ag.moments.quiet(_ag._now(u)),
                             push=(lambda to, t, b: push.send(to, t, b, url="/app/?open=community")) if push else None)
@@ -3584,6 +3602,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         # the same area (Local, search), with "I'm going". Re-synced on every events write.
         from . import publicevents as _pev
         _pubev = _pev.PublicEvents(store, blocked=soc.blocked_between)
+        acct.on_delete("public events", lambda u: _pubev.sync(u, [], {}))
 
         def _pubev_sync(uid: str) -> None:
             try:
@@ -3737,6 +3756,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 log_event(logger, logging.WARNING, "dm_push_failed", error=type(e).__name__)
         dms = _dmm.Messages(store, is_athlete=soc.is_athlete, follows=soc.follows, blocked=soc.blocked_between,
                             shared_circle=_dm_circle, card_for=_dm_card)
+        acct.on_delete("messages", dms.forget_user)
+        acct.add_extra("messages", dms.export_user)
         community_routes += _dmw.make_routes(dm=dms, wrap=_cd_wrap, read_json=read_json, person=_soc_person,
                                              candidates=_dm_candidates, notify=_dm_notify, first_name=_soc_name)
 
@@ -3756,6 +3777,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         buddies = _bud.Buddies(store, is_athlete=soc.is_athlete, blocked=soc.blocked_between, follows=soc.follows,
                                activities=lambda u: _ag.stats.activities(u), area=_cd_area, home=_cm_home,
                                person=_soc_person, first_name=_soc_name, say=_bud_say)
+        acct.on_delete("buddy profile", buddies.delete)
         community_routes += _budw.make_routes(buddies=buddies, wrap=_cd_wrap, read_json=read_json)
 
         featured = _ft.Featured(store, is_owner=auth.is_owner,
@@ -4175,6 +4197,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         # includes it; never location). Only token hashes are stored; revoking 404s at once.
         from . import sharelinks as _sl
         _slinks = _sl.ShareLinks(store)
+        acct.on_delete("share links", _slinks.revoke_all)
         _sl_clb = locals().get("clb")
         _sl_base = settings.public_base_url.rstrip("/")
 
@@ -4470,6 +4493,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _tp_agent.stats.activities(uid)[1] if _tp_agent is not None and _garmin_connected(uid) else []
         tp_sync = _tps.TPSync(store, plan=lambda u: plans.get(u) if plans is not None else None,
                               today=_tp_today, activities=_tp_acts, transport=_tps.TRANSPORT)
+        acct.on_delete("trainingpeaks", tp_sync.disconnect)
         store.on_user_write(tp_sync.on_plan_write)
         if _tp_agent is not None:
             _tp_tick_prev = _tp_agent.moments.on_tick
@@ -4715,6 +4739,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # /app/api/usage/summary is owners only (access owners), last 30 days.
     from . import usage as _usage
     usage_svc = _usage.Usage(store) if store is not None else None
+    if usage_svc is not None:
+        acct.on_delete("usage counts", usage_svc.forget)
 
     async def usage_post(request: Request, user_id: str) -> Response:
         if usage_svc is None or store is None:
@@ -4765,6 +4791,77 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         auth.logout(request, resp)
         return resp
 
+    # ------------------------------------------------- privacy & legal --
+    # legal.py documents (also served in-app), consent.py (terms / privacy / 16+ / health
+    # opt-in, re-asked when legal.VERSION changes), account.py (download my data, delete my
+    # account). Coaches can use all of these too (COACH_PATHS).
+    def _core_delete_hooks() -> None:
+        if logins is not None:
+            acct.on_delete("garmin", lambda u: logins.disconnect(u, token_store))
+        elif token_store is not None:
+            acct.on_delete("garmin", token_store.delete)
+        if auth.oura is not None:
+            acct.on_delete("oura", lambda u: auth.oura.disconnect(u))  # type: ignore[union-attr]
+        if auth.calendar is not None:
+            acct.on_delete("google calendar", lambda u: auth.calendar.disconnect(u))  # type: ignore[union-attr]  # revokes the Google token
+        acct.on_delete("coach links", auth.coach_links.forget_user)
+        acct.on_delete("membership and passkeys", auth.access.forget_user)
+    _core_delete_hooks()
+
+    async def legal_doc(request: Request, user_id: str) -> Response:
+        slug = request.path_params["doc"]
+        if slug not in legal.DOCS:
+            return _err(404, "not found")
+        return JSONResponse({"slug": slug, "title": legal.DOCS[slug][0], "version": legal.VERSION,
+                             "updated": legal.UPDATED, "operator": legal.OPERATOR,
+                             "html": legal.body_html(slug, settings.contact_email)})
+
+    async def consent_get(request: Request, user_id: str) -> Response:
+        v = await anyio.to_thread.run_sync(lambda: consents.view(user_id))
+        return JSONResponse(dict(v, contact=legal.contact_email(settings.contact_email)))
+
+    async def consent_post(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        try:
+            v = await anyio.to_thread.run_sync(lambda: consents.accept(user_id, body))
+        except _consent.ConsentError as e:
+            return _err(400, str(e))
+        log_event(logger, logging.INFO, "terms_accepted", user_id=user_id, version=legal.VERSION)
+        return JSONResponse(v)
+
+    async def account_export(request: Request, user_id: str) -> Response:
+        try:
+            blob = await anyio.to_thread.run_sync(lambda: acct.export_zip(user_id, settings.contact_email))
+        except _account.RateLimited:
+            return _err(429, "You've downloaded your data a few times already. Try again in an hour.")
+        log_event(logger, logging.INFO, "account_exported", user_id=user_id)
+        day = (plans.today(user_id) if plans else date.today()).isoformat()
+        return Response(blob, media_type="application/zip", headers={
+            "Content-Disposition": f'attachment; filename="rabbit-data-{day}.zip"'})
+
+    async def account_delete(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        if not isinstance(body, dict) or body.get("confirm") != "DELETE":
+            return _err(400, "Type DELETE to confirm.")
+        if auth.is_owner(user_id):
+            return _err(409, "The owner account can't be deleted from the app.")
+        out = await acct.delete(user_id, final=auth.revoke_user)
+        log_event(logger, logging.WARNING, "account_deleted", user_id=user_id,
+                  files=out["files"], failed=",".join(out["failed"]))
+        resp = JSONResponse({"ok": True, "failed": out["failed"]})
+        auth.logout(request, resp)
+        return resp
+
+    legal_routes: list[BaseRoute] = [
+        Route("/app/api/legal/{doc}", _api(legal_doc, mutating=False), methods=["GET"]),
+        Route("/app/api/consent", _api(consent_get, mutating=False), methods=["GET"]),
+        Route("/app/api/consent", _api(consent_post, mutating=True), methods=["POST"]),
+        Route("/app/api/account/export", _api(account_export, mutating=False), methods=["GET"]),
+        Route("/app/api/account/delete", _api(account_delete, mutating=True), methods=["POST"]),
+        Route("/app/security", legal_page, methods=["GET"]),
+        Route("/app/guidelines", legal_page, methods=["GET"]),
+    ]
+
     async def app_root(request: Request) -> Response:
         return RedirectResponse("/app/", status_code=308)
 
@@ -4779,6 +4876,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/auth/logout", logout, methods=["POST"]),
         *passkey_routes,
         *home_routes,
+        *legal_routes,
         *reward_routes,
         Route("/app/api/me", _api(me, mutating=False), methods=["GET"]),
         Route("/app/api/push/subscribe", _api(push_subscribe, mutating=True), methods=["POST"]),

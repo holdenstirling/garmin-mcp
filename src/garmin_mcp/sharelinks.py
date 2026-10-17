@@ -22,6 +22,8 @@ At most ``MAX_LINKS`` per person (oldest dropped) and ``CREATES_PER_DAY`` new li
 
 from __future__ import annotations
 
+from . import legal as _legal
+
 import hashlib
 import html
 import secrets
@@ -131,6 +133,17 @@ class ShareLinks:
         if hashes:
             self._index().update(lambda d: [d.pop(x, None) for x in hashes])
         return len(hashes)
+
+    def revoke_all(self, uid: str) -> int:
+        """Account deletion: turn off every link this person made."""
+        hashes = {v.get("hash") for v in (self._mine(uid).load().get("links") or {}).values()}
+
+        def drop(d: dict[str, Any]) -> None:
+            for h in [h for h, v in d.items() if h in hashes or (isinstance(v, list) and v and v[0] == uid)]:
+                del d[h]
+        self._index().update(drop)
+        self._mine(uid).delete()
+        return len(hashes - {None})
 
     def resolve(self, token: str) -> tuple[str, dict[str, Any]] | None:
         """(owner, link record) for a live token; counts the view."""
@@ -420,7 +433,7 @@ td{{padding:8px 6px 8px 0}}tr{{border-bottom:1px solid var(--line)}}.t{{color:va
 <body><main><div class=brand><span aria-hidden="true">🐇</span>Rabbit</div>
 <div class=card><p class=kicker>{_e(head_line)}</p><h1>{_e(emoji)} {_e(title)}</h1>{''.join(body)}
 <a class=cta href="{_e(cta_url)}">{_e(cta_label)}</a></div>
-<footer>{foot} The athlete can turn this link off at any time.</footer></main></body></html>"""
+<footer>{foot} The athlete can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
 
 
 __all__ = ["CREATES_PER_DAY", "KINDS", "MAX_LINKS", "ShareError", "ShareLinks", "activity_snap", "club_snap",

@@ -414,6 +414,31 @@ class Messages:
     def leave(self, uid: str, cid: Any) -> None:
         self._set_state(uid, cid, status="left")
 
+    # ---------------------------------------------------- account export / delete --
+    def export_user(self, uid: str) -> list[dict[str, Any]]:
+        """Conversations you're in, with the messages you wrote (account.py)."""
+        out = []
+        for cid, c in (self._index.load().get("convs") or {}).items():
+            if uid not in (c.get("members") or []):
+                continue
+            mine = [{"ts": m.get("ts"), "text": m.get("text", "")}
+                    for m in (self._msgs(cid).load().get("msgs") or []) if m.get("by") == uid]
+            out.append({"id": cid, "kind": c.get("kind"), "name": c.get("name") or "",
+                        "created": c.get("created"), "your_messages": mine})
+        return out
+
+    def forget_user(self, uid: str) -> int:
+        """Account deletion: leave every conversation. Messages stay for the others."""
+        def apply(d: dict[str, Any]) -> int:
+            n = 0
+            for c in (d.get("convs") or {}).values():
+                if uid in (c.get("members") or []):
+                    c.setdefault("state", {}).setdefault(uid, {})["status"] = "left"
+                    n += 1
+            return n
+        with self._lock:
+            return int(self._index.update(apply) or 0)
+
     def set_name(self, uid: str, cid: Any, name: Any) -> dict[str, Any]:
         self.require(uid)
         c = self._conv(uid, cid)

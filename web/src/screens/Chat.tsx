@@ -67,6 +67,8 @@ import { setUsageOff, track, trackAppOpen } from '@/lib/usage'
 import { PullToRefresh, celebrate, reducedMotion, signalReplyDone } from '@/components/fx'
 import { Segmented } from '@/components/nav/Segmented'
 import type { MeRow } from '@/components/nav/MePage'
+import type { LegalSlug } from '@/lib/legal'
+import { DocScreen, PrivacyLegalScreen } from '@/screens/lazyScreens'
 import { StatusBanner, type Banner } from '@/components/nav/StatusBanner'
 import { CoachHeader, DiscussButton, ThreadLinkCard } from '@/components/chat/CoachCards'
 import { ATTACH_INPUT_ID, Composer } from '@/components/chat/Composer'
@@ -151,9 +153,9 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
-  | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
+  | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'legal'; doc?: LegalSlug } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
   | { k: 'person'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -1196,7 +1198,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openMeRow = (r: MeRow) => {
     if (r === 'friends') openCommunity('people')
     else if (r === 'settings') open('settings')
-    else if (r === 'connections' || r === 'access' || r === 'usage' || r === 'partners') pushPage({ k: r })
+    else if (r === 'connections' || r === 'access' || r === 'usage' || r === 'partners' || r === 'legal') pushPage({ k: r })
     else if (r === 'memory') open('memory')
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
     else if (r === 'coachstatus') setCoachAsk(true)
@@ -1318,7 +1320,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   function renderPage(pg: Page) {
     switch (pg.k) {
-      case 'me': return <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onClose={closePages} />
+      case 'me': return <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onOpenDoc={(doc) => pushPage({ k: 'legal', doc })} onClose={closePages} />
+      case 'legal': return pg.doc
+        ? <DocScreen slug={pg.doc} onClose={pages.length > 1 ? popPage : closePages} />
+        : <PrivacyLegalScreen me={me} onClose={closePages} onOpenSettings={() => open('settings')} onOpenConnections={() => pushPage({ k: 'connections' })} />
       case 'connections': return <ConnectionsScreen onClose={closePages} />
       case 'access': return <AccessScreen onClose={closePages} />
       case 'usage': return <UsageScreen onClose={closePages} />

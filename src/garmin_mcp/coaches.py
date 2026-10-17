@@ -163,6 +163,21 @@ class CoachLinks:
         with self._lock:
             self._doc.update(apply)
 
+    def forget_user(self, user_id: str) -> None:
+        """Account deletion: drop links where this person is the athlete, and every link
+        to this person as a coach."""
+        def apply(d: dict[str, Any]) -> None:
+            by = d.get("by_email", {})
+            for e in list(by):
+                if coach_user_id(e) == user_id or self._allow().get(e) == user_id:
+                    by.pop(e)
+                    continue
+                by[e].pop(user_id, None)
+                if not by[e]:
+                    by.pop(e)
+        with self._lock:
+            self._doc.update(apply)
+
     # --------------------------------------------------------- coach side --
     def athletes_of(self, coach_id: str) -> list[dict[str, Any]]:
         """Athletes linked to this coach (marks invites active on first look)."""

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
+from . import legal as _legal
 from .appstore import AppStore
 from .planbuilder import iter_sessions
 
@@ -98,7 +99,7 @@ footer{{margin-top:32px;color:GrayText;font-size:12px}}</style></head>
 <body><main><h1>{_e(first)}'s training plan</h1>{head}
 <h2>Next two weeks</h2>{'<table>' + ''.join(rows) + '</table>' if rows else '<p>No plan built yet.</p>'}
 {'<h2>Upcoming events</h2><ul>' + evs + '</ul>' if evs else ''}
-<footer>Shared read-only from Rabbit. The athlete can turn this link off at any time.</footer></main></body></html>"""
+<footer>Shared read-only from Rabbit. The athlete can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
 
 
 __all__ = ["Shares", "render"]

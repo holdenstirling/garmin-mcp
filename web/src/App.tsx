@@ -16,6 +16,8 @@ import { UpdatePill } from './components/ui/UpdatePill'
 import { setDraftUser } from './lib/drafts'
 import { startOutbox } from './lib/outbox'
 import { hideSplash } from './lib/splash'
+import { consentOf } from './lib/legal'
+import { ConsentScreen } from './components/legal/ConsentScreen'
 
 const BOOT_MESSAGES = ['Lacing up…', 'Warming up…', 'Checking your watch…', 'Crunching the numbers…']
 
@@ -87,7 +89,10 @@ function MainApp() {
       )}
       {state.kind === 'install' && <InstallPrompt onSkip={() => setSkipInstall(true)} />}
       {state.kind === 'signin' && <SignIn error={state.error} />}
-      {state.kind === 'home' && (state.me.role === 'coach'
+      {state.kind === 'home' && consentOf(state.me)?.needed && (
+        <ConsentScreen consent={consentOf(state.me)!} onDone={() => void load()} onSignOut={() => void signOut().finally(load)} />
+      )}
+      {state.kind === 'home' && !consentOf(state.me)?.needed && (state.me.role === 'coach'
         ? <CoachApp me={state.me} onSignOut={() => void signOut().finally(load)} />
         : <Chat me={state.me} onChange={load} />)}
       {state.kind === 'home' && <><OutboxPill /><ResumeNote userId={state.me.user_id} /></>}

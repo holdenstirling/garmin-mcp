@@ -97,3 +97,32 @@ class AppStore:
     def user_doc(self, user_id: str, name: str) -> Doc:
         notify = (lambda: self._fire(user_id, name)) if self._listeners else None
         return self._doc(self._root / "users" / validate_user_id(user_id), name, notify)
+
+    # ------------------------------------------------- account export / deletion --
+    def user_dir(self, user_id: str) -> Path:
+        return self._root / "users" / validate_user_id(user_id)
+
+    def user_doc_names(self, user_id: str) -> list[str]:
+        """Names of every per-user doc on disk (account.py export)."""
+        d = self.user_dir(user_id)
+        if not d.is_dir():
+            return []
+        return sorted(p.name[: -len(".fernet")] for p in d.iterdir()
+                      if p.is_file() and p.name.endswith(".fernet"))
+
+    def delete_user(self, user_id: str) -> int:
+        """Delete every per-user doc through the encrypted store, then the empty folder.
+        Returns the number of docs removed. Used only by account deletion."""
+        d = self.user_dir(user_id)
+        names = self.user_doc_names(user_id)
+        for name in names:
+            self._doc(d, name).delete()
+        with self._guard:
+            self._stores.pop(d, None)
+            for k in [k for k in self._locks if k[0] == d]:
+                self._locks.pop(k, None)
+        try:
+            d.rmdir()  # only if nothing else is left in it
+        except OSError:
+            pass
+        return len(names)
