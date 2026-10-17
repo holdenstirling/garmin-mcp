@@ -1,6 +1,6 @@
 // Rabbit home "This week": all seven days at a glance (each day's sessions with sport, title,
 // time or distance and done / missed / planned), today highlighted, and this week's distance
-// against the goal (plan calendar, builder plans). Tap a day: the Plan tab opens on that day
+// against the goal (plan calendar, builder plans) as the "Week at a glance" header (WeekGlance). Tap a day: the Plan tab opens on that day
 // (lib/plancal openPlanDay). Data: /api/plan/week (passed in) + /api/plan/calendar for mileage.
 import { useEffect, useState } from 'react'
 import { Activity, Check, ChevronRight, X } from 'lucide-react'
@@ -103,34 +103,78 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
   )
 }
 
-/** This week's distance against the goal, for the sports that have one. */
-function MileageBars({ m, imperial }: { m: Partial<Record<DistSport, Mileage>>; imperial: boolean }) {
-  const rows = (Object.entries(m) as [DistSport, Mileage][]).filter(([, v]) => v.goal > 0 || v.done > 0)
-  if (!rows.length) return null
+const dayMinutes = (d: WeekDay) => {
+  const work = d.sessions.filter((s) => s.status !== 'rest')
+  const planned = work.reduce((n, s) => n + (s.minutes ?? 0), 0)
+  const done = work.reduce((n, s) => n + (s.status === 'done' ? s.activity?.minutes ?? s.minutes ?? 0 : 0), 0)
+    + d.extra.reduce((n, a) => n + (a.minutes ?? 0), 0)
+  return { planned, done }
+}
+
+/** "Week at a glance": done vs planned (miles of the main distance sport when the plan has a
+ *  goal for it, else hours), one mini bar per day (outline = planned, fill = done, today marked)
+ *  and how the week is trending, with the session that makes up a shortfall. Tap: Schedule week. */
+export function WeekGlance({ week, miles, imperial, onOpen }: {
+  week: PlanWeek; miles: Partial<Record<DistSport, Mileage>> | null; imperial: boolean; onOpen: () => void
+}) {
+  const per = week.days.map(dayMinutes)
+  const max = Math.max(30, ...per.map((x) => Math.max(x.planned, x.done)))
+  const goals = miles ? (Object.entries(miles) as [DistSport, Mileage][]).filter(([, v]) => v.goal > 0) : []
+  const sport = goals.length === 1 ? goals[0] : null  // one distance sport: its miles; multisport: hours
+  const doneMin = per.reduce((n, x) => n + x.done, 0)
+  const planMin = per.reduce((n, x) => n + x.planned, 0)
+  // Expected by now: everything planned before today, plus today's if it's already done.
+  const ti = week.days.findIndex((d) => d.today)
+  const dueMin = per.reduce((n, x, i) => n + (i < ti || (i === ti && x.done >= x.planned) ? x.planned : 0), 0)
+  const head = sport
+    ? `${fmtDist(sport[1].done, imperial, sport[0])} of ${fmtDist(sport[1].goal, imperial, sport[0])}`
+    : planMin > 0 ? `${fmtDuration(doneMin)} of ${fmtDuration(planMin)}` : doneMin > 0 ? `${fmtDuration(doneMin)} done` : 'No sessions yet'
+  const unit = sport ? `${SPORT_DIST_LABEL[sport[0]].toLowerCase()} this week` : planMin > 0 ? 'training this week' : 'this week'
+  let trend = ''
+  let tone: 'ok' | 'behind' | 'ahead' = 'ok'
+  if (planMin > 0 && ti >= 0) {
+    const gap = dueMin - doneMin
+    if (doneMin >= planMin) { trend = 'Week done. Nice work.'; tone = 'ahead' }
+    else if (gap <= dueMin * 0.1 + 5) { trend = doneMin > dueMin + 15 ? 'Ahead of plan' : 'On track'; tone = doneMin > dueMin + 15 ? 'ahead' : 'ok' }
+    else {
+      tone = 'behind'
+      const later = week.days.slice(ti + 1).flatMap((d) => d.sessions.filter((s) => s.status === 'planned' && (s.minutes ?? 0) > 0).map((s) => ({ d, s })))
+      const big = later.sort((x, y) => (y.s.minutes ?? 0) - (x.s.minutes ?? 0))[0]
+      const short = sport && planMin > 0 ? fmtDist(sport[1].goal * (gap / planMin), imperial, sport[0]) : fmtDuration(gap)
+      trend = `Behind by ${short}${big ? `: ${big.d.weekday.slice(0, 3)} ${big.s.title.toLowerCase()} makes up most of it` : ''}`
+    }
+  }
+  const label = `Week at a glance: ${head} ${unit}. ${trend}. Open this week in your schedule`
   return (
-    <div className="flex flex-col gap-2 border-t border-(--border) px-3.5 py-3">
-      {rows.map(([sp, v]) => {
-        const pct = v.goal > 0 ? Math.min(1, v.done / v.goal) : 1
-        const text = `${fmtDist(v.done, imperial, sp)}${v.goal > 0 ? ` of ${fmtDist(v.goal, imperial, sp)}` : ''}`
-        return (
-          <div key={sp} className="flex flex-col gap-1">
-            <div className="flex items-baseline justify-between gap-2 text-[0.7059rem]">
-              <span className="text-(--text-secondary)">{SPORT_DIST_LABEL[sp]} this week</span>
-              <span className="font-mono text-(--text)">{text}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
-              aria-label={`${SPORT_DIST_LABEL[sp]} this week: ${text}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}>
-              <div className={cn('h-full rounded-full transition-all duration-700', pct >= 1 ? 'bg-(--brand)' : 'bg-(--accent)')}
-                style={{ width: `${Math.max(pct * 100, v.done > 0 ? 4 : 0)}%` }} />
-            </div>
-          </div>
-        )
-      })}
-    </div>
+    <button type="button" onClick={onOpen} aria-label={label}
+      className="flex w-full items-end gap-3 border-b border-(--border) px-3.5 py-3 text-left active:bg-(--bg-inset)">
+      <span className="min-w-0 flex-1" aria-hidden>
+        <span className="block font-mono text-[0.9412rem] font-semibold tabular-nums text-(--text)">{head}</span>
+        <span className="block text-[0.6471rem] text-(--text-muted)">{unit}</span>
+        {trend && (
+          <span className={cn('mt-1 block text-[0.7059rem] font-medium leading-snug',
+            tone === 'behind' ? 'text-(--warning-text)' : tone === 'ahead' ? 'text-(--accent)' : 'text-(--text-secondary)')}>{trend}</span>
+        )}
+      </span>
+      <span className="flex h-12 shrink-0 items-end gap-1" aria-hidden>
+        {per.map((x, i) => (
+          <span key={week.days[i]!.date} className="flex flex-col items-center gap-0.5">
+            <span className={cn('relative flex w-3 items-end overflow-hidden rounded-sm border',
+              x.planned > 0 ? 'border-(--border-strong)' : 'border-transparent', week.days[i]!.today && 'ring-1 ring-(--accent)')}
+              style={{ height: `${Math.max(4, (Math.max(x.planned, x.done) / max) * 36)}px` }}>
+              <span className="w-full rounded-[1px] bg-(--accent)" style={{ height: `${x.planned || x.done ? Math.min(100, (x.done / Math.max(x.planned, x.done)) * 100) : 0}%` }} />
+            </span>
+            <span className={cn('text-[0.6471rem] leading-none', week.days[i]!.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+              {week.days[i]!.weekday.slice(0, 1)}
+            </span>
+          </span>
+        ))}
+      </span>
+    </button>
   )
 }
 
-export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey, onOpenDay, onOpenPlan, onAskDay }: {
+export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey, onOpenDay, onOpenPlan, onOpenWeek, onAskDay }: {
   week: PlanWeek | null; loading: boolean; error: boolean; onRetry: () => void
   /** Ask Rabbit from a plan-file day's sheet */
   onAskDay: (day: WeekDay, session?: PlannedSession) => void
@@ -139,6 +183,8 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
   refreshKey?: number
   onOpenDay: (date: string) => void
   onOpenPlan: () => void
+  /** the week view in Schedule (defaults to onOpenPlan) */
+  onOpenWeek?: () => void
 }) {
   const [miles, setMiles] = useState<Partial<Record<DistSport, Mileage>> | null>(null)
   const [sheetDay, setSheetDay] = useState<string | null>(null)
@@ -160,6 +206,7 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
         ) : (
           <div className="flex flex-col gap-2" aria-label="Loading this week">
             <span className="skeleton h-3 w-40" aria-hidden />
+            <span className="skeleton h-14" aria-hidden />
             {/* Seven day rows at their real height, so the panel doesn't jump when the week lands. */}
             {[0, 1, 2, 3, 4, 5, 6].map((i) => <span key={i} className="skeleton h-10" aria-hidden />)}
           </div>
@@ -176,12 +223,12 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
         </h2>
         {planned > 0 && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-secondary)">{done >= planned ? 'All done' : `${planned - done} to go`}</span>}
       </div>
+      <WeekGlance week={week} miles={miles} imperial={imperial} onOpen={onOpenWeek ?? onOpenPlan} />
       {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
       <ul className="divide-y divide-(--border)">
         {week.days.map((d) => <DayLine key={d.date} d={d} imperial={imperial} onOpen={onOpenDay} onSheet={(x) => setSheetDay(x.date)} />)}
       </ul>
       {sheet && <PlanDaySheet day={sheet} imperial={imperial} onClose={() => setSheetDay(null)} onAsk={onAskDay} />}
-      {miles && <MileageBars m={miles} imperial={imperial} />}
       <button type="button" onClick={onOpenPlan}
         className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-(--border) text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
         See full plan <ChevronRight className="size-3.5" aria-hidden />

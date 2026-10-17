@@ -20,7 +20,9 @@ import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
 import { HomeGreeting } from '@/components/home/HomeGlance'
-import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
+import { ReadinessSnapshot } from '@/components/home/ReadinessSnapshot'
+import { FitnessCountdown } from '@/components/home/FitnessCountdown'
+import { OPEN_PLAN_DAY_EVENT, PLAN_VIEW_KEY, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { OPEN_TRAVEL_EVENT, openTravel } from '@/lib/plantools'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
@@ -956,7 +958,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                 onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
                 onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
-                hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
+                hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} hideReadiness={me.role === 'athlete'} />
+            )}
+            {/* Today's readiness: sleep, HRV, readiness, form and one call (push / normal / ease off). */}
+            {athlete && (
+              <div className="mx-4 mt-3">
+                <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
+              </div>
             )}
             {stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
@@ -965,9 +973,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {goal && (
               <div className="mx-4 mt-3">
                 <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
-                  refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay} />
+                  refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay}
+                  onOpenWeek={() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, 'week') } catch { /* storage off */ } openPlan() }} />
               </div>
             )}
+            {/* HOME SLOT: Next 3 days (feat-wx NextDays) goes here. */}
+            {/* Goal race: days to go, race grade and the 4-week fitness trend (hidden in race week). */}
+            {athlete && goal && (
+              <div className="mx-4 mt-3">
+                <FitnessCountdown refreshKey={feedTick} onOpen={(id) => showPage({ k: 'fit', id })} />
+              </div>
+            )}
+            {/* HOME SLOT: Race checklist (feat-chk RaceChecklistCard) goes here. */}
             {athlete && (
               <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
                 skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />

@@ -44,7 +44,7 @@ function firstShowToday(): boolean {
   return true
 }
 
-export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday, onPlan, onSetup, onClubs, onAsk, onSynced, hideStreak }: {
+export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday, onPlan, onSetup, onClubs, onAsk, onSynced, hideStreak, hideReadiness }: {
   up: UpNext
   /** this plan week's days: dots next to the headline */
   week?: WeekDay[] | null
@@ -60,6 +60,8 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   /** after Send to watch: reload the card */
   onSynced: () => void
   hideStreak?: boolean
+  /** Home's ReadinessSnapshot shows readiness and form: don't repeat them here */
+  hideReadiness?: boolean
 }) {
   const [hop] = useState(firstShowToday)
   const [sending, setSending] = useState(false)
@@ -70,7 +72,7 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const rest = up.kind === 'rest' || up.tone === 'rest'
   // One readiness signal at most, and only before today's session (details live in Progress).
   const signals = up.kind === 'session' && up.tone !== 'done'
-    ? (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 1) : []
+    ? up.signals.filter((s) => !(hideStreak && s.label === 'Streak') && !(hideReadiness && s.label !== 'Streak')).slice(0, 1) : []
   const todayKind = up.today?.action.kind
 
   const logged = up.tone === 'done' ? up.today?.activity_id : undefined
