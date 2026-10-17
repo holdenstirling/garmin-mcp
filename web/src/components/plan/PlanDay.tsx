@@ -234,7 +234,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
 }
 
 /** Where a workout outside the plan came from (workouts.py sources). */
-const SOURCE_NAME: Record<string, string> = { oura: 'Oura', whoop: 'Whoop', coros: 'Coros', apple: 'Apple Watch', manual: 'added by you' }
+const SOURCE_NAME: Record<string, string> = { oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch', manual: 'added by you' }
 
 export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidden, extra, actions, onAdd }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string

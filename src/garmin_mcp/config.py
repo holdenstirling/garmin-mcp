@@ -128,6 +128,8 @@ class Settings:
     oura_client_id: str = ""            # Oura developer app (optional)
     contact_email: str = ""             # shown on /app/privacy and /app/terms (optional)
     oura_client_secret_name: str = ""
+    whoop_client_id: str = ""           # WHOOP developer app (optional; developer.whoop.com)
+    whoop_client_secret_name: str = ""
 
     # Rabbit coach agent (Claude API)
     anthropic_api_key_secret_name: str = ""
@@ -252,6 +254,8 @@ class Settings:
             oura_client_id=os.environ.get("OURA_CLIENT_ID", "").strip(),
             contact_email=os.environ.get("RABBIT_CONTACT_EMAIL", "").strip(),
             oura_client_secret_name=os.environ.get("OURA_CLIENT_SECRET_NAME", "garmin-mcp-oura-client-secret"),
+            whoop_client_id=os.environ.get("WHOOP_CLIENT_ID", "").strip(),
+            whoop_client_secret_name=os.environ.get("WHOOP_CLIENT_SECRET_NAME", "garmin-mcp-whoop-client-secret"),
             anthropic_api_key_secret_name=os.environ.get(
                 "ANTHROPIC_API_KEY_SECRET_NAME", "garmin-mcp-anthropic-api-key"
             ),

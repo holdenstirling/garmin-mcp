@@ -92,7 +92,7 @@ def test_oura_workouts_never_reach_ai_inputs() -> None:
     """Imported workouts live in the extworkouts doc and are read only by the Day view merge,
     the import itself and the feed share (webapp.py). Nothing the coach reads touches them."""
     for f in SRC.glob("*.py"):
-        if f.name in ("workouts.py", "webapp.py", "oura.py"):
+        if f.name in ("workouts.py", "webapp.py", "oura.py", "whoop.py"):
             continue
         text = f.read_text()
         assert "ExternalWorkouts" not in text and '"extworkouts"' not in text, f.name

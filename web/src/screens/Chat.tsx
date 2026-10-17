@@ -756,14 +756,15 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   const openThread = (id: string) => { setPending(null); setThreadId(id) }
 
-  // Back from connecting Google Calendar or Oura: the same popup reopens in its success
+  // Back from connecting Google Calendar, Oura or WHOOP: the same popup reopens in its success
   // (import, then Done) or failure state.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const cal = params.get('calendar'), oura = params.get('oura')
-    if (!cal && !oura) return
+    const cal = params.get('calendar'), oura = params.get('oura'), whoop = params.get('whoop')
+    if (!cal && !oura && !whoop) return
     window.history.replaceState(null, '', '/app/')
     if (oura) setConnect({ app: 'oura', result: oura === 'connected' ? 'connected' : 'failed' })
+    else if (whoop) setConnect({ app: 'whoop', result: whoop === 'connected' ? 'connected' : 'failed' })
     else if (cal) setConnect({ app: 'calendar', result: cal === 'connected' ? 'connected' : 'failed' })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Data sources (lib/sources.ts): screens read the current choice; the Oura popup asks once

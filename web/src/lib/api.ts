@@ -56,6 +56,8 @@ export type Me = {
   coach_unread: number
   calendar: { available: boolean; connected: boolean }
   oura: { available: boolean; connected: boolean }
+  /** older servers leave this out */
+  whoop?: { available: boolean; connected: boolean }
   profile: { name: string; picture: string }
   /** version of the uploaded profile photo (null: none; use the Google picture) */
   photo?: number | null

@@ -15,8 +15,8 @@ DOC = "app-demand"
 
 SOON: dict[str, dict[str, Any]] = {
     "whoop": {
-        "name": "Whoop",
-        "why": "Whoop shares data only with approved partner apps, so Rabbit can't connect to it yet.",
+        "name": "WHOOP",
+        "why": "Rabbit's WHOOP connection isn't switched on yet. Tap below so we know you want it.",
         "would_use": ["Workouts, so they show up with your plan and your friends' feed",
                       "Recovery, strain and sleep, shown in the app and used by fixed rules"],
     },
@@ -75,12 +75,13 @@ class Demand:
         """Who to tell when ``app`` ships."""
         return sorted((self._doc().load().get(app) or {}).keys())
 
-    def rows(self, uid: str, *, owner: bool) -> list[dict[str, Any]]:
-        """The coming-soon rows for the Connected apps hub (counts for owners only)."""
+    def rows(self, uid: str, *, owner: bool, skip: set[str] | frozenset[str] = frozenset()) -> list[dict[str, Any]]:
+        """The coming-soon rows for the Connected apps hub (counts for owners only). ``skip``:
+        apps this server can connect now (e.g. WHOOP once its developer app is configured)."""
         mine, counts = self.mine(uid), (self.counts() if owner else None)
         return [{"id": a, "name": SOON[a]["name"], "state": "soon", "why": SOON[a]["why"],
                  "would_use": list(SOON[a]["would_use"]), "wanted": a in mine,
-                 **({"wanted_by": counts[a]} if counts is not None else {})} for a in SOON_ORDER]
+                 **({"wanted_by": counts[a]} if counts is not None else {})} for a in SOON_ORDER if a not in skip]
 
 
 __all__ = ["SOON", "SOON_ORDER", "Demand", "DemandError"]
