@@ -1,8 +1,9 @@
 """One workout model for every source, and the rule that keeps a workout from counting twice.
 
 Garmin is the primary source (``GarminService`` + the poller sync it on their own). Other
-connected sources add workouts Garmin doesn't have: today that is **Oura** (v2
-``usercollection/workout``); Whoop, Coros and Apple Health are "Coming soon" (``demand.py``).
+connected sources add workouts Garmin doesn't have: **Oura** (v2 ``usercollection/workout``) and
+**Apple Watch** (sent by the athlete's iPhone Shortcut, ``applehealth.py``); Whoop and Coros are
+"Coming soon" (``demand.py``). Apple Watch workouts follow the same display-only rules as Oura's.
 
 Model (``Workout``-shaped dict)::
 

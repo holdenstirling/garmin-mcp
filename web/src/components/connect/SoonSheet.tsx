@@ -1,4 +1,4 @@
-// A coming-soon app (Whoop, Apple Watch, Coros; server: demand.py) in the same native-style sheet
+// A coming-soon app (Whoop, Coros; server: demand.py) in the same native-style sheet
 // as the real connect popups: Rabbit ··· App tiles, what Rabbit would use it for, plainly why it
 // can't connect yet, and one "I want this" toggle (counted once per person, so we can see how
 // many people want each). Owners also see the count.

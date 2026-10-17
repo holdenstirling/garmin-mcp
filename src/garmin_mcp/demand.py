@@ -1,4 +1,4 @@
-""""Coming soon" apps (Whoop, Apple Watch / Apple Health, Coros) and how many people want each.
+""""Coming soon" apps (Whoop, Coros; Apple Watch shipped as applehealth.py) and how many people want each.
 
 Each app has a short, honest note on why it isn't here yet and what Rabbit would use. Athletes
 tap "I want this" (``vote``), which keeps only their user id per app (global ``app-demand``
@@ -34,7 +34,9 @@ SOON: dict[str, dict[str, Any]] = {
                       "Sending your planned workouts to your Coros watch"],
     },
 }
-SOON_ORDER = ("whoop", "apple", "coros")
+# Apple Watch shipped (applehealth.py, an iPhone Shortcut); its entry stays in SOON so the people
+# who asked for it can still be found (``voters``), but it's no longer listed or votable.
+SOON_ORDER = ("whoop", "coros")
 
 
 class DemandError(ValueError):
@@ -51,7 +53,7 @@ class Demand:
 
     def vote(self, uid: str, app: str, want: bool) -> bool:
         """Turn "I want this" on or off; returns the new state. Idempotent."""
-        if app not in SOON:
+        if app not in SOON_ORDER:
             raise DemandError("That app isn't on the coming-soon list.")
 
         def apply(d: dict[str, Any]) -> bool:
