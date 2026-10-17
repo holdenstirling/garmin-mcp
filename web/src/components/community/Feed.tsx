@@ -1,5 +1,5 @@
 // Community feed: "Share something" (life-event ideas inside the composer), the milestone drafts tray,
-// meetups coming up, and calm post cards (category, text, up to 4 photos, linked event, four
+// meetups coming up, and calm post cards (category, text, up to 10 photos, linked event, four
 // reactions with a burst, one-level comment threads). Also a club's feed (``clubId``): the
 // composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
 // each feed group / Clubs; a group's own feed (``groupId``) posts to that group only. My fresh
@@ -25,10 +25,10 @@ import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/Perso
 import { openActivity } from '@/lib/activitynav'
 import { messagePeople } from '@/lib/dm'
 import {
-  CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, MAX_PHOTOS, REACTIONS, TEMPLATES, TEXT_LEN,
+  CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
   ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft,
   getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
-  reportPost, resizeForPost, shareDraft, unreact, updatePost, uploadPostPhoto,
+  reportPost, shareDraft, unreact, updatePost, 
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
   type ReactionKind,
 } from '@/lib/community'
@@ -39,6 +39,7 @@ import { counted } from '@/lib/usage'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { FeedHint } from '@/components/community/FeedHint'
+import { PhotoPicker, existingPhotos, usePhotoPicker } from '@/components/community/PhotoPicker'
 
 
 export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
@@ -244,14 +245,13 @@ function ComingUp({ meetups, onOpenClub }: { meetups: Meetup[]; onOpenClub?: (id
 }
 
 // -------------------------------------------------------------- composer ---
-type Pic = { id: string; url: string }
-
 function Composer({ clubId, clubName, groupId, groupName, groups = [], template, onClose, onPosted }: {
   clubId?: string; clubName?: string; groupId?: string; groupName?: string; groups?: FeedGroup[]
   template: Template | null; onClose: () => void; onPosted: (p: Post) => void
 }) {
-  // Text, category, feeling, linked event and audience are kept as a draft (lib/drafts) until
-  // posted or discarded. Photos can't be kept in a draft (they'd have to be picked again).
+  // Text first, photos right under it, then Post. Category, feeling and a linked event sit
+  // behind "Add details". Text, category, feeling, linked event and audience are kept as a
+  // draft (lib/drafts) until posted or discarded. Photos can't be kept in a draft.
   type PostDraft = { text: string; category: Category; feeling: string | null; eventId: string; audience: Audience }
   const [d, setD, draft] = useDraft<PostDraft>(`post.${clubId ? `club.${clubId}` : groupId ? `grp.${groupId}` : 'feed'}`, () => ({
     text: template?.text ?? '', category: template?.category ?? 'life', feeling: null, eventId: '',
@@ -263,126 +263,96 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
   const setFeeling = (feeling: string | null) => setD((x) => ({ ...x, feeling }))
   const setEventId = (eventId: string) => setD((x) => ({ ...x, eventId }))
   const setAudience = (audience: Audience) => setD((x) => ({ ...x, audience }))
-  const [pics, setPics] = useState<Pic[]>([])
-  const [picBusy, setPicBusy] = useState(false)
+  const photos = usePhotoPicker()
   const [queued, setQueued] = useState(false)
-  const guard = useUnsavedGuard(!!text.trim() || pics.length > 0, draft.discard)
+  const guard = useUnsavedGuard(!!text.trim() || photos.items.length > 0, draft.discard)
   const close = guard.wrap(onClose)
   const fixed = !!clubId || !!groupId
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [clubs, setClubs] = useState<ClubSummary[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const file = useRef<HTMLInputElement>(null)
-  const urls = useRef<string[]>([])
+  const [details, setDetails] = useState(() => !!template || !!feeling || !!eventId)
   const drag = useSheetDrag(close)
 
   useEffect(() => {
     listEvents().then((r) => setEvents(r.events), () => setEvents([]))
     if (!clubId) getClubs().then((g) => setClubs(g.clubs), () => { /* friends / everyone / only me still work */ })
   }, [clubId])
-  useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), [])
 
-  async function pick(files: FileList | null) {
-    if (!files?.length) return
-    setPicBusy(true); setErr(null)
-    try {
-      for (const f of Array.from(files).slice(0, MAX_PHOTOS - pics.length)) {
-        const blob = await resizeForPost(f)
-        const id = await uploadPostPhoto(blob)
-        const url = URL.createObjectURL(blob)
-        urls.current.push(url)
-        setPics((xs) => [...xs, { id, url }])
-      }
-    } catch (e) { setErr((e as Error).message) } finally { setPicBusy(false); if (file.current) file.current.value = '' }
-  }
   async function post(el: HTMLElement) {
     setBusy(true); setErr(null); setQueued(false)
     try {
       // Durable + idempotent (lib/outbox): offline / 5xx keeps the text here and retries; a
       // retry can never post twice. Photos are already uploaded, so their ids go along.
       const r = await counted(saveDurably<{ post: Post }>({ method: 'POST', path: '/api/community/posts', label: 'post',
-        body: { text: text.trim(), category, feeling, audience, photo_ids: pics.map((p) => p.id), event_id: eventId || null } },
+        body: { text: text.trim(), category, feeling, audience, photo_ids: photos.ids, event_id: eventId || null } },
       () => setQueued(true)), 'share', { what: 'post' })
       draft.clear()
       burst(el, 'kudos'); onPosted(r.post)
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
-  const canPost = (!!text.trim() || pics.length > 0) && !picBusy
+  const canPost = (!!text.trim() || photos.ids.length > 0) && !photos.busy
+  const AudIcon = audience === 'public' ? Globe : audience === 'private' ? Lock : audience.startsWith('club:') || audience.startsWith('grp:') ? UsersRound : Users
+  const detailBits = [category !== 'life' || template ? CATEGORY_LABEL[category] : null, feeling, eventId ? 'event linked' : null].filter(Boolean)
   return (
     <div className="modal-overlay" onClick={close}>
       {guard.dialog}
-      <div className="modal" onClick={(e) => e.stopPropagation()} {...drag}>
+      <div className="modal flex flex-col" onClick={(e) => e.stopPropagation()} {...drag}>
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 className="modal-title">{clubName ? `Share with ${clubName}` : groupName ? `Share with ${groupName}` : 'Share something'}</h2>
           <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
         </div>
-        <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-          {!template && !text.trim() && !fixed && (
-            <div className="flex flex-wrap gap-1.5" aria-label="Ideas">
+        <div className="modal-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+          <div>
+            <textarea aria-label="Post text" className={cn(areaCls, 'min-h-[96px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text} onChange={(e) => setText(e.target.value)}
+              placeholder={category === 'race' ? 'How did it go?' : category === 'gratitude' ? 'Who are you thankful for?' : 'What happened?'} />
+            {text.length > TEXT_LEN * 0.8 && <p className="mt-0.5 text-right text-[0.6471rem] text-(--text-muted)">{text.length}/{TEXT_LEN}</p>}
+          </div>
+          <PhotoPicker picker={photos} />
+          {!template && !text.trim() && !photos.items.length && !fixed && (
+            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" aria-label="Ideas">
               {TEMPLATES.map((t) => (
-                <button key={t.label} type="button" onClick={() => setD((x) => ({ ...x, text: t.text, category: t.category }))}
-                  className="hit-44 inline-flex min-h-9 items-center gap-1 rounded-full border border-(--border) bg-(--bg-surface) px-3 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+                <button key={t.label} type="button" onClick={() => { setD((x) => ({ ...x, text: t.text, category: t.category })) }}
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-(--border) bg-(--bg-surface) px-3 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
                   <span aria-hidden>{t.emoji}</span>{t.label}
                 </button>
               ))}
             </div>
           )}
-          <div className="-mx-1 flex flex-wrap gap-1" role="radiogroup" aria-label="What is it">
-            {CATEGORIES.map(([id, label]) => (
-              <button key={id} type="button" role="radio" aria-checked={category === id} onClick={() => setCategory(id)}
-                className="hit-44 inline-flex min-h-9 items-center px-0.5">
-                <span className={cn('rounded-full border px-2.5 py-1 text-[0.7059rem] font-medium',
-                  category === id ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary)')}>{label}</span>
-              </button>
-            ))}
-          </div>
-          <div>
-            <textarea aria-label="Post text" className={cn(areaCls, 'min-h-[110px]')} autoFocus maxLength={TEXT_LEN} value={text} onChange={(e) => setText(e.target.value)}
-              placeholder={category === 'race' ? 'How did it go?' : category === 'gratitude' ? 'Who are you thankful for?' : 'What happened?'} />
-            <p className="mt-0.5 text-right text-[0.6471rem] text-(--text-muted)">{text.length}/{TEXT_LEN}</p>
-          </div>
-          {pics.length > 0 && (
-            <div className={cn('grid gap-1.5', pics.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-              {pics.map((p, i) => (
-                <div key={p.id} className="relative">
-                  <img src={p.url} alt={`Photo ${i + 1}`} className="aspect-[4/3] w-full rounded-xl object-cover" />
-                  <button type="button" aria-label={`Remove photo ${i + 1}`}
-                    onClick={() => setPics((xs) => xs.filter((x) => x.id !== p.id))}
-                    className="hit-44 absolute right-1.5 top-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white"><X className="size-4" /></button>
-                </div>
-              ))}
+          <button type="button" aria-expanded={details} onClick={() => setDetails((v) => !v)}
+            className="flex min-h-11 items-center gap-2 rounded-xl px-1 text-left text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+            <SlidersHorizontal className="size-4 text-(--text-muted)" aria-hidden />
+            <span className="flex-1">{details ? 'Hide details' : 'Add details'}{!details && detailBits.length > 0 && <span className="text-(--text-muted)"> · {detailBits.join(' · ')}</span>}</span>
+            <ChevronRight className={cn('size-4 text-(--text-muted) transition-transform', details && 'rotate-90')} aria-hidden />
+          </button>
+          {details && (
+            <div className="flex flex-col gap-3">
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" role="radiogroup" aria-label="What is it">
+                {CATEGORIES.map(([id, label]) => (
+                  <button key={id} type="button" role="radio" aria-checked={category === id} onClick={() => setCategory(id)}
+                    className={cn('min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-[0.7059rem] font-medium',
+                      category === id ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary)')}>{label}</button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-0.5" role="radiogroup" aria-label="Feeling">
+                {FEELINGS.map((f) => (
+                  <button key={f} type="button" role="radio" aria-checked={feeling === f} aria-label={`Feeling ${f}`}
+                    onClick={() => setFeeling(feeling === f ? null : f)}
+                    className={cn('hit-44 flex size-9 items-center justify-center rounded-full text-[1.0588rem]', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-70')}>{f}</button>
+                ))}
+              </div>
+              {events && events.length > 0 && (
+                <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Link an event
+                  <select className={cn(inputCls, 'text-[0.8235rem]')} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                    <option value="">None</option>
+                    {events.map((e) => <option key={e.id} value={e.id}>{e.name} · {e.date}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-0.5" role="radiogroup" aria-label="Feeling">
-            {FEELINGS.map((f) => (
-              <button key={f} type="button" role="radio" aria-checked={feeling === f} aria-label={`Feeling ${f}`}
-                onClick={() => setFeeling(feeling === f ? null : f)}
-                className={cn('hit-44 flex size-9 items-center justify-center rounded-full text-[1.0588rem]', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-70')}>{f}</button>
-            ))}
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {events && events.length > 0 && (
-              <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Link an event
-                <select className={cn(inputCls, 'text-[0.8235rem]')} value={eventId} onChange={(e) => setEventId(e.target.value)}>
-                  <option value="">None</option>
-                  {events.map((e) => <option key={e.id} value={e.id}>{e.name} · {e.date}</option>)}
-                </select>
-              </label>
-            )}
-            {!fixed && (
-              <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Who can see it
-                <select className={cn(inputCls, 'text-[0.8235rem]')} value={audience} onChange={(e) => setAudience(e.target.value)}>
-                  <option value="friends">Friends (people who follow you)</option>
-                  {groups.map((g) => <option key={g.id} value={`grp:${g.id}`}>Group: {g.emoji} {g.name}</option>)}
-                  <option value="public">Everyone on Rabbit</option>
-                  {clubs.map((g) => <option key={g.id} value={`club:${g.id}`}>Club: {g.name}</option>)}
-                  <option value="private">Only me (journal)</option>
-                </select>
-              </label>
-            )}
-          </div>
           <p className="text-[0.6471rem] text-(--text-muted)">Never your heart rate, health data or where you trained.</p>
           {draft.restored && (
             <p className="flex flex-wrap items-center gap-x-2 text-[0.6471rem] text-(--text-muted)" role="status">
@@ -392,18 +362,31 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           )}
           {queued && <SaveStatus state="queued" />}
           {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-          <div className="flex items-center gap-2">
-            <input ref={file} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void pick(e.target.files)} />
-            <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem]" loading={picBusy} disabled={pics.length >= MAX_PHOTOS}
-              onClick={() => file.current?.click()}>
-              <ImagePlus className="size-4" /> {pics.length ? `${pics.length}/${MAX_PHOTOS}` : 'Photos'}
-            </Button>
-            <span className="flex-1" />
-            <Button variant="primary" className="h-11 gap-1.5 px-5 text-[0.7647rem]" loading={busy} disabled={!canPost}
-              onClick={(e) => void post(e.currentTarget)}>
-              <Send className="size-4" /> Share
-            </Button>
-          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-(--border) bg-(--bg-surface) px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+          {fixed ? (
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[0.7059rem] text-(--text-muted)">
+              <UsersRound className="size-4 shrink-0" aria-hidden /> Only {clubName ?? groupName ?? 'members'} see it
+            </span>
+          ) : (
+            <label className="relative flex min-w-0 flex-1 items-center">
+              <span className="sr-only">Who can see it</span>
+              <AudIcon className="pointer-events-none absolute left-3 size-4 text-(--text-secondary)" aria-hidden />
+              <select value={audience} onChange={(e) => setAudience(e.target.value)}
+                className="h-11 w-full min-w-0 appearance-none truncate rounded-full border border-(--border) bg-(--bg-surface) pl-9 pr-7 text-[0.7647rem] font-medium text-(--text)">
+                <option value="friends">Friends</option>
+                {groups.map((g) => <option key={g.id} value={`grp:${g.id}`}>{g.emoji} {g.name}</option>)}
+                <option value="public">Everyone on Rabbit</option>
+                {clubs.map((g) => <option key={g.id} value={`club:${g.id}`}>{g.name}</option>)}
+                <option value="private">Only me</option>
+              </select>
+              <ChevronRight className="pointer-events-none absolute right-3 size-3.5 rotate-90 text-(--text-muted)" aria-hidden />
+            </label>
+          )}
+          <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-5 text-[0.8235rem]" loading={busy} disabled={!canPost}
+            onClick={(e) => void post(e.currentTarget)}>
+            <Send className="size-4" /> {photos.busy ? 'Uploading…' : 'Post'}
+          </Button>
         </div>
       </div>
     </div>
@@ -473,8 +456,8 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
 }) {
   const [menu, setMenu] = useState(false)
   const [details, setDetails] = useState(false)  // a friend's workout, read-only
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(p.text)
+  // Edit and "Add photos" both open the photo + caption sheet (CaptionSheet).
+  const [editing, setEditing] = useState<null | 'edit' | 'photos'>(null)
   // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
   const [comment, setComment, commentDraft] = useDraft<string>(`comment.${p.id}`, '', { label: 'comment', isEmpty: (v) => !v.trim() })
   const [showComments, setShowComments] = useState(() => readDraft<string>(`comment.${p.id}`) != null)
@@ -529,11 +512,6 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
       onChange({ ...p, comments: p.comments.filter((c) => c.id !== cid && c.parent !== cid), comment_count: Math.max(0, p.comment_count - gone) })
     } catch (e) { setErr((e as Error).message) }
   }
-  async function saveEdit() {
-    setBusy(true); setErr(null)
-    try { const r = await updatePost(p.id, { text: draft.trim() }); onChange({ ...r.post, comments: p.comments }); setEditing(false) }
-    catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
-  }
   async function remove() {
     setMenu(false)
     if (!(await confirmAsk('Delete this post?', { confirm: 'Delete', danger: true }))) return
@@ -586,7 +564,8 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
             <div className="absolute right-0 top-9 z-10 flex w-44 flex-col rounded-xl border border-(--border) bg-(--bg-surface) py-1 shadow-lg" role="menu">
               {p.mine ? (
                 <>
-                  <MenuItem icon={<Pencil className="size-4" />} label="Edit" onClick={() => { setMenu(false); setDraft(p.text); setEditing(true) }} />
+                  <MenuItem icon={<ImagePlus className="size-4" />} label={p.photos.length ? 'Photos' : 'Add photos'} onClick={() => { setMenu(false); setEditing('photos') }} />
+                  <MenuItem icon={<Pencil className="size-4" />} label="Edit" onClick={() => { setMenu(false); setEditing('edit') }} />
                   <MenuItem icon={<Trash2 className="size-4" />} label="Delete" danger onClick={() => void remove()} />
                 </>
               ) : (
@@ -601,19 +580,14 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
         </div>
       </header>
 
-      {editing ? (
-        <div className="mt-2.5 flex flex-col gap-2">
-          <textarea aria-label="Edit post" className={cn(areaCls, 'min-h-[80px]')} maxLength={TEXT_LEN} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
-          <div className="flex justify-end gap-2">
-            <Button variant="default" className="h-11 px-3 text-[0.7647rem]" onClick={() => setEditing(false)}>Cancel</Button>
-            <Button variant="primary" className="h-11 px-3 text-[0.7647rem]" loading={busy}
-              disabled={!draft.trim() && !p.photos.length && !p.workout && !p.milestone} onClick={() => void saveEdit()}>Save</Button>
-          </div>
-        </div>
-      ) : p.text ? (
+      {p.text ? (
         <p className="mt-2.5 whitespace-pre-wrap break-words text-[0.9412rem] leading-snug text-(--text)">{p.text}</p>
       ) : null}
-      {photos.length > 0 && <PhotoGrid urls={photos} />}
+      {photos.length > 0 && <PhotoGrid urls={photos} who={p.mine ? 'your' : `${p.user?.name ?? 'their'}'s`} />}
+      {editing && (
+        <CaptionSheet post={p} title={editing === 'edit' ? 'Edit post' : p.photos.length ? 'Photos' : 'Add photos'}
+          onClose={() => setEditing(null)} onSaved={(np) => { onChange({ ...np, comments: p.comments }); setEditing(null) }} />
+      )}
       {p.workout && <WorkoutCard w={p.workout} imperial={imperial}
         onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id) : () => setDetails(true)} />}
       {details && p.workout && (
@@ -717,19 +691,26 @@ function CommentLine({ c, onReply, onDelete }: { c: PostComment; onReply: () => 
   )
 }
 
-function PhotoGrid({ urls }: { urls: string[] }) {
+/** 1 photo full width; 2 side by side; 3 one wide on top; 4+ a 2x2 grid with "+N" on the last. */
+function PhotoGrid({ urls, who = 'the' }: { urls: string[]; who?: string }) {
   const [open, setOpen] = useState<number | null>(null)
+  const n = urls.length
+  const shown = n > 4 ? urls.slice(0, 4) : urls
   return (
     <>
-      <div className={cn('mt-2.5 grid gap-1', urls.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
-        {urls.map((u, i) => (
-          <button key={u} type="button" aria-label={`Open photo ${i + 1}`} onClick={() => setOpen(i)}
-            className={cn('overflow-hidden rounded-xl bg-(--bg-inset)', urls.length === 3 && i === 0 && 'col-span-2')}>
-            <img src={u} alt="" loading="lazy" className={cn('w-full object-cover', urls.length === 1 ? 'max-h-[28rem]' : 'aspect-square')} />
+      <div className={cn('mt-2.5 grid gap-1 overflow-hidden rounded-xl', n > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+        {shown.map((u, i) => (
+          <button key={u} type="button" aria-label={`Open photo ${i + 1} of ${n}`} onClick={() => setOpen(i)}
+            className={cn('relative overflow-hidden bg-(--bg-inset)', n === 3 && i === 0 && 'col-span-2')}>
+            <img src={u} alt={`Photo ${i + 1} of ${n} in ${who} post`} loading="lazy"
+              className={cn('w-full object-cover', n === 1 ? 'max-h-[28rem]' : n === 3 && i === 0 ? 'aspect-[2/1]' : 'aspect-square')} />
+            {n > 4 && i === 3 && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[1.4118rem] font-semibold text-white" aria-hidden>+{n - 4}</span>
+            )}
           </button>
         ))}
       </div>
-      {open != null && <PhotoViewer url={urls[open]!} label={`Photo ${open + 1} of ${urls.length}`} onClose={() => setOpen(null)} />}
+      {open != null && <PhotoViewer urls={urls} start={open} who={who} onClose={() => setOpen(null)} />}
     </>
   )
 }
@@ -854,68 +835,76 @@ function SplitBars({ splits, sport }: { splits: { km: number; s: number }[]; spo
   )
 }
 
-/** "Add a photo or caption" for my fresh auto-shared workout. */
-function CaptionSheet({ post, onClose, onSaved }: { post: Post; onClose: () => void; onSaved: (p: Post) => void }) {
+/** "Add photos or a caption" for my own post (the pinned auto-shared workout, or any workout
+ *  post from its ... menu). Keeps the photos already on it. */
+function CaptionSheet({ post, title = 'Add photos or a caption', onClose, onSaved }: {
+  post: Post; title?: string; onClose: () => void; onSaved: (p: Post) => void
+}) {
   const [text, setText] = useState(post.text)
-  const [pics, setPics] = useState<Pic[]>([])
+  const photos = usePhotoPicker(existingPhotos(post.photo_ids, postPhotoUrls(post)))
   const [busy, setBusy] = useState(false)
-  const [picBusy, setPicBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const file = useRef<HTMLInputElement>(null)
-  const urls = useRef<string[]>([])
-  useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), [])
-  async function pick(files: FileList | null) {
-    if (!files?.length) return
-    setPicBusy(true); setErr(null)
-    try {
-      for (const f of Array.from(files).slice(0, MAX_PHOTOS - pics.length)) {
-        const blob = await resizeForPost(f)
-        const id = await uploadPostPhoto(blob)
-        const url = URL.createObjectURL(blob)
-        urls.current.push(url)
-        setPics((xs) => [...xs, { id, url }])
-      }
-    } catch (e) { setErr((e as Error).message) } finally { setPicBusy(false); if (file.current) file.current.value = '' }
-  }
+  const changedPhotos = photos.ids.join() !== (post.photo_ids ?? []).join()
   async function save(el: HTMLElement) {
     setBusy(true); setErr(null)
     try {
-      const r = await updatePost(post.id, { text: text.trim(), ...(pics.length ? { photo_ids: pics.map((p) => p.id) } : {}) })
+      const r = await updatePost(post.id, { text: text.trim(), ...(changedPhotos ? { photo_ids: photos.ids } : {}) })
       burst(el, 'kudos'); onSaved({ ...r.post, comments: post.comments })
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <Sheet title="Add a photo or caption" onClose={onClose}
+    <Sheet title={title} onClose={onClose}
       bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <textarea aria-label="Caption" className={cn(areaCls, 'min-h-[90px]')} autoFocus maxLength={TEXT_LEN} value={text}
+      <textarea aria-label="Caption" className={cn(areaCls, 'min-h-[90px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text}
         placeholder="How did it feel?" onChange={(e) => setText(e.target.value)} />
-      {pics.length > 0 && (
-        <div className="grid grid-cols-2 gap-1.5">
-          {pics.map((p, i) => <img key={p.id} src={p.url} alt={`Photo ${i + 1}`} className="aspect-[4/3] w-full rounded-xl object-cover" />)}
-        </div>
-      )}
+      <PhotoPicker picker={photos} />
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <div className="flex items-center gap-2">
-        <input ref={file} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void pick(e.target.files)} />
-        <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem]" loading={picBusy} disabled={pics.length >= MAX_PHOTOS}
-          onClick={() => file.current?.click()}>
-          <ImagePlus className="size-4" /> {pics.length ? `${pics.length}/${MAX_PHOTOS}` : 'Photo'}
-        </Button>
-        <span className="flex-1" />
-        <Button variant="primary" className="h-11 px-5 text-[0.7647rem]" loading={busy} disabled={picBusy || (!text.trim() && !pics.length)}
-          onClick={(e) => void save(e.currentTarget)}>Save</Button>
-      </div>
+      <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy}
+        disabled={photos.busy || (!changedPhotos && text.trim() === post.text.trim())
+          || (!text.trim() && !photos.ids.length && !post.workout && !post.milestone)}
+        onClick={(e) => void save(e.currentTarget)}>{photos.busy ? 'Uploading…' : 'Save'}</Button>
     </Sheet>
   )
 }
 
-/** Full-screen photo: a keyboard dialog (focus in, Escape closes, focus returns). */
-function PhotoViewer({ url, label, onClose }: { url: string; label: string; onClose: () => void }) {
+/** Full-screen photos: swipe or use the arrows (and arrow keys) to move between them; a
+ *  keyboard dialog (focus in, Escape closes, focus returns). */
+function PhotoViewer({ urls, start, who, onClose }: { urls: string[]; start: number; who: string; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null)
+  const [i, setI] = useState(start)
+  const x0 = useRef<number | null>(null)
   useDialog(box, onClose)
+  const n = urls.length
+  const go = (d: number) => setI((v) => Math.min(n - 1, Math.max(0, v + d)))
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1) }
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  })
+  const navCls = 'hit-44 absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white disabled:opacity-0'
   return (
-    <div ref={box} className="modal-overlay flex items-center justify-center bg-black/85" onClick={onClose} role="dialog" aria-modal="true" aria-label={label}>
-      <img src={url} alt="" className="max-h-[90vh] max-w-full object-contain" />
+    // Inline style: .modal-overlay's own background and bottom alignment (for sheets) win over utilities.
+    <div ref={box} className="modal-overlay justify-center" style={{ background: 'rgba(0,0,0,0.92)', alignItems: 'center' }}
+      onClick={onClose} role="dialog" aria-modal="true" aria-label={`Photo ${i + 1} of ${n}`}
+      onTouchStart={(e) => { x0.current = e.touches[0]?.clientX ?? null }}
+      onTouchEnd={(e) => {
+        const dx = (e.changedTouches[0]?.clientX ?? 0) - (x0.current ?? 0)
+        if (x0.current != null && Math.abs(dx) > 50) { e.preventDefault(); go(dx < 0 ? 1 : -1) }
+        x0.current = null
+      }}>
+      <img key={urls[i]} src={urls[i]} alt={`Photo ${i + 1} of ${n} in ${who} post`} className="rb-pop max-h-[86vh] max-w-full object-contain"
+        onClick={(e) => e.stopPropagation()} />
+      {n > 1 && (
+        <>
+          <button type="button" aria-label="Previous photo" disabled={i === 0} className={cn(navCls, 'left-2')}
+            onClick={(e) => { e.stopPropagation(); go(-1) }}><ChevronRight className="size-5 rotate-180" /></button>
+          <button type="button" aria-label="Next photo" disabled={i === n - 1} className={cn(navCls, 'right-2')}
+            onClick={(e) => { e.stopPropagation(); go(1) }}><ChevronRight className="size-5" /></button>
+          <span className="absolute bottom-[max(16px,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[0.7059rem] font-medium text-white tabular-nums" aria-hidden>
+            {i + 1} / {n}
+          </span>
+        </>
+      )}
       <button type="button" aria-label="Close" className="hit-44 absolute right-3 top-[max(12px,env(safe-area-inset-top))] flex size-10 items-center justify-center rounded-full bg-black/60 text-white"
         onClick={onClose}><X className="size-5" /></button>
     </div>

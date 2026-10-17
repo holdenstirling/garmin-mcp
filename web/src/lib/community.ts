@@ -39,7 +39,7 @@ export const MILESTONE_LABEL: Record<MilestoneType, string> = {
 }
 export const TEXT_LEN = 500
 export const COMMENT_LEN = 280
-export const MAX_PHOTOS = 4
+export const MAX_PHOTOS = 10
 
 export function audienceLabel(a: Audience, club?: { name: string } | null): string {
   if (a === 'public') return 'Everyone on Rabbit'
@@ -72,6 +72,8 @@ export type Post = {
   category: Category; text: string; feeling: string | null; event: PostEvent | null; workout?: PostWorkout | null
   milestone?: { type: MilestoneType; key: string } | null; created: number; edited: number | null
   audience: Audience; club: { id: string; name: string } | null; mine: boolean; photos: number[]
+  /** Mine only: the photo ids, so an edit can keep some and add more. */
+  photo_ids?: string[]
   groups?: { id: string; name: string; emoji: string }[]
   /** the pinned post on my own feed: "Add a photo or caption" while it has neither */
   prompt?: string | null; pinned_until?: number
@@ -246,7 +248,12 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promi
 export async function resizeForPost(file: File): Promise<Blob> {
   if (typeof createImageBitmap !== 'function') throw new Error("This browser can't resize photos.")
   let bmp: ImageBitmap
-  try { bmp = await createImageBitmap(file) } catch { throw new Error("That file isn't a photo we can read.") }
+  try { bmp = await createImageBitmap(file) } catch {
+    // iPhone Safari hands HEIC photos over as JPEG; other browsers may not read HEIC at all.
+    const heic = /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)
+    throw new Error(heic ? "This browser can't read HEIC photos. Pick it from your phone, or save it as a JPEG first."
+      : "That file isn't a photo we can read.")
+  }
   let side = MAX_SIDE
   for (let attempt = 0; attempt < 3; attempt++) {
     const scale = Math.min(1, side / Math.max(bmp.width, bmp.height))

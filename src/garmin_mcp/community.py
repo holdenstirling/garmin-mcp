@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 TEXT_LEN = 500
 COMMENT_LEN = 280
 MAX_COMMENTS = 200
-MAX_PHOTOS = 4
+MAX_PHOTOS = 10
 PAGE = 20
 MAX_POSTS = 1000          # per author; oldest dropped
 MAX_PUBLIC = 2000         # public index; oldest dropped
@@ -667,6 +667,9 @@ class Community:
         out.update({
             "audience": v, "club": None, "mine": mine,
             "photos": [p["v"] for p in photos],
+            # The author's own photo ids, so an edit can keep some and add more (only the
+            # author can attach them; they mean nothing to anyone else).
+            **({"photo_ids": [p["id"] for p in photos if p.get("id")]} if mine else {}),
             "reactions": counts, "reaction_total": sum(counts.values()), "my_reaction": reactions.get(viewer),
             "comment_count": len(comments),
             "comments": [{"id": c["id"], "by": c["by"], "text": c["text"], "ts": c["ts"], "parent": c.get("parent"),
