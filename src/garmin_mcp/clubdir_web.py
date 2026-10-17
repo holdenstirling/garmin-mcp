@@ -2,9 +2,15 @@
 ``community_web``'s guards: session, Host, Origin + JSON on mutating calls, coach accounts 403,
 allowlisted athlete).
 
-    GET  /app/api/community/directory?kind=run|trail|tri|ride|swim|leagues&weekday=mon..sun
+    GET  /app/api/community/directory?activity=run|trail|...|other&weekday=mon..sun&when=morning|midday|evening
+         (older clients: kind=run|trail|tri|ride|swim|leagues)
          -> {metro, status: ready|refreshing|queued|needs_location|unavailable|limit|busy,
-             listings, counts, refreshed, fallback}; the first request for a metro that's due
+             listings, counts, refreshed, fallback, area, activities, farther}: only listings inside
+             my area (``area.py``: my saved spot or the city centre + my radius), nearest first, each
+             with ``distance_km`` (null = no mapped spot, shown as "in your city"), ``activity``,
+             ``type``/``type_label`` (Club | League | Meetup); ``activities`` counts per activity in
+             the area (filter chips), ``farther`` = left out for being outside the radius.
+         The first request for a metro that's due
              starts a background refresh and returns Explore's cached local groups meanwhile.
     POST /app/api/community/directory/suggest        {name, url, city?, state?}
     POST /app/api/community/directory/{lid}/report
@@ -13,7 +19,8 @@ allowlisted athlete).
     POST /app/api/community/directory/{lid}/going    {going: bool, date?} -> {going: {date, count, me,
          friends, more_friends}} for the listing's next occurrence (409 when ``date`` moved on)
     GET  /app/api/community/directory/{lid}/calendar.ics   weekly .ics (text/calendar, attachment)
-    GET  /app/api/community/directory/search?q=      -> {q, metro, partners, listings, can_look_up}
+    GET  /app/api/community/directory/search?q=&activity=&weekday=&when=
+         -> {q, metro, partners, listings, can_look_up, area, farther} (same area rules)
          fuzzy name match ("5280 run club" finds "5280 Runners"); partners pinned, labelled
     POST /app/api/community/directory/lookup         {q} -> {status: found|none|limit|unavailable,
          listings}: one targeted web search for that name in my metro, read safely, added here
@@ -43,7 +50,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
-from . import clubics
+from . import activity as _activity, area as _area, clubics
 from .clubdir import CHIPS, Directory, DirectoryError, Metro, metro, weekday_of
 from .partners import PartnerError, Partners
 
@@ -55,7 +62,8 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                 local_groups: Callable[[str, str, date], list[dict[str, Any]] | None],
                 is_owner: Callable[[str], bool], club_role: Callable[[str, str], str | None],
                 read_json: Callable[[Request], Awaitable[Any]], going: Any = None,
-                partners: Partners | None = None) -> list[BaseRoute]:
+                partners: Partners | None = None,
+                area: Callable[[str], dict[str, Any]] | None = None) -> list[BaseRoute]:
     """``wrap(handler, mutating=)`` is community_web's guard; ``club_role(uid, cid)`` the
     athlete's role in a club or None."""
 
@@ -76,6 +84,29 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
             raise DirectoryError("bad request")
         return b
 
+    async def my_area(uid: str, m: Metro, metro_center: Any) -> tuple[dict[str, Any], tuple[float, float] | None]:
+        """(the response's ``area`` block, centre point): the saved spot when there is one, else
+        the metro centre; the athlete's radius (default 10 mi)."""
+        a = await run(lambda: area(uid)) if area is not None else {}
+        c = a.get("center")
+        source = a.get("source")
+        if not (isinstance(c, tuple | list) and len(c) == 2):
+            c = (metro_center["lat"], metro_center["lon"]) if isinstance(metro_center, dict) else None
+            source = "city" if c else None
+        center = (float(c[0]), float(c[1])) if c else None
+        radius = int(a.get("radius_mi") or _area.DEFAULT_MI)
+        label = str(a.get("label") or "") or m.label
+        return _area.view(label=label, radius=radius, center=center, source=source), center
+
+    def filters(request: Request) -> tuple[str | None, str | None, str | None]:
+        act = request.query_params.get("activity") or None
+        if act is not None and act not in _activity.IDS:
+            raise DirectoryError("bad activity")
+        when = request.query_params.get("when") or None
+        if when is not None and when not in _area.WHEN:
+            raise DirectoryError("bad time of day")
+        return act, weekday_of(request.query_params.get("weekday")), when
+
     async def my_metro(uid: str) -> Metro | None:
         loc = await run(lambda: home(uid))
         return metro(loc.get("city"), loc.get("state"))
@@ -84,13 +115,21 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         chip = request.query_params.get("kind") or None
         if chip is not None and chip not in CHIPS:
             raise DirectoryError("bad kind")
-        wd = weekday_of(request.query_params.get("weekday"))
+        act, wd, when = filters(request)
         m = await my_metro(user_id)
         if m is None:
             return JSONResponse({"metro": None, "status": "needs_location", "listings": [], "counts": {},
-                                 "refreshed": None, "fallback": []})
+                                 "refreshed": None, "fallback": [], "area": None, "activities": {}, "farther": 0})
         local_now = await run(lambda: now(user_id))
-        v = await run(lambda: directory.view(m, now_local=local_now, chip=chip, weekday=wd, uid=user_id))
+        v = await run(lambda: directory.view(m, now_local=local_now, chip=chip, uid=user_id))
+        # My area: the radius around my spot (else the city centre), then activity / day / time.
+        area_view, center = await my_area(user_id, m, v.get("center"))
+        radius_km = area_view["radius_mi"] * _area.KM_PER_MI
+        in_area, _ = _area.filter_rows(v["listings"], center=center, radius_km=radius_km)
+        v["activities"] = _area.counts(in_area)
+        v["listings"], v["farther"] = _area.filter_rows(v["listings"], center=center, radius_km=radius_km,
+                                                        activity=act, weekday=wd, when=when)
+        v["area"] = area_view
         if going is not None:
             await run(lambda: going.attach(user_id, m, v["listings"]))
         status = v.pop("state")
@@ -100,7 +139,7 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         if status == "queued" and v["listings"]:
             status = "refreshing"
         fallback: list[dict[str, Any]] = []
-        if not v["listings"] and not chip and not wd:
+        if not v["listings"] and not chip and not wd and not act and not when:
             try:
                 raw = await run(lambda: local_groups(m.city, m.state, today(user_id))) or []
             except Exception:
@@ -112,16 +151,22 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
 
     async def search(request: Request, user_id: str) -> Response:
         q = " ".join((request.query_params.get("q") or "").split())[:60]
+        act, wd, when = filters(request)
         m = await my_metro(user_id)
         if m is None:
-            return JSONResponse({"q": q, "metro": None, "partners": [], "listings": [], "can_look_up": False})
+            return JSONResponse({"q": q, "metro": None, "partners": [], "listings": [], "can_look_up": False,
+                                 "area": None, "farther": 0})
         local_now = await run(lambda: now(user_id))
         rows = await run(lambda: directory.search(m, q, now_local=local_now, uid=user_id))
+        center_doc = await run(lambda: directory.load(m).get("center"))
+        area_view, center = await my_area(user_id, m, center_doc)
+        rows, farther = _area.filter_rows(rows, center=center, radius_km=area_view["radius_mi"] * _area.KM_PER_MI,
+                                          activity=act, weekday=wd, when=when)
         if going is not None and rows:
             await run(lambda: going.attach(user_id, m, rows))
         near = await run(lambda: partners.near(m.city, m.state, query=q)) if partners is not None and len(q) >= 2 else []
         return JSONResponse({"q": q, "metro": {"city": m.city, "state": m.state, "label": m.label},
-                             "partners": near, "listings": rows,
+                             "partners": near, "listings": rows, "area": area_view, "farther": farther,
                              "can_look_up": len(q) >= 3 and directory.can_look_up(user_id)})
 
     async def lookup(request: Request, user_id: str) -> Response:

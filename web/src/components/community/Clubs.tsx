@@ -122,7 +122,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
         </Group>
       )}
       {/* One search (names, partners, public listings) lives in the directory, partners first. */}
-      <ClubDirectory onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />
+      <ClubDirectory imperial={imperial} onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />
 
       {near.length > 0 && (
         <Group label={home ? `Rabbit clubs near ${home}` : 'Rabbit clubs to join'}>

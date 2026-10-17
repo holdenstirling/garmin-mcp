@@ -4,7 +4,8 @@
 // plus an opt-in OpenStreetMap street map (one iframe, loaded only on tap; CSP frame-src allows
 // www.openstreetmap.org). The List view stays the primary view.
 import { useMemo, useState } from 'react'
-import { ExternalLink, Map as MapIcon, MapPin } from 'lucide-react'
+import { ExternalLink, Map as MapIcon } from 'lucide-react'
+import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import { cn } from '@/lib/utils'
 import { nextLabel, osmEmbedUrl, osmLink, type DirListing } from '@/lib/clubdir'
 
@@ -66,11 +67,14 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
         )}
         {pts.map((p) => {
           const on = p.l.id === sel
+          // Each pin shows its activity (a volleyball league is a volleyball, a ride a bike).
+          const Icon = ACTIVITY_ICON[p.l.activity ?? 'other']
+          const r = on ? 13 : 11
           return (
             <g key={p.l.id} onClick={() => pick(p.l.id)} className="cursor-pointer" aria-hidden>
               <circle cx={p.x} cy={p.y} r={20} fill="transparent" />
-              <path d={`M ${p.x} ${p.y} l -6 -11 a 7 7 0 1 1 12 0 z`} fill={on ? 'var(--brand)' : 'var(--accent)'}
-                stroke="var(--bg-surface)" strokeWidth={1.5} transform={on ? `translate(${p.x} ${p.y}) scale(1.3) translate(${-p.x} ${-p.y})` : undefined} />
+              <circle cx={p.x} cy={p.y} r={r} fill={on ? 'var(--brand)' : 'var(--accent)'} stroke="var(--bg-surface)" strokeWidth={1.5} />
+              <Icon x={p.x - r * 0.6} y={p.y - r * 0.6} width={r * 1.2} height={r * 1.2} color="var(--on-fill)" strokeWidth={2.25} />
             </g>
           )
         })}
@@ -81,7 +85,7 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
             <button type="button" aria-pressed={l.id === sel} onClick={() => pick(l.id)}
               className={cn('flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left',
                 l.id === sel ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-              <MapPin className="size-4 shrink-0 text-(--accent)" aria-hidden />
+              {(() => { const I = ACTIVITY_ICON[l.activity ?? 'other']; return <I className="size-4 shrink-0 text-(--accent)" aria-hidden /> })()}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8235rem] text-(--text)">{l.name}</span>
                 <span className="block truncate text-[0.7059rem] text-(--text-muted)">

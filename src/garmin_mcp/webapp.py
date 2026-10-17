@@ -46,6 +46,7 @@ from .events import is_race as _ev_is_race
 from .events import EventStore as _EventStore
 from .events import plan_links as _ev_plan_links
 from . import calsub as _calsub
+from . import area as _area
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
@@ -2677,8 +2678,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         r = await _x2_resolved(uid)
         use = await anyio.to_thread.run_sync(lambda: _geo.use_for_local(store, uid))
         view = _x2_saved_view(r["saved"])
+        radius = await anyio.to_thread.run_sync(lambda: _area.radius_mi(store, uid))
         return JSONResponse({"saved": view, "device": view, "resolved": _x2_loc_view(r["loc"]),
-                             "use_for_local": use})
+                             "use_for_local": use, "radius_mi": radius, "radii_mi": list(_area.RADII_MI)})
 
     async def location_get(request: Request, user_id: str) -> Response:
         return await _x2_location_resp(user_id)
@@ -2717,12 +2719,24 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return await _x2_location_resp(user_id)
 
     async def location_prefs(request: Request, user_id: str) -> Response:
+        """{use_for_local?: bool, radius_mi?: 2|5|10|25|50} (at least one): Local's area radius
+        lives here too (area.py)."""
         body = await read_json(request)
-        if not isinstance(body, dict) or not isinstance(body.get("use_for_local"), bool):
+        if not isinstance(body, dict) or not ({"use_for_local", "radius_mi"} & set(body)) \
+                or set(body) - {"use_for_local", "radius_mi"}:
+            raise ValueError("body")
+        if "use_for_local" in body and not isinstance(body["use_for_local"], bool):
             raise ValueError("body")
         if store is None:
             raise _UserError("Location isn't available on this server.", 503)
-        await anyio.to_thread.run_sync(lambda: _geo.set_use_for_local(store, user_id, body["use_for_local"]))
+        if "radius_mi" in body:
+            try:
+                _area.clean_radius(body["radius_mi"])
+            except ValueError as e:
+                raise _UserError(str(e)) from None
+            await anyio.to_thread.run_sync(lambda: _area.set_radius(store, user_id, body["radius_mi"]))
+        if "use_for_local" in body:
+            await anyio.to_thread.run_sync(lambda: _geo.set_use_for_local(store, user_id, body["use_for_local"]))
         return await _x2_location_resp(user_id)
 
     async def location_delete(request: Request, user_id: str) -> Response:
@@ -3186,10 +3200,21 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         # in their metros (Clubs near you, club search, Search everywhere). Routes in clubdir_web.
         from . import partners as _pt
         partners = _pt.Partners(store, is_owner=auth.is_owner)
+        def _cd_area(uid: str) -> dict[str, Any]:
+            """My area for Local / Discover (area.py): my saved spot ("Use my location" or a zip)
+            when location is on for local picks, plus my radius."""
+            saved = _geo.load_saved(store, uid) if _geo.use_for_local(store, uid) else None
+            lat, lon = (saved or {}).get("lat"), (saved or {}).get("lon")
+            point = isinstance(lat, int | float) and isinstance(lon, int | float)
+            return {"center": (float(lat), float(lon)) if point else None,  # type: ignore[arg-type]
+                    "label": _geo.label(saved) if point and saved else "",
+                    "source": (saved or {}).get("source") if point else None,
+                    "radius_mi": _area.radius_mi(store, uid)}
+
         directory_routes = _cdw.make_routes(
             directory=directory, wrap=_cd_wrap, home=_cm_home, now=_ag._now, today=lambda u: _ag._now(u).date(),
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
-            going=_cd_going, partners=partners)
+            going=_cd_going, partners=partners, area=_cd_area)
 
         # Search everywhere (search.py): GET /app/api/search?q= -> people / clubs / events /
         # sessions / workouts, from stored and cached data only (no Garmin call per keystroke).

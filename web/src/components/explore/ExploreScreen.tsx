@@ -25,6 +25,8 @@ import { ForYouFeedView, InterestsStrip, useForYou } from './ForYou'
 import { InterestsSheet } from './InterestsSheet'
 import { EstimateLine } from './Estimate'
 import { LocationPrompt } from './LocationPrompt'
+import { AreaBar, useAreaChanged } from '@/components/local/AreaBar'
+import type { LocationState } from '@/lib/explore2'
 import { LetRabbitExplore } from './RabbitExplore'
 import type { RaceX } from '@/lib/explore2'
 
@@ -86,6 +88,14 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     }, () => setFilters((f) => f ?? EMPTY))
   }, [])
   useEffect(() => { loadDefaults() }, [loadDefaults])
+  // My area changed (AreaBar): search from there, at least as wide as my radius.
+  useAreaChanged(useCallback((st: LocationState) => {
+    const near = st.saved?.zip || st.resolved.zip || (st.resolved.state?.length === 2 ? st.resolved.state : '')
+    const want = st.radius_mi ?? 10
+    const radius = RADII.find((r) => r >= want) ?? RADII[RADII.length - 1]!
+    setHome(near)
+    setFilters((f) => ({ ...(f ?? EMPTY), ...(near ? { near } : {}), radius }))
+  }, []))
 
   const run = useCallback((f: ExploreFilters, p: number) => {
     const n = ++seq.current
@@ -194,6 +204,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = false }: {
     <>
       <Screen title="Explore events" subtitle="Find your next start line" closing={closing} onClose={close}
         headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
+        <AreaBar imperial={imperial} what="races, group runs and meetups" />
         {mode === 'foryou' ? (
           <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')}
             onAsk={onAsk} imperial={imperial}

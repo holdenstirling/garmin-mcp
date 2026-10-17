@@ -14,7 +14,7 @@ const STEPS: Step[] = [
   { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask Rabbit, your AI coach, anything." },
   { target: 'tab-plan', title: 'Schedule', body: 'Your plan and your events in one place. Tap a day for the full workout; move it if life gets in the way. + Add puts in a workout, event or plan.' },
   { target: 'tab-feed', title: 'Feed', body: "What your friends and groups are up to. Make a group feed with just a few people." },
-  { target: 'tab-clubs', title: 'Clubs', body: 'Run clubs, group runs and people near you.' },
+  { target: 'tab-clubs', title: 'Local', body: 'Clubs, leagues and meetups near you, from run clubs to volleyball, plus people to follow.' },
   { target: 'tab-progress', title: 'Progress', body: 'How your fitness is trending, in plain words.' },
   { target: 'chat', title: 'Chat with Rabbit', body: 'From any screen: questions, swaps, travel weeks.' },
   { target: 'search', title: 'Search', body: 'Find people, clubs, races, sessions and past workouts from any screen.' },

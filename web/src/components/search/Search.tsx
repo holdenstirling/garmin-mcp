@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clock, Flag, Search as SearchIcon, Users, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
+import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/Avatar'
 import { PartnerRow, PartnerSheet } from '@/components/community/Partners'
@@ -126,7 +127,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             <Group title="Clubs & groups" n={res.clubs.length}>
               {res.clubs.map((c) => (
                 <Row key={`${c.source}:${c.id}`} onClick={() => pick({ kind: 'club', id: c.id, source: c.source })}
-                  icon={<Tile><Users className="size-4" /></Tile>} title={c.name}
+                  icon={<Tile>{(() => { const I = ACTIVITY_ICON[c.activity ?? 'other'] ?? Users; return <I className="size-4" /> })()}</Tile>} title={c.name}
                   sub={[c.mine ? 'Your club' : c.kind ?? 'Club', c.city, c.members ? `${c.members} members` : ''].filter(Boolean).join(' · ')} />
               ))}
             </Group>

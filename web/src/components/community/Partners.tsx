@@ -10,6 +10,15 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { countPartner, type Partner, type PartnerCount } from '@/lib/clubdir'
 import { counting } from '@/lib/usage'
+import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
+import type { ActivityId } from '@/lib/activity'
+
+/** The partner's activity icon (next to its kind), matching every other club and league. */
+const PARTNER_ACTIVITY: Record<string, ActivityId> = { run_club: 'run', tri_club: 'tri', ride: 'ride', swim: 'swim', trail: 'trail', store: 'run' }
+function KindIcon({ p }: { p: Partner }) {
+  const I = ACTIVITY_ICON[PARTNER_ACTIVITY[p.kind] ?? 'other']
+  return <I className="mr-1 inline size-3.5 align-[-2px] text-(--accent)" aria-hidden />
+}
 
 const SAVED = 'rabbit.partners.interested'
 
@@ -65,7 +74,7 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
               <PartnerBadge />
             </span>
             <span className="block truncate text-[0.7059rem] text-(--text-secondary)">
-              {[p.kind_label, p.tagline].filter(Boolean).join(' · ')}
+              <KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}
             </span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
@@ -88,7 +97,7 @@ export function PartnerRow({ p, onOpen }: { p: Partner; onOpen: () => void }) {
           <span className="truncate text-[0.8235rem] font-semibold text-(--text)">{p.name}</span>
           <PartnerBadge />
         </span>
-        <span className="block truncate text-[0.7059rem] text-(--text-secondary)">{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}</span>
+        <span className="block truncate text-[0.7059rem] text-(--text-secondary)"><KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}</span>
       </span>
       <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
@@ -113,7 +122,7 @@ export function PartnerSheet({ p, onClose }: { p: Partner; onClose: () => void }
         <div className="flex items-center gap-3">
           <Monogram p={p} size={56} />
           <div className="min-w-0">
-            <div className="flex items-center gap-2"><PartnerBadge /><span className="text-[0.7059rem] text-(--text-muted)">{p.kind_label}</span></div>
+            <div className="flex items-center gap-2"><PartnerBadge /><span className="text-[0.7059rem] text-(--text-muted)"><KindIcon p={p} />{p.kind_label}</span></div>
             {p.tagline && <p className="mt-1 font-display text-[1.0588rem] leading-tight text-(--brand)">{p.tagline}</p>}
           </div>
         </div>

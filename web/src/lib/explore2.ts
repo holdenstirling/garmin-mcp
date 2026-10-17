@@ -12,7 +12,11 @@ export type ResolvedLocation = {
 }
 export type SavedLocation = { zip: string; city: string; state: string; source: 'device' | 'manual'; updated: number } | null
 /** `device` mirrors `saved` (older name). */
-export type LocationState = { saved: SavedLocation; device: SavedLocation; resolved: ResolvedLocation; use_for_local: boolean }
+export type LocationState = {
+  saved: SavedLocation; device: SavedLocation; resolved: ResolvedLocation; use_for_local: boolean
+  /** Local's "within" radius in miles (area.py) and the choices */
+  radius_mi?: number; radii_mi?: number[]
+}
 
 export type Estimate = {
   kind: 'run' | 'bike' | 'swim' | 'tri'; low: number; high: number; likely: number
@@ -58,6 +62,7 @@ export const saveDeviceLocation = (lat: number, lon: number) =>
   sendJSON<LocationState>('POST', '/api/location', { lat, lon })
 export const saveZipLocation = (zip: string) => sendJSON<LocationState>('POST', '/api/location', { zip })
 export const setUseForLocal = (on: boolean) => sendJSON<LocationState>('POST', '/api/location/prefs', { use_for_local: on })
+export const setAreaRadius = (mi: number) => sendJSON<LocationState>('POST', '/api/location/prefs', { radius_mi: mi })
 export const forgetLocation = () => sendJSON<LocationState>('DELETE', '/api/location')
 /** One part of "Let Rabbit explore". The app asks for both in parallel with the same ``tap``
  *  id (one tap = one web search on the daily allowance) and shows each as it lands. */

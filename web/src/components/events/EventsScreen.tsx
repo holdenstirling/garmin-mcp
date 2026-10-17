@@ -5,7 +5,7 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Footprints, Gauge, Layers, Mountain, Repeat, Star, Trash2, Volleyball, Waves } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
@@ -30,14 +30,24 @@ import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
+import { ACTIVITY_LABEL, classifyActivity, type ActivityId } from '@/lib/activity'
+import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
+import { AreaBar } from '@/components/local/AreaBar'
+
+/** What an event is for (lib/activity): its words first ("Baker volleyball"), then its type. */
+function eventActivity(e: RaceEvent): ActivityId {
+  return classifyActivity([e.name, e.neighborhood, e.location], e.type)
+}
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
   swimming: Waves, mountaineering: Mountain, team_sport: Volleyball, other: Activity,
 }
 
-export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false, request, onRequestHandled }: {
+export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false, request, onRequestHandled, onDiscover }: {
   hasBuiltPlan: boolean
+  /** Schedule > Discover: races and meetups near my area */
+  onDiscover?: () => void
   /** none when it is the Events tab page (no X) */
   onClose?: () => void
   onChanged: () => void
@@ -92,8 +102,17 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   }, [want, events])
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
-  const upcoming = (events ?? []).filter(isUpcoming).sort((a, b) => nextDate(a).localeCompare(nextDate(b)))
-  const past = (events ?? []).filter((e) => !isUpcoming(e)).reverse()
+  // Search my events: name, place, neighborhood or activity ("volleyball", "Baker").
+  const [q, setQ] = useState('')
+  const match = (e: RaceEvent) => {
+    const t = q.trim().toLowerCase()
+    if (t.length < 2) return true
+    return [e.name, e.location, e.neighborhood, TYPE_LABEL[e.type], ACTIVITY_LABEL[eventActivity(e)]]
+      .some((x) => typeof x === 'string' && x.toLowerCase().includes(t))
+  }
+  const upcoming = (events ?? []).filter(isUpcoming).filter(match).sort((a, b) => nextDate(a).localeCompare(nextDate(b)))
+  const past = (events ?? []).filter((e) => !isUpcoming(e)).filter(match).reverse()
+  const searching = q.trim().length >= 2
   const saved = (list: RaceEvent[]) => { setEvents(list); setChanged(true); onChanged() }
 
   // "Add" waits for the list: whether a new event becomes the main one depends on it.
@@ -110,6 +129,28 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
           </p>
         ) : (
           <>
+            <AreaBar imperial={imperial} what="races, group runs and meetups" />
+            {onDiscover && (
+              <button type="button" onClick={onDiscover}
+                className="flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-(--border-strong) px-3.5 text-left text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+                <Compass className="size-4 shrink-0" aria-hidden />
+                <span className="flex-1">Find races and meetups in your area</span>
+                <ChevronRight className="size-4 shrink-0" aria-hidden />
+              </button>
+            )}
+            {(events?.length ?? 0) > 3 && (
+              <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
+                <Search className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                <input type="text" inputMode="search" enterKeyHint="search" value={q} maxLength={60} onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search my events" aria-label="Search my events by name, place or activity"
+                  className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+                {q && <button type="button" aria-label="Clear search" onClick={() => setQ('')}
+                  className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>}
+              </label>
+            )}
+            {searching && upcoming.length === 0 && past.length === 0 && (
+              <p className="px-1 text-[0.7647rem] text-(--text-muted)">None of your events match “{q.trim()}”.</p>
+            )}
             <RaceInvitesInbox onChanged={() => { void load(); setFollowKey((k) => k + 1) }} />
             {changed && (
               <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
@@ -121,7 +162,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                 </Button>
               </div>
             )}
-            {upcoming.length === 0 && (
+            {upcoming.length === 0 && !searching && (
               <EmptyState title="Nothing on the calendar yet"
                 body="Add races, group rides, trips and big days. Rabbit plans around all of them."
                 action="Add an event" onAction={() => setEditing('new')} />
@@ -144,7 +185,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                   className="hit-44 flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
                   Past events ({past.length}) <ChevronRight className={cn('size-3.5 transition-transform', showPast && 'rotate-90')} />
                 </button>
-                {showPast && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
+                {(showPast || searching) && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
             )}
             <CalendarSync />
@@ -211,7 +252,9 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
 
 function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => void; bare?: boolean }) {
   const kind = kindOf(e)
-  const Icon = kind === 'race' ? TYPE_ICON[e.type] ?? Activity : e.type === 'team_sport' ? Volleyball : KIND_ICON[kind]
+  // The activity's icon (a volleyball night is a volleyball, a group ride a bike), same as Local.
+  const act = eventActivity(e)
+  const Icon = act !== 'other' ? ACTIVITY_ICON[act] : kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
   const when = nextDate(e)
   const n = daysUntil(when)
   return (

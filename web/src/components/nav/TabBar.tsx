@@ -1,7 +1,7 @@
 // The app's five sections, always one tap away: Home (Rabbit: today + chat), Schedule (plan +
 // events), Feed, Clubs (clubs + people) and Progress.
 import { useEffect, useState } from 'react'
-import { CalendarRange, Newspaper, Rabbit, TrendingUp, Users } from 'lucide-react'
+import { CalendarRange, MapPin, Newspaper, Rabbit, TrendingUp } from 'lucide-react'
 import { getBadge } from '@/lib/social'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { REPLY_DONE_EVENT } from '@/components/fx/motion'
@@ -15,7 +15,7 @@ const TABS: { id: TabId; label: string; icon: typeof Rabbit }[] = [
   { id: 'rabbit', label: 'Home', icon: Rabbit },
   { id: 'plan', label: 'Schedule', icon: CalendarRange },
   { id: 'feed', label: 'Feed', icon: Newspaper },
-  { id: 'clubs', label: 'Clubs', icon: Users },
+  { id: 'clubs', label: 'Local', icon: MapPin }, // clubs, leagues and meetups near you (id kept for deep links)
   { id: 'progress', label: 'Progress', icon: TrendingUp },
 ]
 

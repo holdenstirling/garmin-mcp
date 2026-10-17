@@ -21,6 +21,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
+from .activity import classify
 from .clubdir import name_match
 from .planbuilder import iter_sessions
 from .stats import _rows
@@ -50,6 +51,13 @@ def _safe(name: str, fn: Callable[[], list[dict[str, Any]]]) -> list[dict[str, A
     except Exception:  # one broken source never breaks search
         logger.warning("search source %s failed", name, exc_info=True)
         return []
+
+
+def _club_activity(c: dict[str, Any]) -> str:
+    """A Rabbit club's activity (its sport, else its name) for the matching icon."""
+    sport = {"running": "running", "trail": "trail", "cycling": "cycling", "triathlon": "triathlon",
+             "swimming": "swimming"}.get(str(c.get("sport") or ""))
+    return classify(c.get("name"), sports=[sport] if sport else None)
 
 
 class Search:
@@ -108,18 +116,19 @@ class Search:
                 if c.get("id") and matches(words, c.get("name"), c.get("city")):
                     out.append({"id": c["id"], "name": c.get("name") or "Club", "city": c.get("city") or "",
                                 "members": c.get("members") if isinstance(c.get("members"), int) else None,
-                                "mine": True, "source": "club"})
+                                "mine": True, "source": "club", "activity": _club_activity(c)})
             for c in ov.get("discover") or []:
                 if c.get("id") and matches(words, c.get("name"), c.get("city")):
                     out.append({"id": c["id"], "name": c.get("name") or "Club", "city": c.get("city") or "",
                                 "members": c.get("members") if isinstance(c.get("members"), int) else None,
-                                "mine": False, "source": "club"})
+                                "mine": False, "source": "club", "activity": _club_activity(c)})
         if self._directory is not None and len(out) < PER_GROUP:
             for x in self._directory(uid):
                 if matches(words, x.get("name"), x.get("kind_label"), x.get("meet_spot"), x.get("description")) \
                         or name_match(" ".join(words), x.get("name")):
                     out.append({"id": x["id"], "name": x.get("name") or "Group", "city": x.get("meet_spot") or "",
-                                "kind": x.get("kind_label") or "Group", "mine": False, "source": "directory"})
+                                "kind": x.get("type_label") or x.get("kind_label") or "Group", "mine": False,
+                                "source": "directory", "activity": x.get("activity") or "other"})
         return out[:PER_GROUP]
 
     def events(self, uid: str, words: list[str]) -> list[dict[str, Any]]:

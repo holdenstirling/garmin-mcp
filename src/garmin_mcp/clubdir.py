@@ -55,7 +55,7 @@ from urllib.parse import urljoin, urlsplit
 import anyio
 import httpx2
 
-from . import geo
+from . import activity, geo
 from .localacts import _short, _where, clean_url
 from .logs import log_event
 
@@ -920,6 +920,11 @@ class Directory:
             "lat": pt["lat"] if has_pt else None, "lon": pt["lon"] if has_pt else None,  # type: ignore[index]
             "calendar": any(s.get("time") for s in x.get("sessions") or []) and not x.get("link_only"),
             "found_by": x.get("found_by") or "directory",
+            # What it's for (icon + activity filter) and what it is (Club / League / Meetup).
+            "activity": activity.classify(x.get("name"), x.get("sports"), x.get("description"), kind=x.get("kind"),
+                                          sports=x.get("sports")),
+            "type": (t := activity.group_type(x.get("name"), x.get("kind"), x.get("description"))),
+            "type_label": activity.TYPE_LABEL[t],
         }
 
     def view(self, m: Metro, *, now_local: datetime | None, chip: str | None = None, weekday: str | None = None,
