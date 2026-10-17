@@ -4014,6 +4014,28 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               for k in ("move", "swap", "fix", "undo", "goal")],
         ]
 
+        # Weather-aware workouts (weather.py rules, weather_web.py): Home's next 3 days and one
+        # session's hourly strip, adjusted paces and best time to go. Display only.
+        from .weather_web import WeatherService as _WxSvc
+        _wxs = _WxSvc(plans=plans, pcal=_pcal, coach=chat.agent.coach, store=store)
+
+        async def weather_next_get(request: Request, user_id: str) -> Response:
+            return JSONResponse(await _wxs.next_days(user_id))
+
+        async def weather_session_get(request: Request, user_id: str) -> Response:
+            sid = request.query_params.get("session_id") or ""
+            if not sid or len(sid) > 40 or not sid.isalnum():
+                raise ValueError("session_id")
+            try:
+                return JSONResponse(await _wxs.session(user_id, sid))
+            except LookupError:
+                raise _UserError("That session isn't in your plan anymore.", 404) from None
+
+        home_routes += [
+            Route("/app/api/weather/next", _plan_api(weather_next_get, mutating=False), methods=["GET"]),
+            Route("/app/api/weather/session", _plan_api(weather_session_get, mutating=False), methods=["GET"]),
+        ]
+
     # ------------------------------------------------------- training paces --
     # paces.py (routes in paces_web.py): deterministic threshold pace / FTP / CSS detection after
     # each synced workout (Moments.after_workouts) and weekly (Moments.on_tick); a "pace" moment

@@ -17,6 +17,7 @@ import { KIND_LABEL, fmtMin, type BuiltPlan, type PlanSession, type Step } from 
 import { fmtTime, googleCalendarUrl, sessionIcsUrl, type CalSession, type CalView, type DistSport } from '@/lib/plancal'
 import { HowItWent, PaceNudge, WorkoutSteps, WorkoutSummary } from './WorkoutTargets'
 import { Card } from './ui'
+import { WxChip } from './WxChip'
 import { SPORT_ICON, SPORT_LABEL, fmtDay, sessionMinutes, weekPhaseLabel } from './PlanParts'
 import { StepItem } from './SessionSheet'
 import { addDays, mondayOf } from './MoveSheet'
@@ -143,6 +144,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
             {unread && <span className="ml-1 font-semibold text-(--accent)">· new coach message</span>}
           </p>
         </div>
+        {status === 'planned' && date >= today && <WxChip id={s.id} date={date} />}
         {status === 'done' && <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--accent)"><Check className="size-3" aria-hidden />Done</span>}
         {status === 'missed' && <span className="shrink-0 rounded-full bg-(--danger)/10 px-2 py-0.5 text-[0.6471rem] font-semibold text-(--danger)">Missed</span>}
         {status === 'skipped' && <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--text-muted)">Skipped</span>}

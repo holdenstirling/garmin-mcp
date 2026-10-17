@@ -19,6 +19,7 @@ import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
+import { NextDays } from '@/components/home/NextDays'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
@@ -983,6 +984,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                   refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay} />
               </div>
             )}
+            {goal && athlete && <div className="mx-4 mt-3"><NextDays refreshKey={feedTick} /></div>}
             {athlete && (
               <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
                 skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
