@@ -336,7 +336,7 @@ def test_api_move_hook_and_coach_403(env, tmp_path) -> None:
                       if d > today.isoformat() and s["sport"] != "rest" and s.get("kind") != "race"]
             d0, s0 = future[0]
             w = week_for(plan, date.fromisoformat(d0))
-            free = next(k for k in sorted(w["days"]) if k > today.isoformat() and k != d0) if w else None
+            free = next((k for k in sorted(w["days"]) if k > today.isoformat() and k != d0), None) if w else None
             target = free or (date.fromisoformat(d0) + timedelta(days=1)).isoformat()
             r = await a.post("/app/api/plan/calendar/move", headers=h, json={"session_id": s0["id"], "date": target})
             assert r.status_code == 200, r.text
