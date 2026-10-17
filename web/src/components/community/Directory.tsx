@@ -295,7 +295,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing |
       <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
         <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
         <input type="text" inputMode="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 60))}
-          placeholder="Search clubs by name, like 5280 Runners" aria-label={`Search clubs and leagues near ${metro.label}`}
+          placeholder="Search clubs by name" aria-label={`Search clubs and leagues near ${metro.label}`}
           className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
         {q && (
           <button type="button" aria-label="Clear club search" onClick={() => setQ('')}

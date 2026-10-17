@@ -35,6 +35,7 @@ the plan's change hook (``PlanService.add_listener``, used for TrainingPeaks syn
 from __future__ import annotations
 
 import copy
+import re
 import secrets
 import statistics
 from collections.abc import Callable
@@ -924,10 +925,33 @@ def adjusted_line(plan: dict[str, Any], s: dict[str, Any]) -> str | None:
     return None
 
 
+def _dur_min(v: Any) -> int | None:
+    """"1:02:03" / "39:12" (compact_activity's duration) or seconds -> whole minutes."""
+    if isinstance(v, int | float) and not isinstance(v, bool):
+        return round(v / 60)
+    if isinstance(v, str) and re.fullmatch(r"\d+(:\d{1,2}){1,2}", v.strip()):
+        p = [int(x) for x in v.strip().split(":")]
+        sec = p[0] * 3600 + p[1] * 60 + p[2] if len(p) == 3 else p[0] * 60 + p[1]
+        return round(sec / 60)
+    return None
+
+
+def hr_estimate(athlete: dict[str, Any], acts: list[dict[str, Any]] | None) -> tuple[dict[str, Any], bool]:
+    """No max or threshold heart rate in the profile: estimate max HR as the highest max HR of the
+    recent workouts (at least 3 with a plausible reading), so targets still show bpm."""
+    if _num(athlete.get("threshold_hr")) or _num(athlete.get("max_hr")):
+        return athlete, False
+    seen = [v for a in acts or [] if (v := _num(a.get("max_hr"))) and 120 <= v <= 230]
+    if len(seen) < 3:
+        return athlete, False
+    return {**athlete, "max_hr": max(seen)}, True
+
+
 def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date, *, athlete: dict[str, Any],
                   thr: float, pace_source: str, imperial: bool) -> dict[str, Any]:
     st = statuses(plan, acts, today)
     full = {a.get("activity_id"): a for a in acts or [] if a.get("activity_id") is not None}
+    athlete, hr_est = hr_estimate(athlete, acts)
     by_day = acts_km_by_day(acts)
     avail = _available(athlete)
     monday = today - timedelta(days=today.weekday())
@@ -943,6 +967,8 @@ def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
                                 "made_up_for": s.get("made_up_for"), "hard": is_hard(s)}
         tg = session_targets(s, athlete, thr, plan.get("swim_pace"))
         if tg:
+            if hr_est and tg.get("hr_source"):
+                tg["hr_source"] = "estimated"
             item["targets"] = tg
         why = adjusted_line(plan, s)
         if why:
@@ -962,6 +988,19 @@ def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
                               "this_week": monday.isoformat() <= d}
         sessions[s["id"]] = item
     weeks = {w["start"]: week_mileage(plan, w, by_day, today, thr) for w in plan.get("weeks", [])}
+    # Workouts that don't belong to a plan session (done before the plan, or extra): shown on
+    # their day so a "rest day" you trained on still shows what you did.
+    linked = {v["activity"]["id"] for v in sessions.values() if v.get("activity")}
+    extra: dict[str, list[dict[str, Any]]] = {}
+    for a in acts or []:
+        if (a.get("multisport") or {}).get("is_parent") or a.get("activity_id") in linked:
+            continue
+        day = str(a.get("date") or "")[:10]
+        if len(day) != 10:
+            continue
+        extra.setdefault(day, []).append({
+            "id": a.get("activity_id"), "name": str(a.get("name") or "Workout")[:80], "sport": sport_of(a.get("sport")),
+            "km": _num(a.get("distance_km")), "minutes": _dur_min(a.get("duration")), "avg_hr": _num(a.get("avg_hr"))})
     months: dict[str, Any] = {}
     for w in plan.get("weeks", []):
         for i in range(7):
@@ -972,7 +1011,7 @@ def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
                 months[k] = totals(plan, by_day, today, thr, f"{k}-01", last)
     first = plan.get("first_day") or plan.get("start") or today.isoformat()
     return {"today": today.isoformat(), "imperial": imperial, "threshold_pace": thr, "pace_source": pace_source,
-            "available_days": sorted(avail), "sessions": sessions, "weeks": weeks, "months": months,
+            "available_days": sorted(avail), "sessions": sessions, "weeks": weeks, "months": months, "extra": extra,
             "total": totals(plan, by_day, today, thr, first, plan.get("race_date") or "9999-12-31")}
 
 

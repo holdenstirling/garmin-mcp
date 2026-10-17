@@ -4,7 +4,7 @@
 // tap a row for effort out of 10 and the talk test. Also "How it went" for a finished workout
 // and the one-tap "new paces" nudge.
 import { useEffect, useState } from 'react'
-import { ChevronDown, Gauge, HeartPulse, Footprints, Sparkles, Timer, Zap } from 'lucide-react'
+import { ChevronDown, Gauge, HeartPulse, Footprints, RotateCw, Sparkles, Timer, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { fmtDist, fmtDuration } from '@/lib/format'
@@ -44,7 +44,8 @@ function StepRow({ st, imperial }: { st: TargetStep; imperial: boolean }) {
   if (st.pace) chips.push(<Chip key="p" icon={Timer} label={`Pace ${paceText(st.pace[0], imperial)} to ${paceText(st.pace[1], imperial)} per ${u}`}>{range(paceText(st.pace[0], imperial), paceText(st.pace[1], imperial))}/{u}</Chip>)
   if (st.power) chips.push(<Chip key="w" icon={Zap} label={`Power ${st.power[0]} to ${st.power[1]} watts`}>{st.power[0]}–{st.power[1]} W</Chip>)
   if (st.swim) chips.push(<Chip key="s" icon={Timer} label={`Swim pace ${swimText(st.swim[0], imperial)} to ${swimText(st.swim[1], imperial)} per 100 ${imperial ? 'yards' : 'meters'}`}>{range(swimText(st.swim[0], imperial), swimText(st.swim[1], imperial))}/100{imperial ? 'yd' : 'm'}</Chip>)
-  if (st.cadence) chips.push(<Chip key="c" icon={Footprints} label={`Cadence ${st.cadence[0]} to ${st.cadence[1]}`}>{st.cadence[0]}–{st.cadence[1]}{st.pace ? ' spm' : ' rpm'}</Chip>)
+  const steps = !!st.cadence && st.cadence[0] >= 120  // running cadence (spm) vs pedalling (rpm)
+  if (st.cadence) chips.push(<Chip key="c" icon={steps ? Footprints : RotateCw} label={`Cadence ${st.cadence[0]} to ${st.cadence[1]} ${steps ? 'steps' : 'pedal turns'} per minute`}>{st.cadence[0]}–{st.cadence[1]}{steps ? ' spm' : ' rpm'}</Chip>)
   return (
     <li>
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
@@ -60,7 +61,7 @@ function StepRow({ st, imperial }: { st: TargetStep; imperial: boolean }) {
           {open && (
             <span className="mt-1.5 block text-[0.7059rem] leading-snug text-(--text-secondary)">
               Effort {st.rpe} out of 10 · Talk test: {st.talk.toLowerCase()}.
-              {st.cadence && (st.pace ? ' Cadence is steps per minute, both feet.' : ' Cadence is pedal turns per minute.')}
+              {st.cadence && (st.cadence[0] >= 120 ? ' Cadence is steps per minute, both feet.' : ' Cadence is pedal turns per minute.')}
             </span>
           )}
         </span>
@@ -135,9 +136,14 @@ export function WorkoutSteps({ t, imperial }: { t: Targets; imperial: boolean })
           <Blocks blocks={g.steps} imperial={imperial} />
         </div>
       ))}
+      {t.hr_source === 'estimated' && (
+        <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+          Heart-rate targets are estimated from the highest heart rate in your recent workouts. Add your max or threshold heart rate in Me › Profile for exact zones.
+        </p>
+      )}
       {t.hr_source === null && (
         <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
-          Add your max heart rate in Me › Profile (or connect Garmin) to see heart-rate targets in beats per minute.
+          Add your max heart rate in Me › Profile to see heart-rate targets in beats per minute.
         </p>
       )}
     </div>

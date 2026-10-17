@@ -1,14 +1,13 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
-import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
 import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import {
-  Check, ChevronRight, Copy, Flag, LogOut, MapPin, Plus, Repeat, Search, Trash2, Trophy, UserPlus, X,
+  Check, ChevronRight, Copy, Flag, LogOut, MapPin, Plus, Repeat, Trash2, Trophy, UserPlus, X,
 } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, burst } from '@/components/anim'
@@ -54,8 +53,6 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
   const [creating, setCreating] = useState(false)
   const [startFrom, setStartFrom] = useState<DirListing | null>(null)
   const [code, setCode] = useState('')
-  const [q, setQ] = useState('')
-  const [found, setFound] = useState<ClubSummary[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const load = useCallback(() => getClubs().then((d) => { setData(d); setError(null) }, (e) => setError((e as Error).message)), [])
@@ -70,18 +67,11 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
       await load()
     } catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setBusy(null) }
   }
-  async function search() {
-    const s = q.trim()
-    if (!s) { setFound(null); return }
-    setBusy('search')
-    try { setFound((await getClubs(s)).discover) } catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setBusy(null) }
-  }
-
   if (error && !data) return <ErrorState compact message={error} onRetry={() => void load()} />
   if (!data) return <RabbitLoader className="py-10" label="Loading clubs" cycle={LOADING} />
   const races = data.clubs.filter((c) => c.kind === 'race')
   const mine = data.clubs.filter((c) => c.kind === 'club')
-  const near = found ?? data.discover
+  const near = data.discover
   const home = where(data.home)
   const joinBtn = (c: ClubSummary) => c.requested ? (
     <Button variant="default" className="h-11 px-3 text-[0.7059rem]" loading={busy === c.id}
@@ -129,56 +119,36 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
           ))}
         </Group>
       )}
-      {mine.length === 0 && races.length === 0 && (
-        <EmptyState compact title="Find your people"
-          body="Join a run club near you (listed below), or start one for your Saturday crew. Racing with friends? Race crews show up here on their own." />
+      {/* One search (names, partners, public listings) lives in the directory, partners first. */}
+      <ClubDirectory onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />
+
+      {near.length > 0 && (
+        <Group label={home ? `Rabbit clubs near ${home}` : 'Rabbit clubs to join'}>
+          {near.map((c, i) => (
+            <HopIn key={c.id} index={i} play={i < 5}>
+              <Row icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={c.description || sub(c)}
+                onClick={() => onOpen(c.id)} trailing={joinBtn(c)} />
+            </HopIn>
+          ))}
+        </Group>
       )}
 
-      <div className="flex gap-2">
-        <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" onClick={() => setCreating(true)}>
+      <section aria-label="Your own club" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+        <div>
+          <p className="text-[0.8235rem] font-semibold text-(--text)">Have your own crew?</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">Start a club for your Saturday group, or join one with its code.</p>
+        </div>
+        <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setCreating(true)}>
           <Plus className="size-4" /> Start a club
         </Button>
-      </div>
-
-      <section className="flex flex-col gap-2" aria-label="Clubs near you">
         <div className="flex items-center gap-2">
-          <input aria-label="Search clubs by name or city" className={inputCls} placeholder="Search clubs by name or city" value={q} maxLength={40}
-            onChange={(e) => { setQ(e.target.value); if (!e.target.value.trim()) setFound(null) }}
-            onKeyDown={(e) => { if (e.key === 'Enter') void search() }} />
-          <Button variant="default" className="h-11 w-11 shrink-0 p-0" aria-label="Search" loading={busy === 'search'} onClick={() => void search()}>
-            <Search className="size-4" />
-          </Button>
+          <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code, like ABCD2345" value={code}
+            onChange={(e) => setCode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && code.trim()) void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!") }} />
+          <Button variant="default" className="h-11 shrink-0 px-3 text-[0.7647rem]" loading={busy === 'code'} disabled={!code.trim()}
+            onClick={() => void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!")}>Join</Button>
         </div>
-        {near.length > 0 ? (
-          <Group label={found ? 'Results' : home ? `Near ${home}` : 'Clubs to join'}>
-            {near.map((c, i) => (
-              <HopIn key={c.id} index={i} play={i < 5}>
-                <Row icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={c.description || sub(c)}
-                  onClick={() => onOpen(c.id)} trailing={joinBtn(c)} />
-              </HopIn>
-            ))}
-          </Group>
-        ) : (
-          <p className="px-1 text-[0.7059rem] text-(--text-muted)">
-            {found ? 'No clubs match that yet. Start one?' : home ? `No Rabbit clubs in ${home} yet. Be the first to start one.`
-              : 'Add your home city in your training profile to see clubs near you.'}
-          </p>
-        )}
       </section>
-
-      {!found && <ClubDirectory onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />}
-
-      <Card>
-        <Field label="Have a club code?">
-          <div className="flex items-center gap-2">
-            <input className={inputCls} autoCapitalize="characters" autoComplete="off" placeholder="ABCD2345" value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && code.trim()) void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!") }} />
-            <Button variant="default" className="h-11 shrink-0 px-3 text-[0.7647rem]" loading={busy === 'code'} disabled={!code.trim()}
-              onClick={() => void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!")}>Join</Button>
-          </div>
-        </Field>
-      </Card>
       {(creating || startFrom) && (
         <ClubSheet home={data.home}
           prefill={startFrom ? { name: startFrom.name.slice(0, 40), sport: clubSport(startFrom.kind), description: startFrom.description.slice(0, 300) } : undefined}

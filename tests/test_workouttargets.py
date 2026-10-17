@@ -178,3 +178,11 @@ def test_single_session_ics_is_timed_and_escaped() -> None:
     assert seq(later) > seq(one)  # re-import updates the same event
     full = export_ics(plan, name="Rabbit", now=now)
     assert full.count("BEGIN:VEVENT") == 2 and "DTSTART;VALUE=DATE:20261014" in full
+
+
+def test_calendar_estimates_max_hr_from_recent_workouts() -> None:
+    from garmin_mcp.plancal import hr_estimate
+    ath, est = hr_estimate({}, [{"max_hr": 171}, {"max_hr": 178}, {"max_hr": 165}])
+    assert est and ath["max_hr"] == 178
+    assert hr_estimate({"max_hr": 190}, [{"max_hr": 171}] * 3) == ({"max_hr": 190}, False)
+    assert hr_estimate({}, [{"max_hr": 171}, {"max_hr": 300}])[1] is False  # too few plausible readings

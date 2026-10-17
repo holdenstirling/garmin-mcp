@@ -224,6 +224,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
   const week = plan.weeks.find((w) => w.days.some((d) => d.date === date))
   const day = week?.days.find((d) => d.date === date)
   const work = (day?.sessions ?? []).filter((s) => s.sport !== 'rest' && !hidden?.(s.id))
+  const did = cal?.extra?.[date] ?? []
   const mon = mondayOf(date)
   const strip = Array.from({ length: 7 }, (_, i) => addDays(mon, i))
   const sessionsOn = (d: string) => (plan.weeks.flatMap((w) => w.days).find((x) => x.date === d)?.sessions ?? []).filter((s) => s.sport !== 'rest')
@@ -293,15 +294,37 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           unread={unread.includes(s.id)} a={actions(s)} />
       ))}
       {extra}
+      {did.length > 0 && (
+        <section aria-label="Workouts you did" className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
+          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{work.length ? 'Also from Garmin' : 'From Garmin'}</p>
+          <ul className="flex flex-col">
+            {did.map((a, i) => {
+              const I = SPORT_ICON[(a.sport in SPORT_ICON ? a.sport : 'other') as keyof typeof SPORT_ICON] ?? Check
+              return (
+                <li key={a.id ?? i} className="flex min-h-11 items-center gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-4" aria-hidden /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{a.name}</span>
+                    <span className="block text-[0.7059rem] text-(--text-muted)">
+                      {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <Check className="size-4 shrink-0 text-(--accent)" aria-label="Done" />
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
       {!work.length && !extra && (
-        <Card className="flex flex-col items-center gap-2 px-6 py-8 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><Moon className="size-6" aria-hidden /></span>
-          <p className="text-[0.9412rem] font-semibold text-(--text)">{day ? 'Rest day' : 'Outside your plan'}</p>
-          {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">Fitness sinks in while you recover. A walk or some light stretching is plenty.</p>}
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-6 py-8 text-center">
+          {!did.length && <span className="flex size-12 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><Moon className="size-6" aria-hidden /></span>}
+          <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : 'Rest day'}</p>
+          {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{did.length ? 'Nothing was on the plan today, and you got a workout in anyway.' : 'Fitness sinks in while you recover. A walk or some light stretching is plenty.'}</p>}
           {day && restAdd && date >= today && (
             <Button variant="default" className="mt-1 h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={restAdd}><Plus className="size-4" aria-hidden />Add a session</Button>
           )}
-        </Card>
+        </div>
       )}
       {work.length > 0 && restAdd && date >= today && work.length < 4 && (
         <button type="button" onClick={restAdd}

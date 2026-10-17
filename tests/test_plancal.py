@@ -382,3 +382,14 @@ def test_view_has_targets_how_it_went_and_adjust_reasons() -> None:
     new = next(s for _, _, s in iter_sessions(fp2.plan) if s.get("made_up_for") == "tue")
     line = svc2.view("u")["sessions"][new["id"]]["adjusted"]
     assert line.startswith("Added to make up for") and "Tuesday" in line
+
+
+def test_calendar_lists_workouts_outside_the_plan_on_their_day() -> None:
+    from datetime import date
+    from garmin_mcp.plancal import _dur_min, calendar_view
+    assert _dur_min("0:39:12") == 39 and _dur_min("39:12") == 39 and _dur_min(2400) == 40 and _dur_min("x") is None
+    plan = {"weeks": [], "race_date": "2027-06-06", "start": "2026-10-12"}
+    acts = [{"activity_id": 7, "date": "2026-10-13 07:00:00", "name": "Lunch Run", "sport": "running",
+             "distance_km": 8.0, "duration": "0:45:00", "avg_hr": 150}]
+    v = calendar_view(plan, acts, date(2026, 10, 16), athlete={}, thr=300.0, pace_source="default", imperial=False)
+    assert v["extra"]["2026-10-13"] == [{"id": 7, "name": "Lunch Run", "sport": "run", "km": 8.0, "minutes": 45, "avg_hr": 150.0}]

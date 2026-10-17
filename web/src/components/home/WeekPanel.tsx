@@ -154,7 +154,7 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
         <h2 className="min-w-0 flex-1 truncate font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
           {weekTitle(week)}
         </h2>
-        {planned > 0 && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-secondary)">{done}/{planned} done</span>}
+        {planned > 0 && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-secondary)">{done >= planned ? 'All done' : `${planned - done} to go`}</span>}
       </div>
       {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
       <ul className="divide-y divide-(--border)">

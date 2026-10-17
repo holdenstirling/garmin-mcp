@@ -17,7 +17,7 @@ export type TargetStep = {
 export type TargetBlock = TargetStep | { type: 'repeat'; reps: number; steps: TargetBlock[] }
 export type Targets = {
   /** where the heart-rate zones come from; null = no max/threshold HR known */
-  hr_source: 'threshold' | 'reserve' | 'max' | null
+  hr_source: 'threshold' | 'reserve' | 'max' | 'estimated' | null
   ftp: boolean
   steps?: TargetBlock[]
   legs?: { sport: 'bike' | 'run'; steps: TargetBlock[] }[]
@@ -54,6 +54,8 @@ export type CalView = {
   weeks: Record<string, Partial<Record<DistSport, Mileage>>>
   months: Record<string, Partial<Record<DistSport, { done: number; planned: number }>>>
   total: Partial<Record<DistSport, { done: number; planned: number }>>
+  /** Garmin workouts not tied to a plan session, by day */
+  extra?: Record<string, { id: number | null; name: string; sport: string; km: number | null; minutes: number | null; avg_hr: number | null }[]>
 }
 export type CalChange = { id: string | null; summary: string; rebalanced: string[]; rebalance_undo: string | null }
 export type CalResult = { plan: BuiltPlan; cal: CalView; change: CalChange | null }
