@@ -437,6 +437,7 @@ export function WeekCheckCard({ force, onApplied, onClose }: { force?: boolean; 
 function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (plan: BuiltPlan | null) => void }) {
   const [a, setA] = useState<CheckinAnswers>({ off_days: [] })
   const [prop, setProp] = useState<CheckinProposal | null>(null)
+  const [calHint, setCalHint] = useState<string | null>(null)  // calinsights: one calendar-aware line
   const [busy, setBusy] = useState<'preview' | 'apply' | 'skip' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const set = (p: Partial<CheckinAnswers>) => { setA((x) => ({ ...x, ...p })); setProp(null) }
@@ -445,7 +446,7 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
     setBusy(action); setErr(null)
     try {
       const r = await weekCheck(action, a, prop?.id)
-      if (action === 'preview') setProp(r.proposal)
+      if (action === 'preview') { setProp(r.proposal); setCalHint(r.calendar_hint ?? null) }
       else { if (r.applied) announcePlanReload(); onDone(r.applied && r.plan ? r.plan : null) }
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
@@ -482,6 +483,7 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
         <Card>
           <Field label={prop.status === 'suggest' ? "Rabbit suggests for next week" : 'Next week'}>
             {(prop.reasons ?? []).map((r) => <p key={r} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{r}</p>)}
+            {calHint && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)"><span className="font-semibold text-(--text)">From your calendar:</span> {calHint}</p>}
             {changes.length > 0 && (
               <ul className="mt-1 flex flex-col gap-2">
                 {changes.map((c) => (

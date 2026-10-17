@@ -42,7 +42,7 @@ export type CheckinChange = Omit<Change, 'action'> & { action: Change['action'] 
 export type CheckinProposal = { status: 'none' | 'ok' | 'suggest'; id?: string; reasons?: string[]; changes?: CheckinChange[] }
 export const getWeekCheck = () => getJSON<{ due: boolean; week_start?: string }>('/api/plan/weekcheck')
 export const weekCheck = (action: 'preview' | 'apply' | 'skip', answers: CheckinAnswers, id?: string) =>
-  sendJSON<{ proposal: CheckinProposal; applied?: number; plan?: BuiltPlan | null }>('POST', '/api/plan/weekcheck', { action, answers, ...(id ? { id } : {}) })
+  sendJSON<{ proposal: CheckinProposal; calendar_hint?: string | null; applied?: number; plan?: BuiltPlan | null }>('POST', '/api/plan/weekcheck', { action, answers, ...(id ? { id } : {}) })
 
 /** Fired after the plan changes here (race switch, levers, check-in): Schedule reloads. */
 export const PLAN_RELOAD_EVENT = 'rabbit:plan-reload'

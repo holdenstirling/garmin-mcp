@@ -33,6 +33,8 @@ import { importApi, type ImportStatus } from '@/lib/planimport'
 import { TPCalendarList, TPDayItems, TPPlanBar, TPWorkoutSheet, useTrainingPeaks } from './TPItems'
 import { AdjustPlanSheet, RaceSwitcher, UndoBar, WeekCheckCard } from './PlanFlow'
 import { PLAN_RELOAD_EVENT } from '@/lib/planflow'
+import { useCalInsights } from '@/lib/calinsights'
+import { CalendarInsightsCard, DayLoadChip } from './CalendarInsights'
 import type { AthleteFull } from '@/lib/plan'
 
 type Editing = { session: PlanSession | null; date: string }
@@ -158,6 +160,9 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const closeSheet = () => { setSheetClosing(true); setTimeout(() => { setEditing(null); setSheetClosing(false) }, 200) }
   const applied = (p: BuiltPlan) => { setPlan(p); loadCal(); onChanged() }
+  // Calendar insights (calinsights.py): the week vs Google Calendar, with one-tap fixes.
+  const calIns = useCalInsights(plan)  // re-checked after every plan change
+  const calDay = (d: string) => calIns.data?.days.find((x) => x.date === d)
 
   if (plan === undefined || plan === null) {
     return (
@@ -289,7 +294,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       )}
       {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
       {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
-      {!coachMode && suggestions.map((t) => (
+      {!coachMode && !readOnly && (
+        <CalendarInsightsCard data={calIns.data} onReload={calIns.reload}
+          onApplied={(p) => applied(p)} onAdjust={() => setAdjusting(true)}
+          onTravel={(t) => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.label.slice(0, 60) })} />
+      )}
+      {!coachMode && !calIns.data?.connected && suggestions.map((t) => (
         <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
           <Plane className="size-4 shrink-0 text-(--accent)" />
           <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
@@ -319,7 +329,9 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         hidden={tp.hidden} dayExtra={(d) => {
           const tpItems = tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null
           const evs = eventsOn(events, d)
-          return tpItems || evs.length ? <>{evs.length > 0 && <DayEvents events={evs} onOpen={onOpenEvent ?? (() => onOpenEvents())} />}{tpItems}</> : null
+          const load = coachMode ? null : <DayLoadChip day={calDay(d)} />
+          const hasLoad = !coachMode && !!calDay(d) && (calDay(d)!.travel || calDay(d)!.load === 'heavy' || calDay(d)!.load === 'packed')
+          return tpItems || evs.length || hasLoad ? <>{hasLoad && load}{evs.length > 0 && <DayEvents events={evs} onOpen={onOpenEvent ?? (() => onOpenEvents())} />}{tpItems}</> : null
         }}
         onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
         onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
