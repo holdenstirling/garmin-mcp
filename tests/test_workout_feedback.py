@@ -29,7 +29,7 @@ def test_feedback_reads_the_plan_intent_and_the_athletes_own_numbers() -> None:
     assert pain["tone"] == "care" and "pain" in pain["lines"][0]
     short = coach_feedback(easy, {"verdict": "short"}, None)
     assert short["headline"] == "Cut short"
-    assert coach_feedback(easy, {"verdict": "hit"}, None)["lines"] == ["Right on target. That's exactly the work the plan asked for."]
+    assert coach_feedback(easy, {"verdict": "hit"}, None)["lines"] == ["**Right on target.** That's exactly the work the plan asked for."]
     assert len(coach_feedback(easy, {"verdict": "short"}, {"rpe": 9, "feel": 1, "pain_flag": True})["lines"]) <= 4
 
 

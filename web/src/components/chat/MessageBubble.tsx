@@ -1,15 +1,12 @@
-// Ported from Dolly (web-mcp) Chat.tsx MessageBubble. react-markdown without
-// rehype-raw: raw HTML in model output is not rendered.
+// Ported from Dolly (web-mcp) Chat.tsx MessageBubble. Rabbit's text renders through
+// components/chat/RabbitText (react-markdown without rehype-raw: no raw HTML from the model).
 import { memo } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import type { ChatMessage } from '@/hooks/useCoach'
 import { FileText } from 'lucide-react'
 import { attachmentUrl, formatFileSize } from '@/lib/attachments'
 import { RabbitLogo } from '@/components/RabbitLogo'
-
-const REMARK_PLUGINS = [remarkGfm]
+import { RabbitMarkdown } from './RabbitText'
 
 export const MessageBubble = memo(function MessageBubble({ message, showLabel, pressProps }: {
   message: ChatMessage
@@ -63,9 +60,8 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
         {isUser || message.error ? (
           <p className="m-0 whitespace-pre-wrap">{message.text}</p>
         ) : (
-          <div className="prose prose-sm text-[1em]! max-w-none overflow-x-auto text-foreground prose-p:my-1.5 prose-p:leading-[1.45] prose-pre:my-2 prose-pre:border prose-pre:border-border prose-pre:bg-secondary/50 prose-table:text-[0.7647rem] prose-headings:text-foreground prose-strong:text-foreground">
-            <Markdown remarkPlugins={REMARK_PLUGINS}>{message.text}</Markdown>
-          </div>
+          // Finished (stored) replies may fold when very long; a reply still streaming never does.
+          <RabbitMarkdown text={message.text} foldable={!!message.turnId} />
         )}
       </div>}
     </div>

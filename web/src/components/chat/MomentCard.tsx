@@ -1,5 +1,6 @@
 // A Rabbit moment in the log (moments.py): small Rabbit avatar, one line, time, action chips.
 // New ones (arrived in the last couple of minutes, first time on screen) hop in once.
+import { RabbitInline } from './RabbitText'
 import { memo } from 'react'
 import { HopIn } from '@/components/anim'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -33,7 +34,7 @@ export const MomentCard = memo(function MomentCard({ item, onAction, disabled }:
           <span className="font-semibold uppercase tracking-widest text-(--accent)">Rabbit</span>
           <span className="text-(--text-muted)">· {fmtTime(item.ts)}</span>
         </div>
-        <p className="m-0 mt-0.5 text-[0.8824rem] leading-snug text-(--text)">{item.text}</p>
+        <p className="m-0 mt-0.5 text-[0.8824rem] leading-normal text-(--text)"><RabbitInline text={item.text} /></p>
         {item.actions.length > 0 && (
           <div className="-mx-1 mt-1 flex flex-wrap gap-1.5">
             {item.actions.map((a) => (

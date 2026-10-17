@@ -719,7 +719,7 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
     tone, headline = "good", "Nicely done"
     if pain:
         tone, headline = "care", "Look after that"
-        lines.append("You flagged pain. Keep the next day easy or take it off, and stop if it gets sharper. "
+        lines.append("You flagged pain. **Keep the next day easy or take it off**, and stop if it gets sharper. "
                      "If it's still there in a couple of days, have it checked.")
         lines.append("Tell Rabbit where it hurts and it will keep your next hard session light.")
     if verdict == "short":
@@ -730,20 +730,20 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
         if rpe > hi:
             if not pain:
                 tone, headline = "ease", "Harder than it should be"
-            lines.append(f"You rated it {rpe}/10; a {kind.replace('_', ' ') or 'session'} like this should feel about {lo}-{hi}/10."
+            lines.append(f"You rated it **{rpe}/10**; a {kind.replace('_', ' ') or 'session'} like this should feel about {lo}-{hi}/10."
                          + (" Hold back next easy day so the hard days count." if easy else
                             " Make the next day or two easy and sleep well."))
         elif rpe < lo and not easy:
             if not pain and tone == "good":
                 headline = "Felt easy: you're getting fitter"
-            lines.append(f"You rated it {rpe}/10, easier than the {lo}-{hi}/10 this session aims for. "
+            lines.append(f"You rated it **{rpe}/10**, easier than the {lo}-{hi}/10 this session aims for. "
                          "If the next one feels the same, accept the faster paces Rabbit suggests.")
         elif not pain and verdict in (None, "hit", "done"):
-            lines.append(f"{rpe}/10 is right where this session should be ({lo}-{hi}/10).")
+            lines.append(f"**{rpe}/10** is right where this session should be ({lo}-{hi}/10).")
     if verdict in ("hard", "fast") and easy and (rpe is None or rpe <= hi):
         if tone == "good":
             tone, headline = "ease", "Easy day ran hot"
-        lines.append("Heart rate or pace was above the plan for an easy day. Slow down next time: easy days build the engine.")
+        lines.append("Heart rate or pace was above the plan for an easy day. **Slow down next time**: easy days build the engine.")
     elif verdict == "slow" and not easy and not pain:
         lines.append("A bit slower than planned. Heat, hills, sleep and stress all count; one session doesn't change the plan.")
     elif verdict == "long":
@@ -752,7 +752,7 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
         tone, headline = "info", "Rough one"
         lines.append("Tough day. If the next easy session also feels flat, tell Rabbit and it will lighten the week.")
     if not lines and verdict == "hit":
-        lines.append("Right on target. That's exactly the work the plan asked for.")
+        lines.append("**Right on target.** That's exactly the work the plan asked for.")
     if not lines:
         lines.append("Logged. Add how it felt and Rabbit can tell you more.")
     return {"tone": tone, "headline": headline, "lines": lines[:4]}

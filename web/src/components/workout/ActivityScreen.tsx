@@ -2,6 +2,7 @@
 // rate zones, the plan session it counted for ("How it went"), your check-in and Rabbit's
 // feedback. Opened from anywhere a finished workout shows (lib/activitynav openActivity).
 // Workouts another app recorded (Oura) are display-only: no "Ask Rabbit" for them.
+import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity, Bike, CalendarDays, ExternalLink, Footprints, HeartPulse, MessageCircle, Mountain, Sparkles, Waves,
@@ -266,9 +267,9 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
       {fb && (
         <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
           <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><Sparkles className="size-4 text-(--accent)" aria-hidden /> {fb.headline}</p>
-          <ul className="flex flex-col gap-1">
-            {fb.lines.map((l) => <li key={l} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{l}</li>)}
-          </ul>
+          <div className="flex flex-col gap-1">
+            {fb.lines.map((l) => <p key={l} className="m-0 text-[0.8235rem] leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+          </div>
         </div>
       )}
       {onAsk && (

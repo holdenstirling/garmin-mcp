@@ -2,8 +2,7 @@
 // Rabbit picked up in conversation. Nothing to fill in up front: you tell Rabbit, and fix
 // any section here (inline) or by asking Rabbit to change it.
 import { useState } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { RabbitMarkdown } from '@/components/chat/RabbitText'
 import { FileText, MessageCircle, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,8 +111,8 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                   {saveBar(() => void save(() => updateGoal(goal.id, { plan })))}
                 </>
               ) : goal.plan ? (
-                <div className={`prose prose-sm max-w-none overflow-hidden text-foreground prose-p:my-1 prose-li:my-0 ${showFullPlan ? '' : 'max-h-48'}`}>
-                  <Markdown remarkPlugins={[remarkGfm]}>{goal.plan}</Markdown>
+                <div className={`overflow-hidden ${showFullPlan ? '' : 'max-h-48'}`}>
+                  <RabbitMarkdown text={goal.plan} className="rabbit-md--doc" />
                 </div>
               ) : (
                 <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to Rabbit.</Empty>

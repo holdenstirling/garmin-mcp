@@ -1,7 +1,6 @@
 // The plan, opened from the coach log's pinned plan bar: where you are in it, Rabbit's
 // summary, the original files, and a way to ask about it. Edits live in "What Rabbit knows".
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { RabbitMarkdown } from '@/components/chat/RabbitText'
 import { FileText, MessageCircle, Pencil } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
@@ -63,8 +62,8 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
             footer={<label htmlFor={ATTACH_INPUT_ID} onClick={onUploadPlan} className="cursor-pointer text-(--accent)">
               {goal.plan ? 'Send an updated plan' : 'Upload my plan'}</label>}>
             {goal.plan ? (
-              <div className="chat-text prose prose-sm text-[0.9412rem]! max-w-none px-4 py-3 text-foreground prose-headings:mb-1 prose-headings:mt-3 first:prose-headings:mt-0 prose-headings:font-sans prose-headings:text-[0.7059rem] prose-headings:font-semibold prose-headings:uppercase prose-headings:tracking-widest prose-headings:text-muted-foreground prose-p:my-1 prose-li:my-0.5 prose-ul:my-1 prose-ul:pl-4">
-                <Markdown remarkPlugins={[remarkGfm]}>{goal.plan}</Markdown>
+              <div className="chat-text px-4 py-3 text-[0.9412rem]">
+                <RabbitMarkdown text={goal.plan} className="rabbit-md--doc" />
               </div>
             ) : (
               <p className="px-4 py-3 text-[0.8235rem] text-(--text-muted)">

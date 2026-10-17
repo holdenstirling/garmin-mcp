@@ -71,9 +71,10 @@ BRIEF_PROMPT = (
     "- First line: today's session in a few words, in bold, then the call. For example: "
     "**Bike 40' easy + 25' strength.** Go as planned. On a planned rest day, say it's a rest day "
     "and give no workout.\n"
-    "- Then 1-2 short bullets with the reason, with numbers where you have them.\n"
+    "- Then one or two short sentences with the reason, with numbers where you have them "
+    "(bold the one number that matters most). No bullets.\n"
     "Sleep, HRV and readiness often haven't synced from the watch this early. If they're "
-    "missing, make one bullet \"Sleep hasn't synced yet\" and base the call on the plan and "
+    "missing, say \"Sleep hasn't synced yet.\" and base the call on the plan and "
     "recent training; don't explain further. Don't restate the plan or open with a greeting. "
     "This will be sent as a phone notification."
 )

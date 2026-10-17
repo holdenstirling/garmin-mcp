@@ -3,6 +3,7 @@
 // compact row per step with its targets as chips (heart rate, pace / power / swim pace, cadence);
 // tap a row for effort out of 10 and the talk test. Also "How it went" for a finished workout
 // and the one-tap "new paces" nudge.
+import { RabbitInline } from '@/components/chat/RabbitText'
 import { useEffect, useState } from 'react'
 import { ChevronDown, Gauge, HeartPulse, Footprints, RotateCw, Sparkles, Timer, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -175,9 +176,9 @@ export function HowItWent({ w, imperial, sport }: { w: Went; imperial: boolean; 
       </div>
       {facts.length > 0 && <p className="font-mono text-[0.7647rem] tabular-nums text-(--text)">{facts.join(' · ')}</p>}
       {w.lines.length > 0 && (
-        <ul className="flex flex-col gap-0.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          {w.lines.map((l) => <li key={l}>{l}</li>)}
-        </ul>
+        <div className="flex flex-col gap-0.5 text-[0.7647rem] leading-normal text-(--text-secondary)">
+          {w.lines.map((l) => <p key={l} className="m-0"><RabbitInline text={l} /></p>)}
+        </div>
       )}
     </div>
   )

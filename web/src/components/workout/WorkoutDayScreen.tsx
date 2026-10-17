@@ -6,6 +6,7 @@
 // went (done), what to do about a miss, and feedback: the athlete's RPE / feel / pain / note
 // plus Rabbit's take (deterministic first, then "Ask Rabbit for more"). Actions stay pinned at
 // the bottom: Move, Edit, Ask Rabbit.
+import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb,
@@ -462,9 +463,9 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
       {fb && (
         <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
           <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><Sparkles className="size-4 text-(--accent)" aria-hidden /> {fb.headline}</p>
-          <ul className="flex flex-col gap-1">
-            {fb.lines.map((l) => <li key={l} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{l}</li>)}
-          </ul>
+          <div className="flex flex-col gap-1">
+            {fb.lines.map((l) => <p key={l} className="m-0 text-[0.8235rem] leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+          </div>
         </div>
       )}
       {onAsk && (ck || c?.went) && (
