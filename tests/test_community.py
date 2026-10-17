@@ -332,13 +332,15 @@ def test_photo_validation_quota_and_audience(cx, monkeypatch) -> None:
         with pytest.raises(CommunityError) as e:
             cm.save_photo("ann", bad)
         assert why in e.value.message, why
-    phs = [cm.save_photo("ann", jpeg(800, 600 + i))["photo_id"] for i in range(5)]
+    phs = [cm.save_photo("ann", jpeg(800, 600 + i))["photo_id"] for i in range(cmod.MAX_PHOTOS + 1)]
     with pytest.raises(CommunityError):
         cm.create("bob", {"text": "steal", "photo_ids": phs[:1]})  # not bob's photo
     with pytest.raises(CommunityError):
-        cm.create("ann", {"text": "too many", "photo_ids": phs})  # at most 4
+        cm.create("ann", {"text": "too many", "photo_ids": phs})  # at most MAX_PHOTOS
     post = cm.create("ann", {"text": "", "category": "life", "photo_ids": phs[:2]})
     assert len(post["photos"]) == 2
+    assert post["photo_ids"] == phs[:2]  # the author can keep them on an edit
+    assert "photo_ids" not in cm.view("bob", cm._load("ann", post["id"])[1])  # nobody else sees ids
     mime, data = cm.photo("bob", post["id"], 1)
     assert mime == "image/jpeg" and data == jpeg(800, 601)
     assert cm.photo("bob", post["id"], 2) is None
@@ -348,14 +350,14 @@ def test_photo_validation_quota_and_audience(cx, monkeypatch) -> None:
         cm.create("ann", {"text": "again", "photo_ids": [phs[0]]})  # already attached
     # Edit: keep one, add one; the dropped one is freed.
     assert len(cm.update("ann", post["id"], {"photo_ids": [phs[1], phs[2]]})["photos"]) == 2
-    assert cm.usage("ann")["photos"] == 4
-    monkeypatch.setattr(cmod, "PHOTO_QUOTA_COUNT", 5)
+    assert cm.usage("ann")["photos"] == cmod.MAX_PHOTOS  # the dropped one was freed
+    monkeypatch.setattr(cmod, "PHOTO_QUOTA_COUNT", cmod.MAX_PHOTOS + 1)
     cm.save_photo("ann", jpeg())
     with pytest.raises(CommunityError) as e:
         cm.save_photo("ann", jpeg())
     assert e.value.status == 413
     cm.delete("ann", post["id"])  # frees its photos
-    assert cm.usage("ann")["photos"] == 3
+    assert cm.usage("ann")["photos"] == cmod.MAX_PHOTOS - 1
     with pytest.raises(CommunityError):
         cm.save_photo("coach_x", jpeg())
 
