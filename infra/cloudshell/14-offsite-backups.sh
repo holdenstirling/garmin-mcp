@@ -16,7 +16,7 @@
 # Restore: infra/restore-backup.md.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-[[ -f infra/config.env ]] || { echo "infra/config.env missing: run 7-update-rabbit.sh once first."; exit 1; }
+[[ -f infra/config.env ]] || infra/write-config.sh  # a fresh clone: write the known settings
 # shellcheck disable=SC1091
 source infra/config.env
 
