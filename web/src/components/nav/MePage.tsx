@@ -51,7 +51,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
         <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
-        <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="In Community, with your clubs" onClick={() => onOpen('friends')} />
+        <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="In Clubs, next to your clubs" onClick={() => onOpen('friends')} />
         {me.role === 'athlete' && <ShareWorkoutsRow />}
       </Group>
 

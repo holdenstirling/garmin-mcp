@@ -36,7 +36,8 @@ from typing import Any
 
 from .appstore import AppStore
 
-TABS = frozenset({"rabbit", "plan", "community", "races", "progress", "me"})
+# feed + clubs replaced community + races (Schedule holds events); old names still count for old clients
+TABS = frozenset({"rabbit", "plan", "feed", "clubs", "community", "races", "progress", "me"})
 CARDS = frozenset({"upnext", "ring", "race_grade", "reward", "actions"})
 SETUP_STEPS = ("intro", "race", "goal", "you", "numbers", "week", "review")
 SHARES = frozenset({"workout", "post", "month", "race", "plan", "invite", "profile"})

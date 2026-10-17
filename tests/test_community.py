@@ -102,7 +102,7 @@ def test_milestone_drafts_need_consent_and_auto_share(cx) -> None:
     s = cm.settings("ann")
     assert s["auto_share"]["race"] and not s["auto_share"]["pb"] and not s["milestones"]["streak"]
     got = cm.milestone("ann", "race", "race:e1", "Finished Leadville!")
-    assert "post" in got and "Shared in Community." in cx.moments[-1][1]["text"]
+    assert "post" in got and "Shared to your Feed." in cx.moments[-1][1]["text"]
     assert cm.milestone("ann", "streak", "streak:7", "7-day streak") is None
     with pytest.raises(CommunityError):
         cm.put_settings("ann", {"auto_share": {"nope": True}})

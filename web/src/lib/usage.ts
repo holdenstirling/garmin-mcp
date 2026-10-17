@@ -10,7 +10,7 @@ import { haptic } from '@/lib/haptics'
 
 export type UsageEvent =
   | ['app_open']
-  | ['tab_view', { tab: 'rabbit' | 'plan' | 'community' | 'races' | 'progress' | 'me' }]
+  | ['tab_view', { tab: 'rabbit' | 'plan' | 'feed' | 'clubs' | 'progress' | 'me' }]
   | ['card_tap', { card: CardId }]
   | ['setup_step', { step: 'intro' | 'race' | 'goal' | 'you' | 'numbers' | 'week' | 'review' }]
   | ['setup_complete']

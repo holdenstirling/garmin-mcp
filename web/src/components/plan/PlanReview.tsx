@@ -226,7 +226,7 @@ export function PlanReview({ api, initial, who, athleteName, onClose, onApplied,
           <p className="font-display text-[1.2941rem] text-(--brand)">Plan loaded</p>
           <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">
             {weeks.length} week{weeks.length === 1 ? '' : 's'}, {sessions} session{sessions === 1 ? '' : 's'}{active.length ? `, starting ${fmtDay(active[0]!.date, { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}.{' '}
-            {who === 'coach' ? `${athleteName} gets a message with the summary. ` : ''}You can undo it for 7 days from the Plan tab.
+            {who === 'coach' ? `${athleteName} gets a message with the summary. ` : ''}You can undo it for 7 days from Schedule.
           </p>
           {who === 'athlete' && (
             <div className="mt-3 flex w-full max-w-xs flex-col items-stretch gap-2">

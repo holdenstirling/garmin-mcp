@@ -16,7 +16,7 @@ const CARD_LABEL: Record<string, string> = {
   upnext: 'Up next', ring: 'Weekly ring', race_grade: 'Race grade', reward: 'Workout reward', actions: 'Quick actions',
 }
 const TAB_LABEL: Record<string, string> = {
-  rabbit: 'Rabbit', plan: 'Plan', community: 'Community', races: 'Events', progress: 'Progress', me: 'Me',
+  rabbit: 'Home', plan: 'Schedule', feed: 'Feed', clubs: 'Clubs', community: 'Community (old)', races: 'Events (old)', progress: 'Progress', me: 'Me',
 }
 
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {

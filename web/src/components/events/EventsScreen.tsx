@@ -34,7 +34,7 @@ const TYPE_ICON: Record<EventType, typeof Bike> = {
   swimming: Waves, mountaineering: Mountain, other: Activity,
 }
 
-export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false }: {
+export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = false, request, onRequestHandled }: {
   hasBuiltPlan: boolean
   /** none when it is the Events tab page (no X) */
   onClose?: () => void
@@ -42,6 +42,9 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   onOpenPlan: () => void
   onBuildPlan: () => void
   imperial?: boolean
+  /** Schedule "+ Add" -> An event (add) or an event tapped on the plan calendar (open), once per n */
+  request?: { add?: boolean; open?: string; n: number } | null
+  onRequestHandled?: () => void
 }) {
   const [events, setEvents] = useState<RaceEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +67,13 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
     return listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
   }, [])
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    if (!request || events === null) return
+    const hit = request.open ? events.find((e) => e.id === request.open) : undefined
+    if (request.add) setEditing('new')
+    else if (hit) setEditing(hit)
+    onRequestHandled?.()
+  }, [request?.n, events === null]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const upcoming = (events ?? []).filter((e) => daysUntil(e.date) >= 0)

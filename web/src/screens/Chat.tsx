@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { requestPlanFix } from '@/lib/plancal'
-import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Upload } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
+import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
@@ -134,7 +135,11 @@ type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: strin
   | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
 const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
-type RacesView = 'mine' | 'explore'
+// Schedule tab: the plan calendar, your events, or finding races and events nearby.
+type ScheduleView = 'plan' | 'events' | 'discover'
+/** Schedule "+ Add" / an event tapped on the calendar: open the event editor (new, or that event). */
+type EventRequest = { add?: boolean; open?: string; n: number }
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 // Touch devices: focusing the composer means the keyboard is coming, so make room for it.
 const coarsePointer = () => { try { return window.matchMedia('(pointer: coarse)').matches } catch { return false } }
@@ -188,11 +193,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // the header avatar. The last tab is kept for this browser session; notification links pick their own.
   const openParam = useRef(new URLSearchParams(window.location.search).get('open')).current
   const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'progress' : openParam === 'coach' ? 'rabbit'
-    : openParam === 'community' ? 'community' : readTab())
+    : openParam === 'community' ? 'feed' : readTab())
   const setTab = useCallback((t: TabId) => { setTabState(t); saveTab(t) }, [])
   const [progressView, setProgressView] = useState<ProgressView>(openParam === 'recap' ? 'recap' : 'overview')
   const [recapWeek, setRecapWeek] = useState<string | undefined>(undefined)
-  const [racesView, setRacesView] = useState<RacesView>('mine')
+  // A tab stored before the split as 'races' (Events) opens Schedule on Events.
+  const [schedView, setSchedView] = useState<ScheduleView>(() => { try { return sessionStorage.getItem('rabbit.tab') === 'races' ? 'events' : 'plan' } catch { return 'plan' } })
+  // Schedule "+ Add": the add sheet, and requests handed to the plan / events pages.
+  const [addOpen, setAddOpen] = useState(false)
+  const [addWorkout, setAddWorkout] = useState<{ date: string; n: number } | null>(null)
+  const [eventReq, setEventReq] = useState<EventRequest | null>(null)
   const [communityView, setCommunityView] = useState<CommunityView>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
@@ -309,12 +319,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     closePages()
     setTab(t)
   }
-  const openPlan = () => goTab('plan')
-  const openRaces = () => { setRacesView('mine'); goTab('races') }
+  const openPlan = () => { setSchedView('plan'); goTab('plan') }
+  const openRaces = () => { setSchedView('events'); goTab('plan') }
+  const openDiscover = () => { setSchedView('discover'); goTab('plan') }
+  const openEvent = (id: string) => { setSchedView('events'); setEventReq((r) => ({ open: id, n: (r?.n ?? 0) + 1 })); goTab('plan') }
   const openProgress = () => { setProgressView('overview'); goTab('progress') }
   const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
   const openCommunity = (v: CommunityView = 'feed', club?: string) => {
-    setCommunityView(v); setCommunityClub(club ?? null); goTab('community')
+    // Feed is its own tab; clubs and people share the Clubs tab.
+    if (v === 'feed') { goTab('feed'); return }
+    setCommunityView(v); setCommunityClub(club ?? null); goTab('clubs')
   }
   // Nothing open over the tabs: progress, Today and live sync refresh.
   const overlayFree = !pages.some((p) => p.k === 'screen') && !sheet && !connect
@@ -348,7 +362,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Home's week, a moment, any screen (lib/plancal openPlanDay): the Plan tab on that day.
-    const onDay = () => { setSheet(null); setClosing(false); closePages(); setTab('plan') }
+    const onDay = () => { setSheet(null); setClosing(false); closePages(); setSchedView('plan'); setTab('plan') }
     window.addEventListener(OPEN_PLAN_DAY_EVENT, onDay)
     return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, onDay)
   }, [setTab])
@@ -359,7 +373,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       if (p.kind === 'person') openCommunity('people')
       else if (p.kind === 'club') openCommunity('clubs', p.source === 'club' ? p.id : undefined)
       else if (p.kind === 'event') openRaces()
-      else if (p.kind === 'session') goTab('plan')
+      else if (p.kind === 'session') { setSchedView('plan'); goTab('plan') }
       else setReaction(p.id)
     }
     window.addEventListener(SEARCH_OPEN_EVENT, onPick)
@@ -474,7 +488,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'coach_status') { setCoachAsk(true); return }
     if (q === 'gear') { showScreen('gear'); return }
     if (q === 'friend') { openCommunity('people'); return }
-    if (q === 'interests') { setRacesView('explore'); goTab('races'); return }
+    if (q === 'interests') { openDiscover(); return }
     if (q === 'sync' && builtPlan) { openPlan(); return }
     showScreen('setup')
   }
@@ -674,7 +688,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'plan_fix') { openPlan(); requestPlanFix(a.session_id) }
     else if (a.id === 'progress') openProgress()
     else if (a.id === 'community_share' && a.draft_id) {
-      shareDraft(a.draft_id).then(() => showToast('Shared in Community 🎉'), (e) => showToast((e as Error).message))
+      shareDraft(a.draft_id).then(() => showToast('Shared to your Feed 🎉'), (e) => showToast((e as Error).message))
     } else if (a.id === 'community_later' && a.draft_id) {
       dismissDraft(a.draft_id).then(() => showToast('Okay, kept it to yourself.'), () => showToast('Okay.'))
     } else if (a.id === 'community') { if (a.club_id) openCommunity('clubs', a.club_id); else openCommunity(a.view === 'people' ? 'people' : 'feed') }
@@ -716,6 +730,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
   const meButton = (<>
     <SearchButton imperial={me.athlete.units === 'imperial'} />
+    {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
+    <Button variant="ghost" size="icon" aria-label="Chats with Rabbit" data-tour="chat" onClick={() => open('threads')}>
+      <MessagesSquare className="size-5" />
+    </Button>
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
       me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
@@ -747,9 +765,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </span>
           </span>
         </button>
-        <Button variant="ghost" size="icon" aria-label="Chats with Rabbit" onClick={() => open('threads')}>
-          <MessagesSquare className="size-5" />
-        </Button>
         {meButton}
       </header>
     )
@@ -829,7 +844,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
             {stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
-                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? (setRacesView('explore'), goTab('races')) : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
+                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? openDiscover() : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
             )}
             {goal && (
               <div className="mx-4 mt-3">
@@ -852,7 +867,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 {athlete && <div className="px-4"><div className="mx-auto max-w-2xl"><SharePrompt onShown={setShareAsk} /></div></div>}
                 {!shareAsk && (
                   <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
-                    onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? (setRacesView('explore'), goTab('races')) : id === 'friends' ? openCommunity('people') : openCommunity()} />
+                    onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
                 )}
               </>
             )}
@@ -881,7 +896,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
       return
     }
-    if (t === 'community' && t !== tab) { setCommunityView('feed'); setCommunityClub(null) } // Community opens on Feed
+    if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
     setTab(t)
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
@@ -891,8 +906,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
-    races: soonRace && 'race soon',
-    community: friendsDot && 'new from friends',
+    plan: soonRace && 'race soon',
+    feed: friendsDot && 'new from friends',
   }
   const openMeRow = (r: MeRow) => {
     if (r === 'friends') openCommunity('people')
@@ -908,8 +923,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" action={meButton}>
+        <TabScreen key="planner" title="Schedule" top={scheduleTop} action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
+            addRequest={addWorkout} onAddHandled={() => setAddWorkout(null)} onOpenEvent={openEvent}
             onRebuild={startSetup}
             onAsk={tellRabbit}
             onChanged={() => { void refreshThreads(); loadWeek() }}
@@ -921,8 +937,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="start" action={meButton}>
-        <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'}>
+      <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
+        <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
           {weekLead}
           <TPPlanSection imperial={me.athlete.units === 'imperial'} />
           {goal?.plan ? (
@@ -974,17 +990,29 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )
   }
 
-  function racesTab() {
-    const seg = <Segmented label="Events" value={racesView} onChange={setRacesView}
-      options={[['mine', 'My events'], ['explore', 'Explore']] as const} />
-    return racesView === 'mine' ? (
-      <TabScreen key="mine" title="Events" top={seg} action={meButton}>
-        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial}
+  // Schedule = the plan calendar + your events + finding events, one "+ Add" for all of it.
+  const scheduleTop = (
+    <div className="mx-auto flex w-full max-w-xl items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <Segmented label="Schedule" value={schedView} onChange={setSchedView}
+          options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
+      </div>
+      <Button variant="primary" className="mt-2 h-11 shrink-0 gap-1 px-3.5 text-[0.7647rem]" aria-haspopup="dialog"
+        aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
+        <Plus className="size-4" aria-hidden />Add
+      </Button>
+    </div>
+  )
+  function scheduleTab() {
+    if (schedView === 'plan') return planTab()
+    return schedView === 'events' ? (
+      <TabScreen key="events" title="Schedule" top={scheduleTop} action={meButton}>
+        <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} request={eventReq} onRequestHandled={() => setEventReq(null)}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
-          onOpenPlan={openPlan} onBuildPlan={startSetup} />
+          onOpenPlan={() => setSchedView('plan')} onBuildPlan={startSetup} />
       </TabScreen>
     ) : (
-      <TabScreen key="explore" title="Events" top={seg} action={meButton}>
+      <TabScreen key="discover" title="Schedule" top={scheduleTop} action={meButton}>
         <ExploreScreen imperial={imperial} onAsk={tellRabbit} onChanged={onChange} />
       </TabScreen>
     )
@@ -1192,16 +1220,29 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       </div>
       </div>
 
-      {tab === 'plan' && <div className="tab-page flex min-h-0 flex-1 flex-col">{planTab()}</div>}
-      {tab === 'community' && (
+      {tab === 'plan' && <div className="tab-page flex min-h-0 flex-1 flex-col">{scheduleTab()}</div>}
+      {addOpen && (
+        <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
+          onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
+          onEvent={() => { setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }}
+          onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
+      )}
+      {tab === 'feed' && (
         <div className="tab-page flex min-h-0 flex-1 flex-col">
-          <TabScreen key="community" action={meButton}>
-            <CommunityScreen imperial={imperial} view={communityView} onView={setCommunityView} onChanged={onChange}
-              club={communityClub} onClub={setCommunityClub} />
+          <TabScreen key="feed" action={meButton}>
+            <CommunityScreen section="feed" imperial={imperial} view="feed" onView={(v) => { if (v !== 'clubs') openCommunity(v) }} onChanged={onChange}
+              club={null} onClub={(id) => { if (id) openCommunity('clubs', id) }} />
           </TabScreen>
         </div>
       )}
-      {tab === 'races' && <div className="tab-page flex min-h-0 flex-1 flex-col">{racesTab()}</div>}
+      {tab === 'clubs' && (
+        <div className="tab-page flex min-h-0 flex-1 flex-col">
+          <TabScreen key="clubs" action={meButton}>
+            <CommunityScreen section="clubs" imperial={imperial} view={communityView === 'feed' ? 'clubs' : communityView}
+              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub} />
+          </TabScreen>
+        </div>
+      )}
       {tab === 'progress' && <div className="tab-page flex min-h-0 flex-1 flex-col">{progressTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
       {topPage && (
@@ -1234,8 +1275,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
       {sheet === 'threads' && (
         <ThreadsSheet goal={goal} threads={threads} activeId={threadId} closing={closing} onDismissed={dismissNow}
-          onSelect={(id) => { openThread(id); setTab('rabbit'); close() }}
-          onNew={() => { setTab('rabbit'); newThread() }}
+          onSelect={(id) => { openThread(id); setTab('rabbit'); setHomeView('chat'); close() }}
+          onNew={() => { setTab('rabbit'); setHomeView('chat'); newThread() }}
           onDelete={async (id) => {
             try { await deleteThread(id); await refreshThreads() } catch (e) { showToast((e as Error).message) }
           }}

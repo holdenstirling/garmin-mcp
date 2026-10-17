@@ -1,21 +1,30 @@
-// The app's five sections, always one tap away. Rabbit (the AI: log, Today, composer) is home.
+// The app's five sections, always one tap away: Home (Rabbit: today + chat), Schedule (plan +
+// events), Feed, Clubs (clubs + people) and Progress.
 import { useEffect, useState } from 'react'
-import { CalendarRange, Flag, Rabbit, TrendingUp, Users } from 'lucide-react'
+import { CalendarRange, Newspaper, Rabbit, TrendingUp, Users } from 'lucide-react'
 import { getBadge } from '@/lib/social'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { REPLY_DONE_EVENT } from '@/components/fx/motion'
 
-// 'races' keeps its id (stored tabs, deep links); the label is Events. "Me" opens from the
-// avatar in the tab headers (Chat.tsx), not a tab.
-export type TabId = 'rabbit' | 'plan' | 'community' | 'races' | 'progress'
+// Ids stay stable for deep links: 'rabbit' is Home, 'plan' is Schedule (plan + events). Old ids
+// ('community', 'races') from stored tabs map with migrateTab. "Me" opens from the avatar in the
+// tab headers (Chat.tsx), not a tab.
+export type TabId = 'rabbit' | 'plan' | 'feed' | 'clubs' | 'progress'
 
 const TABS: { id: TabId; label: string; icon: typeof Rabbit }[] = [
-  { id: 'rabbit', label: 'Rabbit', icon: Rabbit },
-  { id: 'plan', label: 'Plan', icon: CalendarRange },
-  { id: 'community', label: 'Community', icon: Users },
-  { id: 'races', label: 'Events', icon: Flag },
+  { id: 'rabbit', label: 'Home', icon: Rabbit },
+  { id: 'plan', label: 'Schedule', icon: CalendarRange },
+  { id: 'feed', label: 'Feed', icon: Newspaper },
+  { id: 'clubs', label: 'Clubs', icon: Users },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
 ]
+
+/** A tab id from before the Schedule/Feed/Clubs split (stored tab, old link) -> today's tab. */
+export function migrateTab(t: string | null | undefined): TabId | null {
+  if (t === 'community') return 'feed'
+  if (t === 'races') return 'plan'
+  return TABS.some((x) => x.id === t) ? (t as TabId) : null
+}
 
 /** Left-to-right order (swipe between tabs: hooks/useTabSwipe). */
 export const TAB_IDS: readonly TabId[] = TABS.map((t) => t.id)
@@ -24,8 +33,7 @@ const KEY = 'rabbit.tab'
 
 export function readTab(): TabId {
   try {
-    const t = window.sessionStorage.getItem(KEY)
-    return TABS.some((x) => x.id === t) ? (t as TabId) : 'rabbit'
+    return migrateTab(window.sessionStorage.getItem(KEY)) ?? 'rabbit'
   } catch { return 'rabbit' }
 }
 

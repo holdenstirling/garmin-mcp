@@ -1243,7 +1243,7 @@ class Community:
     @staticmethod
     def share_actions(out: dict[str, Any]) -> list[dict[str, Any]]:
         if "post" in out:
-            return [{"id": "community", "label": "See it in Community", "post_id": out["post"]["id"]}]
+            return [{"id": "community", "label": "See it in your Feed", "post_id": out["post"]["id"]}]
         did = out["draft"]["id"]
         return [{"id": "community_share", "label": "Share", "draft_id": did},
                 {"id": "community_later", "label": "Not now", "draft_id": did}]
@@ -1251,7 +1251,7 @@ class Community:
     def _announce(self, uid: str, out: dict[str, Any], key: str) -> None:
         text = (out.get("post") or out.get("draft") or {}).get("text") or ""
         text = _LEAD_EMOJI.sub("", text).strip()
-        tail = " Shared in Community." if "post" in out else " Share it with your people?"
+        tail = " Shared to your Feed." if "post" in out else " Share it with your people?"
         line = _clip(f"🎉 {_clip(text, 140 - len(tail) - 3)}{tail}", 140)
         try:
             assert self.moment is not None

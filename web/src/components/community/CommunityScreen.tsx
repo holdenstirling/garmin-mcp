@@ -1,4 +1,4 @@
-// The Community tab: "Feed | Clubs | People". The feed is calm on purpose: what people choose
+// Two tabs share this screen (section): Feed, and Clubs ("Clubs | People"). The feed is calm on purpose: what people choose
 // to share (life events, races, PRs) and milestones as drafts until you tap Share, never
 // every workout. Clubs: local run clubs and crews with meetups and challenges. Featured clubs
 // (owner-promoted) lead Feed and Clubs; feed groups open as their own page.
@@ -25,7 +25,9 @@ import { GroupPage, GroupSheet } from './Groups'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
-export function CommunityScreen({ imperial, view, onView, onChanged, club, onClub }: {
+export function CommunityScreen({ section = 'feed', imperial, view, onView, onChanged, club, onClub }: {
+  /** which tab: Feed (the feed and feed groups) or Clubs (clubs and people) */
+  section?: 'feed' | 'clubs'
   imperial: boolean; view: CommunityView; onView: (v: CommunityView) => void; onChanged?: () => void
   /** an open club page (from a meetup reminder or the "You're going" strip) */
   club: string | null; onClub: (id: string | null) => void
@@ -44,10 +46,11 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
-    <Screen title="Community" subtitle="Friends, clubs and group runs near you"
-      headerExtra={<Segmented label="Community" value={view} onChange={onView}
-        options={[['feed', 'Feed'], ['clubs', 'Clubs'], ['people', 'People']] as const} />}>
-      {(view === 'feed' || view === 'clubs') && featured && featured.length > 0 && (
+    <Screen title={section === 'feed' ? 'Feed' : 'Clubs'}
+      subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Run clubs, group runs and people near you'}
+      headerExtra={section === 'clubs' ? <Segmented label="Clubs" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
+        options={[['clubs', 'Clubs'], ['people', 'People']] as const} /> : undefined}>
+      {view === 'clubs' && featured && featured.length > 0 && (
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
       {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub}

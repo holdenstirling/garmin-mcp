@@ -171,7 +171,7 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
         {friends === null && <div className="skeleton h-11" aria-hidden />}
         {friends !== null && pickable.length === 0 && (
           <p className="text-[0.7647rem] text-(--text-muted)">
-            {friends.length === 0 ? 'Follow friends (Community → People) to invite them here, or share a link with family and crew.' : 'Everyone on your list is already invited.'}
+            {friends.length === 0 ? 'Follow friends (Clubs → People) to invite them here, or share a link with family and crew.' : 'Everyone on your list is already invited.'}
           </p>
         )}
         {pickable.map((f) => (
@@ -517,7 +517,7 @@ export function InviteToRaceSheet({ friend, onClose }: { friend: SocialUser; onC
       <RoleChips value={role} onChange={setRole} />
       {error && <ErrorState compact message={error} />}
       {!events && !error && <div className="skeleton h-14" aria-hidden />}
-      {events && events.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Add an event on the Events tab first.</p>}
+      {events && events.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Add an event in Schedule → Events first.</p>}
       {events?.map((e) => (
         <div key={e.id} className="flex min-h-11 items-center gap-2.5">
           <span className="min-w-0 flex-1">

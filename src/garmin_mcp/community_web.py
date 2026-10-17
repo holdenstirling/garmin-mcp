@@ -250,7 +250,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         did = str(request.path_params["draft_id"])[:40]
         b = await read_json(request)
         post = await run(lambda: cm.share(user_id, did, b if isinstance(b, dict) else {}))
-        return JSONResponse({"post": deco(post), "message": "Shared in Community."}, status_code=201)
+        return JSONResponse({"post": deco(post), "message": "Shared to your Feed."}, status_code=201)
 
     async def draft_dismiss(request: Request, user_id: str) -> Response:
         did = str(request.path_params["draft_id"])[:40]

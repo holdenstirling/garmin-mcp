@@ -18,7 +18,7 @@ export function ShareWorkoutButton({ activityId }: { activityId: number }) {
     <div className="flex flex-col gap-1">
       <Button variant="ghost" className="h-11 gap-1.5 text-[0.7647rem]" loading={state === 'busy'} disabled={state === 'done'}
         onClick={(e) => void share(e.currentTarget)}>
-        {state === 'done' ? <><Check className="size-4" /> Shared in Community</> : <><Share2 className="size-4" /> Share this workout</>}
+        {state === 'done' ? <><Check className="size-4" /> Shared to your Feed</> : <><Share2 className="size-4" /> Share this workout</>}
       </Button>
       {err && <p className="text-center text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
     </div>

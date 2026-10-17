@@ -122,7 +122,7 @@ function CreateBlock({ onClose, onCreated }: { onClose: () => void; onCreated: (
               </Field>
             </Card>
             <Card>
-              <Field label="Who's in" hint={info.friends.length ? `Friends who follow you back. Up to ${info.max_members} people.` : 'Invite friends from Community → People first: they need to follow you back.'}>
+              <Field label="Who's in" hint={info.friends.length ? `Friends who follow you back. Up to ${info.max_members} people.` : 'Invite friends from Clubs → People first: they need to follow you back.'}>
                 {info.friends.length > 0 && (
                   <ChipRow>
                     {info.friends.map((f) => (

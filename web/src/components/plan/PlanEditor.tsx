@@ -15,7 +15,9 @@ import {
 import { Field, Screen } from './ui'
 import { PhaseStrip, fmtDay, planToday, sessionMinutes } from './PlanParts'
 import { PlanCalendar, paceText, type MoveTarget } from './PlanCalendar'
-import { getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
+import { PLAN_CHANGED_EVENT, getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
+import { listEvents, type RaceEvent } from '@/lib/events'
+import { DayEvents, eventsOn } from './DayEvents'
 import { PACES_CHANGED_EVENT } from '@/lib/paces'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
@@ -33,7 +35,7 @@ type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
 const OWN_IMPORT = importApi('/api')
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout, addRequest, onAddHandled, onOpenEvent }: {
   me: Me
   goalTitle: string
   /** none when it is the Plan tab page (no X) */
@@ -51,12 +53,36 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   messageLabel?: string
   /** today's session: open the pre-workout screen */
   onOpenWorkout?: (sessionId: string) => void
+  /** Schedule "+ Add" -> A workout: open the session editor on that day (once per n) */
+  addRequest?: { date: string; n: number } | null
+  onAddHandled?: () => void
+  /** an event shown on a calendar day was tapped */
+  onOpenEvent?: (id: string) => void
 }) {
   const [plan, setPlan] = useState<BuiltPlan | null | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const [weekIdx, setWeekIdx] = useState<number | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
+  // Events on calendar days (lib/events), so a day shows the race / group run / trip it holds.
+  const [events, setEvents] = useState<RaceEvent[]>([])
+  useEffect(() => {
+    if (coachMode) return
+    let live = true
+    const load = () => { listEvents().then((r) => { if (live) setEvents(r.events) }, () => { /* the calendar works without */ }) }
+    load()
+    window.addEventListener(PLAN_CHANGED_EVENT, load)
+    return () => { live = false; window.removeEventListener(PLAN_CHANGED_EVENT, load) }
+  }, [coachMode])
+  // Schedule "+ Add" -> A workout: the session editor on that day, once the plan is here.
+  useEffect(() => {
+    if (!addRequest || !plan || readOnly || coachMode) return
+    const first = plan.first_day || plan.start
+    const d = addRequest.date < first ? first
+      : addRequest.date > plan.race_date ? plan.race_date : addRequest.date
+    setEditing({ session: null, date: d })
+    onAddHandled?.()
+  }, [addRequest?.n, !!plan]) // eslint-disable-line react-hooks/exhaustive-deps
   const [sheetClosing, setSheetClosing] = useState(false)
   const [syncDays, setSyncDays] = useState(14)
   const [sync, setSync] = useState<{ busy: 'sync' | 'remove' | null; result: SyncResult | null; removed: number | null; error: string | null }>(
@@ -254,7 +280,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         onAdd={readOnly ? undefined : (date) => setEditing({ session: null, date })}
         onResult={(r) => { setPlan(r.plan); setPlanCal(r.cal); onChanged() }}
         moving={moving} onMoving={setMoving}
-        hidden={tp.hidden} dayExtra={(d) => tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null}
+        hidden={tp.hidden} dayExtra={(d) => {
+          const tpItems = tp.itemsOn(d).length ? <TPDayItems tp={tp} date={d} imperial={imperial} /> : null
+          const evs = eventsOn(events, d)
+          return tpItems || evs.length ? <>{evs.length > 0 && <DayEvents events={evs} onOpen={onOpenEvent ?? (() => onOpenEvents())} />}{tpItems}</> : null
+        }}
         onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
         onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
 

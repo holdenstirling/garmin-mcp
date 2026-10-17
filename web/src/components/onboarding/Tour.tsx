@@ -11,11 +11,12 @@ import { TOUR_EVENT, markTourDone, tourDone } from '@/lib/tour'
 
 type Step = { target: string; title: string; body: string }
 const STEPS: Step[] = [
-  { target: 'tab-rabbit', title: 'Home', body: "Today's workout, your week and Rabbit, your AI coach. Ask it anything, any time." },
-  { target: 'tab-plan', title: 'Your plan', body: 'Every day of your training. Tap a day to see the workout and why it matters; move it if life gets in the way.' },
-  { target: 'tab-community', title: 'Community', body: 'Friends, clubs and run groups near you. Cheer each other on.' },
-  { target: 'tab-races', title: 'Events', body: 'Your races and new ones to find, with race-week help when it counts.' },
+  { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask Rabbit, your AI coach, anything." },
+  { target: 'tab-plan', title: 'Schedule', body: 'Your plan and your events in one place. Tap a day for the full workout; move it if life gets in the way. + Add puts in a workout, event or plan.' },
+  { target: 'tab-feed', title: 'Feed', body: "What your friends and groups are up to. Make a group feed with just a few people." },
+  { target: 'tab-clubs', title: 'Clubs', body: 'Run clubs, group runs and people near you.' },
   { target: 'tab-progress', title: 'Progress', body: 'How your fitness is trending, in plain words.' },
+  { target: 'chat', title: 'Chat with Rabbit', body: 'From any screen: questions, swaps, travel weeks.' },
   { target: 'search', title: 'Search', body: 'Find people, clubs, races, sessions and past workouts from any screen.' },
 ]
 const PAD = 6

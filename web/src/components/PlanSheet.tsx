@@ -68,7 +68,7 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
               </div>
             ) : (
               <p className="px-4 py-3 text-[0.8235rem] text-(--text-muted)">
-                No plan yet. Upload it (a PDF or screenshots) or describe it to Rabbit, and this week's sessions will show up on your Plan tab.
+                No plan yet. Upload it (a PDF or screenshots) or describe it to Rabbit, and this week's sessions will show up on your Schedule.
               </p>
             )}
           </Group>
