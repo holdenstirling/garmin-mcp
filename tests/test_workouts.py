@@ -124,18 +124,19 @@ def test_demand_votes_count_each_person_once(tmp_path, fernet_key) -> None:
     assert d.vote("ann", "whoop", True) is True and d.vote("ann", "whoop", True) is True
     d.vote("bob", "whoop", True)
     d.vote("bob", "coros", True)
-    assert d.counts() == {"whoop": 2, "apple": 0, "coros": 1}
+    assert d.counts() == {"whoop": 2, "coros": 1}
     assert d.vote("bob", "whoop", False) is False and d.counts()["whoop"] == 1
     assert d.voters("whoop") == ["ann"] and d.mine("bob") == {"coros"}
     rows = d.rows("ann", owner=False)
-    assert [r["id"] for r in rows] == ["whoop", "apple", "coros"] and rows[0]["wanted"] is True
+    assert [r["id"] for r in rows] == ["whoop", "coros"] and rows[0]["wanted"] is True
     assert all("wanted_by" not in r for r in rows)
     assert d.rows("ann", owner=True)[0]["wanted_by"] == 1
-    try:
-        d.vote("ann", "garmin", True)
-        raise AssertionError("garmin isn't coming soon")
-    except DemandError:
-        pass
+    for shipped in ("garmin", "apple"):
+        try:
+            d.vote("ann", shipped, True)
+            raise AssertionError(f"{shipped} isn't coming soon")
+        except DemandError:
+            pass
 
 
 def test_want_api_owner_counts_and_coach_403(env, tmp_path) -> None:  # noqa: F811
@@ -159,7 +160,7 @@ def test_want_api_owner_counts_and_coach_403(env, tmp_path) -> None:  # noqa: F8
             r = await owner.post("/app/api/connections/whoop/want", headers=h, json={"want": True})
             assert r.json()["wanted_by"] == 2
             soon = (await member.get("/app/api/connections")).json()["soon"]
-            assert [s["id"] for s in soon] == ["whoop", "apple", "coros"]
+            assert [s["id"] for s in soon] == ["whoop", "coros"]  # Apple Watch shipped (applehealth.py)
             assert soon[0]["wanted"] is True and "wanted_by" not in soon[0]
             assert (await owner.get("/app/api/connections")).json()["soon"][0]["wanted_by"] == 2
             assert (await member.post("/app/api/connections/garmin/want", headers=h, json={"want": True})).status_code == 400

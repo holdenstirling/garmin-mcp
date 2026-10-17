@@ -68,7 +68,7 @@ li{{margin:5px 0}}a{{color:var(--accent)}}.box{{border:1px solid var(--line);bor
 # infra/cloudshell/10-backups.sh (14 days), 14-offsite-backups.sh (30 days / 12 months).
 PRIVACY = """
 <p>Rabbit is a small, private training app used by invited athletes and their coaches, run by """ + OPERATOR + """ ("we"). This policy explains what Rabbit collects, why, who sees it, how long it's kept and the choices you have.</p>
-<div class=box><b>The short version.</b> Rabbit uses your training data to coach you. It doesn't sell your data, show ads or use ad trackers. Oura and WHOOP data is never sent to the AI coach. You can download your data or delete your account any time in <b>Me &rarr; Privacy &amp; legal</b>.</div>
+<div class=box><b>The short version.</b> Rabbit uses your training data to coach you. It doesn't sell your data, show ads or use ad trackers. Oura, WHOOP and Apple Watch data are never sent to the AI coach. You can download your data or delete your account any time in <b>Me &rarr; Privacy &amp; legal</b>.</div>
 
 <h2>What Rabbit collects</h2>
 <ul>
@@ -78,6 +78,7 @@ PRIVACY = """
 <li><b>Garmin Connect</b> (when you connect it): workouts, heart rate, sleep, HRV, readiness and similar training data, and the planned workouts Rabbit sends to your watch. Your Garmin password is passed to Garmin once to sign in and is never stored; Rabbit keeps only Garmin's sign-in token, encrypted.</li>
 <li><b>Oura</b> (when you connect it): readiness, sleep, heart rate variability, resting heart rate and daily activity summaries. Workouts Oura recorded that Garmin didn't (time, sport, distance, calories) are shown in your day and, if you share workouts, as a workout card for friends; they don't count toward streaks, stats or plan matching, which use Garmin workouts only, and they are deleted when you disconnect Oura.</li>
 <li><b>WHOOP</b> (when you connect it): workouts WHOOP recorded that Garmin didn't (time, sport, distance). They are shown in your day and, if you share workouts, as a workout card for friends; strain, heart rate and calories are never shared. Like Oura's, they don't count toward streaks, stats or plan matching, and they are deleted when you disconnect WHOOP.</li>
+<li><b>Apple Watch</b> (when you set it up): Rabbit can't read Apple Health itself. An iPhone Shortcut you build sends your recent workouts to Rabbit with a personal import key, and Rabbit keeps only each workout's sport, start time, duration and distance; heart rate, calories and anything else the Shortcut sends are thrown away. These workouts are shown in your day and, if you share workouts, as a workout card for friends; like Oura's, they don't count toward streaks, stats or plan matching. Rabbit stores only a one-way hash of your import key. Turning Apple Watch off revokes the key, and you can choose to delete the imported workouts too.</li>
 <li><b>Google Calendar</b> (when you connect it, read-only): event times, used to spot busy days and travel.</li>
 <li><b>TrainingPeaks</b> (when you connect it): Rabbit reads the planned workouts on your TrainingPeaks calendar (title, sport, duration, distance, description, coach notes and structure) from 2 weeks back to 6 weeks ahead. You connect by pasting your TrainingPeaks session value; Rabbit stores it encrypted, never logs it and never asks for your TrainingPeaks password. Rabbit writes to TrainingPeaks only when you choose Rabbit as your plan (it adds, updates and deletes the planned workouts it created for your next 14 days and never changes or deletes ones it didn't create) or when you move a TrainingPeaks workout in Rabbit. Completed workouts are not imported from TrainingPeaks; they come from Garmin only.</li>
 <li><b>What you enter</b>: your profile and training answers, goals, races, gear, photo, plan files you upload, chats and coach messages.</li>
@@ -92,7 +93,7 @@ PRIVACY = """
 <ul>
 <li>To build and adjust your training plan, show your stats and progress, and power the AI coach.</li>
 <li>To run the social features you choose (feed, messages, clubs, buddies, sharing) and keep them safe (blocking, reports, limits on abuse).</li>
-<li>Chats with the AI coach are processed by Anthropic's API. <b>Oura and WHOOP data is never sent to the AI coach</b>: it is only shown in the app and used by fixed rules (for example, easing your plan after poor recovery). From your calendar, the coach sees only busy hours and travel windows.</li>
+<li>Chats with the AI coach are processed by Anthropic's API. <b>Oura, WHOOP and Apple Watch data are never sent to the AI coach</b>: they are only shown in the app (and Oura's is used by fixed rules, for example easing your plan after poor recovery). From your calendar, the coach sees only busy hours and travel windows.</li>
 <li>Coaches you invite can see your plan, races, stats and anything you share with them. Your chats with the AI coach stay private unless you turn on sharing.</li>
 <li>Rabbit does not sell your data, share it for targeted advertising or show ads. To work, it sends the minimum needed to a few services: race searches to RunSignup, a rounded location (about 1 km) to OpenStreetMap for your city and nearby places, and your city to Open-Meteo for weather. Nothing else about you is shared.</li>
 <li><b>Clubs &amp; leagues directory</b>: Community lists run clubs, group rides, tri clubs, swims and adult leagues built from the public web. Rabbit searches the web with only a city and state, then its crawler, RabbitBot, reads the public pages it finds (it obeys robots.txt, goes slowly, and never reads social networks like Facebook, Instagram, Strava or Meetup, which are only linked). The directory holds public facts about groups (name, schedule, meeting place, cost, link), never anything about you or other athletes. Suggestions and "outdated" reports you send are stored with your account to limit abuse.</li>
@@ -101,12 +102,12 @@ PRIVACY = """
 </ul>
 
 <h2>AI processing</h2>
-<p>Rabbit's coach uses Anthropic's Claude API. It receives your messages, your training profile and plan, relevant Garmin numbers, your own notes and the calendar summary above, and it can search the web. It never receives Oura or WHOOP data or any password or sign-in token. Anthropic's <a href="https://www.anthropic.com/legal/commercial-terms" rel="noopener">commercial terms</a> don't allow it to train its models on what Rabbit sends through the API. AI replies can be wrong; see the <a href="/app/terms">terms</a>.</p>
+<p>Rabbit's coach uses Anthropic's Claude API. It receives your messages, your training profile and plan, relevant Garmin numbers, your own notes and the calendar summary above, and it can search the web. It never receives Oura, WHOOP or Apple Watch data or any password, sign-in token or import key. Anthropic's <a href="https://www.anthropic.com/legal/commercial-terms" rel="noopener">commercial terms</a> don't allow it to train its models on what Rabbit sends through the API. AI replies can be wrong; see the <a href="/app/terms">terms</a>.</p>
 
 <h2>Who else sees your data</h2>
 <ul>
 <li><b>Service providers</b> that run Rabbit: Google Cloud (hosting in the US and encrypted backups), Anthropic (AI coach) and your browser's push service (Apple, Google or Mozilla) to deliver notifications.</li>
-<li><b>Apps you connect</b>: Garmin, Oura, WHOOP, Google and TrainingPeaks, under their own terms.</li>
+<li><b>Apps you connect</b>: Garmin, Oura, WHOOP, Google and TrainingPeaks, under their own terms. Apple Watch workouts come from your own iPhone Shortcut; nothing is sent to Apple.</li>
 <li><b>Other Rabbit users</b>, only as your settings allow: people you follow or message, club and group members, training buddies, and anyone you send a share link to. Share links never include your location, and include heart rate only if you choose.</li>
 <li><b>Legal reasons</b>: if the law requires it, or to protect someone's safety.</li>
 </ul>
@@ -123,12 +124,12 @@ PRIVACY = """
 </ul>
 
 <h2>Security</h2>
-<p>Each person's data is stored in separate files encrypted at rest. Encryption keys and service secrets are kept in Google Secret Manager. Sign-in sessions, share links and calendar links are stored only as one-way hashes. See <a href="/app/security">How Rabbit keeps your data safe</a>.</p>
+<p>Each person's data is stored in separate files encrypted at rest. Encryption keys and service secrets are kept in Google Secret Manager. Sign-in sessions, share links, calendar links and Apple Watch import keys are stored only as one-way hashes. See <a href="/app/security">How Rabbit keeps your data safe</a>.</p>
 
 <h2>Your rights and choices</h2>
 <ul>
 <li><b>Download your data</b> or <b>delete your account</b> any time in Me &rarr; Privacy &amp; legal.</li>
-<li>Correct your information in your profile and settings, turn off sharing, buddies and usage counting in Settings, and disconnect Garmin, Oura, WHOOP, Google Calendar or TrainingPeaks at any time in Me &rarr; Connected apps; Rabbit stops reading from them and deletes the stored tokens.</li>
+<li>Correct your information in your profile and settings, turn off sharing, buddies and usage counting in Settings, and disconnect Garmin, Oura, WHOOP, Google Calendar, TrainingPeaks or Apple Watch at any time in Me &rarr; Connected apps; Rabbit stops reading from them and deletes the stored tokens.</li>
 <li>Depending on where you live (for example under the Colorado Privacy Act, California's CCPA/CPRA or the GDPR), you may have the right to access, correct, delete or port your data, to object to or restrict processing, and to withdraw consent. Rabbit doesn't sell personal data, use it for targeted advertising or make decisions with legal effects about you. For anything the app doesn't do for you, contact {CONTACT}; we reply within 45 days (30 where the GDPR applies), and you can appeal a decision by replying to it.</li>
 </ul>
 

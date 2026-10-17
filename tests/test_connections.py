@@ -27,13 +27,13 @@ def test_status_states() -> None:
     off = conn.status("oura", available=True, connected=False, last_sync=5, error="x")
     assert off["last_sync"] is None and off["error"] is None
     v = conn.view({a: conn.status(a, available=True, connected=False) for a in reversed(conn.ORDER)})
-    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "whoop", "calendar", "trainingpeaks"]
+    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "whoop", "apple", "calendar", "trainingpeaks"]
 
 
 def test_facts_match_the_privacy_policy() -> None:
     page = legal.privacy()
     # The popup's promises are ones the policy (and sources.py) make.
-    assert "Oura and WHOOP data is never sent to the AI coach" in page
+    assert "Oura, WHOOP and Apple Watch data are never sent to the AI coach" in page
     assert "they don't count toward streaks, stats or plan matching, which use Garmin workouts only" in page
     assert "deleted when you disconnect Oura" in page
     assert "Google Calendar</b> (when you connect it, read-only)" in page
@@ -78,7 +78,7 @@ def test_api_shape_sync_guards_and_coach_403(env, tmp_path) -> None:
             r = await a.get("/app/api/connections")
             assert r.status_code == 200
             body = r.json()
-            assert [x["id"] for x in body["apps"]] == ["garmin", "oura", "calendar", "trainingpeaks"]
+            assert [x["id"] for x in body["apps"]] == ["garmin", "oura", "apple", "calendar", "trainingpeaks"]
             for row in body["apps"]:
                 assert set(row) >= {"state", "connected", "available", "last_sync", "reads", "never", "import_label"}
             assert body["sources"]["workouts"] == "garmin"

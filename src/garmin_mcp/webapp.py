@@ -3461,6 +3461,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     from . import workouts as _workouts
     _ext_w = _workouts.ExternalWorkouts(store) if store is not None else None  # Oura etc. (display-only)
     _ext_feed: dict[str, Any] = {}  # workouts.py imports -> community auto-share (set below)
+    from . import applehealth as _ah
+    # Apple Watch: the athlete's iPhone Shortcut posts workouts with a personal import key.
+    _ah_keys = _ah.ImportKeys(store) if store is not None else None
+    if _ah_keys is not None:
+        acct.on_delete("apple health key", _ah_keys.revoke)
     if soc is not None and chat is not None and plans is not None and store is not None:
         _ag = chat.agent
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
@@ -4581,7 +4586,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "whoop", available=True, connected=bool(auth.whoop and auth.whoop.connected(uid)),
             last_sync=(auth.whoop.last_read(uid) if auth.whoop is not None else None),
             error=_conn_errors.get((uid, "whoop")), attention=(uid, "whoop") in _conn_errors)}
-            if auth.whoop is not None else {}) | ({"trainingpeaks": _conn.status(
+            if auth.whoop is not None else {}) | ({"apple": _conn.status(
+                "apple", available=True, connected=(ah := _ah_keys.status(uid)) is not None,
+                last_sync=(ah or {}).get("last_import"))} if _ah_keys is not None and _ext_w is not None else {}
+        ) | ({"trainingpeaks": _conn.status(
             "trainingpeaks", available=True, connected=(tps := tp_sync.status(uid))["connected"],
             last_sync=tps["last_sync"], error=tps["error"], attention=tps["attention"])}
             if tp_sync is not None else {})
@@ -4750,6 +4758,105 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             _conn_errors[key] = "Didn't answer just now. Try again later."
         rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
         return JSONResponse({"app": rows[app_id]})
+
+    # Apple Watch via the athlete's iPhone Shortcut (applehealth.py). The import endpoint has no
+    # session or Origin (a Shortcut can't send them): the Bearer import key is the only way in,
+    # it can only add workouts to its own account, and it is rate- and size-limited.
+    def _ah_view(uid: str) -> dict[str, Any]:
+        st = _ah_keys.status(uid) if _ah_keys is not None else None
+        n = sum(1 for w in (_ext_w.all(uid) if _ext_w is not None else []) if w.get("source") == _ah.SOURCE)
+        return {"on": st is not None, "available": _ah_keys is not None and _ext_w is not None,
+                "created": (st or {}).get("created"), "last_import": (st or {}).get("last_import"),
+                "last_received": (st or {}).get("last_received"), "last_new": (st or {}).get("last_new"),
+                "workouts": n, "endpoint": settings.public_base_url.rstrip("/") + "/app/api/import/apple-health"}
+
+    async def apple_get(request: Request, user_id: str) -> Response:
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: _ah_view(user_id)))
+
+    async def apple_key(request: Request, user_id: str) -> Response:
+        if _ah_keys is None or _ext_w is None:
+            return _err(503, "Apple Watch import isn't available on this server.")
+        if not push_allowed(f"ah-key:{user_id}", 10, 3600):
+            return _err(429, "That's a lot of new keys. Try again in a bit.")
+        key = await anyio.to_thread.run_sync(lambda: _ah_keys.create(user_id))
+        view = await anyio.to_thread.run_sync(lambda: _ah_view(user_id))
+        return JSONResponse({**view, "key": key})
+
+    async def apple_disconnect(request: Request, user_id: str) -> Response:
+        body = await read_json(request)
+        remove = bool(isinstance(body, dict) and body.get("remove") is True)
+        if _ah_keys is not None:
+            await anyio.to_thread.run_sync(lambda: _ah_keys.revoke(user_id))
+        if remove and store is not None:
+            await anyio.to_thread.run_sync(lambda: _workouts.drop_source(store, user_id, _ah.SOURCE))
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: _ah_view(user_id)))
+
+    async def apple_import(request: Request) -> Response:
+        def no(status: int, msg: str) -> Response:
+            return JSONResponse({"ok": False, "error": msg}, status_code=status, headers={"Cache-Control": "no-store"})
+        if not host_ok(request):
+            return no(400, "bad host")
+        if _ah_keys is None or _ext_w is None:
+            return no(503, "Apple Watch import isn't available on this server.")
+        ip = request.client.host if request.client else "?"
+        if not push_allowed(f"ah-ip:{ip}", 60, 600):
+            return no(429, "Too many tries. Wait a few minutes and run the Shortcut again.")
+        token = _ah.bearer(request.headers.get("authorization"))
+        uid = await anyio.to_thread.run_sync(lambda: _ah_keys.lookup(token)) if token else None
+        if not uid:
+            return no(401, "Rabbit doesn't recognise this import key. In Rabbit, open Me, Connected apps, "
+                           "Apple Watch and copy your key into the Shortcut again.")
+        if not push_allowed(f"ah-user:{uid}", 30, 3600):
+            return no(429, "Rabbit already got several imports this hour. Try again later.")
+        try:
+            size = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            size = 0
+        if size > _ah.MAX_BODY:
+            return no(413, "That's too much at once. Send the last 7 days of workouts.")
+        raw = await request.body()
+        if len(raw) > _ah.MAX_BODY:
+            return no(413, "That's too much at once. Send the last 7 days of workouts.")
+
+        def run() -> dict[str, Any]:
+            imperial, now = True, datetime.now()
+            if chat is not None:
+                _a = chat.agent
+                imperial = _a.coach.athlete(uid).get("units") != "metric"
+                now = _a._now(uid).replace(tzinfo=None)
+            items, skipped = _ah.parse_payload(raw, imperial=imperial, now=now)
+            today = plans.today(uid) if plans else now.date()
+            new = set(_ext_w.save(uid, _ah.SOURCE, items, today)) if items else set()
+            _ah_keys.note_import(uid, len(items), len(new))
+            if new and "share" in _ext_feed:
+                try:
+                    acts = chat.agent.stats.activities(uid)[1] if chat is not None and _garmin_connected(uid) else []
+                    fresh = [w for w in _ext_w.visible(uid, acts) if w["key"] in new]
+                    if fresh:
+                        _ext_feed["share"](uid, fresh, today)
+                except Exception as e:
+                    log_event(logger, logging.INFO, "ext_workouts_share_failed", error=type(e).__name__)
+            log_event(logger, logging.INFO, "ext_workouts_import", user_id=uid, source=_ah.SOURCE, new=len(new))
+            return {"received": len(items), "new": len(new), "skipped": skipped}
+        try:
+            r = await anyio.to_thread.run_sync(run)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "apple_import_failed", error=type(e).__name__)
+            return no(500, "Rabbit couldn't save that just now. Try again later.")
+        if r["received"] == 0:
+            msg = ("Rabbit didn't find any workouts in that. Check the Shortcut's steps in Rabbit: "
+                   "Me, Connected apps, Apple Watch.")
+        else:
+            msg = (f"Rabbit got {r['received']} workout{'s' if r['received'] != 1 else ''}"
+                   f" ({r['new']} new).")
+        return JSONResponse({"ok": True, **r, "message": msg}, headers={"Cache-Control": "no-store"})
+
+    home_routes += [
+        Route("/app/api/apple-health", _api(apple_get, mutating=False), methods=["GET"]),
+        Route("/app/api/apple-health/key", _api(apple_key, mutating=True), methods=["POST"]),
+        Route("/app/api/apple-health/disconnect", _api(apple_disconnect, mutating=True), methods=["POST"]),
+        Route("/app/api/import/apple-health", apple_import, methods=["POST"]),
+    ]
 
     home_routes += [
         Route("/app/api/connections", _api(connections_get, mutating=False), methods=["GET"]),

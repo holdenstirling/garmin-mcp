@@ -39,13 +39,14 @@ import {
 import { cn } from '@/lib/utils'
 import { RabbitNap } from '@/components/anim'
 import { ShareChoice } from '@/components/connect/ShareChoice'
+import { ConnectAppleHealth } from '@/components/connect/ConnectAppleHealth'
 
-const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', whoop: 'WHOOP', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
-const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
+const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
+const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 type View = 'loading' | 'intro' | 'garmin' | 'tp' | 'redirect' | 'importing' | 'done' | 'failed' | 'manage'
 
 /** Text monograms on a plain tile: recognisable without anyone's logo artwork. */
-const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', whoop: 'W', calendar: 'Cal', trainingpeaks: 'TP' }
+const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', whoop: 'W', apple: 'AW', calendar: 'Cal', trainingpeaks: 'TP' }
 
 /** What each app is for, in one line (Connected apps hub). */
 export const PURPOSE: Record<ConnApp, string> = {
@@ -54,6 +55,7 @@ export const PURPOSE: Record<ConnApp, string> = {
   whoop: 'Workouts Garmin missed, for your day and your friends’ feed',
   calendar: 'Trips and busy days, so your plan fits',
   trainingpeaks: 'Your coach’s planned workouts',
+  apple: 'Workouts from your Apple Watch, via a Shortcut',
 }
 
 // How signing in works and how the access is kept, per app (see the header for where each fact
@@ -84,6 +86,12 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
     kept: 'The pasted sign-in is stored encrypted and never shown again. Disconnect anytime and it’s deleted.',
     cta: 'Continue', icon: KeyRound,
   },
+  // Apple Watch has its own popup (ConnectAppleHealth); these keep the record complete.
+  apple: {
+    how: 'You set up a Shortcut on your iPhone that sends your workouts to Rabbit.',
+    kept: 'Rabbit stores only a scrambled copy of your import key. Turn it off anytime and the key stops working.',
+    cta: 'Set it up', icon: KeyRound,
+  },
 }
 
 // "You're all set": what happens now, in plain words.
@@ -93,6 +101,7 @@ const NEXT: Record<ConnApp, string[]> = {
   whoop: ['Workouts WHOOP records that Garmin didn’t show on their day', 'If you share workouts, friends see them in their feed', 'Strain, heart rate and calories stay private'],
   calendar: ['Trips and busy days show next to your plan', 'Rabbit works your workouts around them'],
   trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
+  apple: ['New Apple Watch workouts arrive each time your Shortcut runs'],
 }
 
 /** Plain tile with the app's monogram (no brand logos). */
@@ -172,14 +181,23 @@ async function runImport(app: ConnApp): Promise<void> {
   else await getCalendar(42)
 }
 
-export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
+type SheetProps = {
   me: Me
   req: ConnectRequest
   onClose: () => void
   /** something changed: refresh /me */
   onChanged: () => void
   onToast: (msg: string) => void
-}) {
+}
+
+/** Apple Watch is a set-up guide (an iPhone Shortcut), not a sign-in: its own popup. */
+export function ConnectSheet(props: SheetProps) {
+  return props.req.app === 'apple'
+    ? <ConnectAppleHealth onClose={props.onClose} onChanged={props.onChanged} onToast={props.onToast} />
+    : <AppConnectSheet {...props} />
+}
+
+function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
   const app = req.app
   const [conn, setConn] = useState<Connection | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
@@ -237,6 +255,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   const cont = () => {
     if (app === 'garmin') { setView('garmin'); return }
     if (app === 'trainingpeaks') { setView('tp'); return }
+    if (app === 'apple') return  // its own popup (ConnectAppleHealth)
     setView('redirect')
     window.location.href = OAUTH_URL[app]
   }
@@ -244,6 +263,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   async function syncNowFor() {
     setBusy(true)
     try {
+      if (app === 'apple') return
       if (app === 'garmin') {
         const r = await syncNow()
         onToast(r.error ? r.error : r.new.length ? `Synced ${r.new.length} new workout${r.new.length === 1 ? '' : 's'}` : 'Up to date')

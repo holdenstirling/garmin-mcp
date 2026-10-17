@@ -39,7 +39,7 @@ EXPORT_LIMIT = 3
 EXPORT_WINDOW = 3600.0
 REMOVED = "[removed]"
 # Docs whose whole content is a credential (push subscriptions).
-DROP_DOCS = frozenset({"push"})
+DROP_DOCS = frozenset({"push", "applehealth"})  # applehealth: import key hash
 _SECRET = re.compile(r"(token|secret|cookie|password|passwd|refresh|access|p256dh|^auth$|endpoint|hash|"
                      r"credential|private_?key|verifier|nonce|api_?key)", re.I)
 
