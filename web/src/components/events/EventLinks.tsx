@@ -168,7 +168,7 @@ export function CalendarSync() {
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)" aria-hidden><Link2 className="size-4.5" /></span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[0.8235rem] font-semibold text-(--text)">Keep your calendar in sync</h3>
+          <p role="heading" aria-level={3} className="text-[0.8235rem] font-semibold text-(--text)">Keep your calendar in sync</p>
           <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
             {feed.on ? 'Your Google or Apple calendar follows your events and workouts on its own.'
               : 'One private link: your events and plan workouts show up in Google or Apple Calendar and stay updated.'}
