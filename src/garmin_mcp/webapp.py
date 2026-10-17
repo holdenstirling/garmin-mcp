@@ -48,6 +48,7 @@ from .events import EventStore as _EventStore
 from .events import plan_links as _ev_plan_links
 from . import calsub as _calsub
 from . import area as _area
+from . import body as _body_mod
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
@@ -1998,6 +1999,16 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         out = await _plan_call(run)
         return out if isinstance(out, JSONResponse) else JSONResponse(out)
 
+    # Body logs (body.py): fueling log + niggle tracker, athlete-entered, encrypted per user.
+    _body = (_body_mod.BodyStore(store, today=lambda uid: chat.agent._now(uid).date())
+             if store is not None and chat is not None else None)
+
+    def _fuel_learned(user_id: str, distance: str | None) -> int | None:
+        if _body is None:
+            return None
+        from .nutrition import race_target as _rt
+        return _body_mod.learnings(_body.fuel_entries(user_id), _rt(distance))["learned_rate"]
+
     async def racepack_get(request: Request, user_id: str) -> Response:
         assert chat is not None and plans is not None
         eid = request.query_params.get("event_id") or None
@@ -2015,8 +2026,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         wx = await racepack.forecast(event.get("location") or "", date.fromisoformat(event["date"]), today)
         athlete = _coach().athlete(user_id)
         gear = (await anyio.to_thread.run_sync(lambda: _gear_items(user_id)))[0] if gear_store else []
+        learned = await anyio.to_thread.run_sync(lambda: _fuel_learned(user_id, event.get("distance")))
         return JSONResponse(racepack.build(event, athlete, plans.get(user_id) if event.get("main") else None, today, wx,
-                                           gear=gear))
+                                           gear=gear, fuel_learned=learned))
 
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
@@ -3899,6 +3911,125 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             Route("/app/api/plan/calendar", _plan_api(plancal_get, mutating=False), methods=["GET"]),
             *[Route(f"/app/api/plan/calendar/{k}", _plan_api(_pc_op(k), mutating=True), methods=["POST"])
               for k in ("move", "swap", "fix", "undo", "goal")],
+        ]
+
+    # ------------------------------------------------------------- body logs --
+    # body.py: fueling & hydration log (per session/activity) with learnings vs the race target,
+    # and the niggle tracker with conservative easing proposals (adjust-style, id-checked).
+    if _body is not None and plans is not None:
+        _FUEL_KEY = re.compile(r"^(s:[A-Za-z0-9]{1,40}|a:[A-Za-z0-9:_.-]{1,80})$")
+
+        def _fuel_key(v: Any) -> str:
+            if not isinstance(v, str) or not _FUEL_KEY.fullmatch(v):
+                raise ValueError("key")
+            return v
+
+        def _race_target(user_id: str) -> int:
+            from .nutrition import race_target as _rt
+            g = _coach().active_goal(user_id) or {}
+            return _rt(g.get("distance"))
+
+        async def fuel_get(request: Request, user_id: str) -> Response:
+            key = _fuel_key(request.query_params.get("key"))
+            entry = await anyio.to_thread.run_sync(lambda: _body.fuel_get(user_id, key))
+            return JSONResponse({"entry": entry, "products": _body_mod.PRODUCTS, "target": _race_target(user_id)})
+
+        async def fuel_post(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            if not isinstance(body, dict):
+                raise ValueError("body")
+            key = _fuel_key(body.get("key"))
+            if body.get("delete") is True:
+                await anyio.to_thread.run_sync(lambda: _body.fuel_delete(user_id, key))
+                return JSONResponse({"entry": None})
+            try:
+                entry = await anyio.to_thread.run_sync(lambda: _body.fuel_save(user_id, key, body))
+            except _body_mod.BodyError as e:
+                raise _UserError(str(e)) from None
+            target = _race_target(user_id)
+            learned = _body_mod.learnings(_body.fuel_entries(user_id), target)
+            return JSONResponse({"entry": entry, "learnings": learned}, status_code=201)
+
+        async def fueling_get(request: Request, user_id: str) -> Response:
+            target = _race_target(user_id)
+            entries = await anyio.to_thread.run_sync(lambda: _body.fuel_entries(user_id))
+            return JSONResponse({"learnings": _body_mod.learnings(entries, target), "target": target,
+                                 "entries": [dict(e, **_body_mod.rates(e)) for e in entries[:30]],
+                                 "products": _body_mod.PRODUCTS})
+
+        def _niggle_proposal(user_id: str) -> dict[str, Any] | None:
+            return _body_mod.ease_proposal(plans.get(user_id), _body.niggles(user_id), plans.today(user_id))
+
+        def _niggles_payload(user_id: str) -> dict[str, Any]:
+            today = plans.today(user_id)
+            items = [_body.view(n, today) for n in _body.niggles(user_id)]
+            dismissed = _body_mod_dismissed(user_id)
+            prop = _niggle_proposal(user_id)
+            return {"active": [n for n in items if n["status"] == "active"],
+                    "resolved": [n for n in items if n["status"] != "active"][:10],
+                    "areas": _body_mod.AREAS, "care_note": _body_mod.CARE_NOTE,
+                    "proposal": prop if prop and prop["id"] != dismissed else None}
+
+        def _body_mod_dismissed(user_id: str) -> str | None:
+            return store.user_doc(user_id, "niggles").load().get("dismissed")
+
+        async def niggles_get(request: Request, user_id: str) -> Response:
+            return JSONResponse(await anyio.to_thread.run_sync(lambda: _niggles_payload(user_id)))
+
+        async def niggle_add(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            if not isinstance(body, dict):
+                raise ValueError("body")
+            try:
+                await anyio.to_thread.run_sync(lambda: _body.add_niggle(user_id, body))
+            except _body_mod.BodyError as e:
+                raise _UserError(str(e)) from None
+            return JSONResponse(await anyio.to_thread.run_sync(lambda: _niggles_payload(user_id)), status_code=201)
+
+        async def niggle_post(request: Request, user_id: str) -> Response:
+            nid = request.path_params["nid"]
+            if not re.fullmatch(r"n[0-9a-f]{10}", nid):
+                raise ValueError("id")
+            body = await read_json(request)
+            if not isinstance(body, dict):
+                raise ValueError("body")
+
+            def run() -> dict[str, Any]:
+                if body.get("delete") is True:
+                    _body.delete_niggle(user_id, nid)
+                else:
+                    _body.update_niggle(user_id, nid, body)
+                return _niggles_payload(user_id)
+            try:
+                out = await anyio.to_thread.run_sync(run)
+            except KeyError:
+                raise _UserError("That niggle isn't here anymore.", 404) from None
+            except _body_mod.BodyError as e:
+                raise _UserError(str(e)) from None
+            return JSONResponse(out)
+
+        async def niggle_ease(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            if not isinstance(body, dict) or body.get("action") not in ("apply", "dismiss"):
+                raise ValueError("body")
+            prop = await _plan_call(lambda: _niggle_proposal(user_id))
+            if prop is None or prop["id"] != body.get("id"):
+                return _err(409, "Your plan changed since this suggestion. Take another look.")
+            if body["action"] == "dismiss":
+                await anyio.to_thread.run_sync(lambda: store.user_doc(user_id, "niggles").update(
+                    lambda d: d.__setitem__("dismissed", prop["id"])))
+                return JSONResponse(await anyio.to_thread.run_sync(lambda: _niggles_payload(user_id)))
+            plan = await _plan_call(lambda: plans.apply_adjustment(user_id, prop["changes"]))
+            return _plan_resp(user_id, plan, applied=len(prop["changes"]))
+
+        home_routes += [
+            Route("/app/api/body/fuel", _plan_api(fuel_get, mutating=False), methods=["GET"]),
+            Route("/app/api/body/fuel", _plan_api(fuel_post, mutating=True), methods=["POST"]),
+            Route("/app/api/body/fueling", _plan_api(fueling_get, mutating=False), methods=["GET"]),
+            Route("/app/api/body/niggles", _plan_api(niggles_get, mutating=False), methods=["GET"]),
+            Route("/app/api/body/niggles", _plan_api(niggle_add, mutating=True), methods=["POST"]),
+            Route("/app/api/body/niggles/ease", _plan_api(niggle_ease, mutating=True), methods=["POST"]),
+            Route("/app/api/body/niggles/{nid}", _plan_api(niggle_post, mutating=True), methods=["POST"]),
         ]
 
     # ------------------------------------------------------- training paces --

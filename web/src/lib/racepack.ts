@@ -13,7 +13,9 @@ export type RacePack = {
   event: { id: string; name: string; type: string; distance: string; date: string; location: string; url: string; priority: string; kind?: string }
   days_out: number; info: EventInfo
   pacing: { leg: string; target: string; detail: string }[]
-  fueling: { carbs_g_per_h: number; expected_hours: number; total_carbs_g: number; fluid_ml_per_h: string; sodium_mg_per_h: string; steps: string[] }
+  fueling: { carbs_g_per_h: number; expected_hours: number; total_carbs_g: number; fluid_ml_per_h: string; sodium_mg_per_h: string; steps: string[]
+    /** from your fueling log (body.py): the rate you've handled well, and the distance target */
+    practised_g_per_h?: number; target_g_per_h?: number }
   your_gear?: RaceGear[]
   gear: string[]
   weather: { place: string; high_c: number | null; low_c: number | null; rain_pct: number | null; wind_kmh: number | null } | null

@@ -108,7 +108,9 @@ def _pace_100(sec: float) -> str:
     return f"{s // 60}:{s % 60:02d}"
 
 
-def fueling(event: dict[str, Any], athlete: dict[str, Any]) -> dict[str, Any]:
+def fueling(event: dict[str, Any], athlete: dict[str, Any], learned: int | None = None) -> dict[str, Any]:
+    """``learned``: the carbs/hour the athlete has handled well on logged long sessions
+    (body.learnings); race day uses it when it's within reach of the distance target."""
     dist = (event.get("distance") or "other").lower()
     hours = TRI.get(dist, (None, None, None, None))[3] or (RUN.get(dist) or (0, 0, None))[2] \
         or {"ultra": 24.0, "century ride": 6.0}.get(dist, 3.0)
@@ -120,7 +122,19 @@ def fueling(event: dict[str, Any], athlete: dict[str, Any]) -> dict[str, Any]:
     if hours >= 1.5:
         plan["steps"].append(f"Two days out: carb-load at 8-10 g/kg/day{f' (about {int(kg * 8)}-{int(kg * 10)} g)' if kg else ''}; keep fibre low.")
     plan["steps"].append(f"Breakfast 3 hours before: 1-3 g/kg of carbs{f' ({int(kg)}-{int(kg * 3)} g)' if kg else ''}, familiar foods.")
-    if target:
+    if target and learned:
+        plan["target_g_per_h"] = target
+        plan["practised_g_per_h"] = learned
+        use = min(learned, target + 10)
+        if use >= target - 10:
+            plan["carbs_g_per_h"] = use
+            plan["total_carbs_g"] = int(use * max(0, hours - 0.3))
+            plan["steps"].append(f"During: {use} g carbs per hour from the start, the rate you've practised well "
+                                 "in training; only products you've trained with.")
+        else:
+            plan["steps"].append(f"During: aim for {target} g carbs per hour, but you've only practised {learned} g/h. "
+                                 f"Build up on your remaining long sessions, or race at about {learned + 10} g/h.")
+    elif target:
         plan["steps"].append(f"During: {target} g carbs per hour from the start, little and often; only products you've trained with.")
     plan["steps"].append("Caffeine is optional: about 3 mg/kg late in the race if you've practised it.")
     return plan
@@ -155,7 +169,8 @@ async def forecast(location: str, race_day: date, today: date, http: httpx2.Asyn
 
 
 def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] | None, today: date,
-          wx: dict[str, Any] | None = None, gear: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+          wx: dict[str, Any] | None = None, gear: list[dict[str, Any]] | None = None,
+          fuel_learned: int | None = None) -> dict[str, Any]:
     """``gear`` is the athlete's garage with mileage (``gear.usage``); the relevant active
     items go into ``your_gear`` with worn-out / brand-new shoe warnings."""
     race_day = date.fromisoformat(event["date"])
@@ -176,7 +191,7 @@ def build(event: dict[str, Any], athlete: dict[str, Any], plan: dict[str, Any] |
         "days_out": (race_day - today).days,
         "info": event.get("info") or {},
         "pacing": pacing(event, athlete),
-        "fueling": fueling(event, athlete),
+        "fueling": fueling(event, athlete, fuel_learned),
         "your_gear": for_race(gear or [], etype, imperial=athlete.get("units") != "metric"),
         "gear": GEAR.get(etype if etype in GEAR else ("trail" if etype in ("trail", "mountaineering") else "other"), GEAR["other"]),
         "weather": wx, "weather_tips": tips,

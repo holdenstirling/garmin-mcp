@@ -1,6 +1,7 @@
 // Your progress, calm and in order: level/streak/week, main race grade, two insights, recovery
 // and challenges as one row each, fitness and form. Everything else sits under "More stats".
 // Sport-agnostic: everything Garmin records counts.
+import { BodyLinks } from '@/components/body/BodyLinks'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -92,7 +93,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
         {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
           race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
           insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}
-          trends={<TrendsCard loadKey={loadKey} />}
+          trends={<><TrendsCard loadKey={loadKey} /><BodyLinks /></>}
           recovery={<Recovery loadKey={loadKey} />}
           challenges={<ChallengesCard imperial={imperial} loadKey={loadKey} collapsible />}
           more={<CheckinsCard />} />}

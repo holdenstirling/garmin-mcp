@@ -1,7 +1,7 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Connected apps and Settings. Friends
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
-import { ChartColumn, ClipboardList, Handshake, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { Bandage, ChartColumn, ClipboardList, Handshake, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -10,6 +10,7 @@ import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { LevelBadge } from '@/components/progress/Progress'
 import { photoUrl } from '@/lib/photo'
+import { openBody } from '@/lib/body'
 import { goalCountdown, type Goal, type Me } from '@/lib/api'
 import type { Progress } from '@/lib/progress'
 
@@ -51,6 +52,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
         <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
+        <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; Rabbit eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
         <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="Find and follow friends" onClick={() => onOpen('friends')} />
         {me.role === 'athlete' && <ShareWorkoutsRow />}
       </Group>
