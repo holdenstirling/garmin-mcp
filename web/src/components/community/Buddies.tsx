@@ -226,10 +226,15 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
       <Field label="Sports"><MultiChoice value={sports} options={BUDDY_SPORTS} onChange={setSports} /></Field>
       {(sports.includes('run') || sports.includes('trail')) && (
         <Field label={`Easy run pace, per ${unit}`} hint="The pace you can chat at. A range works best.">
-          <div className="flex items-center gap-2">
-            <DurationInput label="Easy pace, faster end" withHours={false} value={runPace[0]} onChange={(v) => setRunPace(([, b]) => [v, b])} className="flex-1" />
-            <span className="text-(--text-muted)" aria-hidden>to</span>
-            <DurationInput label="Easy pace, slower end" withHours={false} value={runPace[1]} onChange={(v) => setRunPace(([a]) => [a, v])} className="flex-1" />
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <span className="text-[0.7059rem] text-(--text-muted)">From (faster)</span>
+              <DurationInput label="Easy pace, faster end" withHours={false} value={runPace[0]} onChange={(v) => setRunPace(([, b]) => [v, b])} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[0.7059rem] text-(--text-muted)">To (slower)</span>
+              <DurationInput label="Easy pace, slower end" withHours={false} value={runPace[1]} onChange={(v) => setRunPace(([a]) => [a, v])} />
+            </div>
           </div>
         </Field>
       )}

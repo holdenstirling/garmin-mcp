@@ -126,12 +126,14 @@ def suggest(acts: list[dict[str, Any]], today: date) -> dict[str, Any]:
     for sp, xs in by.items():
         if len(xs) < 3:
             continue
-        if sp == "ride":  # easy = the slower half of speeds
+        if sp == "ride":  # easy = the slower half of speeds; at least 2 km/h wide
             lo, hi = _pct(xs, 0.2), statistics.median(xs)
-            pace[sp] = [round(lo, 1), round(hi, 1)]
-        else:  # easy = the slower half of paces
+            mid, half = (lo + hi) / 2, max((hi - lo) / 2, 1.0)
+            pace[sp] = [round(mid - half, 1), round(mid + half, 1)]
+        else:  # easy = the slower half of paces; at least 20 s/km (5 s/100 m for swims) wide
             lo, hi = statistics.median(xs), _pct(xs, 0.85)
-            pace[sp] = [5 * round(lo / 5), 5 * round(hi / 5)]
+            mid, half = (lo + hi) / 2, max((hi - lo) / 2, 2.5 if sp == "swim" else 10.0)
+            pace[sp] = [5 * round((mid - half) / 5), 5 * round((mid + half) / 5)]
     sports = [s for s in SPORTS if count.get(s, 0) >= 2]
     top = sorted((k for k, n in slots.items() if n >= 2), key=lambda k: (-slots[k], SLOTS.index(k)))[:6]
     return {"sports": sports, "pace": {k: v for k, v in pace.items() if k in sports}, "slots": top}
