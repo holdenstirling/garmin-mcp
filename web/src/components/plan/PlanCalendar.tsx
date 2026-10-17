@@ -3,7 +3,7 @@
 //   Week: each day's sessions as cards, what the week prescribes (focus + key sessions), mileage.
 //   List: an agenda of the plan a few weeks at a time ("Show more weeks" to race day).
 //   Month: the month at a glance with weekly/monthly mileage; tap a day to open it.
-// Tapping a workout opens its full page (openWorkout.ts: the rabbit:open-workout event); the
+// Tapping a workout opens its full page (lib/workoutnav openWorkout: the rabbit:open-workout event); the
 // pencil edits it in place (SessionSheet). "Edit" reveals Day earlier / Day later / Move or swap
 // and + per day; press and hold drags a session to another day (touch: long-press). Every change
 // re-balances the week and can be undone. "Plan overview" shows the phases to race day.
@@ -26,7 +26,7 @@ import { SPORT_ICON, fmtDay, sessionMinutes, weekPhaseLabel } from './PlanParts'
 import { MoveSheet, addDays, mondayOf, weekdayIdx } from './MoveSheet'
 import { PlanDay } from './PlanDay'
 import { PlanOverview } from './PlanOverview'
-import { openWorkoutPage } from './openWorkout'
+import { openWorkout as openWorkoutPage } from '@/lib/workoutnav'
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 type View = 'week' | 'month' | 'day' | 'list'
