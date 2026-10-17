@@ -424,3 +424,6 @@ html.kb-open .tab-bar { display: none; }
 /* screens/lazyScreens Fallback: a lazily loaded page's backdrop appears with the loader (300 ms). */
 .lazy-fallback { animation: rl-appear 0.2s ease-out 0.3s both; }
 @media (prefers-reduced-motion: reduce) { .lazy-fallback { animation: rl-show 0.01s linear 0.3s both; } }
+/* The tab's icon and label never take the tap themselves: the Home rabbit's twitch remounts its
+   icon on pointer-down, and a tap whose target disappears mid-press never becomes a click. */
+.tab-bar__item > * { pointer-events: none; }

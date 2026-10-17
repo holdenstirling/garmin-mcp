@@ -52,3 +52,9 @@ def test_session_sheet_save_is_pinned() -> None:
     head = s[s.index("<Sheet title={session ? session.title : 'Add a session'}"):]
     head = head[:head.index("bodyClassName")]
     assert "footer=" in head and "Add session" in head
+
+
+def test_tab_bar_children_never_take_the_tap() -> None:
+    # The Home tab's rabbit remounts on pointer-down (twitch); if it took the tap, the click was lost.
+    css = (SRC / "styles" / "rabbit.css").read_text()
+    assert ".tab-bar__item > * { pointer-events: none; }" in css
