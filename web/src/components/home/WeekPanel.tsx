@@ -10,6 +10,7 @@ import { getCalendar, SPORT_DIST_LABEL, type DistSport, type Mileage } from '@/l
 import { SPORT_ICON } from '@/components/plan/PlanParts'
 import { weekTitle } from '@/components/week/WeekStrip'
 import { cn } from '@/lib/utils'
+import { openWorkout } from '@/lib/workoutnav'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
 
@@ -34,56 +35,63 @@ function StateMark({ st }: { st: PlannedSession['status'] }) {
 
 function DayLine({ d, imperial, onOpen }: { d: WeekDay; imperial: boolean; onOpen: (date: string) => void }) {
   const work = d.sessions.filter((s) => s.status !== 'rest')
-  const label = `${d.weekday}${d.today ? ', today' : ''}: ${work.length
+  const dayLabel = `${d.weekday}${d.today ? ', today' : ''}`
+  const summary = `${dayLabel}: ${work.length
     ? work.map((s) => `${s.title} ${STATE_WORD[s.status]}`).join(', ')
     : d.extra.length ? d.extra.map((a) => `${a.name} done`).join(', ') : 'rest'}. Open this day in your plan`
+  // Each planned workout opens its own full page (lib/workoutnav); the date and the rest of the
+  // row open the day in the Schedule.
   return (
-    <li>
-      <button type="button" onClick={() => onOpen(d.date)} aria-label={label}
-        className={cn('flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)',
-          d.today && 'bg-(--accent-subtle)')}>
-        <span className="flex w-9 shrink-0 flex-col items-center leading-none">
-          <span className={cn('text-[0.6471rem] font-semibold uppercase tracking-wide', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
-            {d.weekday.slice(0, 3)}
-          </span>
-          <span className={cn('mt-0.5 font-mono text-[0.8235rem]', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>
-            {Number(d.date.slice(8, 10))}
-          </span>
+    <li className={cn('flex items-stretch', d.today && 'bg-(--accent-subtle)')}>
+      <button type="button" onClick={() => onOpen(d.date)} aria-label={summary}
+        className="flex w-14 shrink-0 flex-col items-center justify-center py-2 pl-1.5 leading-none active:bg-(--bg-inset)">
+        <span className={cn('text-[0.6471rem] font-semibold uppercase tracking-wide', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
+          {d.weekday.slice(0, 3)}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1" aria-hidden>
-          {work.length === 0 && d.extra.length === 0 && (
-            <span className="text-[0.7647rem] text-(--text-muted)">{d.sessions.length ? 'Rest day' : 'Nothing planned'}</span>
-          )}
-          {work.map((s, i) => {
-            const Icon = SPORT_ICON[s.sport] ?? Activity
-            const line = sessionLine(s, imperial)
-            return (
-              <span key={i} className="flex min-w-0 items-center gap-2">
-                <StateMark st={s.status} />
-                <Icon className="size-3.5 shrink-0 text-(--text-secondary)" />
-                <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
-                  {s.title}
-                </span>
-                {line && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">{line}</span>}
-              </span>
-            )
-          })}
-          {d.extra.map((a, i) => {
-            const Icon = SPORT_ICON[a.sport] ?? Activity
-            return (
-              <span key={`x${i}`} className="flex min-w-0 items-center gap-2">
-                <StateMark st="done" />
-                <Icon className="size-3.5 shrink-0 text-(--text-secondary)" />
-                <span className="min-w-0 flex-1 truncate text-[0.7647rem] text-(--text)">{a.name}</span>
-                <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">
-                  {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}
-                </span>
-              </span>
-            )
-          })}
+        <span className={cn('mt-0.5 font-mono text-[0.8235rem]', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>
+          {Number(d.date.slice(8, 10))}
         </span>
-        <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
+      <span className="flex min-w-0 flex-1 flex-col justify-center py-1">
+        {work.length === 0 && d.extra.length === 0 && (
+          <button type="button" onClick={() => onOpen(d.date)} tabIndex={-1} aria-hidden
+            className="flex min-h-11 items-center pr-3.5 text-left text-[0.7647rem] text-(--text-muted)">
+            {d.sessions.length ? 'Rest day' : 'Nothing planned'}
+          </button>
+        )}
+        {work.map((s, i) => {
+          const Icon = SPORT_ICON[s.sport] ?? Activity
+          const line = sessionLine(s, imperial)
+          return (
+            <button key={s.id ?? i} type="button" onClick={() => (s.id ? openWorkout(s.id, d.date) : onOpen(d.date))}
+              aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`}
+              className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
+              <StateMark st={s.status} />
+              <Icon className="size-3.5 shrink-0 text-(--text-secondary)" aria-hidden />
+              <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
+                {s.title}
+              </span>
+              {line && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">{line}</span>}
+              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+            </button>
+          )
+        })}
+        {d.extra.map((a, i) => {
+          const Icon = SPORT_ICON[a.sport] ?? Activity
+          return (
+            <button key={`x${i}`} type="button" onClick={() => onOpen(d.date)} aria-label={`${a.name}, done, ${dayLabel}. Open this day`}
+              className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
+              <StateMark st="done" />
+              <Icon className="size-3.5 shrink-0 text-(--text-secondary)" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-[0.7647rem] text-(--text)">{a.name}</span>
+              <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">
+                {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+            </button>
+          )
+        })}
+      </span>
     </li>
   )
 }

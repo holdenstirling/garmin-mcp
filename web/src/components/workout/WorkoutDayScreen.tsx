@@ -1,20 +1,31 @@
-// "Ready to go": today's session before you head out (server: workoutday.py). Hero, why it
-// matters, the step-by-step with targets as big chips, the key cue, fueling, gear, weather,
-// watch status and a pre-run checklist ticked per day on this device.
-import { useCallback, useEffect, useState } from 'react'
+// The workout page: one full-screen view for ANY plan session, past, today or ahead (server:
+// workoutday.py for the day, plancal.py for exact targets and how it went). Opened from
+// everywhere with lib/workoutnav openWorkout(id, date). Top to bottom: hero (date, start time,
+// status), key numbers, every step with its targets (zone, heart rate, pace / watts / swim pace,
+// cadence, effort, talk test), why and how, fueling, gear, weather (today), learn more, how it
+// went (done), what to do about a miss, and feedback: the athlete's RPE / feel / pain / note
+// plus Rabbit's take (deterministic first, then "Ask Rabbit for more"). Actions stay pinned at
+// the bottom: Move, Edit, Ask Rabbit.
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Activity, Bike, Check, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Repeat, Utensils, Watch, Waves, Wind,
+  Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb,
+  MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
 import { fmtDay } from '@/components/plan/PlanParts'
+import { HowItWent, WorkoutSteps, WorkoutSummary } from '@/components/plan/WorkoutTargets'
+import { MoveSessionSheet } from '@/components/plan/MoveSheet'
 import { KIND_LABEL, fmtMin, syncGarmin } from '@/lib/plan'
 import { fmtDist, fmtDuration, fmtMeters, fmtSpeed } from '@/lib/format'
+import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
+import { fmtTime, getCalendar, openPlanDay, requestPlanFix, type CalSession, type CalView, type DistSport } from '@/lib/plancal'
+import { checkinChips, createCheckin, type Checkin } from '@/lib/checkins'
 import { cn } from '@/lib/utils'
 import {
-  CHECKLIST, fmtTemp, getWorkoutToday, readChecklist, writeChecklist,
-  type CheckInRequest, type Target, type Weather, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
+  CHECKLIST, fmtTemp, getWorkoutFeedback, getWorkoutToday, readChecklist, writeChecklist,
+  type CheckInRequest, type Target, type Weather, type WorkoutFeedback, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
 } from '@/lib/workout'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 
@@ -22,6 +33,17 @@ const ICON: Record<string, typeof Bike> = {
   swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
 }
 const LOADING = ['Lacing up…', 'Loading your targets…', 'Checking the sky…', 'Stretching the hamstrings…']
+const STATUS: Record<string, { label: string; cls: string }> = {
+  done: { label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' },
+  missed: { label: 'Missed', cls: 'bg-(--danger)/10 text-(--danger)' },
+  planned: { label: 'Planned', cls: 'bg-(--bg-elevated) text-(--text-secondary)' },
+  skipped: { label: 'Skipped', cls: 'bg-(--bg-elevated) text-(--text-muted)' },
+}
+
+function distText(c: CalSession | undefined, imperial: boolean): string {
+  if (!c) return ''
+  return (Object.entries(c.km) as [DistSport, number][]).filter(([, v]) => v > 0).map(([sp, v]) => fmtDist(v, imperial, sp)).join(' + ')
+}
 
 export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckIn }: {
   sessionId?: string
@@ -32,38 +54,57 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
 }) {
   const [sid, setSid] = useState<string | undefined>(sessionId)
   const [data, setData] = useState<WorkoutToday | null>(null)
+  const [cal, setCal] = useState<CalView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
+  const [moving, setMoving] = useState<string | null>(null)
+  const feedbackRef = useRef<HTMLDivElement>(null)
   const load = useCallback(() => {
     setError(null)
     getWorkoutToday(sid).then(setData, (e: Error) => setError(e.message))
+    // Exact targets and how it went (no plan, Garmin down: the page still works without them).
+    getCalendar().then((r) => setCal(r.cal), () => setCal(null))
   }, [sid])
   useEffect(() => { load() }, [load])
   const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
 
   const s = data?.state === 'session' ? data.session : null
-  const title = s ? s.title : data?.state === 'rest' ? 'Rest day' : data?.state === 'free' ? 'Free day' : 'Today'
-  const sub = data ? (data.date === data.today ? 'Ready to go' : fmtDay(data.date, { weekday: 'long', month: 'short', day: 'numeric' })) : undefined
+  const c = s?.id ? cal?.sessions[s.id] : undefined
+  const isToday = !!data && data.date === data.today
+  const ahead = !!data && data.date >= data.today
+  const status = c?.status ?? s?.status ?? 'planned'
+  const title = s ? s.title : data?.state === 'rest' ? 'Rest day' : data?.state === 'free' ? 'Free day' : 'Workout'
+  const when = data ? `${isToday ? 'Today' : fmtDay(data.date, { weekday: 'long', month: 'short', day: 'numeric' })}${s?.time ? ` · ${fmtTime(s.time)}` : ''}` : undefined
+  const edit = () => { if (data) { close(); window.setTimeout(() => openPlanDay(data.date), 220) } }
 
   return (
-    <Screen title={title} subtitle={sub} onClose={close} closing={closing}
-      footer={s && (onAsk || onCheckIn) ? (
+    <Screen title={title} subtitle={when} onClose={close} closing={closing}
+      footer={s ? (
         <>
-          {onAsk && (
-            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]"
-              onClick={() => onAsk(`About ${data?.date === data?.today ? "today's" : 'my'} ${s.title}: `)}>
-              <MessageCircle className="size-4" /> Ask Rabbit
+          {s.id && ahead && status !== 'done' && (
+            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setMoving(s.id)}>
+              <CalendarClock className="size-4" aria-hidden /> Move
             </Button>
           )}
-          {onCheckIn && s.status === 'done' && (
+          {s.id && (
+            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={edit} aria-label="Edit this workout in your schedule">
+              <Pencil className="size-4" aria-hidden /> Edit
+            </Button>
+          )}
+          {s.id && status === 'done' ? (
             <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]"
-              onClick={() => onCheckIn({ sessionId: s.id ?? undefined, activityId: s.activity?.id ?? undefined, title: s.title })}>
-              How did it feel?
+              onClick={() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+              How did it go?
+            </Button>
+          ) : onAsk && (
+            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]"
+              onClick={() => onAsk(`About my ${s.title} on ${when}: `)}>
+              <MessageCircle className="size-4" aria-hidden /> Ask Rabbit
             </Button>
           )}
         </>
       ) : undefined}>
-      {!data && !error && <RabbitLoader className="py-16" label="Loading today's workout" cycle={LOADING} />}
+      {!data && !error && <WorkoutSkeleton />}
       {error && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <p className="text-[0.8235rem] text-(--text-muted)">{error}</p>
@@ -71,7 +112,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
         </div>
       )}
       {data && data.others.length > 1 && (
-        <div className="no-scrollbar -mb-2 flex gap-2 overflow-x-auto" role="tablist" aria-label="Today's sessions">
+        <div className="no-scrollbar -mb-2 flex gap-2 overflow-x-auto" role="tablist" aria-label="Sessions this day">
           {data.others.map((o) => {
             const on = !!s && o.id === s.id
             const I = ICON[o.sport] ?? Activity
@@ -84,7 +125,14 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
           })}
         </div>
       )}
-      {data && s && <SessionBody d={data} s={s} imperial={imperial} onSynced={load} />}
+      {data && s && (
+        <SessionBody d={data} s={s} c={c} cal={cal} status={status} imperial={imperial} onSynced={load}
+          feedbackRef={feedbackRef} onAsk={onAsk} onCheckIn={onCheckIn} onFix={() => {
+            if (!s.id) return
+            requestPlanFix(s.id)
+            close(); window.setTimeout(() => openPlanDay(data.date), 220)
+          }} />
+      )}
       {data?.state === 'rest' && (
         <Hero icon={Moon} title="Rest day" meta="Recovery is training too"
           line="Sleep, eat well, maybe an easy walk. Your next session will feel better for it." />
@@ -99,11 +147,24 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
           <Checklist day={data.today} sport="other" />
         </>
       )}
+      {moving && <MoveSessionSheet sessionId={moving} onClose={() => setMoving(null)} onMoved={() => { setMoving(null); load() }} />}
     </Screen>
   )
 }
 
-function Hero({ icon: Icon, title, meta, line, done }: { icon: typeof Bike; title: string; meta: string; line: string; done?: boolean }) {
+/** Placeholder at the page's real shape, so nothing jumps when the workout arrives. */
+function WorkoutSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true">
+      <div className="skeleton h-[112px] rounded-2xl" aria-hidden />
+      <div className="skeleton h-[84px] rounded-xl" aria-hidden />
+      <div className="skeleton h-[220px] rounded-xl" aria-hidden />
+      <RabbitLoader className="py-4" label="Loading your workout" cycle={LOADING} />
+    </div>
+  )
+}
+
+function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bike; title: string; meta: string; line: string; chip?: { label: string; cls: string } }) {
   return (
     <div className="celebrate flex flex-col gap-3 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-4">
       <div className="flex items-center gap-3">
@@ -114,24 +175,95 @@ function Hero({ icon: Icon, title, meta, line, done }: { icon: typeof Bike; titl
           <h3 className="font-display text-[1.4118rem] leading-tight text-(--brand)">{title}</h3>
           <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{meta}</p>
         </div>
-        {done && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent) px-2 py-1 text-[0.6471rem] font-semibold text-(--on-fill)">
-            <Check className="size-3.5" strokeWidth={3} /> Done
+        {chip && (
+          <span className={cn('flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.6471rem] font-semibold', chip.cls)}>
+            {chip.label === 'Done' && <Check className="size-3.5" strokeWidth={3} />}{chip.label}
           </span>
         )}
       </div>
-      <p className="text-[0.8824rem] leading-snug text-(--text)">{line}</p>
+      {line && <p className="text-[0.8824rem] leading-snug text-(--text)">{line}</p>}
     </div>
   )
 }
 
-function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: WorkoutSession; imperial: boolean; onSynced: () => void }) {
-  const meta = [s.minutes ? fmtDuration(s.minutes) : null, s.meters ? (s.sport === 'swim' ? fmtMeters(s.meters, imperial) : fmtDist(s.meters / 1000, imperial)) : null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null]
-    .filter(Boolean).join(' · ')
+function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
+  return (
+    <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
+      <h4 className="flex items-center gap-1.5 px-3.5 pt-3 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        {Icon && <Icon className="size-3.5" aria-hidden />}{title}
+      </h4>
+      {children}
+    </section>
+  )
+}
+
+function zonesIn(secs: WSection[]): number[] {
+  const out = new Set<number>()
+  const walk = (st: WStep[]) => { for (const x of st) { if (x.type === 'repeat') walk(x.steps); else if (x.zone) out.add(x.zone) } }
+  for (const sec of secs) walk(sec.steps)
+  return [...out].sort()
+}
+
+function LearnMore({ s }: { s: WorkoutSession }) {
+  const [open, setOpen] = useState(false)
+  const k = (s.kind && KIND_GLOSSARY[s.kind]) || (s.sport === 'brick' ? KIND_GLOSSARY.brick : undefined)
+  const zones = zonesIn(s.sections)
+  if (!k && !zones.length) return null
+  return (
+    <div className="rounded-xl border border-(--border) bg-(--bg-surface)">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+        className="flex min-h-12 w-full items-center gap-2 px-3.5 text-left text-[0.7647rem] font-medium text-(--accent)">
+        <BookOpen className="size-4" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
+        <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 text-[0.7647rem] leading-snug">
+          {k && (
+            <dl className="flex flex-col gap-1.5">
+              <div><dt className="font-semibold text-(--text)">What it is</dt><dd className="text-(--text-secondary)">{k.what}</dd></div>
+              <div><dt className="font-semibold text-(--text)">Why it's in your plan</dt><dd className="text-(--text-secondary)">{k.why}</dd></div>
+              <div><dt className="font-semibold text-(--text)">How it should feel</dt><dd className="text-(--text-secondary)">{k.feel}</dd></div>
+            </dl>
+          )}
+          {zones.length > 0 && (
+            <ul className="flex flex-col gap-1">
+              {zones.map((z) => ZONE_GLOSSARY[z] && (
+                <li key={z} className="text-(--text-secondary)"><span className="font-medium text-(--text)">{ZONE_GLOSSARY[z]!.title}:</span> {ZONE_GLOSSARY[z]!.text}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, onAsk, onCheckIn, onFix }: {
+  d: WorkoutToday; s: WorkoutSession; c: CalSession | undefined; cal: CalView | null; status: string; imperial: boolean
+  onSynced: () => void; feedbackRef: React.RefObject<HTMLDivElement | null>
+  onAsk?: (text: string) => void; onCheckIn?: (p: CheckInRequest) => void; onFix: () => void
+}) {
+  const isToday = d.date === d.today
+  const ahead = d.date >= d.today
+  const dist = distText(c, imperial) || (s.meters ? (s.sport === 'swim' ? fmtMeters(s.meters, imperial) : fmtDist(s.meters / 1000, imperial)) : '')
+  const meta = [s.minutes ? fmtDuration(s.minutes) : null, dist || null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null].filter(Boolean).join(' · ')
+  const t = c?.targets
+  const note = c?.note
   return (
     <>
-      <Hero icon={ICON[s.sport] ?? Activity} title={s.title} meta={meta || 'Today'} line={s.purpose} done={s.status === 'done'} />
-      {d.readiness && (
+      <Hero icon={ICON[s.sport] ?? Activity} title={s.title} meta={meta || 'Workout'} line={note?.why || s.purpose}
+        chip={STATUS[status] ?? STATUS.planned} />
+      {s.time && (
+        <p className="-mt-1 flex items-center gap-1.5 px-1 text-[0.7647rem] text-(--text-secondary)">
+          <Clock className="size-3.5" aria-hidden /> Starts at {fmtTime(s.time)}
+        </p>
+      )}
+      {c?.adjusted && (
+        <p className="flex items-start gap-2 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-3 py-2 text-[0.7647rem] leading-snug text-(--accent)">
+          <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {c.adjusted}
+        </p>
+      )}
+      {isToday && d.readiness && (
         <p className={cn('rounded-xl border px-3 py-2 text-[0.7647rem] leading-snug',
           d.readiness.tone === 'easy' || d.readiness.tone === 'rest'
             ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)'
@@ -139,9 +271,33 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
           {d.readiness.line}
         </p>
       )}
-      {s.main_targets.length > 0 && <TargetChips targets={s.main_targets} label="Main target" />}
-      {s.sections.length > 0 && <Timeline sections={s.sections} />}
-      {s.sections.length === 0 && s.detail && <Card><Field label="The workout"><p className="text-[0.8235rem] text-(--text)">{s.detail}</p></Field></Card>}
+      {status === 'missed' && (
+        <div className="flex flex-col gap-2 rounded-xl border border-(--danger)/25 bg-(--danger)/5 px-3.5 py-3">
+          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--danger)"><TriangleAlert className="size-4" aria-hidden /> Missed</p>
+          {c?.missed?.why && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">{c.missed.why}</p>}
+          {s.id && c?.missed?.this_week && (
+            <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-[0.8235rem]" onClick={onFix}>
+              <Wrench className="size-4" aria-hidden /> Fix my week
+            </Button>
+          )}
+        </div>
+      )}
+      {c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport} />}
+
+      {t ? (
+        <>
+          <SectionCard title="Key numbers"><WorkoutSummary t={t} dist={dist} imperial={imperial} /></SectionCard>
+          <SectionCard title="The workout · tap a step for effort">
+            <div className="px-3.5 pt-2"><WorkoutSteps t={t} imperial={imperial} /></div>
+          </SectionCard>
+        </>
+      ) : (
+        <>
+          {s.main_targets.length > 0 && <TargetChips targets={s.main_targets} label="Main target" />}
+          {s.sections.length > 0 && <Timeline sections={s.sections} />}
+          {s.sections.length === 0 && s.detail && <Card><Field label="The workout"><p className="text-[0.8235rem] text-(--text)">{s.detail}</p></Field></Card>}
+        </>
+      )}
       {s.exercises.length > 0 && (
         <Card>
           <Field label="Exercises">
@@ -153,9 +309,16 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
           </Field>
         </Card>
       )}
-      <CueCard cue={s.cue} />
+      {note && (note.how || note.cues) ? (
+        <SectionCard title={note.source === 'coach' ? 'From your coach' : 'How to do it'} icon={Lightbulb}>
+          <div className="flex flex-col gap-1.5 px-3.5 pt-2 text-[0.8235rem] leading-snug">
+            {note.how && <p className="text-(--text)">{note.how}</p>}
+            {note.cues && <p className="text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
+          </div>
+        </SectionCard>
+      ) : <CueCard cue={s.cue} />}
       <FuelCard s={s} />
-      {(s.gear.length > 0 || d.weather) && (
+      {(s.gear.length > 0 || (isToday && d.weather)) && (
         <div className="flex flex-col gap-2">
           {s.gear.map((g) => (
             <div key={g.id} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5',
@@ -169,14 +332,140 @@ function SessionBody({ d, s, imperial, onSynced }: { d: WorkoutToday; s: Workout
               </span>
             </div>
           ))}
-          {d.weather && <WeatherChip w={d.weather} imperial={imperial} />}
+          {isToday && d.weather && <WeatherChip w={d.weather} imperial={imperial} />}
         </div>
       )}
-      {s.id && s.garmin.syncable && (d.garmin_connected === false
+      {s.id && ahead && status !== 'done' && s.garmin.syncable && (d.garmin_connected === false
         ? <GarminEmpty what="workout" compact />
         : <WatchRow s={s} onSynced={onSynced} />)}
-      {s.status !== 'done' && d.date === d.today && <Checklist day={d.today} sport={s.sport} />}
+      <LearnMore s={s} />
+      {cal?.pace_source === 'default' && s.sport === 'run' && ahead && (
+        <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+          Paces start from a typical runner. Add your threshold pace in Me › Training profile, or keep training and Rabbit will learn it from your runs.
+        </p>
+      )}
+      {s.id && (status === 'done' || d.date <= d.today) && (
+        <div ref={feedbackRef} className="scroll-mt-4">
+          <FeedbackCard s={s} c={c} date={d.date} imperial={imperial} onAsk={onAsk}
+            onVoice={onCheckIn ? () => onCheckIn({ sessionId: s.id ?? undefined, activityId: s.activity?.id ?? undefined, title: s.title }) : undefined} />
+        </div>
+      )}
+      {status !== 'done' && isToday && <Checklist day={d.today} sport={s.sport} />}
     </>
+  )
+}
+
+const RPE_WORD = ['', 'Very easy', 'Very easy', 'Easy', 'Easy', 'Moderate', 'Moderate', 'Hard', 'Hard', 'Very hard', 'All out']
+const FEELS = [
+  { id: 'great', label: 'Great', feel: 5 }, { id: 'ok', label: 'OK', feel: 3 },
+  { id: 'tough', label: 'Tough', feel: 2 }, { id: 'pain', label: 'Something hurts', feel: 2 },
+] as const
+const TONE: Record<WorkoutFeedback['tone'], string> = {
+  good: 'border-(--accent)/30 bg-(--accent-subtle)', info: 'border-(--border) bg-(--bg-surface)',
+  ease: 'border-(--warning)/30 bg-(--warning-subtle)', care: 'border-(--danger)/30 bg-(--danger)/5',
+}
+
+/** "How did it go?" (RPE slider, feel, pain, note: saved as this session's check-in) and
+ *  Rabbit's feedback: the server's deterministic read first, then "Ask Rabbit for more" with the
+ *  workout's Garmin numbers and the athlete's own words prefilled (never Oura data). */
+function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
+  s: WorkoutSession; c: CalSession | undefined; date: string; imperial: boolean; onAsk?: (text: string) => void; onVoice?: () => void
+}) {
+  const [got, setGot] = useState<{ checkin: Checkin | null; feedback: WorkoutFeedback | null } | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [rpe, setRpe] = useState(5)
+  const [feel, setFeel] = useState<(typeof FEELS)[number]['id'] | null>(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const sid = s.id!
+  const load = useCallback(() => { getWorkoutFeedback(sid).then(setGot, () => setGot({ checkin: null, feedback: null })) }, [sid])
+  useEffect(() => { load() }, [load])
+
+  async function save() {
+    setBusy(true); setErr(null)
+    const f = FEELS.find((x) => x.id === feel)
+    try {
+      await createCheckin({ text: note.trim(), session_id: sid, activity_id: s.activity?.id ?? undefined, date, rpe,
+        feel: f?.feel, pain: feel === 'pain' })
+      setEditing(false); setNote(''); load()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  function askMore() {
+    if (!onAsk) return
+    const a = c?.went?.actual
+    const u = imperial ? 'mi' : 'km'
+    const did = a ? [a.minutes ? `${a.minutes} min` : '', a.km ? fmtDist(a.km, imperial, s.sport === 'swim' ? 'swim' : s.sport === 'bike' ? 'bike' : 'run') : '',
+      a.pace ? `avg pace ${Math.floor((a.pace * (imperial ? 1.609344 : 1)) / 60)}:${String(Math.round((a.pace * (imperial ? 1.609344 : 1)) % 60)).padStart(2, '0')}/${u}` : '',
+      a.avg_hr ? `avg HR ${Math.round(a.avg_hr)}` : '', a.cadence ? `cadence ${Math.round(a.cadence)}` : ''].filter(Boolean).join(', ') : ''
+    const ck = got?.checkin
+    const words = [ck?.rpe != null ? `RPE ${ck.rpe}/10` : '', ck?.feel != null ? `felt ${ck.feel}/5` : '', ck?.pain_flag ? 'something hurt' : '', ck?.text ? `"${ck.text}"` : ''].filter(Boolean).join(', ')
+    onAsk(`Feedback on my ${s.title} (${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}): planned ${s.minutes ? fmtDuration(s.minutes) : ''}${s.kind ? ` ${KIND_LABEL[s.kind] ?? s.kind}` : ''}.`
+      + (did ? ` I did ${did}.` : '') + (words ? ` ${words}.` : '') + ' How did it go, and what should I change next time? ')
+  }
+
+  const ck = got?.checkin
+  const fb = got?.feedback
+  const form = editing || (got !== null && !ck)
+  return (
+    <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+      <h4 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">How did it go?</h4>
+      {got === null && <div className="skeleton h-[120px] rounded-lg" aria-hidden />}
+      {ck && !editing && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {checkinChips(ck).map((x) => (
+              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-[0.7059rem] font-medium',
+                x.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--border) text-(--text)')}>{x.label}</span>
+            ))}
+          </div>
+          {ck.text && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">“{ck.text}”</p>}
+          <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => setEditing(true)}>Add another note</button>
+        </div>
+      )}
+      {form && (
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="flex items-baseline justify-between text-[0.7647rem] text-(--text)">
+              <span>Effort (RPE)</span>
+              <span className="font-mono font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe}/10 · {RPE_WORD[rpe]}</span>
+            </span>
+            <input type="range" min={1} max={10} step={1} value={rpe} onChange={(e) => setRpe(Number(e.target.value))}
+              aria-valuetext={`${rpe} out of 10, ${RPE_WORD[rpe]}`} className="h-11 w-full accent-(--accent)" />
+          </label>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="How did it feel">
+            {FEELS.map((f) => (
+              <button key={f.id} type="button" role="radio" aria-checked={feel === f.id} onClick={() => setFeel(feel === f.id ? null : f.id)}
+                className={cn('plan-chip min-h-11', feel === f.id && 'plan-chip--on', f.id === 'pain' && feel === f.id && 'border-(--danger) text-(--danger)')}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 600))} rows={2} placeholder="Anything else? Legs, sleep, weather… (optional)"
+            aria-label="Note about this workout"
+            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void save()}>Save</Button>
+            {editing && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={() => setEditing(false)}>Cancel</Button>}
+            {onVoice && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={onVoice}>Say it instead</Button>}
+          </div>
+        </div>
+      )}
+      {fb && (
+        <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
+          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><Sparkles className="size-4 text-(--accent)" aria-hidden /> {fb.headline}</p>
+          <ul className="flex flex-col gap-1">
+            {fb.lines.map((l) => <li key={l} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{l}</li>)}
+          </ul>
+        </div>
+      )}
+      {onAsk && (ck || c?.went) && (
+        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={askMore}>
+          <MessageCircle className="size-4" aria-hidden /> Ask Rabbit for more feedback
+        </Button>
+      )}
+    </section>
   )
 }
 

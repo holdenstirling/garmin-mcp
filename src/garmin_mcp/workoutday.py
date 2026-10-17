@@ -312,6 +312,7 @@ def session_view(s: dict[str, Any], day: str, athlete: dict[str, Any], *, phase:
     zone, _ = _zone_of(s)
     return {
         "id": s.get("id"), "date": day, "title": s.get("title") or "Session", "sport": sport, "kind": kind,
+        "time": s.get("time") if isinstance(s.get("time"), str) else None,
         "minutes": total or None, "meters": s.get("meters"), "detail": s.get("detail") or "",
         "purpose": purpose(kind, phase, recovery), "cue": CUE.get(kind or "", "Smooth and controlled."),
         "sections": secs,
@@ -685,3 +686,73 @@ def build_reaction(act: dict[str, Any], acts: list[dict[str, Any]], dview: dict[
 
 __all__ = ["WorkoutDay", "build_reaction", "check_effort", "gear_for", "new_bests", "purpose", "readiness_line",
            "session_view", "targets", "verdict", "weather_now"]
+
+
+# ------------------------------------------------------------ feedback --
+# "Rabbit's feedback" on one workout, right away and without a model: the plan's intent (kind),
+# what Garmin recorded vs the targets (workouttargets.how_it_went) and the athlete's own RPE /
+# feel / pain from the check-in. Oura data is never an input.
+EXPECTED_RPE: dict[str, tuple[int, int]] = {
+    "recovery": (1, 3), "easy": (2, 4), "endurance": (2, 4), "technique": (2, 4), "shakeout": (1, 3),
+    "long": (3, 5), "brick": (4, 6), "strides": (3, 5), "tempo": (6, 7), "sweetspot": (6, 7),
+    "threshold": (7, 8), "css": (7, 8), "race_pace": (6, 8), "intervals": (8, 9), "vo2": (8, 9),
+    "hills": (7, 8), "strength": (5, 7), "race": (8, 10),
+}
+EASY_KINDS = ("recovery", "easy", "endurance", "technique", "shakeout", "long")
+
+
+def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
+                   checkin: dict[str, Any] | None) -> dict[str, Any] | None:
+    """{tone: good|ease|care|info, headline, lines} or None when there's nothing to say yet
+    (not done and no check-in)."""
+    kind = str(session.get("kind") or "")
+    c = checkin or {}
+    rpe = c.get("rpe") if isinstance(c.get("rpe"), int) else None
+    feel = c.get("feel") if isinstance(c.get("feel"), int) else None
+    pain = bool(c.get("pain_flag"))
+    verdict = (went or {}).get("verdict")
+    if not went and rpe is None and feel is None and not pain:
+        return None
+    lo, hi = EXPECTED_RPE.get(kind, (3, 6))
+    easy = kind in EASY_KINDS
+    lines: list[str] = []
+    tone, headline = "good", "Nicely done"
+    if pain:
+        tone, headline = "care", "Look after that"
+        lines.append("You flagged pain. Keep the next day easy or take it off, and stop if it gets sharper. "
+                     "If it's still there in a couple of days, have it checked.")
+        lines.append("Tell Rabbit where it hurts and it will keep your next hard session light.")
+    if verdict == "short":
+        if not pain:
+            tone, headline = "info", "Cut short"
+        lines.append("Shorter than planned. Fine once in a while; if it keeps happening, ask Rabbit to scale the week back.")
+    if rpe is not None:
+        if rpe > hi:
+            if not pain:
+                tone, headline = "ease", "Harder than it should be"
+            lines.append(f"You rated it {rpe}/10; a {kind.replace('_', ' ') or 'session'} like this should feel about {lo}-{hi}/10."
+                         + (" Hold back next easy day so the hard days count." if easy else
+                            " Make the next day or two easy and sleep well."))
+        elif rpe < lo and not easy:
+            if not pain and tone == "good":
+                headline = "Felt easy: you're getting fitter"
+            lines.append(f"You rated it {rpe}/10, easier than the {lo}-{hi}/10 this session aims for. "
+                         "If the next one feels the same, accept the faster paces Rabbit suggests.")
+        elif not pain and verdict in (None, "hit", "done"):
+            lines.append(f"{rpe}/10 is right where this session should be ({lo}-{hi}/10).")
+    if verdict in ("hard", "fast") and easy and (rpe is None or rpe <= hi):
+        if tone == "good":
+            tone, headline = "ease", "Easy day ran hot"
+        lines.append("Heart rate or pace was above the plan for an easy day. Slow down next time: easy days build the engine.")
+    elif verdict == "slow" and not easy and not pain:
+        lines.append("A bit slower than planned. Heat, hills, sleep and stress all count; one session doesn't change the plan.")
+    elif verdict == "long":
+        lines.append("Longer than planned. Keep the extra for easy days so it doesn't eat into recovery.")
+    if feel is not None and feel <= 2 and not pain and tone == "good":
+        tone, headline = "info", "Rough one"
+        lines.append("Tough day. If the next easy session also feels flat, tell Rabbit and it will lighten the week.")
+    if not lines and verdict == "hit":
+        lines.append("Right on target. That's exactly the work the plan asked for.")
+    if not lines:
+        lines.append("Logged. Add how it felt and Rabbit can tell you more.")
+    return {"tone": tone, "headline": headline, "lines": lines[:4]}

@@ -22,6 +22,7 @@ import { WeekPanel } from '@/components/home/WeekPanel'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
+import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
@@ -397,6 +398,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(OPEN_EVENT_EVENT, onEvent)
     return () => window.removeEventListener(OPEN_EVENT_EVENT, onEvent)
   }, [setTab])
+  useEffect(() => {
+    // lib/workoutnav openWorkout (Home's week, Up next, Schedule views): the full workout page.
+    const onWorkout = (e: Event) => { const id = (e as CustomEvent<OpenWorkout>).detail?.id; if (id) { setSheet(null); setClosing(false); setWorkout({ sessionId: id }) } }
+    window.addEventListener(OPEN_WORKOUT_EVENT, onWorkout)
+    return () => window.removeEventListener(OPEN_WORKOUT_EVENT, onWorkout)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Search everywhere (components/search): a picked result -> its tab or page.
     const onPick = (e: Event) => {

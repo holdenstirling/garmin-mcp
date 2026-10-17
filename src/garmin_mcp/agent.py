@@ -409,13 +409,16 @@ class Agent:
         return self._readiness.get(user_id, event_id).get("grade")
 
     async def checkin(self, user_id: str, text: str, *, session_id: Any = None, activity_id: Any = None,
-                      day: Any = None, feel: Any = None) -> tuple[dict[str, Any], str]:
+                      day: Any = None, feel: Any = None, rpe: Any = None,
+                      pain: Any = None) -> tuple[dict[str, Any], str]:
         """Voice check-in: one forced tool call fills the schema strictly from the athlete's
         words; without a model (or if it fails) the deterministic parser does. Returns
         (entry, source)."""
         text = " ".join(str(text or "").split())[:1000]
         feel_in = feel if isinstance(feel, int) and not isinstance(feel, bool) and 1 <= feel <= 5 else None
-        if not text and feel_in is None:
+        rpe_in = rpe if isinstance(rpe, int) and not isinstance(rpe, bool) and 1 <= rpe <= 10 else None
+        pain_in = pain if isinstance(pain, bool) else None
+        if not text and feel_in is None and rpe_in is None and not pain_in:
             raise CheckinError("Say or type how it felt first.")
         d = self.checkins.resolve_date(user_id, day)
         sid = self.checkins.ref(session_id, "session_id")
@@ -435,8 +438,15 @@ class Agent:
             fields = fallback_parse(text)
         elif not fields.get("summary"):
             fields["summary"] = fallback_parse(text)["summary"]
+        # Tapped answers (the workout page's RPE slider, feel chips, pain toggle) beat parsing.
         if feel_in is not None:
             fields["feel"] = feel_in
+        if rpe_in is not None:
+            fields["rpe"] = rpe_in
+        if pain_in is not None:
+            fields["pain_flag"] = pain_in
+        if not fields.get("summary") and rpe_in is not None:
+            fields["summary"] = f"RPE {rpe_in}/10" + (f", felt {fields['feel']}/5." if fields.get("feel") else ".")
         if not fields.get("summary"):
             fields["summary"] = f"Felt {fields['feel']}/5." if fields.get("feel") else "Checked in."
         entry = self.checkins.add(user_id, text, fields, day=d, session_id=sid, activity_id=aid)

@@ -14,11 +14,13 @@ import type { TodayActionKind } from '@/lib/live'
 import { syncGarmin } from '@/lib/plan'
 import type { UpNext } from '@/lib/upnext'
 import { cn } from '@/lib/utils'
+import { openWorkout } from '@/lib/workoutnav'
 
 // "Move" today's session to another day (loaded on first use).
 const MoveSessionSheet = lazy(() => import('@/components/plan/MoveSheet').then((m) => ({ default: m.MoveSessionSheet })))
 
 const SEEN = 'rabbit.upnext.seen'
+const isoToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 const SIGNAL_TERM: Record<string, Term> = {
   Form: 'form', Readiness: 'readiness', 'Oura readiness': 'oura_readiness', 'Garmin readiness': 'garmin_readiness', Streak: 'streak',
 }
@@ -100,7 +102,12 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Up next</span>
-          <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{headline}</span>
+          {s?.id && up.kind === 'session' ? (
+            <button type="button" onClick={() => openWorkout(s.id!, isoToday())} aria-label={`${headline}. Open the workout`}
+              className="block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+          ) : (
+            <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{headline}</span>
+          )}
         </span>
         {week && week.length === 7 && <WeekDots days={week} />}
       </div>

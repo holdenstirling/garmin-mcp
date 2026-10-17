@@ -1197,7 +1197,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         try:
             entry, source = await chat.agent.checkin(
                 user_id, body.get("text") or "", session_id=body.get("session_id"),
-                activity_id=body.get("activity_id"), day=body.get("date"), feel=body.get("feel"))
+                activity_id=body.get("activity_id"), day=body.get("date"), feel=body.get("feel"),
+                rpe=body.get("rpe"), pain=body.get("pain"))
         except CheckinError as e:
             raise _UserError(str(e)) from None
         awarded = f"checkin:{entry['date']}" in (ledger.load().get("bonus") or [])
@@ -3542,7 +3543,25 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return Response(body.encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
                 "Content-Disposition": 'attachment; filename="rabbit-workout.ics"', "Cache-Control": "no-store"})
 
+        async def workout_feedback_get(request: Request, user_id: str) -> Response:
+            # The workout page's "Rabbit's feedback": the session's plan intent, Garmin vs targets
+            # (calendar view `went`) and the latest check-in for it. Deterministic, no model.
+            from .workoutday import coach_feedback as _coach_fb
+            sid = request.query_params.get("session_id") or ""
+            if not sid or len(sid) > 40 or not sid.isalnum():
+                raise ValueError("session_id")
+            plan = await _plan_call(lambda: plans.get(user_id))
+            sess = next((s for _, _, s in _pc.iter_sessions(plan or {}) if s.get("id") == sid), None)
+            if sess is None:
+                raise _UserError("That session isn't in your plan anymore.", 404)
+            cal = await _plan_call(lambda: _pcal.view(user_id)) or {}
+            item = (cal.get("sessions") or {}).get(sid) or {}
+            cks = await anyio.to_thread.run_sync(lambda: chat.agent.checkins.list(user_id, 120, session_id=sid))
+            last = max(cks, key=lambda c: c.get("ts") or 0) if cks else None
+            return JSONResponse({"checkin": last, "feedback": _coach_fb(sess, item.get("went"), last)})
+
         home_routes += [
+            Route("/app/api/workout/feedback", _plan_api(workout_feedback_get, mutating=False), methods=["GET"]),
             Route("/app/api/plan/sessions/{sid}/calendar.ics", _plan_api(session_ics, mutating=False), methods=["GET"]),
             Route("/app/api/plan/calendar", _plan_api(plancal_get, mutating=False), methods=["GET"]),
             *[Route(f"/app/api/plan/calendar/{k}", _plan_api(_pc_op(k), mutating=True), methods=["POST"])

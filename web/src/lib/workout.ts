@@ -1,6 +1,7 @@
 // Workout day: the "Ready to go" screen before a session and the reaction card after one
 // (server: workoutday.py). Both are deterministic, no AI.
 import { getJSON } from '@/lib/api'
+import type { Checkin } from '@/lib/checkins'
 import { fmtDist as fmtDistBase } from '@/lib/format'
 
 export type Target = { kind: 'pace' | 'power' | 'hr' | 'rpe' | 'rest'; label: string }
@@ -16,6 +17,8 @@ export type Weather = {
 }
 export type WorkoutSession = {
   id: string | null; date: string; title: string; sport: string; kind: string | null; minutes: number | null
+  /** start time HH:MM, when the athlete set one */
+  time?: string | null
   meters?: number | null; detail: string; purpose: string; cue: string; sections: WSection[]
   warmup_min: number; cooldown_min: number; main_targets: Target[]
   exercises: { name: string; dose: string }[]; prehab: { name: string; dose: string }[]
@@ -93,3 +96,9 @@ export function writeChecklist(day: string, done: number[]) {
 export const fmtDist = (km: number, imperial: boolean, sport?: string | null) => fmtDistBase(km, imperial, sport)
 export const fmtTemp = (c: number | null | undefined, imperial: boolean) =>
   c == null ? '' : imperial ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`
+
+/** The workout page's "Rabbit's feedback": deterministic, from the plan intent, Garmin vs targets
+ *  and the latest check-in for this session (server: workoutday.coach_feedback). */
+export type WorkoutFeedback = { tone: 'good' | 'ease' | 'care' | 'info'; headline: string; lines: string[] }
+export const getWorkoutFeedback = (sessionId: string) =>
+  getJSON<{ checkin: Checkin | null; feedback: WorkoutFeedback | null }>(`/api/workout/feedback?session_id=${encodeURIComponent(sessionId)}`)

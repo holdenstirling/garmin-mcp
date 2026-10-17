@@ -167,6 +167,8 @@ export function goalCountdown(goal: Goal | null): string {
 export type Sport = 'swim' | 'bike' | 'run' | 'brick' | 'strength' | 'rest' | 'other'
 export type DoneActivity = { id: number | null; name: string; sport: Sport; minutes: number; distance_km?: number | null }
 export type PlannedSession = {
+  /** plan session id (absent for uploaded plans) */
+  id?: string
   sport: Sport; title: string; minutes: number | null; detail: string
   status: 'done' | 'missed' | 'planned' | 'rest'; activity?: DoneActivity
 }

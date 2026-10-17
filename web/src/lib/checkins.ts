@@ -21,7 +21,9 @@ export type Checkin = {
   edited?: boolean
 }
 export type CheckinEdit = Partial<Pick<Checkin, 'feel' | 'rpe' | 'energy' | 'sleep' | 'soreness' | 'pain_flag' | 'mood' | 'summary' | 'text'>>
-export type NewCheckin = { text: string; session_id?: string; activity_id?: string | number; date?: string; feel?: number }
+export type NewCheckin = { text: string; session_id?: string; activity_id?: string | number; date?: string; feel?: number
+  /** tapped answers (the workout page): they win over what's parsed from the words */
+  rpe?: number; pain?: boolean }
 
 export const AREA_LABEL: Record<Area, string> = {
   calf: 'Calf', shin: 'Shin', achilles: 'Achilles', knee: 'Knee', hamstring: 'Hamstring', quad: 'Quad', hip: 'Hip',
