@@ -2,8 +2,9 @@
 //   A workout -> the session editor on a day (with a start time), on the plan calendar;
 //   An event -> the event editor (races, group sessions, trips; can repeat), linked to the plan;
 //   Travel / days away -> travel mode (lib/plantools openTravel);
+//   I'm sick -> sick mode (lib/sick openSick);
 //   A plan -> build one in Rabbit, or import a plan you already have.
-import { CalendarPlus, ChevronRight, Dumbbell, FileUp, Plane } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Dumbbell, FileUp, Plane, Thermometer } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { RabbitLogo } from '@/components/RabbitLogo'
 
@@ -21,13 +22,15 @@ function Option({ icon, title, sub, onClick }: { icon: React.ReactNode; title: s
   )
 }
 
-export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onBuildPlan, onImportPlan, onClose }: {
+export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuildPlan, onImportPlan, onClose }: {
   /** a Rabbit-built plan exists (workouts are added to it) */
   hasPlan: boolean
   onWorkout: () => void
   onEvent: () => void
   /** travel mode: days away (a built plan only) */
   onTravel?: () => void
+  /** sick mode (a built plan only) */
+  onSick?: () => void
   onBuildPlan: () => void
   onImportPlan: () => void
   onClose: () => void
@@ -48,6 +51,10 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onBuildPlan, o
       {hasPlan && onTravel && (
         <Option icon={<Plane className="size-5" />} title="Travel / days away"
           sub="Hotel gym, treadmill or runs only: Rabbit swaps those days' sessions" onClick={pick(onTravel)} />
+      )}
+      {hasPlan && onSick && (
+        <Option icon={<Thermometer className="size-5" />} title="I'm sick"
+          sub="Rest or short easy days until you're better, then an easy return" onClick={pick(onSick)} />
       )}
       <p className="mt-2 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">A plan</p>
       <Option icon={<RabbitLogo size={20} current />} title={hasPlan ? 'Rebuild my plan' : 'Build my plan'}

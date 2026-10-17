@@ -298,7 +298,7 @@ def headline(cur: int, today_done: bool, best: int, week: dict[str, Any],
 
 
 def plan_rest_days(plan: dict[str, Any] | None, today: date) -> set[date]:
-    """Days the plan scheduled no training (they keep the streak alive)."""
+    """Days the plan scheduled no training, and sick days (they keep the streak alive)."""
     out: set[date] = set()
     for w in (plan or {}).get("weeks") or []:
         try:
@@ -312,7 +312,9 @@ def plan_rest_days(plan: dict[str, Any] | None, today: date) -> set[date]:
             ss = (w.get("days") or {}).get(d.isoformat()) or []
             if not any(s.get("sport") != "rest" for s in ss):
                 out.add(d)
-    return out
+    # Sick days (sick mode, sick.py) keep the streak alive too, even a head-cold easy day.
+    from .sick import sick_days
+    return out | sick_days(plan, today)
 
 
 class StatsService:

@@ -27,6 +27,8 @@ import { FitnessCountdown } from '@/components/home/FitnessCountdown'
 import { OPEN_PLAN_DAY_EVENT, PLAN_VIEW_KEY, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { OPEN_TRAVEL_EVENT, openTravel } from '@/lib/plantools'
+import { openSick } from '@/lib/sick'
+import { SickBanner, SickHost } from '@/components/plan/SickHost'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_ACTIVITY_EVENT, type OpenActivity } from '@/lib/activitynav'
 import { OPEN_CHECKLIST_EVENT } from '@/lib/racechecklist'
@@ -929,6 +931,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'racepack') { openRaces(); pushPage({ k: 'screen', s: 'racepack' }) }
     else if (a.id === 'raceweek') { if (a.event_id) showPage({ k: 'raceweek', id: a.event_id, section: a.section }); else openRaces() }
     else if (a.id === 'plan') openPlan()
+    else if (a.id === 'sick') openSick()
     else if (a.id === 'plan_fix') { openPlan(); requestPlanFix(a.session_id) }
     else if (a.id === 'progress') openProgress()
     else if (a.id === 'community_share' && a.draft_id) {
@@ -1093,6 +1096,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
             {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
+            {athlete && builtPlan && <SickBanner className="mx-4 mt-3" />}
             {athlete && <NiggleNudge refreshKey={feedTick} />}
             {athlete && goal && <CalendarNudge refreshKey={feedTick} />}
             {upnext && (
@@ -1536,7 +1540,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
           onEvent={() => { setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }}
-          onTravel={openTravel}
+          onTravel={openTravel} onSick={openSick}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
       )}
       {visited.has('feed') && (
@@ -1639,6 +1643,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {monthCard && <MonthRecapSheet month={monthCard} onClose={() => setMonthCard(null)} />}
       {me.role === 'athlete' && <CelebrationHost ready={overlayFree && !reward && reaction == null && !monthCard} />}
       {me.role === 'athlete' && <BodyHost imperial={imperial} />}
+      {me.role === 'athlete' && <SickHost onToast={showToast} />}
       <PaceHost />
       {reaction != null && (
         <ReactionCard key={reaction} activityId={reaction} imperial={imperial}

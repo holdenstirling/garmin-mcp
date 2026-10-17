@@ -1,7 +1,9 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
+import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
+import { SickBanner } from './SickHost'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -129,7 +131,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   }, [coachMode, canMessage])
   useEffect(() => {
     if (coachMode) return
-    getAdjust().then(setProposal, () => {})
+    const fetchAdjust = () => { getAdjust().then(setProposal, () => {}) }
+    fetchAdjust()
+    // Sick mode on/off changes what Rabbit suggests (nothing while sick or easing back).
+    window.addEventListener(SICK_CHANGED_EVENT, fetchAdjust)
+    return () => window.removeEventListener(SICK_CHANGED_EVENT, fetchAdjust)
   }, [coachMode])
   useEffect(() => {
     if (coachMode || !me.calendar?.connected) return
@@ -280,6 +286,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             </Button>
           )}
           {undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
+          {!readOnly && <SickBanner />}
           {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}
         </div>
       )}
@@ -384,6 +391,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           onClick={onOpenEvents} />
         <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
           onClick={() => setTravel('new')} />
+        {!readOnly && (
+          <Row icon={<Icon><Thermometer /></Icon>} title="I'm sick" subtitle={plan.sick?.active ? `Sick mode on · day ${plan.sick.day}` : 'Rest or short easy days, then an easy return'}
+            onClick={openSick} />
+        )}
         {plan.trips.map((t) => (
           <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
             trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-[0.7059rem]" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>} />

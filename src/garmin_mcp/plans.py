@@ -41,6 +41,7 @@ from .planbuilder import (
     week_for,
 )
 from .nutrition import fuel, fuel_plan
+from . import sick as _sick
 from .providers import GarminError, ReauthRequired
 
 if TYPE_CHECKING:
@@ -629,8 +630,8 @@ class PlanService:
                         continue
                     new: list[dict[str, Any]] = []
                     for x in w["days"][day]:
-                        if x["sport"] == "rest" or x.get("kind") == "race":
-                            new.append(x)
+                        if x["sport"] == "rest" or x.get("kind") == "race" or x.get("sick"):
+                            new.append(x)  # sick mode wins on its days
                             continue
                         keep(day)
                         self._orphan(plan, x)
@@ -694,8 +695,14 @@ class PlanService:
                                 self._orphan(plan, x)
                         w["days"][d] = keep or [make_session("rest", "rest", 0)]
                         touched.add(w["start"])
+            sick = plan.get("sick")
             for day, sessions in orig.items():
                 if day < t:
+                    continue
+                if sick is not None and day in sick["original"]:
+                    # Sick mode holds this day: what comes back when sick mode ends is the
+                    # pre-trip plan, not the travel version.
+                    sick["original"][day] = [{k: v for k, v in x.items() if k != "garmin"} for x in sessions]
                     continue
                 w = week_for(plan, date.fromisoformat(day))
                 if w is None:
@@ -725,6 +732,46 @@ class PlanService:
                     recompute_week(w)
             plan["trips"] = [x for x in trips if x["id"] != trip_id]
         return self._edit(user_id, fn)
+
+    # -------------------------------------------------------------- sick --
+    def sick_preview(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        plan = self.get(user_id)
+        if plan is None:
+            raise PlanError("Build a plan first.")
+        return _sick.preview(plan, body, self.today(user_id))
+
+    def sick_start(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Sick mode on (or changed): see sick.py. Undoable."""
+        return self._edit(user_id, lambda plan, today: _sick.start(plan, body, today, self._orphan))
+
+    def sick_extend(self, user_id: str, days: int = 2) -> dict[str, Any]:
+        return self._edit(user_id, lambda plan, today: _sick.extend(plan, today, days, self._orphan))
+
+    def sick_better(self, user_id: str) -> dict[str, Any]:
+        return self._edit(user_id, lambda plan, today: _sick.better(plan, today, self._orphan))
+
+    def sick_undo(self, user_id: str) -> dict[str, Any]:
+        return self._edit(user_id, lambda plan, today: _sick.undo(plan, today, self._orphan))
+
+    def sick_view(self, user_id: str) -> dict[str, Any]:
+        try:
+            plan = self.get(user_id)
+        except Exception:
+            plan = None
+        return _sick.view(plan, self.today(user_id))
+
+    def sick_tick(self, user_id: str) -> str:
+        """Daily: keep open-ended sick mode covering the days ahead, start the return after an
+        expected end, clear a finished return. Cheap when sick mode was never used."""
+        try:
+            plan = self.get(user_id)
+        except Exception:
+            return "none"
+        if not plan or not (plan.get("sick") or plan.get("sick_return")):
+            return "none"
+        out: list[str] = []
+        self._edit(user_id, lambda p, today: out.append(_sick.tick(p, today, self._orphan)))
+        return out[0] if out else "none"
 
     # -------------------------------------------------------------- sync --
     def _lock(self, user_id: str) -> threading.Lock:
@@ -1013,7 +1060,8 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
             for s in sorted(w["days"][d], key=lambda x: x.get("time") or "~"):
                 g = s.get("garmin") or {}
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
-                                                 "detail", "meters", "edited", "travel", "time", "event_id")}
+                                                 "detail", "meters", "edited", "travel", "time", "event_id",
+                                                 "sick", "sick_return")}
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
@@ -1029,6 +1077,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
         "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
         "race_changed": bool(plan.get("race_changed")),
+        "sick": _sick.view(plan, today),
         "origin": {k: (plan.get("origin") or {}).get(k) for k in ("kind", "by_name", "at", "source", "name")}
         if plan.get("origin") else None} | {
         "weeks": weeks, "current_week": cur["index"] if cur else None,

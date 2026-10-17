@@ -114,6 +114,10 @@ def propose(plan: dict[str, Any] | None, acts: list[dict[str, Any]], today: date
             dismissed: list[str] | None = None, checkins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     if not plan:
         return {"status": "none"}
+    # Sick mode (sick.py) already reshaped these days, and the easy return never stacks missed
+    # work: no "you missed..." suggestions until the return is over.
+    if plan.get("sick") or (plan.get("sick_return") or {}).get("until", "") >= today.isoformat():
+        return {"status": "ok", "reasons": []}
     changes: list[dict[str, Any]] = []
     reasons: list[str] = []
     t = today.isoformat()
