@@ -1,6 +1,7 @@
 // Your progress, calm and in order: level/streak/week, main race grade, two insights, recovery
 // and challenges as one row each, fitness and form. Everything else sits under "More stats".
 // Sport-agnostic: everything Garmin records counts.
+import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Timer, Trophy, Zap } from 'lucide-react'
@@ -54,6 +55,7 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
     }, (e) => { setNoGarmin(isGarminMissing(e)); setError((e as Error).message) }).finally(() => setBusy(false))
   }, [])
   useEffect(() => { void load() }, [load])
+  useRefreshOnShow(() => load())
   // Refresh = stats + every card below; resolves when all of them have landed (pull rabbit).
   const refresh = useCallback(() => group.refresh(() => setLoadKey((k) => k + 1), load(true)), [group, load])
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })

@@ -47,7 +47,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
     <Screen title={section === 'feed' ? 'Feed' : 'Clubs'}
-      subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Run clubs, group runs and people near you'}
+      subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Run clubs and friends near you'}
       headerExtra={section === 'clubs' ? <Segmented label="Clubs" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
         options={[['clubs', 'Clubs'], ['people', 'People']] as const} /> : undefined}>
       {view === 'clubs' && featured && featured.length > 0 && (

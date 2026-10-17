@@ -418,3 +418,7 @@ html.kb-open .tab-bar { display: none; }
 .conn-dots--busy > span:nth-child(3) { animation-delay: .3s; }
 @keyframes conn-dot { 0%, 100% { opacity: .25; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .conn-dots--busy > span { animation: none; opacity: .8; } }
+
+/* screens/lazyScreens Fallback: a lazily loaded page's backdrop appears with the loader (300 ms). */
+.lazy-fallback { animation: rl-appear 0.2s ease-out 0.3s both; }
+@media (prefers-reduced-motion: reduce) { .lazy-fallback { animation: rl-show 0.01s linear 0.3s both; } }

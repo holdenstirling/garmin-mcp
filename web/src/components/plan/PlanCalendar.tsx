@@ -558,7 +558,14 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
                         )
                       })}
                       {extra}
-                      {!work.length && !extra && <p className="py-2 text-[0.7647rem] text-(--text-muted)">{over ? 'Drop here' : 'Rest'}</p>}
+                      {/* Workouts from your apps that aren't plan sessions (cal.extra): so a rest day you trained on says so. */}
+                      {(cal?.extra?.[d.date] ?? []).map((a, i) => (
+                        <p key={`x${a.id ?? i}`} className="flex items-center gap-1.5 text-[0.7059rem] text-(--accent)">
+                          <Check className="size-3.5 shrink-0" aria-hidden />
+                          <span className="truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
+                        </p>
+                      ))}
+                      {!work.length && !extra && !(cal?.extra?.[d.date]?.length) && <p className="py-2 text-[0.7647rem] text-(--text-muted)">{over ? 'Drop here' : 'Rest'}</p>}
                     </div>
                     {canAdd && (
                       <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}

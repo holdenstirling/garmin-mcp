@@ -2,9 +2,10 @@
 // edit, look up, delete, and pick the main one (the race or challenge your plan builds
 // toward). Other races become B/C race days in the plan; group activities become sessions,
 // trips lighten those days and life events get rest days.
+import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, CalendarPlus, ChevronRight, Footprints, Gauge, Layers, Mountain, Repeat, Star, Trash2, Volleyball, Waves } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Footprints, Gauge, Layers, Mountain, Repeat, Star, Trash2, Volleyball, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
@@ -68,6 +69,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
     return listEvents().then((r) => setEvents(r.events), (e) => setError((e as Error).message))
   }, [])
   useEffect(() => { void load() }, [load])
+  useRefreshOnShow(() => load())
   useEffect(() => {
     if (!request || events === null) return
     const hit = request.open ? events.find((e) => e.id === request.open) : undefined
@@ -97,10 +99,8 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
   // "Add" waits for the list: whether a new event becomes the main one depends on it.
   return (
     <>
-      <Screen title="Events" subtitle="Races, group sessions, trips and big days" closing={closing} onClose={close}
-        footer={<Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={events === null}
-          onClick={() => setEditing('new')}>
-          <CalendarPlus className="size-4" /> Add an event</Button>}>
+      {/* Adding lives in Schedule's "+ Add" (and the empty state), not a second button here. */}
+      <Screen title="Events" subtitle="Races, group runs and trips" closing={closing} onClose={close}>
         <PullToRefresh onRefresh={load} disabled={events === null && !error} />
         {events === null && !error ? (
           <EventsSkeleton />
@@ -149,7 +149,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             <CalendarSync />
             <details className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-              <summary className="hit-44 inline-flex min-h-11 cursor-pointer items-center font-medium text-(--text-secondary)">How events shape your plan</summary>
+              <summary className="hit-44 inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-(--accent) [&::-webkit-details-marker]:hidden">How events shape your plan <ChevronDown className="size-3.5" aria-hidden /></summary>
               <p>
                 Your <Star className="inline size-3 -translate-y-px fill-current" /> main event is what your plan builds toward.
                 Other races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
@@ -320,7 +320,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
               return r
             })
           }}>
-          {event ? 'Save changes' : 'Add event'}
+          {!kind ? 'Pick what it is' : !(v.name ?? '').trim() ? 'Give it a name' : !v.date ? 'Pick a date' : event ? 'Save changes' : 'Add event'}
         </Button>
       </>}>
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}

@@ -97,7 +97,21 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     : []
 
   return (
-    <Sheet title={session ? session.title : 'Add a session'} onClose={close} closing={closing} onDismissed={onDismissed} extra={guard.dialog} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+    <Sheet title={session ? session.title : 'Add a session'} footer={!locked ? (
+        // Pinned under the form so the save button is always in reach (also with the keyboard open).
+        <div className="flex gap-2 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
+            disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
+            {adding ? 'Add session' : Object.keys(changed).length === 0 ? 'No changes yet' : 'Save changes'}
+          </Button>
+          {onDelete && (
+            <Button variant="default" size="icon" className="size-11 text-(--danger)" aria-label="Delete session"
+              loading={busy === 'delete'} onClick={() => void remove()}>
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+        </div>
+      ) : undefined} onClose={close} closing={closing} onDismissed={onDismissed} extra={guard.dialog} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
           <p className="px-1 text-[0.7647rem] text-(--text-muted)">
             {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -221,7 +235,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
           {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
 
           {onOpenWorkout && session && date === today && session.sport !== 'rest' && session.kind !== 'race' && (
-            <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onOpenWorkout}>
+            <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onOpenWorkout}>
               <Zap className="size-4" /> Today's workout
             </Button>
           )}
@@ -239,18 +253,6 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             {onMessage && (
               <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onMessage}>
                 <Send className="size-4" /> {messageLabel ?? 'Message'}
-              </Button>
-            )}
-            {!locked && (
-              <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
-                disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
-                {adding ? 'Add session' : 'Save changes'}
-              </Button>
-            )}
-            {onDelete && !locked && (
-              <Button variant="default" size="icon" className="size-11 text-(--danger)" aria-label="Delete session"
-                loading={busy === 'delete'} onClick={() => void remove()}>
-                <Trash2 className="size-4" />
               </Button>
             )}
           </div>

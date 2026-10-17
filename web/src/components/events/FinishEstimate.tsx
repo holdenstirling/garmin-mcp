@@ -38,7 +38,7 @@ export function FinishChip({ eventId, className }: { eventId: string; className?
       title={`${CONF_LABEL[res.confidence]}: ${res.basis[0] ?? ''}`}>
       <Timer className="size-3 shrink-0 text-(--accent)" aria-hidden />
       <span className="sr-only">Estimated finish</span>
-      <span aria-hidden>Est.</span> <span className="font-mono font-medium text-(--text)">{res.text}</span>
+      <span aria-hidden>Est.</span> <span className="whitespace-nowrap font-mono font-medium text-(--text)">{res.text}</span>
     </span>
   )
 }

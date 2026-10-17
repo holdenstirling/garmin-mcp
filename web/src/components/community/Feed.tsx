@@ -4,6 +4,7 @@
 // composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
 // each feed group / Clubs; a group's own feed (``groupId``) posts to that group only. My fresh
 // auto-shared workout is pinned on top for an hour with "Add a photo or caption".
+import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X,
@@ -88,6 +89,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
     }, (e) => setError((e as Error).message))
   }, [clubId, scope, group, main])
   useEffect(() => { void load() }, [load])
+  useRefreshOnShow(() => { if (main) void load() })
 
   async function loadMore() {
     if (!next) return

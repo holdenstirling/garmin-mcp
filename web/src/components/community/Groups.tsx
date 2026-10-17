@@ -12,6 +12,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Group, Row } from '@/components/settings/Grouped'
 import { Field, Screen, inputCls } from '@/components/plan/ui'
 import type { SocialUser } from '@/lib/social'
+import { TAB_SHOWN_EVENT, openPlace } from '@/lib/nav'
 import {
   addToGroup, deleteGroup, getGroup, groupFriends, leaveGroup, removeFromGroup,
   type FeedGroup,
@@ -96,11 +97,24 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
     groupFriends().then((r) => setPeople(r.people.filter((p): p is SocialUser => !!p)), (e) => setErr((e as Error).message))
   }, [])
   useEffect(() => { load() }, [load])
+  // Back from finding friends (the Feed tab stays mounted): pick up anyone just followed.
+  useEffect(() => {
+    const on = () => load()
+    window.addEventListener(TAB_SHOWN_EVENT, on)
+    return () => window.removeEventListener(TAB_SHOWN_EVENT, on)
+  }, [load])
   if (err) return <ErrorState compact message={err} onRetry={load} />
   if (!people) return <RabbitLoader className="py-4" label="Loading friends" />
   const list = people.filter((p) => !skip.includes(p.id))
   if (!list.length) {
-    return <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Follow each other in People first, then come back.</p>
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Follow each other first, then come back to pick them.</p>
+        <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={() => openPlace('people')}>
+          <UserPlus className="size-4" aria-hidden /> Find friends
+        </Button>
+      </div>
+    )
   }
   const toggle = (id: string) => onPick(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])
   const term = q.trim().toLowerCase()

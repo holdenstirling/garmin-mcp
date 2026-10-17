@@ -29,10 +29,12 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
     <Sheet closing={closing} onClose={onClose} onDismissed={onDismissed}
       bodyClassName="min-h-0 flex-1 gap-0 p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
       header={
-        <button className="min-w-0 text-left" onClick={onEditGoal}>
-          <h2 className="modal-title truncate">{goal?.title ?? 'No goal yet'}</h2>
-          <p className="text-xs text-muted-foreground">{goal ? goalCountdown(goal) || 'Edit goal' : 'Tap to set what you’re training for'}</p>
-        </button>
+        <div className="min-w-0">
+          <h2 className="modal-title truncate">Chats with Rabbit</h2>
+          <button type="button" className="hit-44 max-w-full truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
+            {goal ? `Training for ${goal.title}${goalCountdown(goal) ? ` · ${goalCountdown(goal)}` : ''}` : 'Set what you’re training for'}
+          </button>
+        </div>
       }
       actions={
         <button className="modal-close" aria-label="New chat" title="New chat" onClick={onNew}>

@@ -9,12 +9,15 @@ type Kind = 'tab' | 'screen'
 
 // A screen's loading cover sits over the app like the screen will, so it keeps the way out:
 // the X (and Escape/Back via the screen once it loads) closes it even if the chunk is slow.
+const HOPS = ['Hopping over…', 'Lacing up…', 'Almost there…']
+
 function Fallback({ kind, onClose }: { kind: Kind; onClose?: () => void }) {
   return kind === 'tab'
-    ? <div className="flex min-h-0 flex-1 items-center justify-center p-8"><RabbitLoader label="Loading…" /></div>
+    ? <div className="flex min-h-0 flex-1 items-center justify-center p-8"><RabbitLoader label="Loading" cycle={HOPS} /></div>
     : (
-      <div className="fixed inset-0 z-(--z-page) flex items-center justify-center bg-(--bg)/70">
-        <RabbitLoader label="Loading…" />
+      // The dimmed backdrop waits as long as the loader does, so a quick open never flashes.
+      <div className="lazy-fallback fixed inset-0 z-(--z-page) flex items-center justify-center bg-(--bg)/70">
+        <RabbitLoader label="Loading" cycle={HOPS} />
         {onClose && (
           <button type="button" className="modal-close absolute right-3 top-[max(10px,env(safe-area-inset-top))]" aria-label="Close" onClick={onClose}>
             <X className="size-4" />

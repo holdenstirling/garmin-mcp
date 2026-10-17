@@ -71,7 +71,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
       <span className="min-w-0">
         <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">This week</span>
         <span className="block text-[0.8235rem] font-medium leading-tight text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
-        {planTime && <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">{planTime} planned time</span>}
+        {planTime && <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">{planTime} planned</span>}
         {onOpenPlan && <span className="block text-[0.6471rem] font-medium leading-tight text-(--accent)">Open plan</span>}
       </span>
     </>

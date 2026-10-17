@@ -6,6 +6,7 @@ export function overlayOver(el: Element | null): boolean {
   if (typeof document === 'undefined') return false
   for (const d of Array.from(document.querySelectorAll('.modal-overlay, [aria-modal="true"]'))) {
     if (d.matches('.modal-overlay--exit, .plan-screen--exit') || d.closest('.modal-overlay--exit, .plan-screen--exit')) continue
+    if (d.closest('[data-tab-hidden]')) continue  // a sheet left open in a tab that's kept mounted but not shown
     if (!el || !d.contains(el)) return true
   }
   return false
@@ -104,7 +105,7 @@ let framed = false
 export function markCovered(): void {
   framed = false
   if (typeof document === 'undefined') return
-  const layers = Array.from(document.querySelectorAll(LAYERS)).filter((l) => !l.closest(EXITING))
+  const layers = Array.from(document.querySelectorAll(LAYERS)).filter((l) => !l.closest(EXITING) && !l.closest('[data-tab-hidden]'))
   const top = layers[layers.length - 1]
   for (const l of Array.from(document.querySelectorAll('.modal-overlay'))) {
     const covered = !!top && l !== top && layers.includes(l)

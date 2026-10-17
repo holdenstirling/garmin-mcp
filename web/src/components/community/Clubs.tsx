@@ -1,6 +1,7 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
+import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useState } from 'react'
 import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
@@ -57,6 +58,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const load = useCallback(() => getClubs().then((d) => { setData(d); setError(null) }, (e) => setError((e as Error).message)), [])
   useEffect(() => { void load() }, [load])
+  useRefreshOnShow(() => load())
 
   async function run(key: string, fn: () => Promise<{ message?: string } | unknown>, ok?: string) {
     setBusy(key); setMsg(null)

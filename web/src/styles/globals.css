@@ -586,8 +586,9 @@
   align-items: center;
   gap: 6px;
   text-align: center;
-  /* Fast loads never flash the loader. */
-  animation: rl-appear 0.3s ease-out 0.12s both;
+  /* Fast loads never flash the loader: it fades in only after 300 ms (its space is kept from
+     the start, so nothing jumps when it appears or when the content replaces it). */
+  animation: rl-appear 0.3s ease-out 0.3s both;
 }
 
 .rabbit-loader__stage {
@@ -747,8 +748,10 @@
   50% { opacity: 0.9; }
 }
 
+@keyframes rl-show { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .rabbit-loader,
+  /* No movement, but still no flash on fast loads: appear (without a fade) after 300 ms. */
+  .rabbit-loader { animation: rl-show 0.01s linear 0.3s both; }
   .rabbit-loader__msg { animation: none; }
   .rabbit-loader__runner,
   .rabbit-loader--inline .rabbit-loader__runner { animation: rl-pulse 1.8s ease-in-out infinite; transform: none; }

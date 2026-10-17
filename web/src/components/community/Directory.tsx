@@ -333,8 +333,7 @@ export function ClubDirectory({ onStartGroup }: { onStartGroup: (l: DirListing |
           <EmptyState compact title="Nothing in this filter yet" action="Show everything" onAction={() => setChip(null)} />
         ) : (
           <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
-            body="Know a club, track night or league? Add it and Rabbit checks it, or start your own group."
-            action="Start a group" onAction={() => onStartGroup(null)} />
+            body="Know a club, track night or league? Search for it above, or tap Suggest one below and Rabbit checks it." />
         )
       )}
       {!listings.length && fallback.length > 0 && (

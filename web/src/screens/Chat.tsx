@@ -22,6 +22,7 @@ import { WeekPanel } from '@/components/home/WeekPanel'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
+import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
@@ -196,6 +197,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'progress' : openParam === 'coach' ? 'rabbit'
     : openParam === 'community' ? 'feed' : readTab())
   const setTab = useCallback((t: TabId) => { setTabState(t); saveTab(t) }, [])
+  // Tabs stay mounted once visited (hidden when not shown): switching back is instant, with no
+  // refetch flash and the scroll position kept.
+  const [visited, setVisited] = useState<ReadonlySet<TabId>>(() => new Set([tab]))
+  useEffect(() => {
+    setVisited((v) => (v.has(tab) ? v : new Set(v).add(tab)))
+    try { window.dispatchEvent(new CustomEvent(TAB_SHOWN_EVENT, { detail: tab })) } catch { /* ignore */ }
+  }, [tab])
+  const tabCls = (t: TabId) => `tab-page min-h-0 flex-1 flex-col ${tab === t ? 'flex' : 'hidden'}`
   const [progressView, setProgressView] = useState<ProgressView>(openParam === 'recap' ? 'recap' : 'overview')
   const [recapWeek, setRecapWeek] = useState<string | undefined>(undefined)
   // A tab stored before the split as 'races' (Events) opens Schedule on Events.
@@ -367,6 +376,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(OPEN_PLAN_DAY_EVENT, onDay)
     return () => window.removeEventListener(OPEN_PLAN_DAY_EVENT, onDay)
   }, [setTab])
+  useEffect(() => {
+    // lib/nav openPlace: any component can send people somewhere (e.g. New group -> find friends).
+    const onPlace = (e: Event) => {
+      const p = (e as CustomEvent<Place>).detail
+      setSheet(null); setClosing(false)
+      if (p === 'people' || p === 'clubs' || p === 'feed') openCommunity(p)
+      else if (p === 'events') openRaces()
+      else if (p === 'plan') openPlan()
+      else if (p === 'progress') goTab('progress')
+      else if (p === 'connections') pushPage({ k: 'connections' })
+    }
+    window.addEventListener(OPEN_PLACE_EVENT, onPlace)
+    return () => window.removeEventListener(OPEN_PLACE_EVENT, onPlace)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // lib/events openEvent (a plan day's "From your events", search): Schedule > Events, where
     // EventsScreen opens that event (it reads the stored id on mount and listens while shown).
@@ -1228,30 +1251,30 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       </div>
       </div>
 
-      {tab === 'plan' && <div className="tab-page flex min-h-0 flex-1 flex-col">{scheduleTab()}</div>}
+      {visited.has('plan') && <div className={tabCls('plan')} data-tab-hidden={tab !== 'plan' || undefined}>{scheduleTab()}</div>}
       {addOpen && (
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
           onEvent={() => { setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
       )}
-      {tab === 'feed' && (
-        <div className="tab-page flex min-h-0 flex-1 flex-col">
+      {visited.has('feed') && (
+        <div className={tabCls('feed')} data-tab-hidden={tab !== 'feed' || undefined}>
           <TabScreen key="feed" action={meButton}>
             <CommunityScreen section="feed" imperial={imperial} view="feed" onView={(v) => { if (v !== 'clubs') openCommunity(v) }} onChanged={onChange}
               club={null} onClub={(id) => { if (id) openCommunity('clubs', id) }} />
           </TabScreen>
         </div>
       )}
-      {tab === 'clubs' && (
-        <div className="tab-page flex min-h-0 flex-1 flex-col">
+      {visited.has('clubs') && (
+        <div className={tabCls('clubs')} data-tab-hidden={tab !== 'clubs' || undefined}>
           <TabScreen key="clubs" action={meButton}>
             <CommunityScreen section="clubs" imperial={imperial} view={communityView === 'feed' ? 'clubs' : communityView}
               onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub} />
           </TabScreen>
         </div>
       )}
-      {tab === 'progress' && <div className="tab-page flex min-h-0 flex-1 flex-col">{progressTab()}</div>}
+      {visited.has('progress') && <div className={tabCls('progress')} data-tab-hidden={tab !== 'progress' || undefined}>{progressTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
       {topPage && (
         <div key={pageKey(topPage)} className={`page-stack${revealed ? ' page-stack--revealed' : pages.length > 1 ? ' page-stack--pushed' : ''}`}>

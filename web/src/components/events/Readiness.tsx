@@ -132,9 +132,10 @@ export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () 
         <span className="flex items-center gap-1.5">
           <StatusChip status={g.status} />
           <span className="truncate text-[0.6471rem] text-(--text-muted)">Readiness & race fit</span>
-          {extra && <span className="ml-auto">{extra}</span>}
         </span>
         <span className="mt-0.5 block truncate text-[0.7647rem] text-(--text)">{headlineRest(g.headline)}</span>
+        {/* The finish estimate gets its own line instead of squeezing the label. */}
+        {extra && <span className="mt-1 flex">{extra}</span>}
       </span>
       <ChevronRight className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
