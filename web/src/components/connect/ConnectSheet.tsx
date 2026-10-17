@@ -10,8 +10,13 @@
 //   source-of-truth choice (TPSourcePref) on success and when connected.
 //   Connected: last sync, Sync now, the source choice, Disconnect (with a confirm).
 // Status comes from GET /app/api/connections (connections.py), facts included.
+// Trust copy (TRUST below) only states what the code does: Garmin's password is used for one
+// sign-in and dropped (garminlogin.py), tokens and pasted sign-ins live in Fernet-encrypted
+// files (tokens.py, appstore.py), Disconnect deletes them (garminlogin.disconnect,
+// oura.disconnect, gcalendar.disconnect also revokes at Google, tpsync.disconnect), Oura and
+// Google sign in on their own pages (OAuth), Calendar asks only for calendar.readonly.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, CalendarClock, Check, CircleDot, ClipboardList, RefreshCw, TriangleAlert, Watch } from 'lucide-react'
+import { Check, KeyRound, Lock, RefreshCw, ShieldCheck, TriangleAlert, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -32,20 +37,84 @@ import {
 } from '@/lib/connections'
 import { cn } from '@/lib/utils'
 
-export const APP_ICON: Record<ConnApp, typeof Watch> = { garmin: Watch, oura: CircleDot, calendar: CalendarClock, trainingpeaks: ClipboardList }
 const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
-
 type View = 'loading' | 'intro' | 'garmin' | 'tp' | 'redirect' | 'importing' | 'done' | 'failed' | 'manage'
 
-/** Generic app tile (no brand logos). */
+/** Text monograms on a plain tile: recognisable without anyone's logo artwork. */
+const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', calendar: 'Cal', trainingpeaks: 'TP' }
+
+/** What each app is for, in one line (Connected apps hub). */
+export const PURPOSE: Record<ConnApp, string> = {
+  garmin: 'Workouts, heart rate, sleep and readiness',
+  oura: 'Readiness, sleep and HRV',
+  calendar: 'Trips and busy days, so your plan fits',
+  trainingpeaks: 'Your coach’s planned workouts',
+}
+
+// How signing in works and how the access is kept, per app (see the header for where each fact
+// comes from). `cta` is the one primary button.
+const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typeof Lock }> = {
+  garmin: {
+    how: 'Sign in with your Garmin account on the next screen. Rabbit passes your password to Garmin once to sign in and never stores it.',
+    kept: 'Rabbit keeps only Garmin’s sign-in token, encrypted. Disconnect anytime and it’s deleted.',
+    cta: 'Continue to Garmin', icon: Lock,
+  },
+  oura: {
+    how: 'You’ll sign in on Oura’s own page and approve access there, then come right back. Rabbit never sees your Oura password.',
+    kept: 'The access Oura gives Rabbit is stored encrypted. Disconnect anytime and it’s deleted.',
+    cta: 'Continue to Oura', icon: ShieldCheck,
+  },
+  calendar: {
+    how: 'You’ll sign in on Google’s own page and approve read-only access, then come right back. Rabbit never sees your Google password.',
+    kept: 'The access Google gives Rabbit is stored encrypted. Disconnect anytime: Rabbit deletes it and tells Google to revoke it.',
+    cta: 'Continue with Google', icon: ShieldCheck,
+  },
+  trainingpeaks: {
+    how: 'No password: you’ll copy a sign-in value from TrainingPeaks on a computer and paste it here.',
+    kept: 'The pasted sign-in is stored encrypted and never shown again. Disconnect anytime and it’s deleted.',
+    cta: 'Continue', icon: KeyRound,
+  },
+}
+
+// "You're all set": what happens now, in plain words.
+const NEXT: Record<ConnApp, string[]> = {
+  garmin: ['Your recent workouts are coming in now', 'New workouts show up on their own after your watch syncs with Garmin', 'Send planned workouts to your watch from Plan'],
+  oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night'],
+  calendar: ['Trips and busy days show next to your plan', 'Rabbit works your sessions around them'],
+  trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
+}
+
+/** Plain tile with the app's monogram (no brand logos). */
 export function AppTile({ app, size = 44 }: { app: ConnApp; size?: number }) {
-  const I = APP_ICON[app]
+  const m = MONO[app]
   return (
-    <span className="flex shrink-0 items-center justify-center rounded-[12px] bg-(--accent-subtle) text-(--accent)"
-      style={{ width: size, height: size }} aria-hidden>
-      <I style={{ width: size * 0.5, height: size * 0.5 }} />
+    <span className="flex shrink-0 items-center justify-center rounded-[22%] bg-(--text) font-semibold tracking-tight text-(--bg) shadow-sm"
+      style={{ width: size, height: size, fontSize: size * (m.length > 2 ? 0.3 : m.length > 1 ? 0.36 : 0.46) }} aria-hidden>
+      {m}
     </span>
+  )
+}
+
+/** Rabbit's own tile, matching AppTile. */
+function RabbitTile({ size = 56 }: { size?: number }) {
+  return (
+    <span className="logo-tile flex shrink-0 items-center justify-center rounded-[22%] bg-(--brand) shadow-sm" style={{ width: size, height: size }} aria-hidden>
+      <RabbitLogo size={size * 0.72} />
+    </span>
+  )
+}
+
+/** Rabbit ··· App: the two tiles with a calm "linking" pulse while something is happening. */
+function Link({ app, busy }: { app: ConnApp; busy?: boolean }) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-1" aria-hidden>
+      <RabbitTile />
+      <span className={cn('conn-dots flex items-center gap-1', busy && 'conn-dots--busy')}>
+        <span /><span /><span />
+      </span>
+      <AppTile app={app} size={56} />
+    </div>
   )
 }
 
@@ -69,7 +138,7 @@ function Bullets({ items, tone }: { items: string[]; tone: 'yes' | 'no' }) {
         <li key={t} className="flex items-start gap-2 text-[0.7647rem] leading-snug text-(--text-secondary)">
           <span aria-hidden className={cn('mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-[0.6471rem]',
             tone === 'yes' ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-inset) text-(--text-muted)')}>
-            {tone === 'yes' ? <Check className="size-2.5" /> : '–'}
+            {tone === 'yes' ? <Check className="size-2.5" /> : <X className="size-2.5" />}
           </span>
           <span>{t}</span>
         </li>
@@ -205,50 +274,65 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   const reads = conn?.reads ?? []
   const never = conn?.never ?? []
   const title = view === 'manage' ? SHORT[app] : view === 'done' ? `${SHORT[app]} connected`
-    : view === 'failed' ? `Couldn’t connect ${SHORT[app]}` : `Connect ${SHORT[app]} to Rabbit`
+    : view === 'failed' ? `Couldn’t connect ${SHORT[app]}` : `Connect ${SHORT[app]}`
   const gIndex = view === 'importing' ? 3 : GARMIN_STEPS.findIndex((s) => s.id === gStep)
 
   let body: React.ReactNode
   if (view === 'loading') {
     body = <div className="flex justify-center py-8"><RabbitLoader label={`Checking ${SHORT[app]}…`} /></div>
   } else if (view === 'intro') {
+    const t = TRUST[app]
+    const How = t.icon
     body = (
       <>
-        <div className="flex items-center justify-center gap-3 py-2">
-          <AppTile app={app} size={56} />
-          <ArrowLeftRight className="size-5 text-(--text-muted)" aria-hidden />
-          <span className="flex size-14 items-center justify-center rounded-[14px] bg-(--brand)" aria-hidden><RabbitLogo size={44} /></span>
+        <Link app={app} />
+        <div className="text-center">
+          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">Rabbit + {NAME[app]}</p>
+          <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+            {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
+              : app === 'oura' ? 'Your readiness and sleep show in Progress and help Rabbit ease your week after a rough night.'
+              : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your Rabbit plan, or Rabbit’s plan goes to TrainingPeaks. You choose which one leads.'
+              : 'Rabbit spots trips and busy days so your plan can work around them.'}
+          </p>
         </div>
-        <p className="text-center text-[0.8235rem] leading-snug text-(--text-secondary)">
-          {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
-            : app === 'oura' ? 'Your readiness and sleep show in Progress and help Rabbit ease your week after a rough night.'
-            : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your Rabbit plan, or Rabbit’s plan goes to TrainingPeaks. You choose which one leads.'
-            : 'Rabbit spots trips and busy days so your plan can work around them.'}
-        </p>
         {loadErr && <p role="alert" className="text-[0.7647rem] text-(--danger)">{loadErr}</p>}
         {reads.length > 0 && (
-          <section className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Rabbit reads</h3>
+          <section aria-labelledby="conn-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+            <h3 id="conn-reads" className="text-[0.7647rem] font-semibold text-(--text)">Rabbit will be able to see</h3>
             <Bullets items={reads} tone="yes" />
-            <h3 className="mt-1.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Rabbit never</h3>
+          </section>
+        )}
+        {never.length > 0 && (
+          <section aria-labelledby="conn-never" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+            <h3 id="conn-never" className="flex items-center gap-1.5 text-[0.7647rem] font-semibold text-(--text)">
+              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />Your privacy
+            </h3>
             <Bullets items={never} tone="no" />
+            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
+              <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t.kept}
+            </p>
           </section>
         )}
         {available ? (
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={cont}>Continue</Button>
+          <div className="flex flex-col gap-2">
+            <p className="flex items-start gap-2 text-[0.7059rem] leading-snug text-(--text-muted)">
+              <How className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />{t.how}
+            </p>
+            <Button variant="primary" className="h-12 w-full text-[0.8824rem]" onClick={cont}>{t.cta}</Button>
+            <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={onClose}>Not now</button>
+          </div>
         ) : (
-          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-[0.7647rem] text-(--text-secondary)">
-            {SHORT[app]} isn’t set up on this server yet.
+          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-center text-[0.7647rem] text-(--text-secondary)">
+            {me.owner ? `${SHORT[app]} isn’t set up on this server yet (it needs ${SHORT[app]} app credentials).`
+              : `Connecting ${SHORT[app]} is coming soon.`}
           </p>
-        )}
-        {(app === 'oura' || app === 'calendar') && available && (
-          <p className="text-center text-[0.6471rem] text-(--text-muted)">You’ll sign in with {SHORT[app]} and come right back here.</p>
         )}
       </>
     )
   } else if (view === 'garmin') {
     body = (
       <>
+        <Link app="garmin" busy={gStep === 'connecting'} />
         <div>
           <Progress step={Math.max(0, gIndex)} total={GARMIN_STEPS.length} />
           <p className="mt-2 text-center text-[0.7059rem] text-(--text-muted)">
@@ -262,14 +346,25 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
       </>
     )
   } else if (view === 'tp') {
-    body = <ConnectTrainingPeaks onConnected={() => { changed(); setView('importing') }} />
+    body = (
+      <>
+        <Link app="trainingpeaks" />
+        <ConnectTrainingPeaks onConnected={() => { changed(); setView('importing') }} />
+      </>
+    )
   } else if (view === 'redirect') {
-    body = <div className="flex justify-center py-8"><RabbitLoader label={`Opening ${SHORT[app]}…`} /></div>
+    body = (
+      <div className="flex flex-col items-center gap-3 py-4 text-center" role="status">
+        <Link app={app} busy />
+        <p className="text-[0.8235rem] text-(--text-secondary)">Opening {app === 'calendar' ? 'Google' : SHORT[app]}’s sign-in page…</p>
+      </div>
+    )
   } else if (view === 'importing') {
     body = (
       <>
+        <Link app={app} busy />
         {app === 'garmin' && <Progress step={3} total={GARMIN_STEPS.length} />}
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <div className="flex flex-col items-center gap-2 py-4 text-center">
           <RabbitLoader label={conn?.import_label ?? 'Importing…'} />
         </div>
       </>
@@ -284,6 +379,10 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
           <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to Rabbit.`}</p>
         </div>
+        <section aria-labelledby="conn-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+          <h3 id="conn-next" className="text-[0.7647rem] font-semibold text-(--text)">What happens now</h3>
+          <Bullets items={NEXT[app]} tone="yes" />
+        </section>
         {app === 'oura' && <SourcePref pref={pref} ouraOn />}
         {app === 'trainingpeaks' && tpSource && <TPSourcePref source={tpSource} onSaved={setTpSource} onToast={onToast} />}
         <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy}
@@ -298,7 +397,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
             <TriangleAlert className="size-7" />
           </span>
           <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
-            {SHORT[app]} didn’t finish connecting. Nothing was changed. You can try again now.
+            {SHORT[app]} didn’t finish connecting, so nothing was shared and nothing was changed. You can try again now.
           </p>
         </div>
         <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={cont} disabled={!available}>Try again</Button>
@@ -345,17 +444,22 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
         )}
         {reads.length > 0 && (
           <details className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-            <summary className="flex min-h-11 cursor-pointer items-center text-[0.7647rem] text-(--text-secondary)">What Rabbit reads and never does</summary>
+            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
+              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What Rabbit uses, and your privacy
+            </summary>
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
               <Bullets items={never} tone="no" />
+              <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
+                <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{TRUST[app].kept}
+              </p>
             </div>
           </details>
         )}
         {confirm ? (
           <div role="group" aria-label={`Disconnect ${SHORT[app]}?`} className="flex flex-col gap-2 rounded-xl border border-(--danger) p-3.5">
             <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-              Disconnect {SHORT[app]}? Rabbit stops reading from it and deletes the stored access. You can connect again anytime.
+              Disconnect {SHORT[app]}? Rabbit stops reading from it and deletes its stored access{app === 'calendar' ? ' (and asks Google to revoke it)' : ''}. What’s already in Rabbit stays. You can connect again anytime.
             </p>
             <div className="flex gap-2">
               <Button className="h-11 flex-1" onClick={() => setConfirm(false)} disabled={busy}>Cancel</Button>

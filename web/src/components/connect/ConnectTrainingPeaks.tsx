@@ -4,7 +4,7 @@
 // here once (server: tpsync.TPSync.connect; stored encrypted, never shown again).
 // Also: TPSourcePref, the "which plan is the source of truth" choice.
 import { useState } from 'react'
-import { ExternalLink, Info } from 'lucide-react'
+import { ExternalLink, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Progress } from '@/components/plan/ui'
@@ -84,7 +84,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
       {step === 3 && <div className="flex justify-center py-6"><RabbitLoader label="Checking with TrainingPeaks…" /></div>}
 
       <p id="tp-paste-help" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
-        <Info className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" aria-hidden />
+        <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
         <span>
           Why not your password? TrainingPeaks has no public connection for apps and its sign-in uses a captcha,
           so Rabbit can’t sign in for you. The value you paste lets Rabbit see your calendar; it’s stored encrypted
