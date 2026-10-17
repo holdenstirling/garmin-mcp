@@ -1,5 +1,6 @@
 // Friends: a feed of the people you follow (their recent workouts, kudos, short cheers) and
 // People (invite code, add by email/code, requests, following/followers, privacy settings).
+import type React from 'react'
 import { openPerson } from '@/lib/people'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Ban, Bike, Check, Copy, Dumbbell, Flag, Flame, Footprints, Heart, Layers, MessageCircle, Mountain, Send, Share2, Ship, Snowflake, Trash2, UserMinus, UserPlus, Waves, X } from 'lucide-react'
@@ -55,11 +56,12 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
 
   const pending = people?.pending_in.length ?? 0
   const tabs = (
-    <div role="tablist" aria-label="Friends" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
+    <div role="tablist" aria-label="Friends" className="mx-auto mt-2 seg flex max-w-xl rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, tab === 'people' ? 1 : 0), '--seg-n': 2 } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
       {(['feed', 'people'] as const).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
           className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
-            tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+            tab === t ? 'text-(--text)' : 'text-(--text-muted)')}>
           {t === 'feed' ? 'Feed' : 'People'}
           {t === 'people' && pending > 0 && (
             <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{pending}</span>

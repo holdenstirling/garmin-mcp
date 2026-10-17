@@ -2,6 +2,7 @@
 // Create one from mutual friends (max 50 people, 10 groups each), see its members and feed,
 // invite more, leave; the owner renames, removes people or deletes it. Group posts are only
 // seen by the group.
+import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { Check, LogOut, Pencil, Search as SearchIcon, Trash2, UserPlus, X } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -159,7 +160,7 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
                 <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{p.name}</span>
                 <span aria-hidden className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border',
                   on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                  {on && <Check className="size-3.5" />}
+                  {on && <Check className="rb-tick size-3.5" />}
                 </span>
               </button>
             </li>
@@ -236,10 +237,11 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
     catch (e) { setConfirm(null); setMsg({ text: (e as Error).message, ok: false }) }
   }
   const seg = (
-    <div role="tablist" aria-label="Group" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
+    <div role="tablist" aria-label="Group" className="mx-auto mt-2 seg flex max-w-xl rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, view === 'members' ? 1 : 0), '--seg-n': 2 } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
       {([['feed', 'Feed'], ['members', 'Members']] as const).map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
           {label}{v === 'members' && g ? ` · ${g.count}` : ''}
         </button>
       ))}

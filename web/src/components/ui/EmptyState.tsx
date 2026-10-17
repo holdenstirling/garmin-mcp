@@ -1,7 +1,7 @@
 // The one empty screen: Rabbit napping or peeking (components/anim RabbitNap), a title, one
 // plain line and (usually) one clear next step as a real button. Use it wherever a list has
 // nothing in it yet, instead of a bare sentence.
-import { RabbitNap } from '@/components/anim'
+import { RabbitNap, type RabbitPose } from '@/components/anim'
 import { cn } from '@/lib/utils'
 
 export function EmptyState({ title, body, action, onAction, secondary, onSecondary, icon, mode = 'peek', compact, card, className }: {
@@ -14,7 +14,8 @@ export function EmptyState({ title, body, action, onAction, secondary, onSeconda
   onSecondary?: () => void
   /** replaces Rabbit (a lucide icon element) */
   icon?: React.ReactNode
-  mode?: 'sleep' | 'peek'
+  /** which rabbit: peek (default), sleep, run, cheer, think, wave, offline */
+  mode?: RabbitPose
   /** inside a card or sheet: less padding, smaller art */
   compact?: boolean
   /** draw its own card */

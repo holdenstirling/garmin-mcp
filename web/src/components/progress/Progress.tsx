@@ -1,4 +1,5 @@
 // Gamification UI: level + XP, setup quests and celebrations.
+import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Award, Check, ChevronRight, ListChecks, PartyPopper, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -49,8 +50,8 @@ export function WeekRing({ done, target, size = 40 }: { done: number; target: nu
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
         <circle cx="18" cy="18" r={r} fill="none" strokeWidth="4" className="stroke-(--bg-elevated)" />
         <circle cx="18" cy="18" r={r} fill="none" strokeWidth="4" strokeLinecap="round"
-          className={cn('transition-all duration-700', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
-          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
+          className={cn('rb-ring', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
       <span className="text-[0.6471rem] font-semibold text-(--text)">{pct >= 1 ? <Check className="size-3.5" /> : `${done}/${target}`}</span>
     </span>

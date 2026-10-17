@@ -50,7 +50,7 @@ export function RaceChecklistCard({ refreshKey }: { refreshKey?: number }) {
                 className="flex min-h-11 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)">
                 <span aria-hidden className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border-2',
                   i.checked ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                  {i.checked && <Check className="size-3" strokeWidth={3} />}
+                  {i.checked && <Check className="rb-tick size-3" strokeWidth={3} />}
                 </span>
                 <span className={cn('min-w-0 flex-1 text-[0.7647rem] leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>
                 <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">{dueLabel(i.due)}</span>

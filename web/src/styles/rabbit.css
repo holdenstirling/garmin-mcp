@@ -224,7 +224,10 @@ html.kb-open .empty-hero { transform: none; }
 .page-stack--pushed > .plan-screen { animation-name: page-push-in; }
 .page-stack--revealed > .plan-screen { animation: none; }
 @keyframes page-push-in { from { transform: translateX(100%); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .page-stack--pushed > .plan-screen { animation: none; } }
+/* Back: the page slides away to the right before it's removed (Chat.tsx popPage). */
+.page-stack--leaving > .plan-screen { animation: page-pop-out 170ms ease-in forwards; pointer-events: none; }
+@keyframes page-pop-out { from { transform: none; opacity: 1; } to { transform: translateX(40%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .page-stack--pushed > .plan-screen, .page-stack--leaving > .plan-screen { animation: none; } }
 
 /* Bottom tab bar (components/nav/TabBar). Pages above it don't pad for the home indicator;
    the bar does. It steps aside while typing (keyboard open). */
@@ -458,4 +461,69 @@ html.kb-open .tab-bar { display: none; }
 .section-label {
   font-family: var(--default-mono-font-family); font-size: var(--text-caption); font-weight: 600;
   letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------------ motion kit (feat-look) --
+   One small set of motions, all transform/opacity (GPU), 150-300 ms, off under reduced motion:
+   rabbit poses (EmptyRabbit modes), ring fill, tick draw, press, sliding segmented indicator. */
+
+/* Rabbit poses: run (speed lines), cheer (hop + confetti), think (tilt + "?"), wave (sway + hi),
+   offline (dimmed under a cloud). Same rabbit mark, small accents in theme colors. */
+.rb-nap--run .rb-nap__body { animation: rb-run-bound 520ms ease-in-out infinite; }
+@keyframes rb-run-bound { 0%, 100% { transform: translateY(0) rotate(0deg); } 45% { transform: translateY(-14%) rotate(-6deg); } 70% { transform: translateY(0) scale(1.05, 0.93); } }
+.rb-pose__lines { position: absolute; left: -6%; top: 38%; display: flex; flex-direction: column; gap: 4px; }
+.rb-pose__lines i { display: block; height: 2px; width: 14px; border-radius: 2px; background: var(--border-strong); animation: rb-lines 520ms linear infinite; }
+.rb-pose__lines i:nth-child(2) { width: 20px; animation-delay: 120ms; }
+.rb-pose__lines i:nth-child(3) { width: 10px; animation-delay: 240ms; }
+@keyframes rb-lines { from { transform: translateX(6px); opacity: 0.9; } to { transform: translateX(-10px); opacity: 0; } }
+.rb-nap--cheer .rb-nap__body { animation: rb-cheer 900ms cubic-bezier(0.3, 0.7, 0.4, 1) infinite; }
+@keyframes rb-cheer { 0%, 60%, 100% { transform: none; } 20% { transform: translateY(4%) scale(1.06, 0.9); } 40% { transform: translateY(-22%) rotate(-8deg); } }
+.rb-pose__confetti { position: absolute; inset: -10% -10% 30% -10%; pointer-events: none; }
+.rb-pose__confetti i { position: absolute; width: 6px; height: 6px; border-radius: 2px; opacity: 0; animation: rb-confetti 900ms ease-out infinite; }
+.rb-pose__confetti i:nth-child(1) { left: 12%; top: 30%; background: var(--accent); }
+.rb-pose__confetti i:nth-child(2) { left: 80%; top: 20%; background: var(--warning, #d9a441); animation-delay: 120ms; }
+.rb-pose__confetti i:nth-child(3) { left: 30%; top: 0; background: var(--brand); animation-delay: 240ms; border-radius: 50%; }
+.rb-pose__confetti i:nth-child(4) { left: 64%; top: 4%; background: var(--accent); animation-delay: 360ms; border-radius: 50%; }
+@keyframes rb-confetti { 0% { opacity: 0; transform: translateY(8px) scale(0.5) rotate(0deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px) scale(1) rotate(90deg); } }
+.rb-nap--think .rb-nap__body { transform-origin: 40% 100%; animation: rb-think 2400ms ease-in-out infinite; }
+@keyframes rb-think { 0%, 100% { transform: rotate(0deg); } 40%, 60% { transform: rotate(-7deg); } }
+.rb-pose__bubble { position: absolute; right: -6%; top: -12%; display: flex; align-items: center; justify-content: center;
+  width: 1.4em; height: 1.4em; border-radius: 999px; background: var(--bg-surface); border: 1.5px solid var(--border-strong);
+  font-size: 0.8235rem; font-weight: 700; line-height: 1; color: var(--text-secondary); animation: rb-bubble 2400ms ease-in-out infinite; }
+@keyframes rb-bubble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.rb-nap--wave .rb-nap__body { transform-origin: 50% 100%; animation: rb-wave 1600ms ease-in-out infinite; }
+@keyframes rb-wave { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-6deg); } 40% { transform: rotate(4deg); } 60% { transform: rotate(-3deg); } }
+.rb-pose__hi { position: absolute; right: -10%; top: -6%; font-size: 0.7059rem; font-weight: 700; color: var(--accent);
+  animation: rb-hi 1600ms ease-in-out infinite; }
+@keyframes rb-hi { 0%, 100% { opacity: 0.4; transform: translateY(0) rotate(-8deg); } 30% { opacity: 1; transform: translateY(-3px) rotate(4deg); } }
+.rb-nap--offline .rb-nap__body .rabbit-logo { opacity: 0.45; }
+.rb-pose__cloud { position: absolute; right: -8%; top: -14%; color: var(--text-muted); }
+
+/* Progress rings: fill from empty on first paint (and ease on changes). Put .rb-ring on the
+   progress <circle> and set style --rb-ring to its circumference. */
+.rb-ring { transition: stroke-dashoffset 600ms cubic-bezier(0.2, 0.8, 0.2, 1); animation: rb-ring-in 800ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes rb-ring-in { from { stroke-dashoffset: var(--rb-ring); } }
+
+/* Press feedback for buttons and tappable cards (scale only; never moves layout). */
+.btn-press { transition: transform 140ms ease-out, background-color 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s; }
+.btn-press:active:not(:disabled) { transform: scale(0.97); }
+.tap-card { transition: transform 140ms ease-out, background-color 0.15s; }
+.tap-card:active { transform: scale(0.985); }
+
+/* Segmented control: one pill slides between options (Segmented.tsx sets --seg-i / --seg-n). */
+.seg { position: relative; isolation: isolate; }
+.seg__pill { position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; border-radius: 999px;
+  width: calc((100% - 4px) / var(--seg-n)); transform: translateX(calc(100% * var(--seg-i)));
+  background: var(--bg-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); transition: transform 240ms cubic-bezier(0.3, 0.9, 0.3, 1.05); }
+
+/* Done ticks (week rows, checklist, done chips): the check draws itself once. */
+.rb-tick path, .rb-tick polyline { stroke-dasharray: 24; stroke-dashoffset: 0; animation: rb-draw-in 340ms ease-out both; }
+@keyframes rb-draw-in { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-nap--run .rb-nap__body, .rb-nap--cheer .rb-nap__body, .rb-nap--think .rb-nap__body, .rb-nap--wave .rb-nap__body,
+  .rb-pose__lines i, .rb-pose__confetti i, .rb-pose__bubble, .rb-pose__hi, .rb-ring, .rb-tick path, .rb-tick polyline { animation: none; }
+  .rb-pose__confetti i { opacity: 0.8; }
+  .rb-ring, .seg__pill, .btn-press, .tap-card { transition: none; }
+  .btn-press:active:not(:disabled), .tap-card:active { transform: none; }
 }

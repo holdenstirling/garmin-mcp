@@ -63,7 +63,7 @@ import { TAB_IDS, TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@
 import { useTabSwipe } from '@/hooks/useTabSwipe'
 import { HomeCardSkeleton } from '@/components/ui/Skeleton'
 import { setUsageOff, track, trackAppOpen } from '@/lib/usage'
-import { PullToRefresh, celebrate, signalReplyDone } from '@/components/fx'
+import { PullToRefresh, celebrate, reducedMotion, signalReplyDone } from '@/components/fx'
 import { Segmented } from '@/components/nav/Segmented'
 import type { MeRow } from '@/components/nav/MePage'
 import { StatusBanner, type Banner } from '@/components/nav/StatusBanner'
@@ -188,7 +188,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     })
   }
   const showPage = (pg: Page) => { dropSheet(); setRevealed(false); setPages([pg]) }
-  const popPage = () => { setRevealed(true); setPages((st) => st.slice(0, -1)) }
+  // Back slides the page away first (170 ms; instant under reduced motion), then reveals the one under it.
+  const [leaving, setLeaving] = useState(false)
+  const popPage = () => {
+    const done = () => { setLeaving(false); setRevealed(true); setPages((st) => st.slice(0, -1)) }
+    if (reducedMotion() || leaving) { done(); return }
+    setLeaving(true)
+    window.setTimeout(done, 170)
+  }
   const closePages = () => setPages([])
   // The one connect popup (components/connect/ConnectSheet): any screen via requestConnect(app).
   const [connect, setConnect] = useState<ConnectRequest | null>(null)
@@ -1541,7 +1548,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {visited.has('progress') && <div className={tabCls('progress')} data-tab-hidden={tab !== 'progress' || undefined}>{progressTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
       {topPage && (
-        <div key={pageKey(topPage)} className={`page-stack${revealed ? ' page-stack--revealed' : pages.length > 1 ? ' page-stack--pushed' : ''}`}>
+        <div key={pageKey(topPage)} className={`page-stack${leaving ? ' page-stack--leaving' : revealed ? ' page-stack--revealed' : pages.length > 1 ? ' page-stack--pushed' : ''}`}>
           <PageStack back={pages.length > 1 ? popPage : undefined}>{renderPage(topPage)}</PageStack>
         </div>
       )}

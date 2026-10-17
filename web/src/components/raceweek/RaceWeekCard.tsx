@@ -2,6 +2,7 @@
 // A/B/main race (countdown, taper line, today's session, race grade, packing ring), and a short
 // "Friends racing today" list (mutual followers who turned on Track me). Both hide when there's
 // nothing to show or the request fails; no GPS, so friends' times only move when a watch syncs.
+import type React from 'react'
 import { useEffect, useState } from 'react'
 import { Flag, Radio } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -18,8 +19,8 @@ function PackRing({ done, total }: { done: number; total: number }) {
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
         <circle cx="18" cy="18" r={r} fill="none" strokeWidth="4" className="stroke-(--bg-elevated)" />
         <circle cx="18" cy="18" r={r} fill="none" strokeWidth="4" strokeLinecap="round"
-          className={cn('transition-all duration-700', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
-          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
+          className={cn('rb-ring', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
       <span aria-hidden className="font-mono text-[0.6471rem] font-semibold text-(--text)">{done}/{total}</span>
     </span>

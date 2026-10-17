@@ -1,6 +1,7 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
+import type React from 'react'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useState } from 'react'
 import { useDraft } from '@/lib/drafts'
@@ -278,10 +279,11 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
   const tabs: [ClubView, string][] = c?.kind === 'race' ? [['feed', 'Feed'], ['members', 'Crew']]
     : [['feed', 'Feed'], ['meetups', 'Meetups'], ['challenges', 'Challenges'], ['members', 'Members']]
   const seg = member ? (
-    <div role="tablist" aria-label="Club" className="mx-auto mt-2 flex max-w-xl gap-1 rounded-full bg-(--bg-inset) p-0.5">
+    <div role="tablist" aria-label="Club" className="mx-auto mt-2 seg flex max-w-xl rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, tabs.findIndex(([v]) => v === view)), '--seg-n': tabs.length } as React.CSSProperties}>
+      <span className="seg__pill" aria-hidden />
       {tabs.map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
           {label}{v === 'members' && c?.pending.length ? ` · ${c.pending.length}` : ''}
         </button>
       ))}
