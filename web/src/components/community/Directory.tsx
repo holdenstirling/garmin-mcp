@@ -82,6 +82,7 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
   /** the app owner's "Feature this club" */
   onFeature?: () => void
 }) {
+  const [more, setMore] = useState(false)
   const when = nextLabel(l.next)
   const what = [l.type_label ?? l.kind_label, l.activity && l.activity !== 'other' ? ACTIVITY_LABEL[l.activity] : null].filter(Boolean).join(' · ')
   const meta = [l.pace, l.cost === 'free' ? 'Free' : l.cost === 'paid' ? 'Paid' : ''].filter(Boolean).join(' · ')
@@ -119,24 +120,30 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
             <CalendarPlus className="size-3.5" aria-hidden /> Add to calendar
           </a>
         )}
-        {l.linked_club ? (
-          <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>
-        ) : (
-          <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
-            <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
-          </button>
-        )}
-        {onFeature && (
-          <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
-            <Megaphone className="size-3.5" aria-hidden /> Feature
-          </button>
-        )}
-        {!l.reported && (
-          <button type="button" className={cn(linkCls, 'text-(--text-muted)')} disabled={busy} onClick={onReport}>
-            <Flag className="size-3.5" aria-hidden /> Report outdated
-          </button>
-        )}
+        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>}
+        <button type="button" aria-expanded={more} className={cn(linkCls, 'ml-auto text-(--text-muted)')} onClick={() => setMore((v) => !v)}>
+          More <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden />
+        </button>
       </div>
+      {more && (
+        <div className="flex flex-wrap items-center gap-x-4 border-t border-(--border) pt-1">
+          {!l.linked_club && (
+            <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
+              <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
+            </button>
+          )}
+          {onFeature && (
+            <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
+              <Megaphone className="size-3.5" aria-hidden /> Feature
+            </button>
+          )}
+          {!l.reported && (
+            <button type="button" className={cn(linkCls, 'text-(--text-muted)')} disabled={busy} onClick={onReport}>
+              <Flag className="size-3.5" aria-hidden /> Report outdated
+            </button>
+          )}
+        </div>
+      )}
       <p className="text-[0.6471rem] text-(--text-muted)">
         {l.link_only ? `From web search · ${l.source}` : `Checked ${verified(l.last_verified)} · ${l.source}`}
         {l.found_by === 'search' ? ' · Added by a search' : ''}
@@ -350,7 +357,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
         {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}
       </div>
       {mappable && (
-        <Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} />
+        <div className="w-full"><Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} /></div>
       )}
       {msg && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{msg}</p>}
       {listings.length > 0 && mappable && view === 'map' ? (
