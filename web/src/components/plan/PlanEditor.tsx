@@ -269,15 +269,15 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}
         </div>
       )}
-      <div className="px-1">
-        {plan.origin && (
+      {plan.origin && (
+        <div className="px-1">
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7647rem] text-(--text-secondary)">
             {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : plan.origin.kind === 'block' ? `Built for ${plan.origin.name ?? 'your training block'}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
             {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
             {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>}
           </p>
-        )}
-      </div>
+        </div>
+      )}
       {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
       {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
       {!coachMode && suggestions.map((t) => (

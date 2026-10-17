@@ -992,7 +992,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
         <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
           {goal && <RaceSwitcher title={goal.title} date={goal.date} sub="No plan for this race yet"
-            onSwitched={() => onChange()} onAddRace={openRaces} onBuild={startSetup} />}
+            onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
           {weekLead}
           <TPPlanSection imperial={me.athlete.units === 'imperial'} />
           {goal?.plan ? (

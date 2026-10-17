@@ -130,7 +130,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             </Field>
             {sportKinds.length > 1 && (
               <Field label="Type" className="border-t border-(--border)">
-                <Choice value={d.kind} options={sportKinds.map((k) => [k, KIND_LABEL[k] ?? k] as [string, string])} onChange={(v) => v && set({ kind: v })} />
+                <Choice value={d.kind} options={sportKinds.map((k) => [k, KIND_LABEL[k] ?? k.charAt(0).toUpperCase() + k.slice(1)] as [string, string])} onChange={(v) => v && set({ kind: v })} />
               </Field>
             )}
             <Field label="Name" className="border-t border-(--border)" hint={adding ? 'Leave blank for a name like "Easy run".' : undefined}>
