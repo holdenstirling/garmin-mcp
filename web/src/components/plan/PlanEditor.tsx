@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ChevronDown, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -9,11 +9,11 @@ import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import type { Me, Sport } from '@/lib/api'
 import {
-  deletePlan, placedEventLabel, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
+  deletePlan, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
 import { Field, Screen } from './ui'
-import { PhaseStrip, fmtDay, planToday, sessionMinutes } from './PlanParts'
+import { fmtDay, planToday, sessionMinutes } from './PlanParts'
 import { PlanCalendar, paceText, type MoveTarget } from './PlanCalendar'
 import { PLAN_CHANGED_EVENT, getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
 import { listEvents, type RaceEvent } from '@/lib/events'
@@ -288,22 +288,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
         onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
 
-      {/* Season overview: phases and hours by week (tap a week to open it), events in the plan */}
-      <details className="group rounded-xl border border-(--border) bg-(--bg-surface)">
-        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[0.8235rem] font-medium text-(--text) [&::-webkit-details-marker]:hidden">
-          <span className="flex-1">Season overview</span>
-          <span className="text-[0.7059rem] text-(--text-muted)">{plan.weeks.length} weeks · {plan.start_hours}h to {plan.peak_hours}h a week</span>
-          <ChevronDown className="size-4 text-(--text-muted) transition-transform group-open:rotate-180" aria-hidden />
-        </summary>
-        <div className="flex flex-col gap-3 px-4 pb-4">
-          <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
-          {plan.events.length > 0 && (
-            <p className="text-[0.7059rem] text-(--text-muted)">
-              Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${placedEventLabel(e)})`).join(' · ')}
-            </p>
-          )}
-        </div>
-      </details>
+      {/* The season (phases, hours by week, events in the plan) is the calendar's "Plan overview" sheet. */}
 
       {!coachMode && <>
       {/* Garmin */}

@@ -1,12 +1,15 @@
-// The plan as an easy calendar (server: plancal.py). Week view (default): each day's sessions as
-// cards (sport, title, distance in the athlete's units, time, target pace, done/missed, a one-line
-// coach note), drag a card to another day (mouse: drag; touch: long-press then drag, the page
-// auto-scrolls) or tap it -> Move. Every change re-balances the week and can be undone. Day view
-// (PlanDay.tsx): one day at a time with each workout in full, Learn more and Move / Swap. Month
-// view: the month at a glance with weekly/monthly/plan mileage; tap a day to open it.
+// The plan as an easy calendar (server: plancal.py). Views (remembered on the device):
+//   Today: one day at a time (PlanDay.tsx) with each workout in full, arrows/swipe to other days.
+//   Week: each day's sessions as cards, what the week prescribes (focus + key sessions), mileage.
+//   List: an agenda of the plan a few weeks at a time ("Show more weeks" to race day).
+//   Month: the month at a glance with weekly/monthly mileage; tap a day to open it.
+// Tapping a workout opens its full page (openWorkout.ts: the rabbit:open-workout event); the
+// pencil edits it in place (SessionSheet). "Edit" reveals Day earlier / Day later / Move or swap
+// and + per day; press and hold drags a session to another day (touch: long-press). Every change
+// re-balances the week and can be undone. "Plan overview" shows the phases to race day.
 // Deep link: lib/plancal openPlanDay(date) (sessionStorage keys read on mount + an event).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, Flag, GripVertical, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Map as MapIcon, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/nav/Segmented'
 import { Sheet } from '@/components/ui/Sheet'
@@ -22,10 +25,19 @@ import { Card, Chip, ChipRow, Field, inputCls } from './ui'
 import { SPORT_ICON, fmtDay, sessionMinutes, weekPhaseLabel } from './PlanParts'
 import { MoveSheet, addDays, mondayOf, weekdayIdx } from './MoveSheet'
 import { PlanDay } from './PlanDay'
+import { PlanOverview } from './PlanOverview'
+import { openWorkoutPage } from './openWorkout'
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-type View = 'week' | 'month' | 'day'
+type View = 'week' | 'month' | 'day' | 'list'
 const readKey = (k: string) => { try { return sessionStorage.getItem(k) } catch { return null } }
+// The chosen view is remembered on this device too (sessionStorage is per tab session).
+const VIEW_KEEP = 'rabbit.plancal.view.keep'
+const readView = (): View => {
+  let v: string | null = readKey(PLAN_VIEW_KEY)
+  if (!v) { try { v = localStorage.getItem(VIEW_KEEP) } catch { v = null } }
+  return v === 'month' || v === 'day' || v === 'list' ? v : 'week'
+}
 
 export function paceText(secPerKm: number, imperial: boolean) {
   const s = Math.round(secPerKm * (imperial ? KM_PER_MI : 1))
@@ -225,9 +237,18 @@ function StatusChip({ c }: { c: CalSession | undefined }) {
   return null
 }
 
-function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onFix, dragProps, grab }: {
+function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, onFix, dragProps, grab, editing, onShift, onMove }: {
   s: PlanSession; c: CalSession | undefined; date: string; imperial: boolean; unread: boolean; dragging: boolean
-  onOpen?: () => void; onFix?: () => void; dragProps: Record<string, unknown>; grab: boolean
+  /** the full workout page */
+  onOpen?: () => void
+  /** quick edit (SessionSheet) without opening the page */
+  onEdit?: () => void
+  onFix?: () => void; dragProps: Record<string, unknown>; grab: boolean
+  /** "Edit week": show the move controls */
+  editing?: boolean
+  /** move one day earlier (-1) / later (+1); undefined when that day can't take it */
+  onShift?: { [k in -1 | 1]?: () => void }
+  onMove?: () => void
 }) {
   const Icon = s.kind === 'race' ? Flag : SPORT_ICON[s.sport]
   const mins = sessionMinutes(s)
@@ -238,9 +259,10 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onFix, dr
   return (
     <div className={cn('rounded-xl border bg-(--bg-surface) transition-opacity', dragging ? 'opacity-40' : '',
       c?.status === 'missed' ? 'border-(--danger)/40' : 'border-(--border)', dim && 'opacity-60')}>
+      <div className="flex items-stretch">
       <button type="button" onClick={onOpen} disabled={!onOpen} {...dragProps} data-session-id={s.id}
-        aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${s.time ? ` at ${fmtTime(s.time)}` : ''}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}`}
-        className={cn('flex w-full items-start gap-2.5 px-3 py-2 text-left disabled:cursor-default', grab && 'touch-manipulation select-none')}>
+        aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${s.time ? ` at ${fmtTime(s.time)}` : ''}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}. Open the full workout`}
+        className={cn('flex min-w-0 flex-1 items-start gap-2.5 py-2 pl-3 text-left disabled:cursor-default', !onEdit && 'pr-3', grab && 'touch-manipulation select-none')}>
         <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
           s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : c?.status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
           <Icon className="size-4" aria-hidden />
@@ -258,8 +280,32 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onFix, dr
           {c?.note && c.status !== 'missed' && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{c.note.source === 'coach' ? 'Coach: ' : ''}{c.note.line}</span>}
           {c?.missed && <span className="block text-[0.7059rem] leading-snug text-(--text-secondary)">{c.missed.why}</span>}
         </span>
-        {grab && <GripVertical className="mt-2 size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+        {grab && editing && <GripVertical className="mt-2 size-4 shrink-0 text-(--text-muted)" aria-hidden />}
       </button>
+      {onEdit && (
+        <button type="button" onClick={onEdit} aria-label={`Edit ${s.title}`}
+          className="flex w-11 shrink-0 items-start justify-center pt-3 text-(--text-muted) active:text-(--text)">
+          <Pencil className="size-3.5" aria-hidden />
+        </button>
+      )}
+      </div>
+      {editing && (onMove || onShift) && (
+        <div className="flex items-center gap-1 border-t border-(--border) px-1.5 py-0.5">
+          <button type="button" disabled={!onShift?.[-1]} onClick={onShift?.[-1]} aria-label={`Move ${s.title} one day earlier`}
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            <ChevronLeft className="size-3.5" aria-hidden />Earlier
+          </button>
+          <button type="button" disabled={!onShift?.[1]} onClick={onShift?.[1]} aria-label={`Move ${s.title} one day later`}
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            Later<ChevronRight className="size-3.5" aria-hidden />
+          </button>
+          {onMove && (
+            <button type="button" onClick={onMove} className="ml-auto flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)" aria-label={`Move ${s.title} to any day, or swap days`}>
+              <ArrowLeftRight className="size-3.5" aria-hidden />Move
+            </button>
+          )}
+        </div>
+      )}
       {onFix && (
         <div className="flex justify-end border-t border-(--border) px-2 py-1">
           <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem] text-(--accent)" onClick={onFix}>
@@ -331,7 +377,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
 }
 
 // ------------------------------------------------------------- calendar --
-export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra, onStart, onAsk }: {
+export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra, onStart, onAsk, onOpenSession }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   week: PlanWeekBuilt; onWeek: (index: number) => void
   /** drag, Move, Fix and goals (the athlete's own plan) */
@@ -350,13 +396,18 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   onStart?: (s: PlanSession, date: string) => void
   /** Day view: ask Rabbit about a session */
   onAsk?: (s: PlanSession, date: string) => void
+  /** tap a session: its full workout page (default: the rabbit:open-workout event) */
+  onOpenSession?: (s: PlanSession, date: string) => void
 }) {
+  const openPage = onOpenSession ?? ((s: PlanSession, date: string) => openWorkoutPage(s.id, date))
   const first = plan.weeks[0]!.days[0]!.date
   const lastW = plan.weeks[plan.weeks.length - 1]!
   const last = lastW.days[lastW.days.length - 1]!.date
   const clamp = (d: string) => d < first ? first : d > last ? last : d
   const weekOf = (d: string) => plan.weeks.find((w) => w.days.some((x) => x.date === d))
-  const [view, setView] = useState<View>(() => { const v = readKey(PLAN_VIEW_KEY); return v === 'month' || v === 'day' ? v : 'week' })
+  const [view, setView] = useState<View>(readView)
+  const [editing, setEditing] = useState(false)
+  const [overview, setOverview] = useState(false)
   const [day, setDay] = useState<string>(() => {
     const k = readKey(PLAN_DAY_KEY)
     if (k && /^\d{4}-\d{2}-\d{2}$/.test(k)) return clamp(k)
@@ -381,7 +432,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     return m
   }, [plan])
 
-  useEffect(() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, view) } catch { /* ignore */ } }, [view])
+  useEffect(() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, view); localStorage.setItem(VIEW_KEEP, view) } catch { /* ignore */ } }, [view])
   // Deep link (lib/plancal openPlanDay): keys read on mount (above), the event while mounted;
   // either way the calendar scrolls into view so the day is what you see.
   const rootRef = useRef<HTMLElement>(null)
@@ -454,6 +505,93 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
       (date >= today || c?.status === 'missed')
   }
 
+  const shift = (s: PlanSession, date: string, n: -1 | 1) => {
+    const to = addDays(date, n)
+    return canDrop(to) ? () => { haptic(); void run(moveSession(s.id, to)) } : undefined
+  }
+  const editToggle = editable && cal && (
+    <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)}
+      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.7647rem] font-medium',
+        editing ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
+      {editing ? <><Check className="size-3.5" aria-hidden />Done</> : <><Pencil className="size-3.5" aria-hidden />Edit</>}
+    </button>
+  )
+
+  /** One day as a row (Week and List views): its sessions, workouts from your apps, + to add. */
+  const dayRow = (d: { date: string; sessions: PlanSession[] }, compact = false) => {
+    const past = d.date < today
+    const isToday = d.date === today
+    const work = d.sessions.filter((s) => s.sport !== 'rest' && !hidden?.(s.id))
+    const extra = dayExtra?.(d.date)
+    const done = cal?.extra?.[d.date] ?? []
+    const over = drag?.over === d.date && drag.from !== d.date
+    const canAdd = !!onAdd && !past && d.date <= plan.race_date && work.length < 4
+    const quiet = compact && !work.length && !extra && !done.length && !over && !editing
+    return (
+      <div key={d.date} data-cal-day={d.date}
+        className={cn('flex gap-3 px-3 transition-colors', quiet ? 'py-0.5' : 'py-2', isToday && 'bg-(--accent-subtle)',
+          over && 'bg-(--accent)/15 outline-2 -outline-offset-2 outline-dashed outline-(--accent)',
+          drag && !canDrop(d.date) && 'opacity-50')}>
+        <span className="w-10 shrink-0 text-center leading-tight">
+          <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}`}
+            className={cn('flex w-10 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)', quiet ? 'min-h-11 flex-row gap-1' : 'min-h-11 pt-1')}>
+            <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
+              {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
+            </span>
+            <span className={cn('block text-[0.7647rem]', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{fmtDay(d.date, { day: 'numeric' })}</span>
+          </button>
+          {!quiet && busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
+          {!quiet && plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
+        </span>
+        <div className={cn('flex min-w-0 flex-1 flex-col gap-1.5', quiet ? 'justify-center' : 'py-0.5')}>
+          {work.map((s) => {
+            const c = cal?.sessions[s.id]
+            const mv = movable(s, d.date)
+            return (
+              <SessionCard key={s.id} s={s} c={c} date={d.date} imperial={imperial} unread={unread.includes(s.id)}
+                dragging={drag?.id === s.id} grab={mv} dragProps={mv ? bind(s.id, d.date, s.title) : {}} editing={editing}
+                onOpen={() => { if (!suppressClick.current) openPage(s, d.date) }}
+                onEdit={() => onOpen(s, d.date)}
+                onShift={mv && c?.status !== 'missed' ? { [-1]: shift(s, d.date, -1), 1: shift(s, d.date, 1) } : undefined}
+                onMove={mv && c?.status !== 'missed' ? () => onMoving({ session: s, date: d.date }) : undefined}
+                onFix={editable && cal && c?.status === 'missed' && c.missed?.this_week ? () => setFix({ s, date: d.date }) : undefined} />
+            )
+          })}
+          {extra}
+          {/* Workouts from your apps that aren't plan sessions (cal.extra): so a rest day you trained on says so. */}
+          {done.map((a, i) => (
+            <p key={`x${a.id ?? i}`} className="flex items-center gap-1.5 text-[0.7059rem] text-(--accent)">
+              <Check className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
+            </p>
+          ))}
+          {!work.length && !extra && !done.length && <p className={cn('text-[0.7647rem] text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
+        </div>
+        {canAdd && (editing || !compact) && (
+          <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
+            className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
+            <Plus className="size-3.5" />
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  /** What the week prescribes: focus, key sessions, hours (Week view card and List week headers). */
+  const keySessions = (w: PlanWeekBuilt) => w.days.flatMap((d) => d.sessions
+    .filter((s) => s.sport !== 'rest' && (s.kind === 'long' || s.kind === 'race' || cal?.sessions[s.id]?.hard))
+    .map((s) => `${s.title} (${fmtDay(d.date, { weekday: 'short' })})`))
+  const prescription = (w: PlanWeekBuilt) => {
+    const keys = keySessions(w)
+    if (!w.focus && !keys.length) return null
+    return (
+      <div className="flex flex-col gap-0.5 border-b border-(--border) px-4 py-2.5 text-[0.7647rem] leading-snug">
+        {w.focus && <p className="text-(--text-secondary)">{w.focus}</p>}
+        {keys.length > 0 && <p className="text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key sessions:</span> {keys.join(' · ')}</p>}
+      </div>
+    )
+  }
+
   const weekNav = (
     <div className="flex items-center gap-1 px-1">
       <button type="button" className="modal-close" aria-label="Previous week" disabled={pos <= 0}
@@ -474,13 +612,20 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
   return (
     <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
-      <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Day'], ['week', 'Week'], ['month', 'Month']] as const}
-        onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : week.days.some((d) => d.date === today) ? today : week.days[0]!.date) : setView(v)} /></div>
-      {cal?.total.run && cal.total.run.planned > 0 && (
-        <p className="px-1 text-center font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
-          Running so far: {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })} in the plan
-        </p>
-      )}
+      <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Today'], ['week', 'Week'], ['list', 'List'], ['month', 'Month']] as const}
+        onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : today) : setView(v)} /></div>
+      <div className="flex items-center gap-2 px-1">
+        <button type="button" onClick={() => setOverview(true)}
+          className="flex min-h-11 items-center gap-1.5 text-[0.7647rem] font-medium text-(--accent)">
+          <MapIcon className="size-3.5" aria-hidden />Plan overview
+        </button>
+        {cal?.total.run && cal.total.run.planned > 0 && (
+          <span className="min-w-0 flex-1 truncate text-right font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
+            Run {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })}
+          </span>
+        )}
+        {(view === 'week' || view === 'list') && editToggle}
+      </div>
 
       {change && change.rebalanced.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5" role="status">
@@ -509,6 +654,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             const mv = movable(s, day)
             return {
               onEdit: (x) => onOpen(x, day),
+              onOpenPage: (x) => openPage(x, day),
               onMove: mv && c?.status !== 'missed' ? (x, mode) => onMoving({ session: x, date: day, mode }) : undefined,
               onFix: editable && cal && c?.status === 'missed' && c.missed?.this_week ? (x) => setFix({ s: x, date: day }) : undefined,
               onStart: onStart ? (x) => onStart(x, day) : undefined,
@@ -521,67 +667,16 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           <Card>
             {cal && <WeekMiles week={week.start} miles={cal.weeks[week.start]} imperial={imperial} editable={editable}
               onGoal={async (sp, km) => { await run(setWeekGoal(week.start, sp, km)) }} />}
-            {week.focus && <p className="border-b border-(--border) px-4 py-2.5 text-[0.7647rem] leading-snug text-(--text-secondary)">{week.focus}</p>}
-            <div className="divide-y divide-(--border)">
-              {week.days.map((d) => {
-                const past = d.date < today
-                const isToday = d.date === today
-                const work = d.sessions.filter((s) => s.sport !== 'rest' && !hidden?.(s.id))
-                const extra = dayExtra?.(d.date)
-                const over = drag?.over === d.date && drag.from !== d.date
-                const canAdd = !!onAdd && !past && d.date <= plan.race_date && work.length < 4
-                return (
-                  <div key={d.date} data-cal-day={d.date}
-                    className={cn('flex gap-3 px-3 py-2 transition-colors', isToday && 'bg-(--accent-subtle)',
-                      over && 'bg-(--accent)/15 outline-2 -outline-offset-2 outline-dashed outline-(--accent)',
-                      drag && !canDrop(d.date) && 'opacity-50')}>
-                    <span className="w-10 shrink-0 pt-1 text-center leading-tight">
-                      <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })} in full`}
-                        className="flex min-h-11 w-10 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)">
-                        <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                          {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
-                        </span>
-                        <span className="block text-[0.7647rem] text-(--accent) underline-offset-2">{fmtDay(d.date, { day: 'numeric' })}</span>
-                      </button>
-                      {busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
-                      {plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
-                      {work.map((s) => {
-                        const c = cal?.sessions[s.id]
-                        const mv = movable(s, d.date)
-                        return (
-                          <SessionCard key={s.id} s={s} c={c} date={d.date} imperial={imperial} unread={unread.includes(s.id)}
-                            dragging={drag?.id === s.id} grab={mv} dragProps={mv ? bind(s.id, d.date, s.title) : {}}
-                            onOpen={() => { if (!suppressClick.current) onOpen(s, d.date) }}
-                            onFix={editable && cal && c?.status === 'missed' && c.missed?.this_week ? () => setFix({ s, date: d.date }) : undefined} />
-                        )
-                      })}
-                      {extra}
-                      {/* Workouts from your apps that aren't plan sessions (cal.extra): so a rest day you trained on says so. */}
-                      {(cal?.extra?.[d.date] ?? []).map((a, i) => (
-                        <p key={`x${a.id ?? i}`} className="flex items-center gap-1.5 text-[0.7059rem] text-(--accent)">
-                          <Check className="size-3.5 shrink-0" aria-hidden />
-                          <span className="truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
-                        </p>
-                      ))}
-                      {!work.length && !extra && !(cal?.extra?.[d.date]?.length) && <p className="py-2 text-[0.7647rem] text-(--text-muted)">{over ? 'Drop here' : 'Rest'}</p>}
-                    </div>
-                    {canAdd && (
-                      <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
-                        className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
-                        <Plus className="size-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            {prescription(week)}
+            <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
           <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
-            {editable && cal ? 'Tap a day to see it in full, a session to edit it, or press and hold to drag it to another day.' : 'Tap a day to see its workouts in full.'}
+            {editable && cal ? (editing ? 'Press and hold a session to drag it, or use Earlier / Later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
+      ) : view === 'list' ? (
+        <PlanList plan={plan} cal={cal} imperial={imperial} today={today} dayRow={dayRow} prescription={prescription} editing={editing}
+          onWeek={(i) => { onWeek(i); setView('week') }} />
       ) : (
         <MonthView plan={plan} cal={cal} imperial={imperial} today={today} anchor={week.start}
           onPickDay={openDay} />
@@ -610,10 +705,72 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
       {moving && cal && <MoveSheet key={`${moving.session.id}:${moving.mode ?? 'move'}`} session={moving.session} from={moving.date} initialMode={moving.mode}
         plan={plan} cal={cal} today={today} onClose={() => onMoving(null)} run={run} />}
+      {overview && <PlanOverview plan={plan} onClose={() => setOverview(false)} onWeek={(i) => { onWeek(i); setView('week') }} />}
       {fix && cal && cal.sessions[fix.s.id] && (
         <FixSheet s={fix.s} date={fix.date} c={cal.sessions[fix.s.id]!} plan={plan} cal={cal} today={today} onClose={() => setFix(null)} run={run} />
       )}
     </section>
+  )
+}
+
+/** List view: the plan as a scrolling agenda, a few weeks at a time, grouped by week with what
+ *  each week prescribes. Same day rows (and drag / Edit controls) as the Week view. */
+function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, onWeek }: {
+  plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
+  dayRow: (d: { date: string; sessions: PlanSession[] }, compact?: boolean) => React.ReactNode
+  prescription: (w: PlanWeekBuilt) => React.ReactNode
+  editing: boolean
+  onWeek: (index: number) => void
+}) {
+  const STEP = 4
+  const here = Math.max(0, plan.weeks.findIndex((w) => w.days.some((d) => d.date >= today)))
+  const [from, setFrom] = useState(here)
+  const [to, setTo] = useState(Math.min(plan.weeks.length, here + STEP))
+  const shown = plan.weeks.slice(from, to)
+  const sessionsOf = (w: PlanWeekBuilt) => w.days.flatMap((d) => d.sessions.filter((s) => s.sport !== 'rest' && s.kind !== 'race'))
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a session to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
+      </p>
+      {from > 0 && (
+        <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>
+      )}
+      {shown.map((w) => {
+        const ss = sessionsOf(w)
+        const done = ss.filter((s) => cal?.sessions[s.id]?.status === 'done').length
+        const miles = cal?.weeks[w.start]
+        const goals = miles ? (Object.entries(miles) as [DistSport, Mileage][]).filter(([, m]) => m.goal > 0) : []
+        return (
+          <Card key={w.start}>
+            <button type="button" onClick={() => onWeek(w.index)} aria-label={`Open week ${w.index} in the Week view`}
+              className="flex w-full items-center gap-2 border-b border-(--border) px-4 py-2.5 text-left active:bg-(--bg-inset)">
+              <span className={cn('size-2.5 shrink-0 rounded-full', `phase-${w.recovery && w.phase !== 'taper' && w.phase !== 'race' ? 'recovery' : w.phase}`)} aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                  Week {w.index} · {weekPhaseLabel(w)} · {w.hours}h{w.index === plan.current_week ? ' · this week' : ''}
+                </span>
+                <span className="block text-[0.7059rem] text-(--text-secondary)">
+                  {fmtDay(w.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(w.days[w.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
+                  {goals.map(([sp, m]) => ` · ${SPORT_DIST_LABEL[sp]} ${fmtDist(m.goal, imperial, sp, { decimals: 0 })}`).join('')}
+                  {ss.length > 0 && (done > 0 || w.days[0]!.date <= today) ? ` · ${done}/${ss.length} done` : ''}
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+            </button>
+            {prescription(w)}
+            <div className="divide-y divide-(--border)">{w.days.map((d) => dayRow(d, true))}</div>
+          </Card>
+        )
+      })}
+      {to < plan.weeks.length ? (
+        <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setTo(Math.min(plan.weeks.length, to + STEP))}>
+          Show {Math.min(STEP, plan.weeks.length - to)} more week{plan.weeks.length - to === 1 ? '' : 's'}
+        </Button>
+      ) : (
+        <p className="px-4 text-center text-[0.7059rem] text-(--text-muted)">That's the whole plan, through race day.</p>
+      )}
+    </div>
   )
 }
 
