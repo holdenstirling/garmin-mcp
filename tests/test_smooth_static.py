@@ -58,3 +58,25 @@ def test_tab_bar_children_never_take_the_tap() -> None:
     # The Home tab's rabbit remounts on pointer-down (twitch); if it took the tap, the click was lost.
     css = (SRC / "styles" / "rabbit.css").read_text()
     assert ".tab-bar__item > * { pointer-events: none; }" in css
+
+
+def test_design_tokens_launch_screen_and_rabbit_voice() -> None:
+    css = (SRC / "styles" / "globals.css").read_text()
+    for t in ("caption", "small", "meta", "body", "lead", "title", "heading", "page", "display"):
+        assert f"--text-{t}:" in css
+    html = (SRC.parent / "index.html").read_text()
+    assert 'id="splash"' in html and "<script>" not in html  # CSP: the launch screen needs no inline JS
+    assert "hideSplash()" in (SRC / "App.tsx").read_text()
+    assert "rabbit-voice" in (SRC / "components" / "chat" / "MessageBubble.tsx").read_text()
+
+
+def test_no_off_scale_font_sizes() -> None:
+    # Root is 17px: every rem size is a 17px step (or 1rem); arbitrary ones like 1.3rem drift.
+    import re
+    ok = {round(px / 17, 4) for px in range(9, 60)} | {1.0}
+    bad = []
+    for p, src in tsx():
+        for m in re.finditer(r"text-\[([0-9.]+)rem\]", src):
+            if round(float(m.group(1)), 4) not in ok:
+                bad.append(f"{p.name}: {m.group(0)}")
+    assert not bad, bad

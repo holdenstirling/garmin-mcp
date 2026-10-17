@@ -205,7 +205,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Icon">
           {EMOJIS.map((e) => (
             <button key={e} type="button" role="radio" aria-checked={f.emoji === e} onClick={() => set('emoji', e)}
-              className={cn('flex size-11 items-center justify-center rounded-xl text-[1.25rem]', f.emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
+              className={cn('flex size-11 items-center justify-center rounded-xl text-[1.2941rem]', f.emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
           ))}
         </div>
       </Field>

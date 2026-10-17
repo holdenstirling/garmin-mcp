@@ -78,7 +78,7 @@ export function GroupSheet({ initial, onClose, onSaved }: {
       <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Group emoji">
         {EMOJIS.map((e) => (
           <button key={e} type="button" role="radio" aria-checked={emoji === e} aria-label={`Emoji ${e}`} onClick={() => setEmoji(e)}
-            className={cn('hit-44 flex size-10 items-center justify-center rounded-xl text-[1.2rem]', emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
+            className={cn('hit-44 flex size-10 items-center justify-center rounded-xl text-[1.1765rem]', emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
         ))}
       </div>
       {!initial && <FriendPicker picked={picked} onPick={setPicked} />}

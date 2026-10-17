@@ -303,7 +303,7 @@ function QuickChips({ feel, onFeel, onPhrase }: {
           <button key={v} type="button" onClick={() => onFeel(v)} aria-pressed={feel === v} aria-label={`Feel ${v} of 5: ${label}`}
             className={cn('flex flex-1 flex-col items-center gap-0.5 rounded-xl border py-1.5 transition-colors',
               feel === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-            <span className="text-[1.35rem] leading-none" aria-hidden="true">{face}</span>
+            <span className="text-[1.4118rem] leading-none" aria-hidden="true">{face}</span>
             <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
           </button>
         ))}

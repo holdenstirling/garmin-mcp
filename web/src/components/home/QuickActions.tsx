@@ -111,7 +111,7 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
           <div role="group" aria-label="How did it feel?" className="mb-1 flex items-center justify-between gap-1 rounded-2xl border border-(--border) bg-(--bg-surface) px-2 py-1.5">
             {FACES.map(([n, face, label]) => (
               <button key={n} type="button" aria-label={label} disabled={busy !== null}
-                className="hit-44 flex min-h-11 min-w-11 flex-col items-center justify-center rounded-xl text-[1.3rem] leading-none active:bg-(--bg-inset) disabled:opacity-50"
+                className="hit-44 flex min-h-11 min-w-11 flex-col items-center justify-center rounded-xl text-[1.2941rem] leading-none active:bg-(--bg-inset) disabled:opacity-50"
                 onClick={() => void run(feel, null, n)}>
                 <span aria-hidden>{face}</span>
                 <span className="mt-0.5 text-[0.6471rem] text-(--text-muted)">{label}</span>

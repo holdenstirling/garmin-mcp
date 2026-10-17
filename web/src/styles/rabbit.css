@@ -427,3 +427,27 @@ html.kb-open .tab-bar { display: none; }
 /* The tab's icon and label never take the tap themselves: the Home rabbit's twitch remounts its
    icon on pointer-down, and a tap whose target disappears mid-press never becomes a click. */
 .tab-bar__item > * { pointer-events: none; }
+
+
+/* ---------------------------------------------------------------- design system ---
+   Spacing: 4 / 8 / 12 / 16 / 24 px (Tailwind 1 / 2 / 3 / 4 / 6; --spacing is 4px).
+   Cards: rounded-xl (16px), 1px --border, --bg-surface, padding 16px (p-4), 12px between
+   cards in a list (gap-3), 24px between sections (gap-6). Section labels: <SectionLabel>.
+   Rabbit's voice (chat replies, moments, plan notes, workout feedback, overview intros) always
+   uses one surface: .rabbit-voice (components/ui/brand.tsx RabbitNote). Coach notes use the
+   plain card so who's talking is obvious. */
+.rabbit-voice {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  background: var(--accent-subtle);
+  border-radius: 16px;
+  color: var(--text);
+}
+.rabbit-voice--tail { border-top-left-radius: 4px; }
+.rabbit-voice__label {
+  font-family: var(--default-mono-font-family); font-size: var(--text-caption); font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+}
+.section-label {
+  font-family: var(--default-mono-font-family); font-size: var(--text-caption); font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+}

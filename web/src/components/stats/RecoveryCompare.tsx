@@ -139,7 +139,7 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
             <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">
               {label}{term && <InfoTip term={term as 'oura_readiness' | 'garmin_readiness'} />}
             </span>
-            <span className="mt-0.5 block font-display text-[1.05rem] leading-tight text-(--text)">{v}</span>
+            <span className="mt-0.5 block font-display text-[1.0588rem] leading-tight text-(--text)">{v}</span>
           </div>
         ))}
       </div>

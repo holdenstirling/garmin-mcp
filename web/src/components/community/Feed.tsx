@@ -354,7 +354,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
             {FEELINGS.map((f) => (
               <button key={f} type="button" role="radio" aria-checked={feeling === f} aria-label={`Feeling ${f}`}
                 onClick={() => setFeeling(feeling === f ? null : f)}
-                className={cn('hit-44 flex size-9 items-center justify-center rounded-full text-[1.05rem]', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-70')}>{f}</button>
+                className={cn('hit-44 flex size-9 items-center justify-center rounded-full text-[1.0588rem]', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-70')}>{f}</button>
             ))}
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -427,7 +427,7 @@ function DraftsTray({ drafts, onShared, onDismissed }: {
     <section className="rounded-2xl border border-(--accent)/30 bg-(--accent-subtle) p-3">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex min-h-11 w-full items-center gap-2 text-left">
-        <span className="celebrate text-[1.1rem]" aria-hidden>🎉</span>
+        <span className="celebrate text-[1.0588rem]" aria-hidden>🎉</span>
         <span className="flex-1 text-[0.8235rem] font-medium text-(--text)">Rabbit spotted {n} milestone{n === 1 ? '' : 's'} to share</span>
         <span className="text-[0.7059rem] text-(--accent)">{open ? 'Hide' : 'Show'}</span>
       </button>
@@ -622,7 +622,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
               aria-label={`${label}${n ? `, ${n}` : ''}`} onClick={() => void toggle(kind)}
               className={cn('hit-44 inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.7059rem] font-medium transition-colors',
                 on ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary) active:bg-(--bg-inset)')}>
-              <span className={cn('text-[0.95rem]', on && 'celebrate')} aria-hidden>{emoji}</span>
+              <span className={cn('text-[0.9412rem]', on && 'celebrate')} aria-hidden>{emoji}</span>
               {n > 0 && <span className="tabular-nums">{n}</span>}
             </button>
           )
@@ -736,7 +736,7 @@ function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>;
   return (
     <div className="mt-2.5 rounded-xl border border-(--border) bg-(--bg-inset) px-3.5 py-3">
       <div className="flex items-center gap-2.5">
-        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.25rem]">{SPORT_EMOJI[w.sport] ?? '🐇'}</span>
+        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.2941rem]">{SPORT_EMOJI[w.sport] ?? '🐇'}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[0.9412rem] font-semibold text-(--text)">{w.title}</span>
           <span className="block text-[0.6471rem] text-(--text-muted)">{w.auto ? 'Synced' : 'Shared'} via {via}</span>

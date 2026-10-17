@@ -100,7 +100,7 @@ function FeaturedCard({ f, wide, onOpenClub, onChange, onToast }: {
       className={cn('flex shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5',
         wide ? 'w-full' : 'w-[85%] max-w-sm')}>
       <div className="flex items-start gap-2.5">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.35rem]" aria-hidden>
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.4118rem]" aria-hidden>
           {f.kind === 'club' ? (f.emoji || '🐇') : <Users className="size-5 text-(--accent)" />}
         </span>
         <div className="min-w-0 flex-1">

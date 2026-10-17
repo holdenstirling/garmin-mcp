@@ -116,7 +116,7 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
 
       <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3 text-center">
         <div className="flex items-center gap-4">
-          <span className={cn('font-display text-[1.6rem] leading-none text-(--accent)', r.xp.total > 0 && xp === r.xp.total && 'fx-hop')}
+          <span className={cn('font-display text-[1.6471rem] leading-none text-(--accent)', r.xp.total > 0 && xp === r.xp.total && 'fx-hop')}
             aria-label={`${r.xp.total} XP earned`}>+{xp} XP</span>
           {r.streak.current > 0 && (
             <span className="flex items-center gap-1 text-[0.9412rem] font-semibold text-(--accent)" aria-label={`${r.streak.current} day streak`}>

@@ -65,7 +65,7 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
                 {card.race_day ? 'Race day' : 'Race week'}
               </span>
               <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{card.event.name}</span>
-              <span className="block font-display text-[1.1rem] leading-tight text-(--brand)">{countdown(card.days)}</span>
+              <span className="block font-display text-[1.0588rem] leading-tight text-(--brand)">{countdown(card.days)}</span>
             </span>
             {card.packing.total > 0 && <PackRing done={card.packing.done} total={card.packing.total} />}
           </div>

@@ -12,8 +12,10 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { registerServiceWorker } from './lib/push'
 import { trackKeyboard } from './lib/viewport'
+import { hideSplashLater } from './lib/splash'
 
 registerServiceWorker()
+hideSplashLater()
 trackKeyboard()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -446,7 +446,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
-      <span className="font-display text-[1.3rem] leading-none text-(--text)">{value}</span>
+      <span className="font-display text-[1.2941rem] leading-none text-(--text)">{value}</span>
       <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{label}</span>
     </div>
   )

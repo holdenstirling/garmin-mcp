@@ -66,7 +66,7 @@ export function CelebrationScreen({ c, onClose }: { c: Celebration; onClose: () 
         <p className="fx-cel-rise m-0 font-mono text-[0.7059rem] font-semibold uppercase tracking-widest opacity-90" style={{ animationDelay: '150ms' }}>
           {EYEBROW[c.kind]}
         </p>
-        <h2 id="cel-title" className="fx-cel-rise m-0 font-display text-[2.4rem] leading-none" style={{ animationDelay: '220ms' }}>{c.title}</h2>
+        <h2 id="cel-title" className="fx-cel-rise m-0 font-display text-[2.3529rem] leading-none" style={{ animationDelay: '220ms' }}>{c.title}</h2>
         <p className="fx-cel-rise m-0 text-[1.0588rem] font-semibold" style={{ animationDelay: '300ms' }}>{c.subtitle}</p>
         <p id="cel-line" className="fx-cel-rise m-0 max-w-xs text-[0.8824rem] leading-snug opacity-90" style={{ animationDelay: '380ms' }}>{c.line}</p>
         {c.stats.length > 0 && (

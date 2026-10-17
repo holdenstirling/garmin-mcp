@@ -28,7 +28,7 @@ export function GradeBadge({ grade, size = 'sm', className }: { grade: string; s
   return (
     <span aria-label={`Readiness grade ${grade}`}
       className={cn('inline-flex shrink-0 items-center justify-center rounded-full border font-display leading-none',
-        size === 'lg' ? 'size-16 text-[1.9rem]' : size === 'md' ? 'size-11 text-[1.15rem]' : 'size-9 text-[0.9412rem]',
+        size === 'lg' ? 'size-16 text-[1.8824rem]' : size === 'md' ? 'size-11 text-[1.1765rem]' : 'size-9 text-[0.9412rem]',
         GRADE_CLS[grade[0] ?? 'C'] ?? GRADE_CLS.C, className)}>
       {grade}
     </span>

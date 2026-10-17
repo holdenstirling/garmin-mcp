@@ -165,11 +165,11 @@ function StreakHero({ s }: { s: Stats }) {
           <span className={cn('flex size-16 items-center justify-center rounded-full', st.current ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
             <Flame className="size-8" />
           </span>
-          <span className="mt-2 font-display text-[2.2rem] leading-none text-(--brand)">{st.current}</span>
+          <span className="mt-2 font-display text-[2.1176rem] leading-none text-(--brand)">{st.current}</span>
           <span className="text-[0.7059rem] text-(--text-muted)">day streak</span>
         </div>
         <div className="flex flex-col items-center pb-1">
-          <span className="font-display text-[1.6rem] leading-none text-(--text)">{st.weeks_current}</span>
+          <span className="font-display text-[1.6471rem] leading-none text-(--text)">{st.weeks_current}</span>
           <span className="max-w-[90px] text-[0.6471rem] leading-tight text-(--text-muted)">active weeks in a row ({st.active_week}+ workouts)</span>
         </div>
       </div>
@@ -232,7 +232,7 @@ function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPer
         {tiles.map(([I, label, v]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
             <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><I className="size-3.5" />{label}</span>
-            <span className="mt-1 block font-display text-[1.2rem] leading-tight text-(--text)">{v}</span>
+            <span className="mt-1 block font-display text-[1.1765rem] leading-tight text-(--text)">{v}</span>
           </div>
         ))}
       </div>
@@ -357,7 +357,7 @@ function BestsCard({ s }: { s: Stats }) {
         {rows.filter(([, v]) => v).map(([label, v, d]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
             <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><Trophy className="size-3.5" />{label}</span>
-            <span className="mt-1 block font-display text-[1.2rem] leading-tight text-(--text)">{v}</span>
+            <span className="mt-1 block font-display text-[1.1765rem] leading-tight text-(--text)">{v}</span>
             {d && <span className="text-[0.6471rem] text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
           </div>
         ))}
@@ -457,7 +457,7 @@ function OuraRecovery({ loadKey = 0 }: { loadKey?: number }) {
             <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">
               {label}{label === 'Oura readiness' && <InfoTip term="oura_readiness" />}
             </span>
-            <span className="mt-0.5 block font-display text-[1.05rem] leading-tight text-(--text)">{v}</span>
+            <span className="mt-0.5 block font-display text-[1.0588rem] leading-tight text-(--text)">{v}</span>
             {d && <span className="block text-[0.7059rem] leading-tight">{d}</span>}
           </div>
         ))}

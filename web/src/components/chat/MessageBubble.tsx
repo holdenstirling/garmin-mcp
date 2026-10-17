@@ -58,7 +58,7 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
           ? 'rounded-tr-sm border border-black/10 bg-[var(--msg-user-bg)] text-[var(--msg-user-text)]'
           : message.error
             ? 'rounded-tl-sm border border-(--danger)/30 bg-(--danger-subtle) text-(--danger)'
-            : 'rounded-tl-sm border border-border bg-background text-foreground',
+            : 'rabbit-voice rabbit-voice--tail',
       )}>
         {isUser || message.error ? (
           <p className="m-0 whitespace-pre-wrap">{message.text}</p>

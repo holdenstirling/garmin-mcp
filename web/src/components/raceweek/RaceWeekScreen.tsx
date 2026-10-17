@@ -32,7 +32,7 @@ function TargetEditor({ p, onSave }: { p: RaceWeekPage; onSave: (s: number | nul
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" className="hit-44 flex size-9 items-center justify-center rounded-full border border-(--border)"
         aria-label={`${step / 60} minutes faster`} onClick={() => setV((x) => Math.max(300, x - step))}><Minus className="size-4" /></button>
-      <span className="min-w-20 text-center font-mono text-[1.2rem] font-semibold tabular-nums text-(--text)" aria-live="polite">{hms(v)}</span>
+      <span className="min-w-20 text-center font-mono text-[1.1765rem] font-semibold tabular-nums text-(--text)" aria-live="polite">{hms(v)}</span>
       <button type="button" className="hit-44 flex size-9 items-center justify-center rounded-full border border-(--border)"
         aria-label={`${step / 60} minutes slower`} onClick={() => setV((x) => Math.min(72 * 3600, x + step))}><Plus className="size-4" /></button>
       {v !== cur && <Button variant="primary" className="h-9 px-3 text-[0.7647rem]" loading={busy} onClick={() => void save(v)}>Use {hms(v)}</Button>}

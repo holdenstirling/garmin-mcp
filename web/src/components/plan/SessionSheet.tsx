@@ -171,7 +171,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             <Card>
               <Field label="Fueling">
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.8235rem] text-(--text)">
-                  <span><b className="font-display text-[1.1rem]">{session.fuel.carbs_g_per_h}</b> g carbs/h</span>
+                  <span><b className="font-display text-[1.0588rem]">{session.fuel.carbs_g_per_h}</b> g carbs/h</span>
                   {session.fuel.total_carbs_g != null && <span className="text-(--text-muted)">≈{session.fuel.total_carbs_g} g total</span>}
                   {session.fuel.fluid_ml_per_h && <span className="text-(--text-muted)">{session.fuel.fluid_ml_per_h} ml fluid/h</span>}
                   {session.fuel.sodium_mg_per_h && <span className="text-(--text-muted)">{session.fuel.sodium_mg_per_h} mg sodium/h</span>}
