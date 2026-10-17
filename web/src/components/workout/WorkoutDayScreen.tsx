@@ -30,6 +30,7 @@ import {
   type CheckInRequest, type Target, type Weather, type WorkoutFeedback, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
 } from '@/lib/workout'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
+import { WeatherSection } from './WeatherSection'
 
 const ICON: Record<string, typeof Bike> = {
   swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
@@ -253,6 +254,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
 }) {
   const isToday = d.date === d.today
   const ahead = d.date >= d.today
+  const [wxShown, setWxShown] = useState(false)  // the full Weather section replaces the small chip
   const dist = distText(c, imperial) || (s.meters ? (s.sport === 'swim' ? fmtMeters(s.meters, imperial) : fmtDist(s.meters / 1000, imperial)) : '')
   const meta = [s.minutes ? fmtDuration(s.minutes) : null, dist || null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null].filter(Boolean).join(' · ')
   const t = c?.targets
@@ -336,8 +338,9 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
           {note.cues && <p className="m-0 text-[0.8235rem] text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
         </RabbitNote>
       )) : <CueCard cue={s.cue} />}
+      {s.id && ahead && status !== 'done' && <WeatherSection sessionId={s.id} imperial={imperial} onShown={setWxShown} />}
       <FuelCard s={s} />
-      {(s.gear.length > 0 || (isToday && d.weather)) && (
+      {(s.gear.length > 0 || (isToday && d.weather && !wxShown)) && (
         <div className="flex flex-col gap-2">
           {s.gear.map((g) => (
             <div key={g.id} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5',
@@ -351,7 +354,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
               </span>
             </div>
           ))}
-          {isToday && d.weather && <WeatherChip w={d.weather} imperial={imperial} />}
+          {isToday && d.weather && !wxShown && <WeatherChip w={d.weather} imperial={imperial} />}
         </div>
       )}
       {s.id && ahead && status !== 'done' && s.garmin.syncable && (d.garmin_connected === false
