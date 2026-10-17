@@ -6,7 +6,7 @@ import { Check, ChevronRight, ListChecks } from 'lucide-react'
 import { celebrate } from '@/components/fx/motion'
 import { cn } from '@/lib/utils'
 import {
-  CHECKLIST_CHANGED_EVENT, actChecklist, checklistNext, dueLabel, openChecklist, type ChecklistNext,
+  CHECKLIST_CHANGED_EVENT, actChecklist, announceChecklist, checklistNext, dueLabel, openChecklist, type ChecklistNext,
 } from '@/lib/racechecklist'
 import { ProgressRing } from '@/components/events/RaceChecklist'
 
@@ -23,10 +23,10 @@ export function RaceChecklistCard({ refreshKey }: { refreshKey?: number }) {
   const tick = async (id: string, el: Element) => {
     setN((x) => x && { ...x, next: x.next.map((i) => (i.id === id ? { ...i, checked: true } : i)) })
     celebrate(el, 'checkin')
-    try { await actChecklist(n.event.id, { action: 'check', item: id }); load() } catch { load() }
+    try { await actChecklist(n.event.id, { action: 'check', item: id }); announceChecklist() } catch { load() }
   }
   return (
-    <section aria-label={`Race checklist for ${n.event.name}`} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
+    <section aria-label={`Race checklist for ${n.event.name}`} className="mx-4 mt-3 flex shrink-0 flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       <button type="button" onClick={() => openChecklist(n.event.id)}
         className="flex min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-(--bg-inset)">
         <ProgressRing done={n.done} total={n.total} size={44} />

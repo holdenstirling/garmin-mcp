@@ -966,13 +966,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
             {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
-            {athlete && <RaceChecklistCard refreshKey={feedTick} />}
             {upnext && (
               <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                 onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
                 onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
                 hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} />
             )}
+            {athlete && <RaceChecklistCard refreshKey={feedTick} />}
             {stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
                 onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? openDiscover() : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
