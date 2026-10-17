@@ -16,7 +16,7 @@ import pytest
 from garmin_mcp.appstore import AppStore
 from garmin_mcp.clubs import Clubs
 from garmin_mcp.coaches import CoachChat, coach_user_id
-from garmin_mcp.community import Community, CommunityError, workout_label
+from garmin_mcp.community import Community, CommunityError, workout_card, workout_label
 from garmin_mcp.moments import Moments
 from garmin_mcp.quickactions import QuickActions, pick_cheer, pick_feel, pick_rsvp, pick_watch
 from garmin_mcp.social import Social
@@ -63,13 +63,14 @@ def test_auto_share_off_until_prompted_on_by_default_and_declinable(fx) -> None:
     assert cm.auto_share_workouts("ann", acts, today) == []  # never asked: nothing leaves
     cm.put_settings("ann", {"share_prompted": True})  # the one-time prompt was shown: default on
     s = cm.settings("ann")
-    assert Community.sharing_workouts(s) and s["share_since"] == today.isoformat()
+    # Sharing starts with the last few days (BACKFILL_DAYS), never older.
+    assert Community.sharing_workouts(s) and s["share_since"] == (today - timedelta(days=2)).isoformat()
     posted = cm.auto_share_workouts("ann", acts, today)
-    assert len(posted) == 1  # only today's: yesterday's predates sharing
+    assert len(posted) == 2  # today's and yesterday's; the one from a month ago never
     assert cm.auto_share_workouts("ann", acts, today) == []  # once per activity
     feed = cm.feed("bob")["items"]
-    assert [p["id"] for p in feed] == posted and feed[0]["audience"] == "friends" and feed[0]["kind"] == "workout"
-    assert feed[0]["workout"]["title"] == "Run" and feed[0]["workout"]["km"] == 10
+    assert sorted(p["id"] for p in feed) == sorted(posted) and feed[0]["audience"] == "friends" and feed[0]["kind"] == "workout"
+    assert feed[0]["workout"]["title"] == "Run" and {p["workout"]["km"] for p in feed} == {10, 8}
     assert cm.feed("cat")["items"] == []  # not a follower
     # Declined: private.
     cm.put_settings("ann", {"share_workouts": False})
@@ -88,8 +89,9 @@ def test_auto_share_respects_blocks(fx) -> None:
     _follow(soc, "cat", "ann")
     cm.put_settings("ann", {"share_workouts": True})
     soc.block("ann", "cat")
-    pid = cm.auto_share_workouts("ann", _acts(today), today)[0]
-    assert [p["id"] for p in cm.feed("bob")["items"]] == [pid]
+    ids = cm.auto_share_workouts("ann", _acts(today), today)
+    pid = ids[-1]
+    assert sorted(p["id"] for p in cm.feed("bob")["items"]) == sorted(ids)
     assert cm.feed("cat")["items"] == []
     with pytest.raises(CommunityError):
         cm.get("cat", pid)
@@ -100,7 +102,7 @@ def test_auto_share_respects_blocks(fx) -> None:
 def test_auto_shared_card_has_no_hr_gps_or_location(fx) -> None:
     cm, today = fx.cm, NOON.date()
     cm.put_settings("ann", {"share_workouts": True})
-    pid = cm.auto_share_workouts("ann", _acts(today), today)[0]
+    pid = cm.auto_share_workouts("ann", _acts(today), today)[-1]
     post = cm.get("bob", pid)
     assert set(post["workout"]) == {"activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
                                     "pace_s_km", "auto", "source"}
@@ -114,7 +116,7 @@ def test_cheer_push_names_the_workout_coalesces_and_respects_quiet_hours(fx) -> 
     cm, today = fx.cm, NOON.date()
     _follow(fx.soc, "cat", "ann")
     cm.put_settings("ann", {"share_workouts": True})
-    pid = cm.auto_share_workouts("ann", _acts(today), today)[0]
+    pid = cm.auto_share_workouts("ann", _acts(today), today)[-1]  # today's 10K (oldest first)
     cm.react("bob", pid, "party")
     assert fx.pushes == [("ann", "Bob cheered your 10K", "Tap to see who's cheering.")]
     cm.react("cat", pid, "strong")
@@ -285,3 +287,80 @@ def test_auto_share_any_source_with_label_and_once_per_activity(fx) -> None:
     assert cm.auto_share_workouts("ann", [g, o, bad], today) == []  # once per activity, any source
     assert activity_key(5) == "5" and activity_key("whoop:x1") == "whoop:x1" and activity_key(True) is None
     assert source_of({"source": "nope"}) == "garmin" and source_of(None) == "garmin"
+
+
+# -------------------------------------------------------------- backfill --
+def test_turning_sharing_on_posts_the_last_few_days_once(fx) -> None:
+    from garmin_mcp import workouts as wo
+    from tests.test_workouts import O_RUN
+    cm, today = fx.cm, NOON.date()
+    acts = _acts(today) + [act(today - timedelta(days=2), 5, km=12), act(today - timedelta(days=3), 6, km=4)]
+    ext = [{**wo.from_oura(O_RUN), "start": f"{(today - timedelta(days=1)).isoformat()}T07:04:00"}]
+    calls: list[str] = []
+
+    def workouts_of(uid: str):
+        calls.append(uid)
+        return acts, ext
+    cm.workouts_of = workouts_of
+    cm.put_settings("ann", {"audience": "friends"})  # an unrelated change: nothing posts
+    assert calls == [] and cm.feed("bob")["items"] == []
+    cm.put_settings("ann", {"share_workouts": True})
+    feed = cm.feed("bob")["items"]
+    # Today, yesterday, 2 days ago from Garmin plus yesterday's Oura run; not 3 days or a month ago.
+    assert sorted(p["workout"]["km"] for p in feed) == sorted([10, 8, 12, 7.9])
+    assert {p["workout"]["source"] for p in feed} >= {"oura"}
+    assert all("avg_hr" not in p["workout"] for p in feed)
+    # Once: saving again, or the regular sync, posts nothing new.
+    cm.put_settings("ann", {"share_workouts": True})
+    assert cm.auto_share_workouts("ann", acts, today) == [] and cm.auto_share_external("ann", ext, today) == []
+    assert cm.backfill("ann") == [] and len(cm.feed("bob")["items"]) == 4
+
+
+def test_backfill_capped_and_only_when_sharing_turns_on(fx) -> None:
+    cm, today = fx.cm, NOON.date()
+    many = [act(today - timedelta(days=i % 3), 100 + i, km=3 + i) for i in range(9)]
+    cm.workouts_of = lambda uid: (many, [])
+    cm.put_settings("ann", {"share_workouts": False})  # declined: nothing
+    assert cm.feed("bob")["items"] == []
+    cm.put_settings("ann", {"share_workouts": True})
+    assert len(cm.feed("bob")["items"]) == 5  # BACKFILL_MAX
+
+
+def test_backfill_retries_when_workouts_unavailable(fx) -> None:
+    cm, today = fx.cm, NOON.date()
+
+    def boom(uid: str):
+        raise RuntimeError("garmin down")
+    cm.workouts_of = boom
+    cm.put_settings("ann", {"share_workouts": True})
+    assert cm.feed("bob")["items"] == []
+    cm.workouts_of = lambda uid: (_acts(today), [])
+    assert len(cm.backfill("ann")) == 2  # still due: posts on the next sync
+    assert cm.backfill("ann") == []
+
+
+def test_late_synced_workout_from_two_days_ago_is_shared(fx) -> None:
+    cm, today = fx.cm, NOON.date()
+    cm.put_settings("ann", {"share_workouts": True})
+    late = [act(today - timedelta(days=2), 7, km=15)]
+    assert len(cm.auto_share_workouts("ann", late, today)) == 1  # uploaded by hand or synced late
+    assert cm.auto_share_workouts("ann", [act(today - timedelta(days=3), 8, km=5)], today) == []  # older: never
+
+
+def test_sharing_status_and_manual_share_has_no_duplicates(fx) -> None:
+    cm, today = fx.cm, NOON.date()
+    assert cm.settings("ann")["last_shared_at"] is None
+    cm.put_settings("ann", {"share_workouts": True})
+    ids = cm.auto_share_workouts("ann", _acts(today), today)
+    assert cm.settings("ann")["last_shared_at"] == int(fx.clock.t)
+    assert cm.workout_post("ann", 3) in ids and cm.workout_post("ann", 999) is None
+    # Shared by hand (sharing off): auto-share later never posts a second copy.
+    cm.put_settings("bob", {"share_workouts": False})
+    card = workout_card(_acts(today), 3, today)
+    cm.create("bob", {"text": "", "category": "other"}, workout=card)
+    cm.claim_workout("bob", 3)
+    cm.put_settings("bob", {"share_workouts": True})
+    assert cm.auto_share_workouts("bob", _acts(today), today) and cm.workout_post("bob", 3) is not None
+    mine = [p for p in (fx.store.user_doc("bob", "posts").load().get("posts") or {}).values()
+            if (p.get("workout") or {}).get("activity_id") == 3]
+    assert len(mine) == 1

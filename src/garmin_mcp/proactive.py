@@ -105,6 +105,10 @@ class _Routine:
         return self._deliver(self._user, "workout", WORKOUT_PROMPT.format(lines=text))
 
 
+SHARE_EVERY_S = 20 * 60
+SHARE_FROM_H, SHARE_TO_H = 6, 22
+
+
 class Proactive:
     def __init__(self, *, service: GarminService, store: AppStore, token_store: TokenStore,
                  users: Callable[[], list[str]], deliver: Deliver, notify: Notify,
@@ -128,6 +132,9 @@ class Proactive:
         self._recap = recap
         self._notify_url = notify_url
         self._moments = moments  # moments.Moments: instant workout confirmations + time-based updates
+        # Light check for people who share workouts with friends but turned workout feedback
+        # off (so the poller, which also asks Rabbit for a note, doesn't run for them).
+        self._share_seen: dict[str, tuple[float, int | None]] = {}  # uid -> (checked at, newest id)
         self._pollers: dict[str, Poller] = {}
         self._lock = threading.Lock()
 
@@ -182,8 +189,11 @@ class Proactive:
                 profile = self._profile(user_id)
                 # The fast-poll window (e.g. 5-9am) runs in each person's own time zone.
                 schedule = dataclasses.replace(self._schedule, tz=self._zone(profile))
-                if profile.get("workout_feedback", True) and schedule.matches(now):
-                    self.poll(user_id)
+                if profile.get("workout_feedback", True):
+                    if schedule.matches(now):
+                        self.poll(user_id)
+                else:
+                    self._maybe_share_check(user_id, now.astimezone(self._zone(profile)))
                 if profile.get("brief_enabled", True):
                     self._maybe_brief(user_id, profile, now)
                 if profile.get("recap_enabled", True):
@@ -194,8 +204,53 @@ class Proactive:
                 log_event(logger, logging.ERROR, "proactive_error", user_id=user_id,
                           error=type(e).__name__)
 
+    def _share_scan(self, user_id: str) -> None:
+        """Post new workouts to friends (moments.share_scan, set by the web app; it checks the
+        person's "Share my workouts with friends" itself). Best effort."""
+        fn = getattr(self._moments, "share_scan", None) if self._moments is not None else None
+        if fn is None:
+            return
+        try:
+            fn(user_id)
+        except Exception as e:
+            log_event(logger, logging.WARNING, "share_scan_failed", user_id=user_id, error=type(e).__name__)
+
+    def _maybe_share_check(self, user_id: str, local: datetime) -> None:
+        """Workout feedback off: every ``SHARE_EVERY_S`` in the day (6am-10pm local) read the
+        newest few activities (one small Garmin call) and, when there's a new one, share it."""
+        wants = getattr(self._moments, "wants_share", None) if self._moments is not None else None
+        if wants is None or not (SHARE_FROM_H <= local.hour < SHARE_TO_H):
+            return
+        now = self._clock().timestamp()
+        at, newest = self._share_seen.get(user_id, (0.0, None))
+        if now - at < SHARE_EVERY_S:
+            return
+        try:
+            if not wants(user_id):
+                self._share_seen[user_id] = (now, newest)
+                return
+            acts = self._service.read_uncached(user_id, "get_activities", {"start": 0, "limit": 5})
+        except Exception as e:  # Garmin busy or signed out: try again next window
+            self._share_seen[user_id] = (now, newest)
+            log_event(logger, logging.INFO, "share_check_failed", user_id=user_id, error=type(e).__name__)
+            return
+        ids = [a.get("activityId") for a in acts or [] if isinstance(a, dict) and isinstance(a.get("activityId"), int)]
+        top = max(ids) if ids else None
+        self._share_seen[user_id] = (now, top)
+        # First check since start (newest None) or something new: share (dedup keys stop repeats).
+        if top is not None and (newest is None or top > newest):
+            if self._on_new is not None:
+                try:
+                    self._on_new(user_id)  # fresh activities for the scan
+                except Exception:
+                    pass
+            self._share_scan(user_id)
+
     def poll(self, user_id: str) -> dict[str, Any]:
         summary = self.poller(user_id).poll()
+        if summary.get("baseline") is not None:
+            # The first poll only records where Garmin is; still share the last few days.
+            self._share_scan(user_id)
         if summary.get("error") == "reauth_required":
             self._nudge_reconnect(user_id)
         if summary.get("new") and self._on_new is not None:

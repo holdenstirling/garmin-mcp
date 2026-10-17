@@ -265,6 +265,11 @@ class Moments:
         self.on_milestone: Callable[[str, dict[str, Any]], list[dict[str, Any]] | None] | None = None
         # Called after new workouts were handled (personal bests, race finished).
         self.after_workouts: Callable[[str], None] | None = None
+        # Set by webapp: share new workouts with friends (community auto-share) without a
+        # moment, for the background check when workout feedback is off; ``wants_share(uid)``
+        # says whether that person shares at all (skips the Garmin read when not).
+        self.share_scan: Callable[[str], None] | None = None
+        self.wants_share: Callable[[str], bool] | None = None
         # Called with the fresh activities after their moments (reward.py: post-workout reward).
         self.on_workouts: Callable[[str, list[dict[str, Any]]], Any] | None = None
         # Called from tick outside quiet hours (club meetup reminders).
@@ -420,6 +425,13 @@ class Moments:
                 fresh.append(a)
         fresh = sorted(fresh, key=lambda a: a.get("activityId") or 0)[-3:]
         if not fresh:
+            # A late sync or a manual upload from a few days ago: no moment, but friends still
+            # see it (auto-share covers the last few days).
+            if acts and self.after_workouts is not None:
+                try:
+                    self.after_workouts(uid)
+                except Exception as e:
+                    log_event(logger, logging.WARNING, "after_workouts_failed", user_id=uid, error=type(e).__name__)
             return 0
         athlete = self._coach.athlete(uid)
         imperial = athlete.get("units") != "metric"

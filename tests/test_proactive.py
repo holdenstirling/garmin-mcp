@@ -312,3 +312,72 @@ def test_new_activity_invalidates_stats(env) -> None:
     env.service.cache.clear_user("friend")
     p.poll("friend")
     assert seen == ["friend"]
+
+
+# ------------------------------------------------------- share with friends --
+class _ShareMoments:
+    """Just the bits Proactive uses for sharing (moments.Moments in the app)."""
+
+    def __init__(self, wants: bool = True) -> None:
+        self.scans: list[str] = []
+        self.wants = wants
+        self.share_scan = self.scans.append
+        self.wants_share = lambda uid: self.wants
+
+    def workouts(self, uid, acts, *, ai_note=None) -> int:
+        return 0
+
+    def tick(self, uid) -> None:
+        pass
+
+
+def _share_proactive(env, moments: _ShareMoments) -> Proactive:
+    return Proactive(service=env.service, store=env.store, token_store=env.tokens, users=lambda: ["friend"],
+                     deliver=lambda u, k, pr: FireResult(FireOutcome.OK, 200), notify=lambda u, t, b: None,
+                     schedule=Schedule.parse("UTC", "0-23", 1), state_dir=env.store._root / "poller3",
+                     default_tz="UTC", clock=env.clock, moments=moments)
+
+
+def test_sharing_works_with_workout_feedback_off(env) -> None:
+    from datetime import timedelta
+    _profile(env, brief_enabled=False, recap_enabled=False, workout_feedback=False)
+    m = _ShareMoments()
+    p = _share_proactive(env, m)
+    env.clock.t = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
+    p.tick()  # first check: shares the last few days (dedup keys stop repeats)
+    assert m.scans == ["friend"]
+    p.tick()
+    assert m.scans == ["friend"]  # throttled
+    env.clock.t += timedelta(minutes=21)
+    p.tick()
+    assert m.scans == ["friend"]  # nothing new on Garmin
+    simulate_activity()
+    env.service.cache.clear_user("friend")
+    env.clock.t += timedelta(minutes=21)
+    p.tick()
+    assert m.scans == ["friend", "friend"]  # the new one goes out
+    assert env.delivered == []  # and no Rabbit note: feedback is off
+
+
+def test_share_check_skips_non_sharers_and_night(env) -> None:
+    from datetime import timedelta
+    _profile(env, brief_enabled=False, recap_enabled=False, workout_feedback=False)
+    m = _ShareMoments(wants=False)
+    p = _share_proactive(env, m)
+    env.clock.t = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
+    p.tick()
+    assert m.scans == []
+    m.wants = True
+    env.clock.t = datetime(2026, 10, 12, 23, 0, tzinfo=UTC)  # 11pm: quiet
+    p.tick()
+    assert m.scans == []
+    env.clock.t += timedelta(hours=8)  # 7am next day
+    p.tick()
+    assert m.scans == ["friend"]
+
+
+def test_first_poll_baseline_still_shares_recent_days(env) -> None:
+    m = _ShareMoments()
+    p = _share_proactive(env, m)
+    out = p.poll("friend")
+    assert out.get("baseline") is not None and m.scans == ["friend"]
