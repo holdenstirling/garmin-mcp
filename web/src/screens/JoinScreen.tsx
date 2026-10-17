@@ -1,5 +1,6 @@
 // /app/join/<token>: someone opened an invite link. First name + email (contact only), then
 // the browser makes a passkey and they're in. No Google, no allowlist.
+import { LegalFooter } from '@/components/legal/LegalFooter'
 import { useEffect, useId, useState } from 'react'
 import { KeyRound, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -113,6 +114,7 @@ export function JoinScreen({ token }: { token: string }) {
           </p>
         )
       )}
+      <LegalFooter />
     </div>
   )
 }

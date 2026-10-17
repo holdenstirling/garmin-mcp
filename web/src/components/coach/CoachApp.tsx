@@ -25,6 +25,7 @@ import type { Stats } from '@/lib/stats'
 import { photoUrl } from '@/lib/photo'
 import type { RaceEvent } from '@/lib/events'
 import { ThreadView } from './ThreadView'
+import { PrivacyLegalScreen } from '@/screens/lazyScreens'
 import { RaceGradeLine } from '@/components/events/Readiness'
 import { getAthleteReadiness, mainRace, type RaceGrade } from '@/lib/readiness'
 import { ThreadList } from './CoachInbox'
@@ -37,6 +38,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
+  const [legal, setLegal] = useState(false)
   const load = useCallback(() => {
     getAthletes().then((r) => setAthletes(r.athletes), (e) => setError((e as Error).message))
   }, [])
@@ -82,8 +84,10 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
           <span className="block font-display text-lg leading-tight text-(--brand)">Rabbit for coaches</span>
           <span className="block truncate text-[0.6471rem] text-muted-foreground">{me.profile.name || 'Coach'}</span>
         </span>
+        <Button variant="ghost" className="h-8 px-2 text-[0.7059rem]" onClick={() => setLegal(true)}>Privacy</Button>
         {onSignOut && <Button variant="ghost" className="h-8 px-2 text-[0.7059rem]" onClick={onSignOut}>Sign out</Button>}
       </header>
+      {legal && <PrivacyLegalScreen me={me} onClose={() => setLegal(false)} onOpenSettings={() => setLegal(false)} onOpenConnections={() => setLegal(false)} />}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 py-5">
           <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Your athletes</h2>

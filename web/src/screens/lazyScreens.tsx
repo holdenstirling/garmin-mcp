@@ -120,6 +120,9 @@ export const AccessScreen = split(() => import('@/components/settings/AccessScre
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
 export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))
 export const MonthRecapSheet = split(() => import('@/components/reward/MonthRecapSheet').then((m) => m.MonthRecapSheet))
+// Me -> Privacy & legal (documents, download / delete my data)
+export const PrivacyLegalScreen = split(() => import('@/components/legal/PrivacyLegalScreen').then((m) => m.PrivacyLegalScreen))
+export const DocScreen = split(() => import('@/components/legal/PrivacyLegalScreen').then((m) => m.DocScreen))
 // Me -> Usage (owners only)
 // Shared training blocks (blocks.py): the block page and the create flow
 export const BlockScreen = split(() => import('@/components/blocks/BlockScreen').then((m) => m.BlockScreen))

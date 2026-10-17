@@ -1,7 +1,7 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Connected apps and Settings. Friends
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
-import { Bandage, ChartColumn, ClipboardList, Handshake, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { Bandage, ChartColumn, ClipboardList, Compass, Handshake, KeyRound, Mail, Plug, Search, Settings, ShieldCheck, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -13,9 +13,11 @@ import { photoUrl } from '@/lib/photo'
 import { openBody } from '@/lib/body'
 import { goalCountdown, type Goal, type Me } from '@/lib/api'
 import type { Progress } from '@/lib/progress'
+import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
+import type { LegalSlug } from '@/lib/legal'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
-  | 'connections' | 'access' | 'usage' | 'partners'
+  | 'connections' | 'access' | 'usage' | 'partners' | 'legal'
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
@@ -23,8 +25,9 @@ const Count = ({ n, label }: { n: number; label: string }) => (
   </span>
 )
 
-export function MePage({ me, goal, progress, onOpen, onClose }: {
-  me: Me; goal: Goal | null; progress: Progress | null; onOpen: (r: MeRow) => void; onClose: () => void
+export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
+  me: Me; goal: Goal | null; progress: Progress | null; onOpen: (r: MeRow) => void
+  onOpenDoc: (slug: LegalSlug) => void; onClose: () => void
 }) {
   const name = me.profile.name || me.user_id
   const countdown = goalCountdown(goal)
@@ -47,6 +50,14 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
           </span>
         )}
       </button>
+
+      <Group>
+        {me.role === 'athlete' && (
+          <Row icon={<Icon><Compass /></Icon>} title="How you use Rabbit" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
+        )}
+        <Row icon={<Icon><ShieldCheck /></Icon>} title="Privacy & legal" subtitle="Privacy policy, terms, download or delete your data"
+          onClick={() => onOpen('legal')} />
+      </Group>
 
       <Group label="You">
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
@@ -99,6 +110,15 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
         {me.owner && <Row icon={<Icon tone="muted"><ChartColumn /></Icon>} title="Usage" subtitle="Anonymous counts, last 30 days" onClick={() => onOpen('usage')} />}
         {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
       </Group>
+
+      <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-1 pb-2 text-[0.7647rem] text-(--text-muted)">
+        {([['privacy', 'Privacy'], ['terms', 'Terms'], ['security', 'Data & security']] as const).map(([slug, label], i) => (
+          <span key={slug} className="flex items-center gap-1">
+            {i > 0 && <span aria-hidden>·</span>}
+            <button type="button" className="hit-44 underline" onClick={() => onOpenDoc(slug)}>{label}</button>
+          </span>
+        ))}
+      </nav>
     </Screen>
   )
 }

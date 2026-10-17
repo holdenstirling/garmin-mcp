@@ -264,6 +264,19 @@ class Access:
         self._passkeys.update(lambda d: d.__setitem__(
             "creds", {k: v for k, v in d.get("creds", {}).items() if v["user_id"] != user_id}))
 
+    def forget_user(self, user_id: str) -> None:
+        """Account deletion: drop the membership (if they joined by invite) and passkeys."""
+        def rm(data: dict[str, Any]) -> None:
+            data.pop(user_id, None)
+        self._members_doc.update(rm)
+        with self._lock:
+            self._member_ids.discard(user_id)
+
+        def pk(d: dict[str, Any]) -> None:
+            d["creds"] = {k: v for k, v in d.get("creds", {}).items() if v.get("user_id") != user_id}
+            (d.get("handles") or {}).pop(user_id, None)
+        self._passkeys.update(pk)
+
     # ------------------------------------------------------------ passkeys --
     def user_handle(self, user_id: str) -> str:
         """Stable random WebAuthn user.id for this user (never the user id itself)."""

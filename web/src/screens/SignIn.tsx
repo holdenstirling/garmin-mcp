@@ -1,3 +1,4 @@
+import { LegalFooter } from '@/components/legal/LegalFooter'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -45,6 +46,7 @@ export function SignIn({ error }: { error: string | null }) {
         }}>Sign in with Google</a>
       </Button>
       <PasskeySignIn />
+      <LegalFooter />
     </div>
   )
 }

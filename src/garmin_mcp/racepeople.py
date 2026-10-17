@@ -43,6 +43,7 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
+from . import legal as _legal
 from .appstore import AppStore
 
 ROLES = ("racing", "crew", "pacer", "spectator", "coach")
@@ -699,7 +700,7 @@ table{{width:100%;border-collapse:collapse}}th{{text-align:left;font-weight:600;
 td{{padding:8px 0}}tr{{border-bottom:1px solid color-mix(in srgb,CanvasText 12%,transparent)}}ul{{padding-left:18px}}a{{color:var(--a)}}
 footer{{margin-top:32px;color:GrayText;font-size:12px}}</style></head>
 <body><main>{body}
-<footer>Shared from Rabbit for {_e(first)}'s crew and family. {_e(first)} can turn this link off at any time.</footer></main></body></html>"""
+<footer>Shared from Rabbit for {_e(first)}'s crew and family. {_e(first)} can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
 
 
 __all__ = [

@@ -117,6 +117,30 @@ class Social:
         with self._lock:
             return self._doc.update(fn)
 
+    # ---------------------------------------------------- account export / delete --
+    def export_user(self, uid: str) -> dict[str, Any]:
+        d = self._doc.load()
+        edges = [{k: e.get(k) for k in ("follower", "followee", "email", "status", "ts")}
+                 for e in (d.get("edges") or {}).values()
+                 if uid in (e.get("follower"), e.get("followee"))]
+        u = (d.get("users") or {}).get(uid) or {}
+        return {"settings": u.get("settings") or {}, "blocked": u.get("blocked") or [], "follows": edges}
+
+    def forget_user(self, uid: str) -> None:
+        """Account deletion: drop follow edges either way, settings, blocks and invite code."""
+        def apply(d: dict[str, Any]) -> None:
+            edges = d.get("edges") or {}
+            for k in [k for k, e in edges.items() if uid in (e.get("follower"), e.get("followee"))]:
+                del edges[k]
+            (d.get("users") or {}).pop(uid, None)
+            codes = d.get("codes") or {}
+            for c in [c for c, v in codes.items() if v == uid]:
+                del codes[c]
+            for u in (d.get("users") or {}).values():
+                if uid in (u.get("blocked") or []):
+                    u["blocked"] = [b for b in u["blocked"] if b != uid]
+        self._update(apply)
+
     # ------------------------------------------------------------ settings --
     @staticmethod
     def _settings_of(d: dict[str, Any], uid: str) -> dict[str, bool]:
