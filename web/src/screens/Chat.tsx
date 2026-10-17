@@ -49,6 +49,7 @@ import { RaceSwitcher } from '@/components/plan/PlanFlow'
 import { CelebrationHost } from '@/components/reward/CelebrationHost'
 import { BodyHost } from '@/components/body/BodyHost'
 import { NiggleNudge } from '@/components/home/NiggleNudge'
+import { CalendarNudge } from '@/components/home/CalendarNudge'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -972,6 +973,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
             {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
             {athlete && <NiggleNudge refreshKey={feedTick} />}
+            {athlete && goal && <CalendarNudge refreshKey={feedTick} />}
             {upnext && (
               <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                 onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}

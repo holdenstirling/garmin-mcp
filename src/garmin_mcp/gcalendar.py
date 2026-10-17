@@ -60,8 +60,10 @@ class CalendarNotConnected(CalendarError):
 
 
 def summarize(events: list[dict[str, Any]], start: date, end: date) -> dict[str, Any]:
-    """Busy minutes per day and travel windows from compact events."""
+    """Busy minutes per day, travel windows, and each day's busy blocks as local
+    [start_min, end_min] pairs (times only, no titles: calinsights.py finds free windows)."""
     busy: dict[str, int] = defaultdict(int)
+    blocks: dict[str, list[list[int]]] = defaultdict(list)
     travel: list[dict[str, Any]] = []
     for e in events:
         s, t = e["start"], e["end"]
@@ -84,6 +86,9 @@ def summarize(events: list[dict[str, Any]], start: date, end: date) -> dict[str,
             seg = min(de, day_end)
             if start <= cur.date() <= end:
                 busy[cur.date().isoformat()] += int((seg - cur).total_seconds() // 60)
+                a = cur.hour * 60 + cur.minute
+                b = a + int((seg - cur).total_seconds() // 60)
+                blocks[cur.date().isoformat()].append([a, min(b, 24 * 60)])
             cur = seg
     # Merge overlapping/adjacent travel windows.
     travel.sort(key=lambda x: x["start"])
@@ -97,7 +102,17 @@ def summarize(events: list[dict[str, Any]], start: date, end: date) -> dict[str,
         else:
             merged.append(dict(t))
     merged = [t for t in merged if t["end"] >= start.isoformat() and t["start"] <= end.isoformat()]
-    return {"busy": {k: min(v, 24 * 60) for k, v in sorted(busy.items())}, "travel": merged}
+    merged_blocks: dict[str, list[list[int]]] = {}
+    for day, bl in sorted(blocks.items()):
+        out_b: list[list[int]] = []
+        for a, b in sorted(bl):
+            if out_b and a <= out_b[-1][1]:
+                out_b[-1][1] = max(out_b[-1][1], b)
+            else:
+                out_b.append([a, b])
+        merged_blocks[day] = out_b
+    return {"busy": {k: min(v, 24 * 60) for k, v in sorted(busy.items())}, "travel": merged,
+            "blocks": merged_blocks}
 
 
 def compact_event(raw: dict[str, Any]) -> dict[str, Any] | None:

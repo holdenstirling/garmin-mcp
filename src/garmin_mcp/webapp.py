@@ -55,6 +55,7 @@ from .oura import OuraError, OuraNotConnected
 from .sources import garmin_recovery, prefs_for, recovery_for, validate as validate_sources
 from .adjust import propose as propose_adjustment
 from . import planflow as _pf
+from . import calinsights as _ci
 from .races import RaceDesk as _RaceDesk
 from . import racefit, racepack
 from . import racechecklist as _rcl
@@ -1799,6 +1800,101 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             await auth.calendar.disconnect(user_id)
         return JSONResponse({"connected": False})
 
+    # Calendar insights (calinsights.py): the next 14 days of plan vs Google Calendar, with
+    # one-tap recommendations. Titles only show in travel recs, to the athlete; the AI's view of
+    # the calendar is unchanged. Every applied change keeps an undo snapshot.
+    async def _cal_insights(user_id: str) -> dict[str, Any]:
+        cal = auth.calendar
+        if cal is None:
+            return {"connected": False, "available": False, "days": [], "recs": []}
+        if not cal.connected(user_id):
+            return {"connected": False, "available": True, "days": [], "recs": []}
+        today = plans.today(user_id) if plans else date.today()
+        prof = store.user_doc(user_id, "profile").load() if store else {}
+        try:
+            summ = await cal.summary(user_id, today, 42, prof.get("timezone") or default_tz)
+        except CalendarNotConnected:
+            return {"connected": False, "available": True, "days": [], "recs": []}
+        except Exception as e:
+            log_event(logger, logging.INFO, "cal_insights_read_failed", error=type(e).__name__)
+            return {"connected": True, "available": True, "error": "Google Calendar didn't answer just now.",
+                    "days": [], "recs": []}
+
+        def run() -> dict[str, Any]:
+            plan = plans.get(user_id) if plans else None
+            status: dict[str, str] = {}
+            if plan and chat is not None:
+                try:
+                    from .plancal import statuses as _sts
+                    acts = chat.agent.stats.activities(user_id)[1]
+                    status = {k: v.get("status", "planned") for k, v in _sts(plan, acts, today).items()}
+                except Exception:
+                    status = {}
+            doc = store.user_doc(user_id, "calinsights").load() if store else {}
+            dismissed = set((doc.get("dismissed") or {}).keys())
+            return _ci.analyze(plan, summ, today, status=status, dismissed=dismissed)
+        out = await anyio.to_thread.run_sync(run)
+        return {"connected": True, "available": True, "today": today.isoformat(), **out}
+
+    async def cal_insights_get(request: Request, user_id: str) -> Response:
+        return JSONResponse(await _cal_insights(user_id))
+
+    async def cal_insights_post(request: Request, user_id: str) -> Response:
+        """{action: apply|dismiss|undo, id? | undo?}: apply re-finds the recommendation by id
+        (409 when it no longer applies) and keeps the replaced plan for undo."""
+        assert plans is not None and store is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or body.get("action") not in ("apply", "dismiss", "undo"):
+            raise ValueError("body")
+        doc = store.user_doc(user_id, "calinsights")
+        if body["action"] == "dismiss":
+            rid = str(body.get("id") or "")[:20]
+            if not rid:
+                raise ValueError("id")
+            today = plans.today(user_id).isoformat()
+
+            def put(d: dict[str, Any]) -> None:
+                keep = {k: v for k, v in (d.get("dismissed") or {}).items()
+                        if v >= (plans.today(user_id) - timedelta(days=21)).isoformat()}
+                keep[rid] = today
+                d["dismissed"] = dict(sorted(keep.items(), key=lambda kv: kv[1])[-200:])
+            await anyio.to_thread.run_sync(lambda: doc.update(put))
+            return JSONResponse({"ok": True})
+        if body["action"] == "undo":
+            snap = await anyio.to_thread.run_sync(lambda: store.user_doc(user_id, "calinsights-undo").load())
+            goal = chat.agent.coach.active_goal(user_id) if chat is not None else None
+            if not snap or snap.get("id") != body.get("undo") or not goal or snap.get("goal_id") != goal.get("id"):
+                raise _UserError("That change can't be undone any more.", 409)
+            plan = await _plan_call(lambda: plans.install(user_id, goal, snap["plan"]))
+            await anyio.to_thread.run_sync(lambda: store.user_doc(user_id, "calinsights-undo").update(lambda d: d.clear()))
+            return JSONResponse({"undone": True, "plan": public_plan(plan, plans.today(user_id))})
+        rid = str(body.get("id") or "")
+        res = await _cal_insights(user_id)
+        rec = next((r for r in res.get("recs", []) if r["id"] == rid), None)
+        if rec is None:
+            raise _UserError("That suggestion doesn't apply any more. Take another look.", 409)
+        act = rec["action"]
+        if act["type"] not in ("time", "move", "ease"):
+            raise _UserError("Open that one from the card.", 400)
+        goal = chat.agent.coach.active_goal(user_id) if chat is not None else None
+        before = plans.get(user_id)
+        undo_id = f"ci{int(time.time() * 1000):x}"
+        if before and goal:
+            await anyio.to_thread.run_sync(lambda: store.user_doc(user_id, "calinsights-undo").update(
+                lambda d: (d.clear(), d.update({"id": undo_id, "goal_id": goal["id"], "plan": before}))))
+        if act["type"] == "time":
+            plan = await _plan_call(lambda: plans.update_session(user_id, act["session_id"], {"time": act["time"]}))
+        elif act["type"] == "move":
+            patch = {"date": act["date"]} | ({"time": act["time"]} if act.get("time") else {})
+            plan = await _plan_call(lambda: plans.update_session(user_id, act["session_id"], patch))
+        else:
+            plan = await _plan_call(lambda: plans.apply_adjustment(user_id, [{
+                "action": "ease", "session_id": act["session_id"],
+                "to": {"kind": "easy", "minutes": int(act.get("minutes") or 30)},
+                "why": "Packed day on your calendar"}]))
+        return JSONResponse({"applied": rec["kind"], "undo": undo_id if before and goal else None,
+                             "plan": public_plan(plan, plans.today(user_id))})
+
     async def calendar_start(request: Request) -> Response:
         if not host_ok(request):
             return _err(400, "bad host")
@@ -1981,6 +2077,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except ValueError as e:
             raise _UserError(f"Check your answer for {str(e).replace('_', ' ')}.") from None
 
+        ci = await _cal_insights(user_id) if body["action"] == "preview" else {}
+
         def run() -> dict[str, Any] | JSONResponse:
             plan = plans.get(user_id)
             today = plans.today(user_id)
@@ -1988,7 +2086,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             due = _pf.checkin_due(plan, today, plans.checkin_answered(user_id))
             week = due.get("week_start") or prop.get("week_start") or today.isoformat()
             if body["action"] == "preview":
-                return {"proposal": prop}
+                nxt = _pf.next_week(plan, today) if plan else None
+                hint = _ci.week_hint(ci, nxt["start"]) if nxt and ci.get("recs") is not None else None
+                return {"proposal": prop, "calendar_hint": hint}
             if body["action"] == "skip" or prop.get("status") != "suggest":
                 plans.mark_checkin(user_id, week, answers)
                 return {"proposal": prop, "applied": 0, "plan": public_plan(plan, today)}
@@ -4781,6 +4881,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               methods=["GET"]),
         Route("/app/api/calendar", _plan_api(calendar_get, mutating=False), methods=["GET"]),
         Route("/app/api/calendar", _plan_api(calendar_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/api/calendar/insights", _plan_api(cal_insights_get, mutating=False), methods=["GET"]),
+        Route("/app/api/calendar/insights", _plan_api(cal_insights_post, mutating=True), methods=["POST"]),
         Route("/app/auth/calendar/start", calendar_start, methods=["GET"]),
         Route("/app/api/oura", _plan_api(oura_get, mutating=False), methods=["GET"]),
         Route("/app/api/oura", _plan_api(oura_delete, mutating=True), methods=["DELETE"]),
