@@ -824,7 +824,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                        today=plans.today(user_id), start=first)
             if athlete:
                 coach.update_athlete(user_id, athlete)
-            if new_goal:
+            same = coach.find_same_race(user_id, goal_in) if new_goal and cur is not None else None
+            if same is not None and same["id"] == cur["id"]:
+                coach.update_goal(user_id, cur["id"], goal_in)  # the same race again: no copy
+            elif same is not None:
+                plans.switch_goal(user_id, lambda: coach.activate_goal(user_id, same["id"]))
+                coach.update_goal(user_id, same["id"], goal_in)
+            elif new_goal:
                 # The old plan's Garmin workouts are handed over (or parked until the
                 # build) right away, so a later failure can't strand them.
                 plans.switch_goal(user_id, lambda: coach.create_goal(user_id, goal_in))

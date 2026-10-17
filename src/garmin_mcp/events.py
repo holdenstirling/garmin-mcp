@@ -536,6 +536,12 @@ class EventStore:
         eid = g.get("event_id")
         if eid and eid in self._doc(user_id).load().get("events", {}):
             return self.update(user_id, eid, fields)
+        # The same race already on the calendar (same date and name): link it instead of a copy.
+        norm = lambda v: " ".join(str(v or "").lower().split())  # noqa: E731
+        for oid, o in (self._doc(user_id).load().get("events", {}) or {}).items():
+            if o.get("date") == fields["date"] and norm(o.get("name")) == norm(fields["name"]):
+                self._link_goal(user_id, g["id"], oid)
+                return dict(self.update(user_id, oid, fields), main=True)
         if "type" not in fields:
             fields["type"] = type_for_distance(fields["distance"])
         ev = self.create(user_id, fields)

@@ -332,6 +332,23 @@ class CoachStore:
         goals = sorted(d.get("goals", {}).values(), key=lambda g: g["created"], reverse=True)
         return {"active": d.get("active"), "goals": goals}
 
+    def find_same_race(self, user_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
+        """An existing goal for the same race (same date and the same name or distance), so running
+        setup again for a race you already have reuses it instead of making a copy."""
+        date_ = str(fields.get("date") or "")
+        if not date_:
+            return None
+        norm = lambda v: " ".join(str(v or "").lower().split())  # noqa: E731
+        name = norm(fields.get("event") or fields.get("title"))
+        dist = norm(fields.get("distance"))
+        for g in self.goals(user_id)["goals"]:
+            if str(g.get("date") or "") != date_:
+                continue
+            gname = norm(g.get("event") or g.get("title"))
+            if (name and gname == name) or (not name and dist and norm(g.get("distance")) == dist):
+                return g
+        return None
+
     def active_goal(self, user_id: str) -> dict[str, Any] | None:
         d = self._goals_doc(user_id).load()
         gid = d.get("active")

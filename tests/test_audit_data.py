@@ -323,3 +323,23 @@ def test_upload_with_bad_content_length_is_400(env, tmp_path) -> None:
                              headers={"origin": BASE, "content-length": "abc"})
             assert r.status_code == 400
     asyncio.run(go_())
+
+
+def test_setup_again_for_the_same_race_makes_no_copies(env, tmp_path) -> None:
+    """Running setup twice for one race (same name and date) keeps one goal and one event."""
+    _reset()
+    agent, plan, today = _setup(env)
+    app = _app(env, agent, tmp_path)
+    race = {"title": "Denver 10K", "distance": "10k", "date": (today + timedelta(weeks=14)).isoformat()}
+
+    async def go_() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=BASE) as c:
+            for _ in range(2):
+                r = await c.post("/app/api/plan/setup", headers={"origin": BASE},
+                                 json={"new_goal": True, "athlete": {"weekly_hours": 6}, "goal": race})
+                assert r.status_code == 201, r.text
+    asyncio.run(go_())
+    goals = [g for g in agent.coach.goals("friend")["goals"] if g.get("title") == "Denver 10K"]
+    assert len(goals) == 1 and agent.coach.active_goal("friend")["id"] == goals[0]["id"]
+    evs = [e for e in agent.events.list("friend") if e.get("name") == "Denver 10K"]
+    assert len(evs) == 1
