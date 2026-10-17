@@ -307,7 +307,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
       footer={<>
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
-          disabled={!kind || !(v.name ?? '').trim() || !v.date}
+          disabled={!kind || !(v.name ?? '').trim() || !v.date || (!!event && !draft.dirty)}
           onClick={(e) => {
             const btn = e.currentTarget
             void run('save', async () => {
@@ -320,7 +320,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
               return r
             })
           }}>
-          {!kind ? 'Pick what it is' : !(v.name ?? '').trim() ? 'Give it a name' : !v.date ? 'Pick a date' : event ? 'Save changes' : 'Add event'}
+          {!kind ? 'Pick what it is' : !(v.name ?? '').trim() ? 'Give it a name' : !v.date ? 'Pick a date' : event ? (draft.dirty ? 'Save changes' : 'No changes yet') : 'Add event'}
         </Button>
       </>}>
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
