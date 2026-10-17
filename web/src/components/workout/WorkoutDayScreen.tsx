@@ -287,9 +287,10 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       {t ? (
         <>
           <SectionCard title="Key numbers"><WorkoutSummary t={t} dist={dist} imperial={imperial} /></SectionCard>
-          <SectionCard title="The workout · tap a step for effort">
-            <div className="px-3.5 pt-2"><WorkoutSteps t={t} imperial={imperial} /></div>
-          </SectionCard>
+          {/* WorkoutSteps brings its own "The workout" heading */}
+          <section aria-label="The workout" className="rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
+            <WorkoutSteps t={t} imperial={imperial} />
+          </section>
         </>
       ) : (
         <>
