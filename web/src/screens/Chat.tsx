@@ -1000,7 +1000,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
         <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
           {goal && <RaceSwitcher title={goal.title} date={goal.date}
-            sub={goal.plan ? `Plan from your file${week?.index ? ` · week ${week.index}${week.weeks ? ` of ${week.weeks}` : ''}` : ''}` : 'No plan for this race yet'}
+            sub={goal.plan ? `Your plan file${week?.index ? ` · wk ${week.index}${week.weeks ? `/${week.weeks}` : ''}` : ''}` : 'No plan for this race yet'}
             onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
           {goal?.plan && (
             <button type="button" onClick={startPlanConversion}
