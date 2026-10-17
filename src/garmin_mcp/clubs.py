@@ -52,6 +52,10 @@ DISCOVER_MAX = 20
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 8
 PRIVACY = ("open", "approval")
+# Who can find the club: public (Local, search, featured cards; the default and every club saved
+# before this) or private (invite or club code only; hidden from everyone who isn't a member or
+# invited, and nobody can request to join).
+VISIBILITY = ("public", "private")
 SPORTS = ("running", "trail", "cycling", "triathlon", "swimming", "walking", "multisport", "other")
 LEVELS = ("all", "easy", "moderate", "fast")
 ROLES = ("owner", "admin", "member")
@@ -190,6 +194,10 @@ class Clubs:
         return c, role
 
     @staticmethod
+    def _private(c: dict[str, Any]) -> bool:
+        return c.get("visibility") == "private"
+
+    @staticmethod
     def _admin(role: str | None) -> bool:
         return role in ("owner", "admin")
 
@@ -251,7 +259,8 @@ class Clubs:
         out = {"id": c["id"], "kind": "club", "name": c["name"], "sport": c.get("sport") or "running",
                "city": c.get("city") or "", "state": c.get("state") or "",
                "description": c.get("description") or "", "emoji": c.get("emoji") or "🐇",
-               "privacy": c.get("privacy") or "open", "role": role, "members": len(self._live(c)),
+               "privacy": c.get("privacy") or "open", "visibility": c.get("visibility") or "public",
+               "role": role, "members": len(self._live(c)),
                "requested": uid in (c.get("requests") or {})}
         if self._admin(role) or (role and out["privacy"] == "open"):
             out["code"] = c.get("code")
@@ -298,6 +307,8 @@ class Clubs:
         for c in (d.get("clubs") or {}).values():
             if uid in c["members"] or self._blocked(uid, c["owner"]) or len(c["members"]) >= MAX_MEMBERS:
                 continue
+            if self._private(c):
+                continue  # private clubs are invite / code only
             ccity, cstate = (c.get("city") or "").lower(), (c.get("state") or "").lower()
             if ql:
                 if ql not in c["name"].lower() and ql not in ccity:
@@ -329,7 +340,7 @@ class Clubs:
         c = self._get(d, cid)
         role = c["members"].get(uid)
         if role is None:
-            if self._blocked(uid, c["owner"]):
+            if self._blocked(uid, c["owner"]) or (self._private(c) and uid not in (c.get("invites") or {})):
                 raise ClubError("club not found", 404)
             return {**self._view(c, uid), "people": [], "meetups": [], "challenges": [], "pending": []}
         people = [{"user_id": m, "role": r} for m, r in c["members"].items()
@@ -346,6 +357,8 @@ class Clubs:
         group/block, or the owner and viewer blocked each other."""
         c = (self._doc.load().get("clubs") or {}).get(cid) if isinstance(cid, str) else None
         if c is None or self._blocked(viewer, c["owner"]):
+            return None
+        if self._private(c) and viewer not in c["members"]:
             return None
         v = self._view(c, viewer)
         member = v["role"] is not None
@@ -389,6 +402,11 @@ class Clubs:
             if v not in PRIVACY:
                 raise ClubError("privacy must be open or approval")
             out["privacy"] = v
+        if not partial or "visibility" in fields:
+            v = fields.get("visibility") or "public"
+            if v not in VISIBILITY:
+                raise ClubError("visibility must be public or private")
+            out["visibility"] = v
         return out
 
     def create(self, uid: str, fields: Any) -> dict[str, Any]:
@@ -498,6 +516,8 @@ class Clubs:
             c = self._get(d, cid)
             if self._blocked(uid, c["owner"]):
                 raise ClubError("club not found", 404)
+            if self._private(c) and uid not in c["members"] and uid not in (c.get("invites") or {}):
+                raise ClubError("club not found", 404)  # private: invite or club code only
             if uid in c["members"] or uid in (c.get("invites") or {}) or c.get("privacy") == "open":
                 return self._join(d, c, uid)
             reqs = c.setdefault("requests", {})

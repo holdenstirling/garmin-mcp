@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Card, Choice, Field, NumberStepper, OptionCard, areaCls, inputCls } from '@/components/plan/ui'
 import { M_PER_FT } from '@/lib/plan'
 import {
-  COURSE_PROFILES, DISTANCE_LABEL, EVENT_KINDS, EVENT_TYPES, INFO_LABEL, KIND_HINT, TYPE_DISTANCES, WEEKDAYS, kindOf, lookupEvent,
+  COURSE_PROFILES, DISTANCE_LABEL, EVENT_KINDS, INFO_LABEL, KIND_HINT, TYPE_DISTANCES, WEEKDAYS, kindOf, lookupEvent,
   type EventFields, type EventInfo, type EventKind, type EventType, type Recurring, type Weekday,
 } from '@/lib/events'
 import { cn } from '@/lib/utils'
+import { SPORT_TYPE, TYPE_SPORT, sportOf } from '@/lib/sports'
+import { SportPicker } from './SportPicker'
 
 const todayIso = () => {
   const d = new Date()
@@ -245,7 +247,7 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
 
   function apply(i: EventInfo) {
     const p: EventFields = { info: i }
-    if (i.suggested_type) p.type = i.suggested_type
+    if (i.suggested_type) { p.type = i.suggested_type; if (!value.activity) p.activity = TYPE_SPORT[i.suggested_type] }
     const t = i.suggested_type ?? type
     if (i.suggested_distance && TYPE_DISTANCES[t].includes(i.suggested_distance)) p.distance = i.suggested_distance
     if (i.date && (allowPast || i.date >= todayIso())) p.date = i.date
@@ -263,10 +265,15 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
     <>
       <Card>
         {kind !== 'milestone' && (
-          <Field label={kind === 'race' ? 'Type of event' : 'Sport'}>
-            <Choice value={type} options={EVENT_TYPES}
-              onChange={(v) => v && onChange({ type: v, distance: !raceLike ? '' : TYPE_DISTANCES[v].includes(value.distance ?? '') ? value.distance
-                : TYPE_DISTANCES[v].length === 1 ? TYPE_DISTANCES[v][0] : '' })} />
+          <Field label={kind === 'race' ? 'Sport' : 'What sport'}>
+            <SportPicker value={sportOf(value)} other={value.activity_other ?? ''}
+              onOther={(name) => onChange({ activity_other: name })}
+              onChange={(id) => {
+                const t = SPORT_TYPE[id]
+                onChange({ activity: id, type: t, activity_other: id === 'other' ? value.activity_other ?? '' : '',
+                  distance: !raceLike ? '' : TYPE_DISTANCES[t].includes(value.distance ?? '') ? value.distance
+                    : TYPE_DISTANCES[t].length === 1 ? TYPE_DISTANCES[t][0] : '' })
+              }} />
           </Field>
         )}
         <Field label="Name" className={cn(kind !== 'milestone' && 'border-t border-(--border)')}
@@ -315,6 +322,22 @@ export function EventBasics({ value, onChange, eventId, allowPast }: {
         )}
       </Card>
     </>
+  )
+}
+
+/** Who can find the event: just you (the default) or people near you (Local, search). */
+export function EventVisibility({ value, onChange }: { value: EventFields; onChange: (p: EventFields) => void }) {
+  const pub = value.visibility === 'public'
+  return (
+    <section aria-label="Who can see it" className="flex flex-col gap-2">
+      <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can see it</h3>
+      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Who can see it">
+        <OptionCard selected={!pub} title="Just me" description="Private: on your calendar and in your plan only."
+          onClick={() => onChange({ visibility: 'private' })} />
+        <OptionCard selected={pub} title="Public" description="People near you find it in Local and can say they're going. Your notes stay private."
+          onClick={() => onChange({ visibility: 'public' })} />
+      </div>
+    </section>
   )
 }
 

@@ -1015,7 +1015,8 @@ def group_session(ev: dict[str, Any], swim_pace: float = 120.0) -> dict[str, Any
     """One occurrence of a group activity (group ride/run/swim, league game) as a planned
     session: sport from the event type, minutes from ``duration_min`` (60 by default),
     moderate effort unless the event says otherwise."""
-    sport = EVENT_SPORT.get(ev.get("type") or "other", "other")
+    from .sports import plan_sport  # the specific sport (volleyball, spin, HIIT...) wins over the type
+    sport = plan_sport(ev.get("activity")) or EVENT_SPORT.get(ev.get("type") or "other", "other")
     if sport == "brick":
         sport = "bike"
     try:
@@ -1026,6 +1027,8 @@ def group_session(ev: dict[str, Any], swim_pace: float = 120.0) -> dict[str, Any
     name = (ev.get("name") or "Group session")[:50]
     if sport == "swim":
         s = make_session("swim", swim_kind, minutes, swim_pace=swim_pace)
+    elif sport == "strength":
+        s = make_session("strength", "strength", minutes, swim_pace=swim_pace)
     else:
         s = make_session(sport, "easy", minutes, swim_pace=swim_pace)
         s["steps"] = [_st("steady", minutes, zone)]
