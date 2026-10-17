@@ -2,13 +2,14 @@
 // area. Always labelled "Partner" (never passed off as a normal result). PartnersNearYou is the spot
 // at the top of Clubs near you; PartnerRow is the pinned row in club search and Search everywhere;
 // PartnerSheet is the detail: monogram, tagline, description, schedule, and links that open the
-// club's own site. Counts are anonymous (partners.py) and skipped when usage counting is off.
+// club's own site. SponsoredCard is the one "Sponsored partner" card in the find-clubs flows (Local,
+// Discover, Explore, the directory's empty state, search), always disclosed, with Hide. Counts are anonymous (partners.py) and skipped when usage counting is off.
 import { useEffect, useState } from 'react'
-import { Check, ChevronRight, ExternalLink, Heart, Info } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, ExternalLink, Heart, Info, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { countPartner, type Partner, type PartnerCount } from '@/lib/clubdir'
+import { countPartner, countSponsored, getSponsored, hideSponsored, type Partner, type PartnerCount, type SponsorPlacement } from '@/lib/clubdir'
 import { counting } from '@/lib/usage'
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import type { ActivityId } from '@/lib/activity'
@@ -158,5 +159,66 @@ export function PartnerSheet({ p, onClose }: { p: Partner; onClose: () => void }
         </p>
       </>
     </Sheet>
+  )
+}
+
+/** The sponsored card for one find-clubs screen: fetched for that placement (the server decides:
+ *  my area or a searched zip in a partner metro, not hidden here in the last 30 days). Disclosed as
+ *  "Sponsored" with "Why am I seeing this?", Hide, and an anonymous impression / tap count. */
+export function SponsoredCard({ placement, zip, card: given, className }: {
+  placement: SponsorPlacement; zip?: string; card?: Partner | null; className?: string
+}) {
+  const [card, setCard] = useState<Partner | null>(given ?? null)
+  const [open, setOpen] = useState(false)
+  const [why, setWhy] = useState(false)
+  const [gone, setGone] = useState(false)
+  useEffect(() => {
+    if (given !== undefined) { setCard(given); return }
+    let live = true
+    getSponsored(placement, zip).then((r) => { if (live) setCard(r.card) }, () => {})
+    return () => { live = false }
+  }, [placement, zip, given])
+  useEffect(() => {
+    if (card && counting()) countSponsored(card.id, 'impression', placement).catch(() => {})
+  }, [card?.id, placement]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!card || gone) return null
+  const tap = () => { if (counting()) countSponsored(card.id, 'tap', placement).catch(() => {}); setOpen(true) }
+  const hide = () => { setGone(true); hideSponsored(card.id, placement).catch(() => {}) }
+  return (
+    <section aria-label={`Sponsored partner: ${card.name}`} className={cn('flex flex-col gap-1.5', className)}>
+      <div className="flex items-center gap-1 pl-1">
+        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Sponsored partner</span>
+        <span className="flex-1" />
+        <button type="button" onClick={hide} aria-label={`Hide ${card.name} here`}
+          className="hit-44 flex items-center gap-1 rounded-full px-2 text-[0.6471rem] text-(--text-muted)">
+          <X className="size-3.5" aria-hidden /> Hide
+        </button>
+      </div>
+      <button type="button" onClick={tap} aria-label={`Sponsored: ${card.name}${card.tagline ? `, ${card.tagline}` : ''}. Open details`}
+        className="flex w-full items-center gap-3 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5 text-left active:opacity-80">
+        <Monogram p={card} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate text-[0.8824rem] font-semibold text-(--text)">{card.name}</span>
+            <span className="inline-flex items-center rounded-full bg-(--bg-surface) px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">Sponsored</span>
+          </span>
+          <span className="block truncate text-[0.7059rem] text-(--text-secondary)">
+            <KindIcon p={card} />{[card.kind_label, card.tagline].filter(Boolean).join(' · ')}
+          </span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      </button>
+      <button type="button" aria-expanded={why} onClick={() => setWhy((v) => !v)}
+        className="hit-44 flex items-center gap-1 self-start px-1 text-[0.6471rem] text-(--text-muted)">
+        <Info className="size-3" aria-hidden /> Why am I seeing this?
+        <ChevronDown className={cn('size-3 transition-transform', why && 'rotate-180')} aria-hidden />
+      </button>
+      {why && (
+        <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">
+          {card.why ?? `${card.name} is a Rabbit partner shown to people in its area.`} Rabbit doesn't share anything about you with partners.
+        </p>
+      )}
+      {open && <PartnerSheet p={card} onClose={() => setOpen(false)} />}
+    </section>
   )
 }

@@ -9,7 +9,7 @@ import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import { SPORT_ICON as EVENT_SPORT_ICON, isSport } from '@/lib/sports'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/Avatar'
-import { PartnerRow, PartnerSheet } from '@/components/community/Partners'
+import { PartnerRow, PartnerSheet, SponsoredCard } from '@/components/community/Partners'
 import type { Partner } from '@/lib/clubdir'
 import { SPORT_ICON, fmtDay } from '@/components/plan/PlanParts'
 import type { Sport } from '@/lib/api'
@@ -115,7 +115,9 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             {(res.partners?.length ?? 0) > 0 && (
               <section className="mt-2 flex flex-col gap-1.5 px-4">
                 <h3 className="sr-only">Partners</h3>
-                {res.partners!.map((p) => <PartnerRow key={p.id} p={p} onOpen={() => setPartner(p)} />)}
+                {res.partners!.map((p) => p.sponsored
+                  ? <SponsoredCard key={p.id} placement="search" card={p} />
+                  : <PartnerRow key={p.id} p={p} onOpen={() => setPartner(p)} />)}
               </section>
             )}
             <Group title="People" n={res.people.length}>

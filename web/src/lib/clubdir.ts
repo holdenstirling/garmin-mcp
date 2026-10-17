@@ -77,24 +77,40 @@ export type DirView = {
 // ------------------------------------------------------------------ partners --
 export type PartnerKind = 'run_club' | 'tri_club' | 'ride' | 'swim' | 'trail' | 'store' | 'coach' | 'other'
 export type Partner = {
-  id: string; label: 'Partner'; name: string; kind: PartnerKind; kind_label: string; tagline: string
+  id: string; label: 'Partner' | 'Sponsored partner'; name: string; kind: PartnerKind; kind_label: string; tagline: string
   description: string; schedule: string; website: string; instagram: string; signup: string; monogram: string
+  /** paid placement: shown as "Sponsored partner" in the find-clubs flows */
+  sponsored?: boolean
+  /** "Why am I seeing this?" (sponsored cards only) */
+  why?: string
 }
+/** Where a sponsored card shows (one per screen; Hide keeps it off that screen for 30 days). */
+export type SponsorPlacement = 'local' | 'home' | 'discover' | 'explore' | 'directory_empty' | 'search'
 export type PartnerCount = 'view' | 'website' | 'instagram' | 'signup' | 'interested'
 export type PartnerAdmin = Partner & {
   metros: { city: string; state: string }[]; starts: string | null; ends: string | null; active: boolean; live: boolean
   stats: Record<PartnerCount, number>
+  /** sponsored-card counts by placement (last 30 days) */
+  placements?: Partial<Record<SponsorPlacement, { impression: number; tap: number; hide: number }>>
 }
 export type PartnerAdminList = { partners: PartnerAdmin[]; kinds: { id: PartnerKind; label: string }[]; stats_days: number }
 export type PartnerDraft = {
   name: string; kind: PartnerKind; tagline: string; description: string; schedule: string
   website: string; instagram: string; signup: string; metros: string[]; starts: string | null; ends: string | null; active: boolean
+  sponsored: boolean
 }
 const A = '/api/partners'
 export const getPartner = (id: string) => getJSON<Partner>(`${A}/${encodeURIComponent(id)}`)
 /** Anonymous count (once per person, partner, kind and day; skipped when usage counting is off). */
 export const countPartner = (id: string, what: PartnerCount) =>
   postJSON<{ counted: boolean }>(`${A}/${encodeURIComponent(id)}/count`, { what })
+/** One sponsored partner card for a find-clubs screen (or null); `zip` = a zip just searched or set. */
+export const getSponsored = (placement: SponsorPlacement, zip?: string) =>
+  getJSON<{ card: Partner | null }>(`${A}/sponsored?placement=${placement}${zip ? `&zip=${encodeURIComponent(zip)}` : ''}`)
+export const hideSponsored = (id: string, placement: SponsorPlacement) =>
+  postJSON<{ hidden: boolean }>(`${A}/${encodeURIComponent(id)}/hide`, { placement })
+export const countSponsored = (id: string, what: 'impression' | 'tap', placement: SponsorPlacement) =>
+  postJSON<{ counted: boolean }>(`${A}/${encodeURIComponent(id)}/count`, { what, placement })
 export const listPartnersAdmin = () => getJSON<PartnerAdminList>(`${A}/admin`)
 export const addPartner = (d: PartnerDraft) => postJSON<PartnerAdminList & { id: string }>(`${A}/admin`, d)
 export const editPartner = (id: string, d: PartnerDraft) => sendJSON<PartnerAdminList & { id: string }>('PUT', `${A}/admin/${encodeURIComponent(id)}`, d)

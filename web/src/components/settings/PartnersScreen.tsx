@@ -16,9 +16,13 @@ import {
 } from '@/lib/clubdir'
 import { cn } from '@/lib/utils'
 
+const PLACE_LABEL: Record<string, string> = {
+  local: 'Local', home: 'Home', discover: 'Discover', explore: 'Explore', directory_empty: 'Empty club list', search: 'Search',
+}
+
 const EMPTY: PartnerDraft = {
   name: '', kind: 'run_club', tagline: '', description: '', schedule: '', website: '', instagram: '', signup: '',
-  metros: [], starts: null, ends: null, active: true,
+  metros: [], starts: null, ends: null, active: true, sponsored: true,
 }
 
 function draftOf(p: PartnerAdmin): PartnerDraft {
@@ -26,6 +30,7 @@ function draftOf(p: PartnerAdmin): PartnerDraft {
     name: p.name, kind: p.kind, tagline: p.tagline, description: p.description, schedule: p.schedule,
     website: p.website, instagram: p.instagram, signup: p.signup,
     metros: p.metros.map((m) => `${m.city}, ${m.state}`), starts: p.starts, ends: p.ends, active: p.active,
+    sponsored: p.sponsored !== false,
   }
 }
 
@@ -89,6 +94,12 @@ function PartnerForm({ p, kinds, onSaved, onClose }: {
         <input type="checkbox" className="size-5 accent-(--accent)" checked={d.active} onChange={(e) => set('active', e.target.checked)} />
         Show this partner
       </label>
+      <label className="flex min-h-11 items-start gap-3 text-[0.8235rem] text-(--text)">
+        <input type="checkbox" className="mt-0.5 size-5 accent-(--accent)" checked={d.sponsored} onChange={(e) => set('sponsored', e.target.checked)} />
+        <span>Sponsored placement
+          <span className="block text-[0.7059rem] text-(--text-muted)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
+        </span>
+      </label>
       {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
@@ -120,6 +131,7 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                       <span className="flex items-center gap-2">
                         <span className="truncate text-[0.8824rem] font-semibold text-(--text)">{p.name}</span>
                         <PartnerBadge />
+                        {p.sponsored !== false && <span className="text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-muted)">Sponsored</span>}
                       </span>
                       <span className={cn('block text-[0.7059rem]', p.live ? 'text-(--accent)' : 'text-(--text-muted)')}>
                         {p.live ? 'Live' : p.active ? 'Scheduled or ended' : 'Hidden'} · {p.metros.length === 1 ? `${p.metros[0]!.city}, ${p.metros[0]!.state}` : `${p.metros.length} cities`}
@@ -127,6 +139,11 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                       <span className="block font-mono text-[0.7059rem] tabular-nums text-(--text-secondary)">
                         {p.stats.view} views · {p.stats.website + p.stats.signup + p.stats.instagram} link taps · {p.stats.interested} interested
                       </span>
+                      {Object.entries(p.placements ?? {}).map(([pl, c]) => (
+                        <span key={pl} className="block font-mono text-[0.6471rem] tabular-nums text-(--text-muted)">
+                          {PLACE_LABEL[pl] ?? pl}: {c?.impression ?? 0} seen · {c?.tap ?? 0} taps · {c?.hide ?? 0} hides
+                        </span>
+                      ))}
                     </span>
                     <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
                   </button>

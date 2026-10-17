@@ -181,7 +181,7 @@ def test_http_search_partners_and_admin(env, tmp_path) -> None:  # noqa: F811
         assert (await cat.get(f"/app/api/partners/{p['id']}")).status_code == 404  # no home city
         # Global search shows it, labelled
         g = (await bob.get("/app/api/search?q=5280%20run%20club")).json()
-        assert g["partners"][0]["label"] == "Partner"
+        assert g["partners"][0]["label"] == "Sponsored partner" and "Denver" in g["partners"][0]["why"]
         # Admin: owner only; coach 403 everywhere
         assert (await bob.get("/app/api/partners/admin")).status_code == 403
         assert (await bob.post("/app/api/partners/admin", headers=H, json={"name": "X"})).status_code == 403
@@ -201,6 +201,96 @@ def test_http_search_partners_and_admin(env, tmp_path) -> None:  # noqa: F811
         r = await ann.request("DELETE", f"/app/api/partners/admin/{new}", headers=H, json={})
         assert r.status_code == 200, (r.status_code, r.text)
         assert all(x["id"] != new for x in r.json()["partners"])
+        for x in c.values():
+            await x.aclose()
+    asyncio.run(go())
+
+
+
+# ------------------------------------------------------------ sponsored --
+def test_zip_metro_maps_front_range_zips_only() -> None:
+    assert pt.zip_metro("80209") == ("Denver", "CO") and pt.zip_metro("80204") == ("Denver", "CO")
+    assert pt.zip_metro("80014") == ("Aurora", "CO") and pt.zip_metro("80401") == ("Golden", "CO")
+    assert pt.zip_metro("02116") is None  # Boston
+    assert pt.zip_metro("80301") is None  # Boulder: not one of the partner's cities
+    assert pt.zip_metro("8020") is None and pt.zip_metro("abcde") is None and pt.zip_metro(None) is None
+
+
+def test_sponsored_card_rules_disclosure_hide_and_counts(tmp_path, fernet_key) -> None:
+    p, _, t = make_partners(tmp_path, fernet_key)
+    card = p.sponsored("bob", "local", "Denver", "CO")
+    assert card and card["label"] == "Sponsored partner" and card["sponsored"] is True
+    assert card["why"] == "5280 Runners is a Rabbit partner shown to people near Denver, CO."
+    # a Denver zip searched from anywhere shows it; Boston doesn't
+    assert p.sponsored("cat", "search", "", "", ["80209"])["name"] == "5280 Runners"
+    assert p.sponsored("cat", "search", "Boston", "MA", ["02116"]) is None
+    assert p.sponsored("cat", "local", "Austin", "TX") is None
+    # one card at a time, even with two sponsored partners in the metro
+    p.save("ann", {"name": "Mile High Masters", "kind": "swim", "website": "https://mhm.example/",
+                   "metros": ["Denver, CO"]})
+    assert isinstance(p.sponsored("bob", "discover", "Denver", "CO"), dict)
+    # a partner that isn't a paid placement never shows as sponsored
+    mhm = next(x for x in p.admin_list("ann")["partners"] if x["name"] == "Mile High Masters")
+    p.save("ann", {"name": "Mile High Masters", "kind": "swim", "website": "https://mhm.example/",
+                   "metros": ["Denver, CO"], "sponsored": False}, mhm["id"])
+    for _ in range(7):
+        t.t += 86400
+        assert p.sponsored("bob", "discover", "Denver", "CO")["name"] == "5280 Runners"
+    # hide: gone from that screen for 30 days, still shows on others
+    p.hide("bob", card["id"], "local")
+    assert p.sponsored("bob", "local", "Denver", "CO") is None
+    assert p.sponsored("bob", "explore", "Denver", "CO") is not None
+    assert p.sponsored("eve", "local", "Denver", "CO") is not None  # per person
+    t.t += 31 * 86400
+    assert p.sponsored("bob", "local", "Denver", "CO") is not None
+    # anonymous placement counts for the owner; no user ids stored
+    assert p.placement_count("bob", card["id"], "impression", "local") is True
+    assert p.placement_count("bob", card["id"], "impression", "local") is False  # once a day
+    assert p.placement_count("eve", card["id"], "tap", "local") is True
+    row = next(x for x in p.admin_list("ann")["partners"] if x["id"] == card["id"])
+    assert row["placements"]["local"]["impression"] == 1 and row["placements"]["local"]["tap"] == 1
+    doc = str(p._doc.load())
+    assert "'bob'" not in doc and "'eve'" not in doc
+    # bad input; coaches never get one
+    for bad in (lambda: p.sponsored("bob", "nowhere", "Denver", "CO"),
+                lambda: p.hide("bob", card["id"], "nowhere"),
+                lambda: p.placement_count("bob", card["id"], "view", "local")):
+        try:
+            bad()
+            raise AssertionError("expected PartnerError")
+        except pt.PartnerError:
+            pass
+    assert p.sponsored(coach_user_id("c@x.com"), "local", "Denver", "CO") is None
+
+
+def test_http_sponsored_placements(env, tmp_path) -> None:  # noqa: F811
+    c, _, _ = _apps(env, tmp_path)
+
+    async def go() -> None:
+        bob, cat = c["bob"], c["cat"]
+        coach = c[coach_user_id("c@x.com")]
+        r = (await bob.get("/app/api/partners/sponsored?placement=local")).json()["card"]
+        assert r["name"] == "5280 Runners" and r["label"] == "Sponsored partner"
+        # no home city, but a Denver zip searched: shown; a Boston zip: not
+        assert (await cat.get("/app/api/partners/sponsored?placement=local")).json()["card"] is None
+        z = (await cat.get("/app/api/partners/sponsored?placement=explore&zip=80209")).json()["card"]
+        assert z and z["name"] == "5280 Runners"
+        assert (await cat.get("/app/api/partners/sponsored?placement=explore&zip=02116")).json()["card"] is None
+        assert (await cat.get(f"/app/api/partners/{z['id']}?zip=80209")).status_code == 200
+        assert (await bob.get("/app/api/partners/sponsored?placement=bogus")).status_code == 400
+        # counts + hide
+        assert (await bob.post(f"/app/api/partners/{r['id']}/count", headers=H,
+                               json={"what": "impression", "placement": "local"})).json() == {"counted": True}
+        assert (await bob.post(f"/app/api/partners/{r['id']}/hide", headers=H, json={"placement": "local"})).status_code == 200
+        assert (await bob.get("/app/api/partners/sponsored?placement=local")).json()["card"] is None
+        assert (await bob.get("/app/api/partners/sponsored?placement=discover")).json()["card"] is not None
+        # global search: a Denver zip shows the sponsored partner; Boston doesn't
+        g = (await cat.get("/app/api/search?q=80209")).json()
+        assert g["partners"] and g["partners"][0]["label"] == "Sponsored partner"
+        assert (await cat.get("/app/api/search?q=02116")).json().get("partners", []) == []
+        # coaches: 403 as before
+        assert (await coach.get("/app/api/partners/sponsored?placement=local")).status_code == 403
+        assert (await coach.post(f"/app/api/partners/{r['id']}/hide", headers=H, json={"placement": "local"})).status_code == 403
         for x in c.values():
             await x.aclose()
     asyncio.run(go())

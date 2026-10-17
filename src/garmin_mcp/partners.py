@@ -14,6 +14,13 @@ Owner only (``is_owner``; coach accounts never): add / edit / remove, plus anony
 partner (card views, link taps, "I'm interested"): daily totals, each person counted at most
 once per partner, kind and day (deduped in memory, nobody's id is stored).
 
+Sponsored placement: a partner marked ``sponsored`` (the default for the seeded one) also shows
+as one "Sponsored partner" card in the find-clubs flows (Local, Discover, Explore, the directory's
+empty state, search) for people whose area is one of its metros, or who search or set a zip that
+maps to one (``zip_metro``: a static Front Range prefix table). Always disclosed ("Sponsored" plus
+"Why am I seeing this?"), at most one card per screen, and "Hide" keeps it off that screen for that
+person for 30 days. The owner sees impressions, taps and hides per placement.
+
 Storage: global ``partners`` doc ``{"items": {pid: {...}}, "seeded": bool, "stats": {pid: {...}}}``.
 The first load seeds 5280 Runners for Denver and nearby Front Range cities (facts from the club's
 RunSignup page only); the owner can edit or remove it and it never comes back once removed.
@@ -39,6 +46,40 @@ NAME_LEN, TAGLINE_LEN, DESC_LEN, SCHEDULE_LEN = 60, 80, 280, 160
 STATS_DAYS = 30
 SHOW_MAX = 3
 COUNT_KINDS = ("view", "website", "instagram", "signup", "interested")
+# Sponsored placements (one card per screen) and what's counted there.
+PLACEMENTS = ("local", "home", "discover", "explore", "directory_empty", "search")
+PLACE_KINDS = ("impression", "tap", "hide")
+HIDE_DAYS = 30
+_ZIP = re.compile(r"^\d{5}$")
+# Zip -> metro for the partners' Front Range cities (USPS prefixes 800-802 are the Denver metro;
+# a few named suburbs get their own city so a partner can serve them separately). Static and
+# deterministic: no geocoding call per keystroke.
+_ZIP_CITY = {
+    "80010": "Aurora", "80011": "Aurora", "80012": "Aurora", "80013": "Aurora", "80014": "Aurora",
+    "80015": "Aurora", "80016": "Aurora", "80017": "Aurora", "80018": "Aurora", "80019": "Aurora",
+    "80045": "Aurora", "80247": "Aurora",
+    "80226": "Lakewood", "80227": "Lakewood", "80228": "Lakewood", "80232": "Lakewood", "80235": "Lakewood",
+    "80110": "Englewood", "80111": "Englewood", "80112": "Englewood", "80113": "Englewood",
+    "80120": "Littleton", "80121": "Littleton", "80122": "Littleton", "80123": "Littleton", "80127": "Littleton",
+    "80128": "Littleton", "80129": "Highlands Ranch", "80130": "Highlands Ranch", "80126": "Highlands Ranch",
+    "80002": "Arvada", "80003": "Arvada", "80004": "Arvada", "80005": "Arvada", "80007": "Arvada",
+    "80030": "Westminster", "80031": "Westminster", "80234": "Westminster", "80021": "Westminster",
+    "80033": "Wheat Ridge", "80401": "Golden", "80403": "Golden",
+    "80020": "Broomfield", "80023": "Broomfield",
+    "80022": "Commerce City", "80640": "Commerce City",
+    "80241": "Thornton", "80229": "Thornton", "80233": "Thornton", "80260": "Thornton",
+    "80214": "Edgewater", "80246": "Glendale", "80237": "Greenwood Village",
+}
+_ZIP_PREFIX = {"800": "Denver", "801": "Denver", "802": "Denver"}
+
+
+def zip_metro(zip_: Any) -> tuple[str, str] | None:
+    """(city, "CO") for a Front Range zip a partner can serve, else None."""
+    z = str(zip_ or "").strip()
+    if not _ZIP.match(z):
+        return None
+    city = _ZIP_CITY.get(z) or _ZIP_PREFIX.get(z[:3])
+    return (city, "CO") if city else None
 KINDS = ("run_club", "tri_club", "ride", "swim", "trail", "store", "coach", "other")
 KIND_LABEL = {"run_club": "Run club", "tri_club": "Tri club", "ride": "Cycling club", "swim": "Swim group",
               "trail": "Trail group", "store": "Shop", "coach": "Coaching", "other": "Group"}
@@ -74,7 +115,7 @@ SEED: dict[str, Any] = {
     "instagram": "",
     "signup": "https://runsignup.com/Club/CO/DENVER/5280Runners",
     "metros": [{"city": c, "state": "CO"} for c in FRONT_RANGE],
-    "starts": None, "ends": None, "active": True,
+    "starts": None, "ends": None, "active": True, "sponsored": True,
 }
 
 
@@ -186,6 +227,7 @@ def clean(body: Any) -> dict[str, Any]:
         "starts": _day(body.get("starts"), "Start date"),
         "ends": _day(body.get("ends"), "End date"),
         "active": body.get("active", True) is not False,
+        "sponsored": body.get("sponsored", True) is not False,
     }
     if not (out["website"] or out["instagram"] or out["signup"]):
         raise PartnerError("Add a website, Instagram or sign-up link.")
@@ -211,7 +253,15 @@ def public(item: dict[str, Any]) -> dict[str, Any]:
             "kind_label": KIND_LABEL.get(item["kind"], "Group"), "tagline": item.get("tagline") or "",
             "description": item.get("description") or "", "schedule": item.get("schedule") or "",
             "website": item.get("website") or "", "instagram": item.get("instagram") or "",
-            "signup": item.get("signup") or "", "monogram": monogram(item["name"])}
+            "signup": item.get("signup") or "", "monogram": monogram(item["name"]),
+            "sponsored": bool(item.get("sponsored", True))}
+
+
+def sponsored_card(item: dict[str, Any], metro_label: str) -> dict[str, Any]:
+    """A promotional card: always disclosed as sponsored, with the reason it shows."""
+    near = metro_label or "your area"
+    return {**public(item), "label": "Sponsored partner", "sponsored": True,
+            "why": f"{item['name']} is a Rabbit partner shown to people near {near}."}
 
 
 # -------------------------------------------------------------- service --
@@ -256,11 +306,15 @@ class Partners:
             st = (d.get("stats") or {}).get(it["id"]) or {}
             days = {k: v for k, v in (st.get("days") or {}).items() if k >= since}
             totals = {k: sum(int((v or {}).get(k) or 0) for v in days.values()) for k in COUNT_KINDS}
+            places = {pl: {k: sum(int((v or {}).get(f"{k}:{pl}") or 0) for v in days.values()) for k in PLACE_KINDS}
+                      for pl in PLACEMENTS}
+            places = {pl: c for pl, c in places.items() if any(c.values())}
             rows.append({**public(it), "metros": it.get("metros") or [], "starts": it.get("starts"),
+                         "placements": places,
                          "ends": it.get("ends"), "active": bool(it.get("active", True)), "live": live(it, today),
                          "stats": totals})
         return {"partners": rows, "kinds": [{"id": k, "label": KIND_LABEL[k]} for k in KINDS],
-                "stats_days": STATS_DAYS}
+                "stats_days": STATS_DAYS, "placements": list(PLACEMENTS)}
 
     def save(self, uid: str, body: Any, pid: str | None = None) -> dict[str, Any]:
         self.require_owner(uid)
@@ -313,20 +367,106 @@ class Partners:
             rows = rows[k:] + rows[:k]
         return [public(it) for it in rows[:limit]]
 
-    def get(self, pid: Any, city: str, state: str) -> dict[str, Any]:
+    def get(self, pid: Any, city: str, state: str, zips: list[Any] | None = None) -> dict[str, Any]:
         if not isinstance(pid, str) or not (_PID.match(pid) or pid == SEED["id"]):
             raise PartnerError("not found", 404)
         it = (self._load().get("items") or {}).get(pid)
-        if not isinstance(it, dict) or not live(it, self._today()) or not in_metro(it, city, state):
+        if not isinstance(it, dict) or not live(it, self._today()) \
+                or not any(in_metro(it, c, st) for c, st in self.metros_for(city, state, zips)):
             raise PartnerError("not found", 404)
         return public(it)
 
-    def count(self, uid: str, pid: Any, what: Any, city: str, state: str) -> bool:
+    # -------------------------------------------------------- sponsored --
+    @staticmethod
+    def _who(uid: str) -> str:
+        return hashlib.sha256(f"hide|{uid}".encode()).hexdigest()[:20]
+
+    def metros_for(self, city: str, state: str, zips: list[Any] | None = None) -> list[tuple[str, str]]:
+        """The metros this person is "near": their area's city plus any zip they set or searched."""
+        out: list[tuple[str, str]] = []
+        if city and state:
+            out.append((city, state))
+        for z in zips or []:
+            m = zip_metro(z)
+            if m and m not in out:
+                out.append(m)
+        return out
+
+    def sponsored(self, uid: str, placement: Any, city: str, state: str,
+                  zips: list[Any] | None = None) -> dict[str, Any] | None:
+        """One sponsored card for this screen, or None (not in a partner metro, hidden, none live)."""
+        if placement not in PLACEMENTS:
+            raise PartnerError("bad placement")
+        if uid.startswith("coach_"):
+            return None
+        d = self._load()
+        today = self._today()
+        hidden = ((d.get("hides") or {}).get(self._who(uid)) or {}).get(placement)
+        if isinstance(hidden, str) and hidden >= (today - timedelta(days=HIDE_DAYS - 1)).isoformat():
+            return None
+        metros = self.metros_for(city, state, zips)
+        rows = [(it, m) for it in (d.get("items") or {}).values() for m in metros
+                if isinstance(it, dict) and it.get("sponsored", True) and live(it, today) and in_metro(it, *m)]
+        if not rows:
+            return None
+        rows.sort(key=lambda x: (int(x[0].get("created") or 0), x[0]["id"]))
+        k = today.toordinal() % len(rows)  # fair rotation, one card at a time
+        it, (c, st) = rows[k]
+        return sponsored_card(it, f"{c}, {st}")
+
+    def hide(self, uid: str, pid: Any, placement: Any) -> None:
+        if placement not in PLACEMENTS:
+            raise PartnerError("bad placement")
+        if not isinstance(pid, str) or not (_PID.match(pid) or pid == SEED["id"]):
+            raise PartnerError("not found", 404)
+        today = self._today().isoformat()
+        who = self._who(uid)
+        cutoff = (self._today() - timedelta(days=HIDE_DAYS)).isoformat()
+
+        def put(d: dict[str, Any]) -> None:
+            hides = d.setdefault("hides", {})
+            mine = hides.setdefault(who, {})
+            mine[placement] = today
+            for w in [w for w, v in hides.items() if not any(x >= cutoff for x in (v or {}).values())]:
+                del hides[w]
+        self._doc.update(put)
+        self._bump(uid, pid, f"hide:{placement}")
+
+    def placement_count(self, uid: str, pid: Any, what: Any, placement: Any) -> bool:
+        """An anonymous impression or tap for one placement (deduped per person, partner, day)."""
+        if what not in ("impression", "tap") or placement not in PLACEMENTS:
+            raise PartnerError("bad request")
+        if not isinstance(pid, str) or pid not in (self._load().get("items") or {}):
+            raise PartnerError("not found", 404)
+        return self._bump(uid, pid, f"{what}:{placement}")
+
+    def _bump(self, uid: str, pid: str, key: str) -> bool:
+        today = self._today().isoformat()
+        tag = hashlib.sha256(f"{today}|{uid}|{pid}|{key}".encode()).hexdigest()[:16]
+        with self._lock:
+            if self._seen_day != today:
+                self._seen, self._seen_day = set(), today
+            if tag in self._seen:
+                return False
+            self._seen.add(tag)
+        since = (self._today() - timedelta(days=STATS_DAYS + 7)).isoformat()
+
+        def put(d: dict[str, Any]) -> None:
+            days = d.setdefault("stats", {}).setdefault(pid, {}).setdefault("days", {})
+            day = days.setdefault(today, {})
+            day[key] = int(day.get(key) or 0) + 1
+            for k in [k for k in days if k < since]:
+                del days[k]
+        self._doc.update(put)
+        return True
+
+    def count(self, uid: str, pid: Any, what: Any, city: str, state: str,
+              zips: list[Any] | None = None) -> bool:
         """One anonymous count (view / website / instagram / signup / interested). Each person at
         most once per partner, kind and day; only ids of partners this person can see."""
         if what not in COUNT_KINDS:
             raise PartnerError("bad request")
-        self.get(pid, city, state)
+        self.get(pid, city, state, zips)
         today = self._today().isoformat()
         tag = hashlib.sha256(f"{today}|{uid}|{pid}|{what}".encode()).hexdigest()[:16]
         with self._lock:
@@ -348,5 +488,5 @@ class Partners:
         return True
 
 
-__all__ = ["KINDS", "KIND_LABEL", "PartnerError", "Partners", "SEED", "about_kind", "clean", "key_words",
-           "monogram", "name_match"]
+__all__ = ["KINDS", "KIND_LABEL", "PLACEMENTS", "PartnerError", "Partners", "SEED", "about_kind", "clean",
+           "key_words", "monogram", "name_match", "sponsored_card", "zip_metro"]

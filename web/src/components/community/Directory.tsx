@@ -32,7 +32,7 @@ import { ActivityTile } from '@/components/local/ActivityIcon'
 import { AreaBar, useAreaChanged } from '@/components/local/AreaBar'
 import { Sheet } from '@/components/ui/Sheet'
 import { FeatureSheet, useIsOwner } from './Featured'
-import { PartnerRow, PartnerSheet, PartnersNearYou } from './Partners'
+import { PartnerRow, PartnerSheet, PartnersNearYou, SponsoredCard } from './Partners'
 
 const CRAWLING = ['Lacing up…', 'Reading club pages…', 'Finding the Tuesday group run…', 'Checking league schedules…', 'Hopping between parks…']
 const POLL_MS = 8000
@@ -215,7 +215,9 @@ function ClubSearch({ q, filters, card, onSuggest }: { q: string; filters: DirFi
   )
   return (
     <div className="flex flex-col gap-2" aria-live="polite">
-      {res.partners.map((p) => <PartnerRow key={p.id} p={p} onOpen={() => setPartner(p)} />)}
+      {/* A sponsored partner shows once, disclosed: for a zip in a partner's area, or a club search near one. */}
+      {(/^\d{5}$/.test(q) || res.partners.some((p) => p.sponsored)) && <SponsoredCard placement="local" zip={/^\d{5}$/.test(q) ? q : undefined} />}
+      {res.partners.filter((p) => !p.sponsored).map((p) => <PartnerRow key={p.id} p={p} onOpen={() => setPartner(p)} />)}
       {rows.map((l, i) => <HopIn key={l.id} index={i} play={i < 4}>{card(l)}</HopIn>)}
       {look.busy && <RabbitLoader className="py-3" label={`Looking for “${q}” near ${res.metro?.label ?? 'you'}`} cycle={LOOKING} />}
       {!look.busy && look.out && look.out.status !== 'found' && (
@@ -349,7 +351,10 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       {searching ? (
         <ClubSearch q={q.trim()} filters={filters} card={card} onSuggest={() => setSuggesting(true)} />
       ) : (<>
-      <PartnersNearYou partners={data.partners ?? []} metro={metro.label} />
+      {/* One "Sponsored partner" card per screen: at the top while there are clubs (or Rabbit is still
+          finding them), inside the empty state otherwise. Other partners keep their own spot. */}
+      {(listings.length > 0 || crawling) && <SponsoredCard placement="local" />}
+      <PartnersNearYou partners={(data.partners ?? []).filter((p) => !p.sponsored)} metro={metro.label} />
       <div className="flex items-center justify-between gap-2 px-1 pt-1">
         <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
           {activity ? ACTIVITY_LABEL[activity] : 'Clubs, leagues & meetups'}{radius ? ` within ${radius}` : ''}
@@ -379,8 +384,11 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
             body={(data.farther ?? 0) > 0 ? 'There are more farther away: widen your area above.' : undefined}
             action="Clear filters" onAction={() => { setActivity(null); setWeekday(null); setWhen(null) }} />
         ) : (
-          <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
-            body="Know a club, track night or league? Search for it above, or tap Suggest one below and Rabbit checks it." />
+          <>
+            <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
+              body="Know a club, track night or league? Search for it above, or tap Suggest one below and Rabbit checks it." />
+            <SponsoredCard placement="directory_empty" />
+          </>
         )
       )}
       {listings.length > 0 && (data.farther ?? 0) > 0 && (

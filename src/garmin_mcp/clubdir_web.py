@@ -63,7 +63,8 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                 is_owner: Callable[[str], bool], club_role: Callable[[str, str], str | None],
                 read_json: Callable[[Request], Awaitable[Any]], going: Any = None,
                 partners: Partners | None = None,
-                area: Callable[[str], dict[str, Any]] | None = None) -> list[BaseRoute]:
+                area: Callable[[str], dict[str, Any]] | None = None,
+                zips: Callable[[str], list[str]] | None = None) -> list[BaseRoute]:
     """``wrap(handler, mutating=)`` is community_web's guard; ``club_role(uid, cid)`` the
     athlete's role in a club or None."""
 
@@ -186,21 +187,47 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
             raise PartnerError("not found", 404)
         return partners
 
+    async def my_zips(uid: str, extra: Any = None) -> list[Any]:
+        """Zips that place me in a partner metro: my saved spot's zip, plus one I just searched."""
+        z = list(await run(lambda: zips(uid))) if zips is not None else []
+        if isinstance(extra, str) and extra.strip():
+            z.append(extra.strip())
+        return z
+
     async def partner_get(request: Request, user_id: str) -> Response:
         p = need_partners()
         m = await my_metro(user_id)
-        if m is None:
-            raise PartnerError("not found", 404)
-        return JSONResponse(await run(lambda: p.get(request.path_params["pid"], m.city, m.state)))
+        z = await my_zips(user_id, request.query_params.get("zip"))
+        return JSONResponse(await run(lambda: p.get(request.path_params["pid"], m.city if m else "",
+                                                     m.state if m else "", z)))
 
     async def partner_count(request: Request, user_id: str) -> Response:
         p = need_partners()
         b = await body_of(request)
+        if b.get("placement") is not None:
+            ok = await run(lambda: p.placement_count(user_id, request.path_params["pid"], b.get("what"),
+                                                     b.get("placement")))
+            return JSONResponse({"counted": ok})
         m = await my_metro(user_id)
-        if m is None:
-            raise PartnerError("not found", 404)
-        ok = await run(lambda: p.count(user_id, request.path_params["pid"], b.get("what"), m.city, m.state))
+        z = await my_zips(user_id, b.get("zip"))
+        ok = await run(lambda: p.count(user_id, request.path_params["pid"], b.get("what"), m.city if m else "",
+                                       m.state if m else "", z))
         return JSONResponse({"counted": ok})
+
+    async def partner_sponsored(request: Request, user_id: str) -> Response:
+        """One sponsored partner card for a find-clubs screen, or {card: null}."""
+        p = need_partners()
+        placement = request.query_params.get("placement") or ""
+        m = await my_metro(user_id)
+        z = await my_zips(user_id, request.query_params.get("zip"))
+        card = await run(lambda: p.sponsored(user_id, placement, m.city if m else "", m.state if m else "", z))
+        return JSONResponse({"card": card})
+
+    async def partner_hide(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        b = await body_of(request)
+        await run(lambda: p.hide(user_id, request.path_params["pid"], b.get("placement")))
+        return JSONResponse({"hidden": True})
 
     async def partner_admin(request: Request, user_id: str) -> Response:
         p = need_partners()
@@ -296,7 +323,9 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         Route(f"{A}/admin", guarded(partner_add, mutating=True), methods=["POST"]),
         Route(f"{A}/admin/{{pid}}", guarded(partner_edit, mutating=True), methods=["PUT"]),
         Route(f"{A}/admin/{{pid}}", guarded(partner_delete, mutating=True), methods=["DELETE"]),
+        Route(f"{A}/sponsored", guarded(partner_sponsored, mutating=False), methods=["GET"]),
         Route(f"{A}/{{pid}}", guarded(partner_get, mutating=False), methods=["GET"]),
+        Route(f"{A}/{{pid}}/hide", guarded(partner_hide, mutating=True), methods=["POST"]),
         Route(f"{A}/{{pid}}/count", guarded(partner_count, mutating=True), methods=["POST"]),
         Route(f"{P}/suggest", guarded(suggest, mutating=True), methods=["POST"]),
         Route(f"{P}/refresh", guarded(refresh, mutating=True), methods=["POST"]),

@@ -28,6 +28,7 @@ import { LocationPrompt } from './LocationPrompt'
 import { AreaBar, useAreaChanged } from '@/components/local/AreaBar'
 import type { LocationState } from '@/lib/explore2'
 import { LetRabbitExplore } from './RabbitExplore'
+import { SponsoredCard } from '@/components/community/Partners'
 import type { RaceX } from '@/lib/explore2'
 
 type Mode = 'foryou' | 'search'
@@ -205,6 +206,8 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
       <Screen title="Explore events" subtitle="Find your next start line" closing={closing} onClose={close}
         headerExtra={<>{modes}{mode === 'search' ? bar : fy.feed && <InterestsStrip interests={fy.feed.interests} onEdit={() => setEditing(true)} />}</>}>
         <AreaBar imperial={imperial} what="races, group runs and meetups" />
+        {/* One disclosed sponsored partner when this area (or the zip searched below) is a partner's. */}
+        {mode === 'foryou' ? <SponsoredCard placement="discover" /> : <SponsoredCard placement="explore" zip={zip ? f.near.trim() : undefined} />}
         {mode === 'foryou' ? (
           <ForYouFeedView state={fy} onOpen={setDetail} onEdit={() => setEditing(true)} onSearch={() => setMode('search')}
             onAsk={onAsk} imperial={imperial}

@@ -3448,7 +3448,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         directory_routes = _cdw.make_routes(
             directory=directory, wrap=_cd_wrap, home=_cm_home, now=_ag._now, today=lambda u: _ag._now(u).date(),
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
-            going=_cd_going, partners=partners, area=_cd_area)
+            going=_cd_going, partners=partners, area=_cd_area,
+            zips=lambda uid: [z for z in [(_geo.load_saved(store, uid) or {}).get("zip")] if z])
 
         # Search everywhere (search.py): GET /app/api/search?q= -> people / clubs / events /
         # sessions / workouts, from stored and cached data only (no Garmin call per keystroke).
@@ -3460,7 +3461,23 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def _srch_partners(uid: str, q: str) -> list[dict[str, Any]]:
             loc = _cm_home(uid)
             m = _cd.metro(loc.get("city"), loc.get("state"))
-            return partners.near(m.city, m.state, query=q) if m else []
+            qz = q.strip()
+            if _pt.zip_metro(qz):  # a Denver-area zip: the sponsored partner for that area
+                card = partners.sponsored(uid, "search", "", "", [qz])
+                return [card] if card else []
+            rows = partners.near(m.city, m.state, query=q) if m else []
+            if not rows:
+                return []
+            # Promoted in search: disclosed as sponsored (unless hidden here for 30 days).
+            card = partners.sponsored(uid, "search", m.city, m.state) if m else None
+            out = []
+            for r in rows:
+                if r.get("sponsored"):
+                    if card is None or card["id"] != r["id"]:
+                        continue
+                    r = card
+                out.append(r)
+            return out
         # Public events (publicevents.py): events their owner marked Public, findable by people in
         # the same area (Local, search), with "I'm going". Re-synced on every events write.
         from . import publicevents as _pev
