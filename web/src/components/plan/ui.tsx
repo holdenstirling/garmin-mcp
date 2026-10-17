@@ -75,7 +75,7 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
         {embedded && !onBack ? (
           <div className="mx-auto flex max-w-xl items-center gap-2 px-1">
             <div className="min-w-0 flex-1">
-              <h1 className="truncate font-display text-[1.4118rem] leading-tight text-(--brand)">{name}</h1>
+              <h1 className="truncate font-display text-[min(1.4118rem,32px)] leading-tight text-(--brand)">{name}</h1>
               {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
             </div>
             {embed.action}

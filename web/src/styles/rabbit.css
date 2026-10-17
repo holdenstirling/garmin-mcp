@@ -235,7 +235,9 @@ html.kb-open .empty-hero { transform: none; }
 }
 .tab-bar__item {
   position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-size: 0.6471rem; font-weight: 500;
+  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-weight: 500;
+  /* Labels grow with larger text only up to 14px, like iOS tab bars, so five still fit side by side. */
+  font-size: min(0.6471rem, 14px);
   transition: color 0.15s ease;
 }
 .tab-bar__item[aria-current="page"] { color: var(--accent); }

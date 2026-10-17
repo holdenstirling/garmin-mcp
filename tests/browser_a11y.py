@@ -146,9 +146,18 @@ AUDIT_JS = r"""
   for (const el of inter) {
     if (!vis(el)) continue;
     const q = el.getBoundingClientRect();
+    // The part a finger can reach: clipped by every scrolling/overflow-hidden ancestor.
+    let c = { l: 0, t: 0, r: innerWidth, b: innerHeight };
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const st = getComputedStyle(e);
+      if (st.overflowX !== 'visible' || st.overflowY !== 'visible') {
+        const z = e.getBoundingClientRect();
+        c = { l: Math.max(c.l, z.left), t: Math.max(c.t, z.top), r: Math.min(c.r, z.right), b: Math.min(c.b, z.bottom) };
+      }
+    }
     const pts = [[q.left + q.width / 2, q.top + q.height / 2], [q.left + 6, q.top + q.height / 2], [q.right - 6, q.top + q.height / 2]];
     for (const [x, y] of pts) {
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
+      if (x < c.l + 1 || y < c.t + 1 || x > c.r - 1 || y > c.b - 1) continue;
       const hit = document.elementFromPoint(x, y);
       if (!hit || el.contains(hit) || hit.contains(el)) continue;
       const other = hit.closest('button, a[href], [role=button], [role=tab], input, select, textarea, summary, label');
@@ -180,7 +189,10 @@ AUDIT_JS = r"""
   for (const el of document.querySelectorAll('[tabindex]')) if (Number(el.getAttribute('tabindex')) > 0) out.push(['tabindex', desc(el), 'positive tabindex']);
 
   // headings
-  const hs = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter((h) => vis(h) || h.classList.contains('sr-only'));
+  // Order is structural: count every rendered heading in the top layer, on screen or scrolled away.
+  const rendered = (h) => (!top || top.contains(h)) && !h.closest('[inert],[aria-hidden="true"],.hidden,[hidden]')
+    && (h.getClientRects().length > 0 || h.classList.contains('sr-only')) && getComputedStyle(h).visibility !== 'hidden';
+  const hs = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter(rendered);
   let prev = 0;
   for (const h of hs) { const l = Number(h.tagName[1]); if (prev && l > prev + 1) out.push(['heading', desc(h), `h${prev} -> h${l}`]); prev = l; }
   return out;

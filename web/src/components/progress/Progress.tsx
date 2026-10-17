@@ -89,7 +89,8 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      {/* Two tiles side by side; one per row on narrow screens or with larger text. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
         <div className="relative flex items-center gap-2.5 rounded-xl bg-(--bg-inset) py-2.5 pl-3 pr-8">
           <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
             s.at_risk ? 'bg-(--warning) text-black' : s.current ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
