@@ -92,6 +92,8 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
         </Group>
       )}
 
+      {me.role === 'athlete' && <UnitsGroup me={me} onChange={onChange} />}
+
       {me.garmin.connected && me.chat.available && (
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />
       )}
@@ -99,8 +101,6 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
         <ShareRow />
       </Group>
-
-      {me.role === 'athlete' && <UnitsGroup me={me} onChange={onChange} />}
 
       <Group label="Location" footer="Used by Explore to find races and local activities near you."><LocationRow /></Group>
 
