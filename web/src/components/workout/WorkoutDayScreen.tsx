@@ -34,6 +34,9 @@ import {
 } from '@/lib/workout'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { WeatherSection } from './WeatherSection'
+import { WhoElse } from '@/components/people/WhoElse'
+import { Related } from '@/components/nav/Related'
+import { CalendarDays } from 'lucide-react'
 
 const ICON: Record<string, typeof Bike> = {
   swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
@@ -142,6 +145,20 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
             requestPlanFix(s.id)
             close(); window.setTimeout(() => openPlanDay(data.date), 220)
           }} />
+      )}
+      {data && s && s.id && s.sport !== 'rest' && (
+        <WhoElse sport={s.sport} date={data.date} invite={ahead && status !== 'done'}
+          share={{ type: 'workout', ref: { kind: 'session', id: s.id, date: data.date }, label: s.title }} />
+      )}
+      {data && (
+        <Related items={[
+          { key: 'day', icon: <CalendarDays className="size-4" />, label: 'This day in your plan', sub: fmtDay(data.date, { weekday: 'long', month: 'short', day: 'numeric' }),
+            onClick: () => { close(); window.setTimeout(() => openPlanDay(data.date), 220) } },
+          { key: 'act', icon: <Activity className="size-4" />, label: 'The recorded workout', sub: s?.activity?.name,
+            onClick: (s?.activity?.id ?? c?.activity?.id) ? () => openActivity(String(s?.activity?.id ?? c?.activity?.id)) : null },
+          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask Rabbit about it',
+            onClick: onAsk && s ? () => onAsk(`About my ${s.title} on ${when}: `) : null },
+        ]} link={s?.id ? { kind: 'workout', id: s.id, date: data.date } : undefined} />
       )}
       {data?.state === 'rest' && (
         <Hero icon={Moon} title="Rest day" meta="Recovery is training too"

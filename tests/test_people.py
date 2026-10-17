@@ -37,6 +37,11 @@ def test_profiles_inbox_friends_today_also_block_and_coach(env, tmp_path) -> Non
         sport = today["trained"][0]["workout"]["sport"]
         also = (await bob.get(f"/app/api/people/also?sport={sport}")).json()
         assert [r["person"]["id"] for r in also["same_sport"]] == ["ann"]
+        assert today["trained"][0]["kudos"] == 0 and not today["trained"][0]["you_cheered"]
+        fam = {"running": "run", "cycling": "bike", "lap_swimming": "swim"}.get(sport)
+        if fam:  # a plan's sport word matches Garmin's type key
+            also2 = (await bob.get(f"/app/api/people/also?sport={fam}")).json()
+            assert [r["person"]["id"] for r in also2["same_sport"]] == ["ann"]
         assert (await bob.get("/app/api/people/also?sport=../x")).status_code == 400
 
         aid = today["trained"][0]["workout"]["id"]

@@ -11,6 +11,10 @@ import { Screen, inputCls } from '@/components/plan/ui'
 import { fmtDay } from '@/components/plan/PlanParts'
 import { celebrate } from '@/components/fx/motion'
 import { cn } from '@/lib/utils'
+import { Flag } from 'lucide-react'
+import { Related } from '@/components/nav/Related'
+import { WhoElse } from '@/components/people/WhoElse'
+import { openEvent } from '@/lib/events'
 import {
   actChecklist, announceChecklist, dueLabel, getChecklist,
   type BucketId, type Checklist, type ChecklistAction, type ChecklistBucket, type ChecklistItem,
@@ -145,6 +149,14 @@ export function RaceChecklistScreen({ eventId, onClose }: { eventId: string; onC
             </details>
           )}
           <p className="px-1 text-[0.7059rem] text-(--text-muted)">Saved on your account. Tap a line to tick it; hide what doesn't apply to you.</p>
+          {ev && (
+            <WhoElse eventName={ev.name} eventDate={ev.date} invite={v.days_out >= 0}
+              share={{ type: 'event', ref: { id: eventId }, label: ev.name }} />
+          )}
+          <Related items={[
+            { key: 'race', icon: <Flag className="size-4" />, label: ev ? ev.name : 'The race', sub: 'The race page: details, goal, gear',
+              onClick: () => { close(); window.setTimeout(() => openEvent(eventId), 220) } },
+          ]} link={{ kind: 'checklist', id: eventId }} />
         </div>
       )}
       {undo && (

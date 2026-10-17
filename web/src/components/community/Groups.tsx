@@ -18,6 +18,10 @@ import {
   type FeedGroup,
 } from '@/lib/community2'
 import { cn } from '@/lib/utils'
+import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
+import { Related } from '@/components/nav/Related'
+import { messagePeople } from '@/lib/dm'
+import { MessagesSquare, Users } from 'lucide-react'
 import { CommunityFeed, PersonAvatar } from './Feed'
 import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
@@ -256,7 +260,8 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
           <Group label="Members">
             {g.members.length === 0 && <EmptyRabbit size={40} mode="peek" title="Just you so far" body="Invite friends who follow you back." />}
             {g.members.map((m, i) => (
-              <Row key={m?.id ?? i} icon={<PersonAvatar u={m} size={30} />} title={m?.name ?? 'Member'}
+              <Row key={m?.id ?? i} icon={m ? <TapAvatar p={m} size={30} /> : <PersonAvatar u={null} size={30} />}
+                title={<PersonLink id={m?.id} name={m?.name ?? 'Member'} />}
                 subtitle={m?.id === g.owner_id ? 'Owner' : undefined}
                 trailing={g.owner && m && m.id !== g.owner_id ? (
                   <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Remove ${m.name}`}
@@ -279,6 +284,13 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
             )}
           </Group>
         </>
+      )}
+      {g && (
+        <Related items={[
+          { key: 'chat', icon: <MessagesSquare className="size-4" />, label: `Message ${g.name}`, sub: 'A group chat with everyone in it',
+            onClick: g.members.some(Boolean) ? () => messagePeople(g.members.filter((m): m is SocialUser => !!m).map((m) => m.id).slice(0, 11)) : null },
+          { key: 'members', icon: <Users className="size-4" />, label: 'Members', sub: `${g.count} in the group`, onClick: view !== 'members' ? () => setView('members') : null },
+        ]} />
       )}
       {confirm && <ConfirmSheet title={confirm.title} body={confirm.body} action={confirm.action} onConfirm={confirm.run} onClose={() => setConfirm(null)} />}
       {sheet === 'edit' && g && <GroupSheet initial={g} onClose={() => setSheet(null)} onSaved={(ng) => { setG(ng); setSheet(null); onChanged?.() }} />}

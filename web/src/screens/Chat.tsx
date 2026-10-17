@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { requestPlanFix } from '@/lib/plancal'
-import { ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
@@ -36,6 +36,7 @@ import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
+import { GetStartedCard } from '@/components/home/GetStartedCard'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
@@ -44,7 +45,8 @@ import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
-import { MonthRecapSheet, PartnersScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
+import { MonthRecapSheet, NotificationsSheet, PartnersScreen, PersonScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
+import { NOTIFS_CHANGED_EVENT, OPEN_PERSON_EVENT, OPEN_TARGET_EVENT, getNotifications, type DeepKind, type NotifOpen } from '@/lib/people'
 import { RaceSwitcher } from '@/components/plan/PlanFlow'
 import { CelebrationHost } from '@/components/reward/CelebrationHost'
 import { BodyHost } from '@/components/body/BodyHost'
@@ -148,7 +150,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
+  | { k: 'person'; id: string }
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -195,6 +198,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // and New message / Send to a friend.
   const [chatsView, setChatsView] = useState<'rabbit' | 'people'>('rabbit')
   const [dmCount, setDmCount] = useState(0)
+  // Notifications (lib/people): the bell's unread dot and its inbox sheet.
+  const [notifCount, setNotifCount] = useState(0)
+  const [notifsOpen, setNotifsOpen] = useState(false)
   const [newDm, setNewDm] = useState<{ to?: string[]; share?: DMShare } | null>(null)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
@@ -502,7 +508,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     // Search everywhere (components/search): a picked result -> its tab or page.
     const onPick = (e: Event) => {
       const p = (e as CustomEvent<SearchPick>).detail
-      if (p.kind === 'person') openCommunity('people')
+      if (p.kind === 'person') { dropSheet(); setRevealed(false); setPages((st) => [...st.filter((x) => x.k !== 'person'), { k: 'person', id: p.id }]) }
       else if (p.kind === 'club') openCommunity('clubs', p.source === 'club' ? p.id : undefined)
       else if (p.kind === 'event') openRaces()
       else if (p.kind === 'session') { setSchedView('plan'); goTab('plan') }
@@ -511,6 +517,99 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(SEARCH_OPEN_EVENT, onPick)
     return () => window.removeEventListener(SEARCH_OPEN_EVENT, onPick)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Connected screens (lib/people). A person's profile stacks on whatever page is open, so Back
+  // returns there (the same person again moves to the top instead of stacking twice).
+  const openPersonPage = (id: string) => {
+    if (!id) return
+    if (id === me.user_id) { showPage({ k: 'me' }); return }
+    pushPage({ k: 'person', id })
+  }
+  // Any "open this item" target (a notification, a Related row, a card): its exact page or tab.
+  const openTargetNow = (t: NotifOpen) => {
+    dropSheet(); setNotifsOpen(false)
+    switch (t.k) {
+      case 'dm': setRevealed(false); setPages((st) => (st.length && st[st.length - 1]?.k !== 'me' ? [...st, { k: 'dm', id: t.id }] : [{ k: 'dm', id: t.id }])); break
+      case 'person': openPersonPage(t.id); break
+      case 'activity': setRevealed(false); setPages((st) => st.length ? [...st, { k: 'activity', id: t.id }] : [{ k: 'activity', id: t.id }]); break
+      case 'checklist': pushPage({ k: 'checklist', id: t.id }); break
+      case 'people': closePages(); openCommunity('people'); break
+      case 'feed': closePages(); openCommunity('feed'); break
+      case 'club': closePages(); openCommunity('clubs', t.id); break
+    }
+  }
+  // Deep links (lib/people deepLink): /app/?open=<kind>&id=<id>[&date=], from a pasted or shared
+  // link, a push tap, or an in-app link inside a message.
+  const openDeep = (kind: DeepKind, id: string, date: string | null) => {
+    if (kind === 'workout') { if (id) { dropSheet(); setWorkout({ sessionId: id }) } else if (date) openPlanDay(date) }
+    else if (kind === 'event') { if (id) { dropSheet(); closePages(); openEvent(id) } }
+    else if (kind === 'activity' || kind === 'person' || kind === 'checklist') { if (id) openTargetNow({ k: kind, id }) }
+    else if (kind === 'club') { if (id) openTargetNow({ k: 'club', id }) }
+  }
+  const DEEP = useRef<ReadonlySet<string>>(new Set(['workout', 'activity', 'event', 'club', 'person', 'checklist'])).current
+  const deepFrom = (url: string): [DeepKind, string, string | null] | null => {
+    try {
+      const u = new URL(url, window.location.origin)
+      if (u.origin !== window.location.origin || !u.pathname.startsWith('/app')) return null
+      const k = u.searchParams.get('open') ?? ''
+      if (!DEEP.has(k)) return null
+      const id = (u.searchParams.get('id') ?? '').slice(0, 120)
+      const date = u.searchParams.get('date')
+      return [k as DeepKind, id, date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null]
+    } catch { return null }
+  }
+  useEffect(() => {
+    if (me.role !== 'athlete') return
+    const onPerson = (e: Event) => openPersonPage(String((e as CustomEvent<string>).detail ?? ''))
+    const onTarget = (e: Event) => { const t = (e as CustomEvent<NotifOpen>).detail; if (t?.k) openTargetNow(t) }
+    window.addEventListener(OPEN_PERSON_EVENT, onPerson)
+    window.addEventListener(OPEN_TARGET_EVENT, onTarget)
+    // On load: ?open=<kind>&id=..; then the address is cleaned so a reload doesn't reopen it.
+    const first = deepFrom(window.location.href)
+    if (first) { window.history.replaceState(null, '', '/app/'); window.setTimeout(() => openDeep(...first), 0) }
+    // A push tapped while the app is open (the service worker posts its url).
+    const onSw = (e: MessageEvent) => {
+      if (e.data?.type !== 'open') return
+      const d = deepFrom(String(e.data?.url ?? ''))
+      if (d) openDeep(...d)
+    }
+    // An in-app link in a message or a note: open it here instead of reloading the app.
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!a || (a.target && a.target !== '_self')) return
+      const d = deepFrom(a.href)
+      if (!d) return
+      e.preventDefault()
+      openDeep(...d)
+    }
+    navigator.serviceWorker?.addEventListener('message', onSw)
+    document.addEventListener('click', onClick)
+    return () => {
+      window.removeEventListener(OPEN_PERSON_EVENT, onPerson)
+      window.removeEventListener(OPEN_TARGET_EVENT, onTarget)
+      navigator.serviceWorker?.removeEventListener('message', onSw)
+      document.removeEventListener('click', onClick)
+    }
+  }, [me.role]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // The bell's dot: unread notifications, checked on open, every minute while visible, and
+    // whenever something marks them read (lib/people notifsChanged).
+    if (me.role !== 'athlete') return
+    let live = true
+    const check = () => { getNotifications().then((r) => { if (live) setNotifCount(r.unread) }, () => {}) }
+    check()
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') check() }, 60_000)
+    const onVis = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener(NOTIFS_CHANGED_EVENT, check)
+    window.addEventListener(DM_CHANGED_EVENT, check)
+    return () => {
+      live = false; window.clearInterval(t)
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener(NOTIFS_CHANGED_EVENT, check)
+      window.removeEventListener(DM_CHANGED_EVENT, check)
+    }
+  }, [me.role])
   // Workout day: the pre-workout screen (a page: from Today / the plan) and the post-workout reaction.
   const setWorkout = (w: { sessionId?: string }) => showPage({ k: 'workout', sessionId: w.sessionId })
   const [reaction, setReaction] = useState<number | null>(null)
@@ -862,6 +961,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
   const meButton = (<>
     <SearchButton imperial={me.athlete.units !== 'metric'} />
+    {me.role === 'athlete' && (
+      <Button variant="ghost" size="icon" className="relative -mx-1"
+        aria-label={notifCount > 0 ? `Notifications, ${notifCount} unread` : 'Notifications'}
+        onClick={() => { dropSheet(); setNotifsOpen(true) }}>
+        <Bell className="size-5" />
+        {notifCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+      </Button>
+    )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
     <Button variant="ghost" size="icon" className="relative" data-tour="chat"
       aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with Rabbit and friends'}
@@ -1021,6 +1128,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                     onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
                 )}
               </>
+            )}
+            {athlete && (me.garmin.connected || firstVisitHidden()) && (
+              <div className="mt-3">
+                <GetStartedCard garmin={me.garmin.connected} hasGoal={!!goal} progress={progress} onStep={(st) => {
+                  if (st === 'garmin') setConnect({ app: 'garmin' })
+                  else if (st === 'plan') startSetup()
+                  else if (st === 'race') openRaces()
+                  else if (st === 'friends') openCommunity('people')
+                  else if (st === 'club') openCommunity('clubs')
+                  else doQuest('notify')
+                }} />
+              </div>
             )}
             {athlete && <div className="mt-3"><FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} /></div>}
           </div>
@@ -1197,6 +1316,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         return <ConversationScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'checklist':
         return <RaceChecklistScreen eventId={pg.id} onClose={pages.length > 1 ? popPage : closePages} />
+      case 'person':
+        return <PersonScreen key={pg.id} uid={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'activity':
         return <ActivityScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
       case 'workout':
@@ -1445,6 +1566,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
+      {notifsOpen && <NotificationsSheet onClose={() => setNotifsOpen(false)} />}
       {newDm && (
         <NewMessageSheet to={newDm.to} share={newDm.share} onClose={() => setNewDm(null)}
           onOpened={(id) => { setNewDm(null); dropSheet(); setPages((st) => [...st.filter((p) => p.k !== 'dm'), { k: 'dm', id }]) }} />

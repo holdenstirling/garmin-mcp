@@ -312,6 +312,7 @@ class People:
                 if items:
                     kudos = (self.soc.kudos_of(f) or {}).get(items[0]["id"]) or {}
                     trained.append({"person": self._person(f), "workout": items[0], "count": len(items),
+                                    "kudos": len(kudos.get("by") or {}),
                                     "you_cheered": uid in (kudos.get("by") or {})})
         trained.sort(key=lambda r: r["workout"].get("time") or "", reverse=True)
         soon: list[dict[str, Any]] = []
@@ -340,7 +341,7 @@ class People:
             for f in following[:60]:
                 try:
                     hits = [w for w in self.feed.visible_items(uid, f)
-                            if w.get("sport") == sport and monday.isoformat() <= w.get("date", "") <= sunday.isoformat()]
+                            if _fam(w.get("sport")) == _fam(sport) and monday.isoformat() <= w.get("date", "") <= sunday.isoformat()]
                 except Exception:
                     continue
                 if hits:
@@ -353,6 +354,16 @@ class People:
                         and _norm(it.get("name")) == _norm(event_name):
                     going.append({"person": self._person(it["owner"]), "key": key})
         return {"same_sport": same[:8], "same_event": going[:12]}
+
+
+def _fam(sport: Any) -> str:
+    """A sport's family, so a plan's "run" matches Garmin's "trail_running" or "treadmill_running"."""
+    s = str(sport or "").lower()
+    for fam, keys in (("run", ("run",)), ("bike", ("cycl", "bik", "ride", "spin")), ("swim", ("swim",)),
+                      ("walk", ("walk", "hik")), ("strength", ("strength", "weight"))):
+        if any(k in s for k in keys):
+            return fam
+    return s
 
 
 __all__ = ["People", "PeopleError"]

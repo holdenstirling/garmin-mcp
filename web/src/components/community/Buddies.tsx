@@ -19,7 +19,7 @@ import {
   BUDDY_SPORTS, WEEKDAYS, WHEN, bandText, deleteBuddies, getBuddies, getBuddyMatches, hideBuddy, saveBuddies, sayHi, slotsText,
   type Band, type BuddyMatch, type BuddyProfile, type BuddySport, type BuddyState,
 } from '@/lib/buddies'
-import { PersonAvatar } from './Feed'
+import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
 
 const KM_PER_MI = 1.609344
 const LOADING = ['Looking for people your pace…', 'Lacing up…']
@@ -113,9 +113,9 @@ function MatchCard({ m, imperial, onHi, onNotNow }: { m: BuddyMatch; imperial: b
   return (
     <article className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4" aria-label={`Training buddy match: ${m.person.name}`}>
       <div className="flex items-center gap-3">
-        <PersonAvatar u={m.person} size={40} />
+        <TapAvatar p={m.person} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.8824rem] font-semibold text-(--text)">{m.person.name}</p>
+          <PersonLink id={m.person.id} name={m.person.name} className="block truncate text-[0.8824rem] font-semibold text-(--text)" />
           <p className="truncate text-[0.7059rem] text-(--text-muted)">
             {m.following && m.follows_you ? 'Friends' : m.following ? 'You follow them' : m.follows_you ? 'Follows you' : m.city}
           </p>

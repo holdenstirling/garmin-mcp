@@ -37,6 +37,10 @@ import { ACTIVITY_LABEL, classifyActivity, type ActivityId } from '@/lib/activit
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import { SPORT_ACTIVITY, SPORT_ICON, isSport, sportLabel } from '@/lib/sports'
 import { AreaBar } from '@/components/local/AreaBar'
+import { Related } from '@/components/nav/Related'
+import { WhoElse } from '@/components/people/WhoElse'
+import { openChecklist } from '@/lib/racechecklist'
+import { CalendarDays, ListChecks } from 'lucide-react'
 
 /** What an event is for (lib/activity): its words first ("Baker volleyball"), then its type. */
 function eventActivity(e: RaceEvent): ActivityId {
@@ -437,6 +441,19 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
           onClick={() => void run('main', () => makeMainEvent(event.id))}>
           <Star className="size-4" /> Make this my main event
         </Button>
+      )}
+      {event && kind !== 'milestone' && (
+        <WhoElse eventName={event.name} eventDate={event.date} invite={!past}
+          share={{ type: 'event', ref: { id: event.id }, label: event.name }} />
+      )}
+      {event && (
+        <Related items={[
+          { key: 'checklist', icon: <ListChecks className="size-4" />, label: 'Race checklist', sub: 'What to do before the day',
+            onClick: !past && kind !== 'milestone' ? () => { close(); window.setTimeout(() => openChecklist(event.id), 220) } : null },
+          { key: 'plan', icon: <CalendarDays className="size-4" />, label: 'Your plan', sub: event.main ? 'Built toward this' : 'Your training around it',
+            onClick: () => { onOpenPlan(); close() } },
+          { key: 'series', icon: <Repeat className="size-4" />, label: 'The whole series', onClick: event.series_id ? () => onOpenEvent(event.series_id!) : null },
+        ]} link={{ kind: 'event', id: event.id }} />
       )}
       {event && !event.main && (confirmDelete ? (
         <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3">
