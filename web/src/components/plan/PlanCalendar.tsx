@@ -15,7 +15,7 @@ import { haptic } from '@/lib/haptics'
 import { KM_PER_MI, fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_LABEL, type BuiltPlan, type PlanSession, type PlanWeekBuilt } from '@/lib/plan'
 import {
-  OPEN_PLAN_DAY_EVENT, PLAN_DAY_KEY, PLAN_FIX_EVENT, PLAN_VIEW_KEY, SPORT_DIST_LABEL, fixMissed, moveSession, setWeekGoal, takePlanFix, undoChange,
+  OPEN_PLAN_DAY_EVENT, fmtTime, PLAN_DAY_KEY, PLAN_FIX_EVENT, PLAN_VIEW_KEY, SPORT_DIST_LABEL, fixMissed, moveSession, setWeekGoal, takePlanFix, undoChange,
   type CalChange, type CalResult, type CalSession, type CalView, type DistSport, type Mileage,
 } from '@/lib/plancal'
 import { Card, Chip, ChipRow, Field, inputCls } from './ui'
@@ -239,7 +239,7 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onFix, dr
     <div className={cn('rounded-xl border bg-(--bg-surface) transition-opacity', dragging ? 'opacity-40' : '',
       c?.status === 'missed' ? 'border-(--danger)/40' : 'border-(--border)', dim && 'opacity-60')}>
       <button type="button" onClick={onOpen} disabled={!onOpen} {...dragProps} data-session-id={s.id}
-        aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}`}
+        aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${s.time ? ` at ${fmtTime(s.time)}` : ''}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}`}
         className={cn('flex w-full items-start gap-2.5 px-3 py-2 text-left disabled:cursor-default', grab && 'touch-manipulation select-none')}>
         <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
           s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : c?.status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
@@ -247,6 +247,7 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onFix, dr
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
+            {s.time && <span className="shrink-0 font-mono text-[0.7059rem] font-semibold tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}
             <span className={cn('min-w-0 flex-1 truncate text-[0.8235rem] font-medium text-(--text)', dim && 'line-through')}>{s.title}</span>
             {unread && <span className="size-2 shrink-0 rounded-full bg-(--accent)" aria-label="New coach message" />}
             <StatusChip c={c} />

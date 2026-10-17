@@ -15,6 +15,7 @@ import { Card, Chip, ChipRow, Field, Screen } from './ui'
 import { PhaseStrip, fmtDay, planToday, sessionMinutes } from './PlanParts'
 import { PlanCalendar, paceText, type MoveTarget } from './PlanCalendar'
 import { getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
+import { PACES_CHANGED_EVENT } from '@/lib/paces'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { SessionSheet, type SessionDraft } from './SessionSheet'
 import { SyncSummary } from './SetupWizard'
@@ -103,6 +104,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   }, [api])
   useEffect(load, [load])
   useEffect(loadCal, [loadCal])
+  // New training paces accepted (Day view, Profile, a moment): targets on every session change.
+  useEffect(() => {
+    const on = () => { load(); loadCal() }
+    window.addEventListener(PACES_CHANGED_EVENT, on)
+    return () => window.removeEventListener(PACES_CHANGED_EVENT, on)
+  }, [load, loadCal])
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const closeSheet = () => { setSheetClosing(true); setTimeout(() => { setEditing(null); setSheetClosing(false) }, 200) }
@@ -171,7 +178,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       const r = await api.updateSession(editing.session.id, changed)
       applied(r.plan)
     } else {
-      const r = await api.addSession({ date: d.date, sport: d.sport, kind: d.kind, minutes: d.minutes, title: d.title || undefined })
+      const r = await api.addSession({ date: d.date, sport: d.sport, kind: d.kind, minutes: d.minutes, title: d.title || undefined, time: d.time || undefined })
       applied(r.plan)
     }
     // Follow a session moved into another week.

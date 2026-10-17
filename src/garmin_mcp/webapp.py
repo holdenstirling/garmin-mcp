@@ -3417,7 +3417,20 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                                      "cal": out["cal"], "change": out.get("change")})
             return handler
 
+        async def session_ics(request: Request, user_id: str) -> Response:
+            # Day view "Add to calendar": one session as .ics (timed when it has a start time).
+            # Stable UID per session, so importing again after a move updates the same event.
+            from .planformats import export_ics as _export_ics
+            sid = request.path_params["sid"]
+            plan = await _plan_call(lambda: plans.get(user_id))
+            if plan is None or not any(s.get("id") == sid for _, _, s in _pc.iter_sessions(plan)):
+                raise _UserError("That session isn't in your plan anymore.", 404)
+            body = _export_ics(plan, name="Rabbit", only=sid)
+            return Response(body.encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
+                "Content-Disposition": 'attachment; filename="rabbit-workout.ics"', "Cache-Control": "no-store"})
+
         home_routes += [
+            Route("/app/api/plan/sessions/{sid}/calendar.ics", _plan_api(session_ics, mutating=False), methods=["GET"]),
             Route("/app/api/plan/calendar", _plan_api(plancal_get, mutating=False), methods=["GET"]),
             *[Route(f"/app/api/plan/calendar/{k}", _plan_api(_pc_op(k), mutating=True), methods=["POST"])
               for k in ("move", "swap", "fix", "undo", "goal")],

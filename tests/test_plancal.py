@@ -351,7 +351,34 @@ def test_api_move_hook_and_coach_403(env, tmp_path) -> None:
             assert (await a.post("/app/api/plan/calendar/move", json={})).status_code == 403  # no origin
             ring = (await a.get("/app/api/weekring")).json()["ring"]
             assert ring is None or "miles" in ring
+            ics = await a.get(f"/app/api/plan/sessions/{s0['id']}/calendar.ics")
+            assert ics.status_code == 200 and ics.headers["content-type"].startswith("text/calendar")
+            assert ics.text.count("BEGIN:VEVENT") == 1 and f"UID:{s0['id']}@rabbit" in ics.text
+            assert (await a.get("/app/api/plan/sessions/nope/calendar.ics")).status_code == 404
+            assert (await c.get(f"/app/api/plan/sessions/{s0['id']}/calendar.ics")).status_code == 403
+            assert any("targets" in x for x in v["sessions"].values())
             assert (await c.get("/app/api/plan/calendar")).status_code == 403
             for k in ("move", "swap", "fix", "undo", "goal"):
                 assert (await c.post(f"/app/api/plan/calendar/{k}", headers=h, json={})).status_code == 403
     asyncio.run(go_())
+
+
+# ------------------------------------------ targets, how it went, adjusted --
+def test_view_has_targets_how_it_went_and_adjust_reasons() -> None:
+    tue = MON + timedelta(days=1)
+    a = act(tue, minutes=20, km=4.0)            # Tue tempo done, but short
+    a["avg_hr"] = 150
+    svc, fp = cal(acts=[a], athlete=dict(ATHLETE, threshold_hr=170))
+    v = svc.view("u")
+    t = v["sessions"]["thu"]["targets"]
+    work = [x for st in t["steps"] for x in (st["steps"] if st["type"] == "repeat" else [st]) if x["type"] == "work"]
+    assert work and work[0]["hr"] and work[0]["pace"] and work[0]["cadence"]
+    went = v["sessions"]["tue"]["went"]
+    assert went["verdict"] == "short" and went["actual"]["avg_hr"] == 150
+    assert "went" not in v["sessions"]["thu"]
+    # a missed session made up as an easy run says why it's there
+    svc2, fp2 = cal(today=WED + timedelta(days=0))
+    svc2.op("u", "fix", {"session_id": "tue", "how": "easy"})
+    new = next(s for _, _, s in iter_sessions(fp2.plan) if s.get("made_up_for") == "tue")
+    line = svc2.view("u")["sessions"][new["id"]]["adjusted"]
+    assert line.startswith("Added to make up for") and "Tuesday" in line

@@ -3,14 +3,15 @@
 // athlete's units, done/missed with what you actually did, the step-by-step, the coach or
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
-import { useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Flag, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Wrench } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeftRight, BookOpen, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, MessageCircle, MoveRight, Moon, Pencil, Plane, Play, Plus, Sparkles, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
 import { KIND_LABEL, fmtMin, type BuiltPlan, type PlanSession, type Step } from '@/lib/plan'
-import type { CalSession, CalView, DistSport } from '@/lib/plancal'
+import { fmtTime, googleCalendarUrl, sessionIcsUrl, type CalSession, type CalView, type DistSport } from '@/lib/plancal'
+import { HowItWent, PaceNudge, WorkoutSteps, WorkoutSummary } from './WorkoutTargets'
 import { Card } from './ui'
 import { SPORT_ICON, SPORT_LABEL, fmtDay, sessionMinutes, weekPhaseLabel } from './PlanParts'
 import { StepItem } from './SessionSheet'
@@ -76,6 +77,32 @@ function Learn({ s, c, cal, imperial }: { s: PlanSession; c: CalSession | undefi
   )
 }
 
+/** Put this workout in the phone's calendar: .ics (Apple, Outlook, any app) or Google's add page.
+ *  Same event id every time, so adding it again after a move or a new time updates it. */
+function AddToCalendar({ s, date }: { s: PlanSession; date: string }) {
+  const [open, setOpen] = useState(false)
+  const link = 'flex min-h-11 flex-1 items-center justify-center rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text) active:bg-(--bg-inset)'
+  return (
+    <div className="border-t border-(--border) px-3.5 py-1">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+        className="flex min-h-11 w-full items-center gap-2 text-left text-[0.7647rem] font-medium text-(--text-secondary)">
+        <CalendarPlus className="size-3.5" aria-hidden />
+        <span className="flex-1">{s.time ? `Add to calendar at ${fmtTime(s.time)}` : 'Add to calendar'}</span>
+        <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 pb-2.5">
+          <div className="flex gap-2">
+            <a className={link} href={sessionIcsUrl(s.id)} download="rabbit-workout.ics">Apple / Outlook</a>
+            <a className={link} href={googleCalendarUrl(s, date)} target="_blank" rel="noopener noreferrer">Google Calendar</a>
+          </div>
+          {!s.time && <p className="text-[0.7059rem] text-(--text-muted)">Tip: set a start time (Edit) to block the time instead of the whole day.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
   s: PlanSession; c: CalSession | undefined; date: string; today: string; imperial: boolean; cal: CalView | null; unread: boolean; a: DayActions
 }) {
@@ -100,6 +127,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         <div className="min-w-0 flex-1">
           <h3 className={cn('text-[0.9412rem] font-semibold leading-tight text-(--text)', status === 'skipped' && 'line-through')}>{s.title}</h3>
           <p className="mt-0.5 text-[0.7059rem] text-(--text-muted)">
+            {s.time && <span className="mr-1 inline-flex items-center gap-0.5 font-semibold text-(--text)"><Clock className="size-3" aria-hidden />{fmtTime(s.time)} ·</span>}
             {SPORT_LABEL[s.sport]}{s.kind !== s.sport && KIND_LABEL[s.kind] ? ` · ${KIND_LABEL[s.kind]}` : ''}
             {s.synced ? ' · on your Garmin' : ''}{s.travel ? ' · travel version' : ''}
             {unread && <span className="ml-1 font-semibold text-(--accent)">· new coach message</span>}
@@ -110,7 +138,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         {status === 'skipped' && <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--text-muted)">Skipped</span>}
       </div>
 
-      {(mins || dist || pace) && (
+      {c?.targets ? <WorkoutSummary t={c.targets} dist={dist} imperial={imperial} /> : (mins || dist || pace) && (
         <dl className="mx-3.5 mt-3 flex gap-6 rounded-lg bg-(--bg-inset) px-3 py-2">
           {([['Time', mins ? fmtDuration(mins) : ''], ['Distance', dist], ['Pace', pace]] as const).filter(([, v]) => !!v).map(([k, v]) => (
             <div key={k} className="min-w-0">
@@ -120,7 +148,13 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           ))}
         </dl>
       )}
-      {status === 'done' && act && (act.km != null || act.minutes != null) && (
+      {c?.adjusted && (
+        <p className="mx-3.5 mt-2 flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
+          <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden /><span><span className="font-semibold">Rabbit adjusted this:</span> {c.adjusted}</span>
+        </p>
+      )}
+      {status === 'done' && c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport === 'brick' ? 'run' : s.sport} />}
+      {status === 'done' && !c?.went && act && (act.km != null || act.minutes != null) && (
         <p className="mx-3.5 mt-2 text-[0.7647rem] text-(--accent)">
           You did {[act.km != null ? fmtDist(act.km, imperial, s.sport === 'swim' ? 'swim' : s.sport) : '', act.minutes != null ? `in ${fmtDuration(act.minutes)}` : ''].filter(Boolean).join(' ')}.
         </p>
@@ -136,7 +170,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         </div>
       )}
 
-      {groups.length > 0 && (
+      {c?.targets ? <WorkoutSteps t={c.targets} imperial={imperial} /> : groups.length > 0 && (
         <div className="mx-3.5 mt-3 flex flex-col gap-2">
           <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">The workout</p>
           {groups.map((g, i) => (
@@ -167,6 +201,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onEdit(s)} aria-label={`Edit ${s.title}`}><Pencil className="size-4" aria-hidden />Edit</Button>
         {a.onAsk && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onAsk!(s)} aria-label={`Ask Rabbit about ${s.title}`}><MessageCircle className="size-4" aria-hidden />Ask Rabbit</Button>}
       </div>
+      {date >= today && s.kind !== 'race' && <AddToCalendar s={s} date={date} />}
       <Learn s={s} c={c} cal={cal} imperial={imperial} />
     </Card>
   )
@@ -198,6 +233,11 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
   const trip = plan.trips.find((t) => t.start <= date && date <= t.end)
   const head = date === today ? 'Today' : date === tomorrow ? 'Tomorrow' : date === addDays(today, -1) ? 'Yesterday' : fmtDay(date, { weekday: 'long' })
   const restAdd = onAdd
+  // Slide the new day in from the side you're heading to (CSS respects reduced motion).
+  const prev = useRef(date)
+  const dir = date > prev.current ? 'next' : date < prev.current ? 'prev' : null
+  useEffect(() => { prev.current = date }, [date])
+  const sports = [...new Set(work.flatMap((x) => x.sport === 'brick' ? ['bike', 'run'] : [x.sport]))]
 
   return (
     <div className="flex flex-col gap-2" data-no-tab-swipe
@@ -245,7 +285,9 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       </div>
 
       {trip && <p className="flex items-center gap-1.5 px-2 text-[0.7647rem] text-(--accent)"><Plane className="size-3.5" aria-hidden />Travel mode: {trip.label}</p>}
+      {date >= today && date <= addDays(today, 7) && sports.length > 0 && <PaceNudge sports={sports} />}
 
+      <div key={date} className={cn('flex flex-col gap-2', dir && `day-slide day-slide--${dir}`)}>
       {work.map((s) => (
         <DaySession key={s.id} s={s} c={cal?.sessions[s.id]} date={date} today={today} imperial={imperial} cal={cal}
           unread={unread.includes(s.id)} a={actions(s)} />
@@ -267,6 +309,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           <Plus className="size-3.5" aria-hidden />Add a session on {fmtDay(date, { weekday: 'long' })}
         </button>
       )}
+      </div>
       <p className="px-4 text-[0.7059rem] text-(--text-muted)">Swipe left or right to change day.</p>
     </div>
   )

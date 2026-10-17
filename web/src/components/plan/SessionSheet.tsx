@@ -14,7 +14,7 @@ import type { CalNote } from '@/lib/plancal'
 import { useDraft } from '@/lib/drafts'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 
-export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }
+export type SessionDraft = { date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string; time: string }
 
 const SPORTS: Sport[] = ['swim', 'bike', 'run', 'brick', 'strength', 'rest']
 
@@ -51,6 +51,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     minutes: session?.minutes ?? (session?.legs.reduce((a, l) => a + l.minutes, 0) || 45),
     title: session?.title ?? '',
     detail: session?.detail ?? '',
+    time: session?.time ?? '',
   }
   // Unsaved edits are kept per session (or new-session day) on this device until saved.
   const [d, setD, draft] = useDraft<SessionDraft>(readOnly ? null : `session.${session?.id ?? `new.${date}`}`, initial,
@@ -193,6 +194,16 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
                 <input type="date" className={inputCls} value={d.date} min={today} max={raceDate}
                   onChange={(e) => e.target.value && set({ date: e.target.value })} />
               </Field>
+              {d.sport !== 'rest' && (
+                <Field label="Start time" className="border-t border-(--border)"
+                  hint="Optional. Puts it at that time in your day and your calendar.">
+                  <div className="flex items-center gap-2">
+                    <input type="time" className={inputCls} value={d.time ?? ''} step={300} aria-label="Start time"
+                      onChange={(e) => set({ time: e.target.value })} />
+                    {d.time && <Button variant="ghost" className="h-11 shrink-0 px-3 text-[0.7647rem]" onClick={() => set({ time: '' })}>Clear</Button>}
+                  </div>
+                </Field>
+              )}
               <Field label="Name" className="border-t border-(--border)" hint={adding ? 'Leave blank for a name like "Easy run".' : undefined}>
                 <input className={inputCls} maxLength={60} value={d.title} placeholder={`${KIND_LABEL[d.kind] ?? ''} ${SPORT_LABEL[d.sport].toLowerCase()}`.trim()}
                   onChange={(e) => set({ title: e.target.value })} />

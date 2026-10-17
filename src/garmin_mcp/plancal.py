@@ -59,6 +59,7 @@ from .planbuilder import (
     week_for,
 )
 from .weekplan import _seconds, merge, sport_of
+from .workouttargets import how_it_went, session_targets
 
 if TYPE_CHECKING:
     from .plans import PlanService
@@ -571,6 +572,7 @@ def rebalance(plan: dict[str, Any], monday: date, today: date, *, athlete: dict[
             moved, _ = _take(plan, s["id"])
             _orphan(plan, moved)
             moved["edited"] = moved["rebalanced"] = True
+            moved["adjust_why"] = f"Moved here from {_label(d)} to keep hard days apart."
             _put(plan, target, moved)
             lines.append(f"{_label(d)} {_short(s)} moved to {_label(target)}")
         elif s.get("kind") in QUALITY:
@@ -579,6 +581,7 @@ def rebalance(plan: dict[str, Any], monday: date, today: date, *, athlete: dict[
             eased = _rebuilt(s, swim_pace, w["phase"], kind=_easy_kind(s["sport"]),
                              minutes=min(int(s.get("minutes") or 45), 45))
             eased["edited"] = eased["rebalanced"] = True
+            eased["adjust_why"] = "Made easy: there was no room for another hard day this week."
             w["days"][dd][i] = eased
             lines.append(f"{_label(d)} {_short(s)} is now an easy {_word(s)} (no room for another hard day)")
         else:
@@ -638,6 +641,7 @@ def rebalance(plan: dict[str, Any], monday: date, today: date, *, athlete: dict[
             if _num(s.get("km")):
                 upd["km"] = round(float(s["km"]) * (cur[s["id"]] + n) / cur[s["id"]], 2)
             upd["edited"] = upd["rebalanced"] = True
+            upd["adjust_why"] = "A little longer to keep this week's miles on goal."
             w["days"][dd][i] = upd
             key = (k, _short(s))
             km0, n0 = bumped.get(key, (0.0, 0))
@@ -905,9 +909,25 @@ def missed_moment(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
     return None
 
 
+def adjusted_line(plan: dict[str, Any], s: dict[str, Any]) -> str | None:
+    """Why Rabbit changed this session, in a sentence (None if it didn't)."""
+    if s.get("made_up_for"):
+        try:
+            w, d, i = _find(plan, s["made_up_for"])
+            orig: dict[str, Any] | None = w["days"][d][i]
+        except PlanError:
+            d, orig = None, None
+        what = (orig or {}).get("title") or "a session"
+        return f"Added to make up for {what} you missed" + (f" on {_label(d)}." if d else ".")
+    if s.get("rebalanced"):
+        return s.get("adjust_why") or "Rabbit adjusted this after a change to your week."
+    return None
+
+
 def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date, *, athlete: dict[str, Any],
                   thr: float, pace_source: str, imperial: bool) -> dict[str, Any]:
     st = statuses(plan, acts, today)
+    full = {a.get("activity_id"): a for a in acts or [] if a.get("activity_id") is not None}
     by_day = acts_km_by_day(acts)
     avail = _available(athlete)
     monday = today - timedelta(days=today.weekday())
@@ -921,9 +941,19 @@ def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
                                 "note": note_for(s, plan, thr, imperial),
                                 "rebalanced": bool(s.get("rebalanced")), "moved_from": s.get("moved_from"),
                                 "made_up_for": s.get("made_up_for"), "hard": is_hard(s)}
+        tg = session_targets(s, athlete, thr, plan.get("swim_pace"))
+        if tg:
+            item["targets"] = tg
+        why = adjusted_line(plan, s)
+        if why:
+            item["adjusted"] = why
         act = st.get(s["id"], {}).get("activity")
         if act:
             item["activity"] = {"id": act.get("id"), "km": act.get("distance_km"), "minutes": act.get("minutes")}
+            went = how_it_went(s, tg, full.get(act.get("id")) or {"duration": (act.get("minutes") or 0) * 60,
+                                                                   "distance_km": act.get("distance_km")})
+            if went:
+                item["went"] = went
         if status == "missed":
             best = (_free_day(plan, monday, today, st, avail, today.isoformat(), skip=s["id"]) if is_hard(s) else
                     _free_day(plan, monday, today, st, avail, today.isoformat(), hard=False, sport=s["sport"])) \

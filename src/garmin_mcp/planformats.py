@@ -1124,29 +1124,47 @@ SPORT_NAME = {"run": "Run", "bike": "Bike", "swim": "Swim", "brick": "Brick", "s
               "other": "Other"}
 
 
-def export_ics(plan: dict[str, Any] | None, *, name: str = "Rabbit plan", now: datetime | None = None) -> str:
-    """The plan as an iCal file: one all-day event per session (rest days left out), titled
-    "Run: Easy run", with the planned time and the detail in the description."""
-    stamp = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+def _ics_event(s: dict[str, Any], d: str, stamp: str, seq: int) -> list[str]:
+    """One VEVENT: all-day, or at the session's start time (floating local time) when it has one."""
+    day = date.fromisoformat(d)
+    mins = s.get("minutes")
+    desc = []
+    if mins:
+        desc.append(f"Planned duration: {mins // 60}:{mins % 60:02d}:00")
+    if s.get("detail"):
+        desc.append(str(s["detail"]))
+    lines = ["BEGIN:VEVENT", f"UID:{s.get('id') or d}@rabbit", f"DTSTAMP:{stamp}", f"SEQUENCE:{seq}"]
+    t = s.get("time")
+    if isinstance(t, str) and len(t) == 5 and t[2] == ":":
+        start = datetime.combine(day, datetime.strptime(t, "%H:%M").time())
+        end = start + timedelta(minutes=int(mins or 60))
+        lines += [f"DTSTART:{start:%Y%m%dT%H%M%S}", f"DTEND:{end:%Y%m%dT%H%M%S}", "TRANSP:OPAQUE"]
+    else:
+        lines += [f"DTSTART;VALUE=DATE:{day:%Y%m%d}", f"DTEND;VALUE=DATE:{day + timedelta(days=1):%Y%m%d}",
+                  "TRANSP:TRANSPARENT"]
+    lines += [f"SUMMARY:{_ics_escape(SPORT_NAME.get(s['sport'], 'Other') + ': ' + (s.get('title') or ''))}",
+              f"CATEGORIES:{SPORT_NAME.get(s['sport'], 'Other')}"]
+    if desc:
+        lines.append(f"DESCRIPTION:{_ics_escape(chr(10).join(desc))}")
+    lines.append("END:VEVENT")
+    return lines
+
+
+def export_ics(plan: dict[str, Any] | None, *, name: str = "Rabbit plan", now: datetime | None = None,
+               only: str | None = None) -> str:
+    """The plan as an iCal file: one event per session (rest days left out), titled
+    "Run: Easy run", with the planned time and the detail in the description. A session with a
+    start time is a timed event (floating local time), others are all-day. ``only``: just that
+    session (the Day view's "Add to calendar"). UIDs are the session ids and SEQUENCE grows with
+    time, so importing again after a move or a new time updates the same calendar event."""
+    when = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    stamp, seq = when.strftime("%Y%m%dT%H%M%SZ"), int(when.timestamp() // 60) - 29_000_000
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Rabbit//Training plan//EN", "CALSCALE:GREGORIAN",
              "METHOD:PUBLISH", f"X-WR-CALNAME:{_ics_escape(name)}"]
     for _, d, s in iter_sessions(plan or {}):
-        if s["sport"] == "rest":
+        if s["sport"] == "rest" or (only is not None and s.get("id") != only):
             continue
-        day = date.fromisoformat(d)
-        mins = s.get("minutes")
-        desc = []
-        if mins:
-            desc.append(f"Planned duration: {mins // 60}:{mins % 60:02d}:00")
-        if s.get("detail"):
-            desc.append(str(s["detail"]))
-        lines += ["BEGIN:VEVENT", f"UID:{s.get('id') or d}-{d}@rabbit", f"DTSTAMP:{stamp}",
-                  f"DTSTART;VALUE=DATE:{day:%Y%m%d}", f"DTEND;VALUE=DATE:{day + timedelta(days=1):%Y%m%d}",
-                  f"SUMMARY:{_ics_escape(SPORT_NAME.get(s['sport'], 'Other') + ': ' + (s.get('title') or ''))}",
-                  f"CATEGORIES:{SPORT_NAME.get(s['sport'], 'Other')}"]
-        if desc:
-            lines.append(f"DESCRIPTION:{_ics_escape(chr(10).join(desc))}")
-        lines += ["TRANSP:TRANSPARENT", "END:VEVENT"]
+        lines += _ics_event(s, d, stamp, max(0, seq))
     lines.append("END:VCALENDAR")
     return "\r\n".join(_fold(x) for x in lines) + "\r\n"
 

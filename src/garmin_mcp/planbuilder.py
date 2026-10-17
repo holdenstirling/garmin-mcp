@@ -298,7 +298,7 @@ def rebuild_session(s: dict[str, Any], *, swim_pace: float = 120.0, phase: str =
     fresh = make_session(sport, kind, int(s.get("minutes") or 45), swim_pace=swim_pace,
                          phase=phase, title=s.get("title") if s.get("title_custom") else None)
     fresh["id"] = s["id"]
-    for k in ("garmin", "edited", "title_custom"):
+    for k in ("garmin", "edited", "title_custom", "time"):
         if k in s:
             fresh[k] = s[k]
     if sport == "strength" and s.get("exercises") and s.get("kind") == fresh.get("kind"):

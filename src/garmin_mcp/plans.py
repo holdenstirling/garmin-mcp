@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -313,6 +314,8 @@ class PlanService:
                     out[k] = date.fromisoformat(str(v)).isoformat()
                 except ValueError:
                     raise PlanError("date must be YYYY-MM-DD") from None
+            elif k == "time":
+                out[k] = clean_time(v)
             else:
                 raise PlanError(f"Unknown field {k!r}.")
         return out
@@ -351,6 +354,11 @@ class PlanService:
                 s["title"], s["title_custom"] = upd["title"] or s["title"], bool(upd["title"])
             if "detail" in upd:
                 s["detail"], s["detail_custom"] = upd["detail"], bool(upd["detail"])
+            if "time" in upd:
+                if upd["time"]:
+                    s["time"] = upd["time"]
+                else:
+                    s.pop("time", None)
             structural = {k: upd[k] for k in ("sport", "kind", "minutes") if k in upd}
             if structural:
                 if structural.get("sport", s["sport"]) != s["sport"] and "kind" not in structural:
@@ -397,6 +405,8 @@ class PlanService:
                 s["title_custom"] = True
             if upd.get("detail"):
                 s["detail"], s["detail_custom"] = upd["detail"], True
+            if upd.get("time"):
+                s["time"] = upd["time"]
             s["edited"] = True
             self._place(plan, upd["date"], s)
             if w:
@@ -861,6 +871,16 @@ def session_changes(before: dict[str, tuple[str, str]], after: dict[str, tuple[s
     return out
 
 
+def clean_time(v: Any) -> str:
+    """A session's start time: "HH:MM" (24 h) or "" to clear it."""
+    if v is None or v == "":
+        return ""
+    m = re.fullmatch(r"([01]?\d|2[0-3]):([0-5]\d)", str(v).strip()) if isinstance(v, str) else None
+    if not m:
+        raise PlanError("Start time must be HH:MM, like 06:30.")
+    return f"{int(m.group(1)):02d}:{m.group(2)}"
+
+
 def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | None:
     """What the app shows: drops internal fields, adds per-session sync state."""
     if plan is None:
@@ -870,10 +890,11 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
         days = []
         for d in sorted(w["days"]):
             ss = []
-            for s in w["days"][d]:
+            # Timed sessions in time order, untimed ones after them in plan order.
+            for s in sorted(w["days"][d], key=lambda x: x.get("time") or "~"):
                 g = s.get("garmin") or {}
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
-                                                 "detail", "meters", "edited", "travel")}
+                                                 "detail", "meters", "edited", "travel", "time")}
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],

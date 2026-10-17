@@ -33,10 +33,13 @@ export type PacesView = {
 export type PaceAccepted = { summary: string; updated: number; undo: { id: string; until: number; sport: PaceSport }; field: string; value: number }
 
 export const getPaces = () => getJSON<PacesView>('/api/paces')
-export const acceptPace = (sid: string) => postJSON<PaceAccepted>(`/api/paces/${encodeURIComponent(sid)}/accept`)
+/** Fired after paces change (accept / undo): the plan's targets were re-computed. */
+export const PACES_CHANGED_EVENT = 'rabbit:paces-changed'
+const changed = <T,>(r: T): T => { try { window.dispatchEvent(new CustomEvent(PACES_CHANGED_EVENT)) } catch { /* ignore */ } return r }
+export const acceptPace = (sid: string) => postJSON<PaceAccepted>(`/api/paces/${encodeURIComponent(sid)}/accept`).then(changed)
 export const dismissPace = (sid: string, never = false) =>
   postJSON<{ ok: boolean }>(`/api/paces/${encodeURIComponent(sid)}/dismiss`, { never })
-export const undoPace = (id: string) => sendJSON<{ field: string; value: number | null }>('POST', '/api/paces/undo', { id })
+export const undoPace = (id: string) => sendJSON<{ field: string; value: number | null }>('POST', '/api/paces/undo', { id }).then(changed)
 export const setPaceSuggestions = (sport: PaceSport, on: boolean) =>
   postJSON<{ ok: boolean }>('/api/paces/suggestions', { sport, on })
 

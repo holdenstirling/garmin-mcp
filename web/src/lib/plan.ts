@@ -7,6 +7,8 @@ export type Step =
 
 export type PlanSession = {
   id: string; sport: Sport; kind: string; title: string; minutes: number | null
+  /** start time "HH:MM" (24 h), when the athlete set one */
+  time?: string | null
   detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null
   exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
   fuel?: { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string } | null
@@ -67,9 +69,9 @@ export type GoalFull = Goal & {
 export function planApi(base = '/api') {
   return {
     getPlan: () => getJSON<{ plan: BuiltPlan | null }>(`${base}/plan`),
-    addSession: (s: { date: string; sport: Sport; kind?: string; minutes?: number; title?: string }) =>
+    addSession: (s: { date: string; sport: Sport; kind?: string; minutes?: number; title?: string; time?: string }) =>
       sendJSON<{ plan: BuiltPlan }>('POST', `${base}/plan/sessions`, s),
-    updateSession: (id: string, patch: Partial<{ date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string }>) =>
+    updateSession: (id: string, patch: Partial<{ date: string; sport: Sport; kind: string; minutes: number; title: string; detail: string; time: string }>) =>
       sendJSON<{ plan: BuiltPlan }>('PATCH', `${base}/plan/sessions/${id}`, patch),
     deleteSession: (id: string) => sendJSON<{ plan: BuiltPlan }>('DELETE', `${base}/plan/sessions/${id}`),
   }

@@ -7,6 +7,27 @@ import type { BuiltPlan } from '@/lib/plan'
 export type CalStatus = 'done' | 'missed' | 'planned' | 'skipped' | 'rest'
 export type DistSport = 'run' | 'bike' | 'swim'
 export type CalNote = { source: 'rabbit' | 'coach'; line: string; why: string; how: string; cues: string }
+/** One step's exact targets (server: workouttargets.py). Ranges are [low, high]; pace and swim
+ *  are [fast, slow] in s/km and s/100 m. */
+export type TargetStep = {
+  type: 'warmup' | 'steady' | 'work' | 'recover' | 'cooldown'; label: string; zone: number
+  minutes: number | null; meters: number | null; rpe: string; talk: string
+  hr?: [number, number]; pace?: [number, number]; power?: [number, number]; swim?: [number, number]; cadence?: [number, number]
+}
+export type TargetBlock = TargetStep | { type: 'repeat'; reps: number; steps: TargetBlock[] }
+export type Targets = {
+  /** where the heart-rate zones come from; null = no max/threshold HR known */
+  hr_source: 'threshold' | 'reserve' | 'max' | null
+  ftp: boolean
+  steps?: TargetBlock[]
+  legs?: { sport: 'bike' | 'run'; steps: TargetBlock[] }[]
+  summary: { minutes: number; zones: Record<string, number>; stress: number | null; run_pace: number | null; avg_hr: number | null }
+}
+export type Went = {
+  verdict: 'hit' | 'short' | 'long' | 'hard' | 'fast' | 'slow' | 'done'
+  headline: string; lines: string[]
+  actual: { minutes: number | null; km: number | null; avg_hr: number | null; cadence: number | null; power: number | null; pace?: number | null }
+}
 export type CalSession = {
   status: CalStatus
   /** estimated km per sport (a brick has bike + run) */
@@ -17,6 +38,12 @@ export type CalSession = {
   rebalanced: boolean; moved_from: string | null; made_up_for: string | null; hard: boolean
   activity?: { id: number | null; km: number | null; minutes: number | null }
   missed?: { why: string; best_day: string | null; this_week: boolean }
+  /** exact per-step targets (structured sessions) */
+  targets?: Targets
+  /** done sessions: how the workout compared with the plan */
+  went?: Went
+  /** why Rabbit changed this session (made up for a miss, moved, eased, lengthened) */
+  adjusted?: string
 }
 export type Mileage = { done: number; goal: number; planned: number; custom: boolean }
 export type CalView = {
@@ -60,6 +87,34 @@ export function takePlanFix(): string | null {
   const id = pendingFix
   pendingFix = null
   return id
+}
+
+/** One session as an .ics download (a timed event when it has a start time). */
+export const sessionIcsUrl = (id: string) => `/app/api/plan/sessions/${encodeURIComponent(id)}/calendar.ics`
+
+/** Google Calendar's own "add event" page, pre-filled (no sign-in to Rabbit's side needed). */
+export function googleCalendarUrl(s: { title: string; time?: string | null; minutes: number | null; detail?: string }, date: string): string {
+  const d = date.replace(/-/g, '')
+  let dates: string
+  if (s.time) {
+    const [h, m] = s.time.split(':').map(Number) as [number, number]
+    const start = new Date(`${date}T${s.time}:00`)
+    const end = new Date(start.getTime() + (s.minutes || 60) * 60_000)
+    const p = (n: number) => String(n).padStart(2, '0')
+    const f = (x: Date) => `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}T${p(x.getHours())}${p(x.getMinutes())}00`
+    dates = `${d}T${p(h)}${p(m)}00/${f(end)}`
+  } else {
+    const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + 1)
+    dates = `${d}/${next.getFullYear()}${String(next.getMonth() + 1).padStart(2, '0')}${String(next.getDate()).padStart(2, '0')}`
+  }
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: s.title, dates, details: s.detail ?? '' })
+  return `https://calendar.google.com/calendar/render?${q}`
+}
+
+/** "6:30 AM" in the device's style from "06:30". */
+export function fmtTime(t: string): string {
+  const [h, m] = t.split(':').map(Number) as [number, number]
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 export const SPORT_DIST_LABEL: Record<DistSport, string> = { run: 'Run', bike: 'Bike', swim: 'Swim' }
