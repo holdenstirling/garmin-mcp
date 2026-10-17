@@ -6,9 +6,7 @@
 // auto-shared workout is pinned on top for an hour with "Add a photo or caption".
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  Ban, ChevronRight, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X,
-} from 'lucide-react'
+import { Ban, CalendarDays, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -23,6 +21,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import { openActivity } from '@/lib/activitynav'
+import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, MAX_PHOTOS, REACTIONS, TEMPLATES, TEXT_LEN,
   ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft,
@@ -467,6 +466,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   post: Post; imperial: boolean; onChange: (p: Post) => void; onDelete: () => void; onBlocked?: () => void
 }) {
   const [menu, setMenu] = useState(false)
+  const [details, setDetails] = useState(false)  // a friend's workout, read-only
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(p.text)
   // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
@@ -609,7 +609,11 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
       ) : null}
       {photos.length > 0 && <PhotoGrid urls={photos} />}
       {p.workout && <WorkoutCard w={p.workout} imperial={imperial}
-        onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id) : undefined} />}
+        onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id) : () => setDetails(true)} />}
+      {details && p.workout && (
+        <FriendWorkoutSheet w={p.workout} who={p.user?.name ?? 'They'} imperial={imperial} onClose={() => setDetails(false)}
+          onMessage={p.user ? () => { setDetails(false); messagePeople([p.user!.id]) } : undefined} />
+      )}
       {p.event && <EventChip e={p.event} />}
       {notice && <p className="mt-2 text-[0.7059rem] text-(--accent)" role="status">{notice}</p>}
 
@@ -628,6 +632,12 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
           )
         })}
         <span className="flex-1" />
+        {!p.mine && p.user && (
+          <button type="button" onClick={() => messagePeople([p.user!.id])} aria-label={`Message ${p.user.name}`}
+            className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+            <Send className="size-4" aria-hidden /> Message
+          </button>
+        )}
         <button type="button" onClick={() => void openComments()} aria-expanded={showComments}
           className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
           <MessageCircle className="size-4" /> {p.comment_count > 0 ? p.comment_count : 'Comment'}
@@ -760,6 +770,62 @@ function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>;
         </button>
       )}
     </div>
+  )
+}
+
+/** A friend's shared workout, read-only: exactly what they share (sport, distance, time, pace,
+ *  climb, lap shape). Never heart rate, health data or where they went. */
+function FriendWorkoutSheet({ w, who, imperial, onClose, onMessage }: {
+  w: NonNullable<Post['workout']>; who: string; imperial: boolean; onClose: () => void; onMessage?: () => void
+}) {
+  const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
+    : w.pace_s_100m ? fmtSwim100(w.pace_s_100m, imperial) : null
+  const stats: [string, string][] = ([
+    ['Distance', w.km ? fmtDist(w.km, imperial, w.sport) : null], ['Time', w.minutes ? fmtDuration(w.minutes) : null],
+    [w.speed_kmh ? 'Speed' : 'Pace', pace], ['Climb', w.climb_m ? fmtClimb(w.climb_m, imperial) : null],
+  ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1])
+  const laps = (w.splits ?? []).filter((x) => x.km > 0 && x.s > 0)
+  return (
+    <Sheet title={w.title} onClose={onClose} portal label={`${who}'s workout`}
+      bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      <p className="text-[0.7647rem] text-(--text-secondary)">
+        {who} · {w.date ? new Date(`${w.date.slice(0, 10)}T12:00:00`).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : ''}
+      </p>
+      {stats.length > 0 && (
+        <dl className="grid grid-cols-2 gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+          {stats.map(([k, v]) => (
+            <div key={k}>
+              <dt className="font-mono text-[0.6471rem] uppercase tracking-wider text-(--text-muted)">{k}</dt>
+              <dd className="font-mono text-[1.0588rem] font-semibold tabular-nums text-(--text)">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {laps.length >= 2 && (
+        <section aria-label="Laps" className="rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+          <h3 className="section-label mb-2">{w.sport === 'bike' ? 'Laps' : 'Splits'}</h3>
+          <table className="w-full text-left text-[0.7647rem] tabular-nums">
+            <thead><tr className="text-(--text-muted)"><th className="py-1 font-medium">#</th><th className="font-medium">Distance</th><th className="font-medium">Time</th><th className="font-medium">{w.sport === 'bike' ? 'Speed' : 'Pace'}</th></tr></thead>
+            <tbody>
+              {laps.map((x, i) => (
+                <tr key={i} className="border-t border-(--border)">
+                  <td className="py-1.5">{i + 1}</td>
+                  <td>{fmtDist(x.km, imperial, w.sport, { decimals: 2 })}</td>
+                  <td>{`${Math.floor(x.s / 60)}:${String(Math.round(x.s % 60)).padStart(2, '0')}`}</td>
+                  <td>{w.sport === 'bike' ? fmtSpeed((x.km / x.s) * 3600, imperial) : fmtPaceKm(x.s / x.km, imperial)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+      <p className="text-[0.7059rem] text-(--text-muted)">What {who} shares with friends. Heart rate, health data and where they went stay private.</p>
+      {onMessage && (
+        <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onMessage}>
+          <Send className="size-4" aria-hidden /> Message {who}
+        </Button>
+      )}
+    </Sheet>
   )
 }
 

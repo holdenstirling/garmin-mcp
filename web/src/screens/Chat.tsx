@@ -5,7 +5,7 @@ import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
@@ -24,6 +24,7 @@ import { OPEN_PLAN_DAY_EVENT, openPlanDay } from '@/lib/plancal'
 import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_ACTIVITY_EVENT, type OpenActivity } from '@/lib/activitynav'
+import { DM_CHANGED_EVENT, NEW_DM_EVENT, OPEN_DM_EVENT, dmUnread as getDmUnread, type DMShare } from '@/lib/dm'
 import { CONVERT_PLAN_EVENT, startPlanConversion } from '@/lib/planconvert'
 import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
@@ -138,8 +139,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string }
-  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
+  | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -182,6 +183,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [addPlan, setAddPlan] = useState(false)
   // A plan file -> full Rabbit workouts (lib/planconvert): read, review, apply.
   const [converting, setConverting] = useState(false)
+  // Direct messages (lib/dm): the Chats sheet's People view, unread total for the header dot,
+  // and New message / Send to a friend.
+  const [chatsView, setChatsView] = useState<'rabbit' | 'people'>('rabbit')
+  const [dmCount, setDmCount] = useState(0)
+  const [newDm, setNewDm] = useState<{ to?: string[]; share?: DMShare } | null>(null)
   const [coachMsgThread, setCoachMsgThread] = useState<string | null>(null)
   const [coachAsk, setCoachAsk] = useState(false) // "Do you want a coach?" sheet
   const [busy, setBusy] = useState(false)
@@ -421,6 +427,45 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     window.addEventListener(OPEN_ACTIVITY_EVENT, onActivity)
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onActivity)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Direct messages: open a chat (lib/dm openConversation, a push, a shared card) or start one.
+    const onOpen = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id
+      if (!id) return
+      dropSheet(); setRevealed(false); setNewDm(null)
+      setPages((st) => (st.length && st[st.length - 1]?.k !== 'me' ? [...st, { k: 'dm', id }] : [{ k: 'dm', id }]))
+    }
+    const onNew = (e: Event) => setNewDm((e as CustomEvent<{ to?: string[]; share?: DMShare }>).detail ?? {})
+    window.addEventListener(OPEN_DM_EVENT, onOpen)
+    window.addEventListener(NEW_DM_EVENT, onNew)
+    return () => { window.removeEventListener(OPEN_DM_EVENT, onOpen); window.removeEventListener(NEW_DM_EVENT, onNew) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (me.role !== 'athlete') return
+    let live = true
+    const check = () => { getDmUnread().then((r) => { if (live) setDmCount(r.unread) }, () => {}) }
+    check()
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') check() }, 60_000)
+    const onVis = () => { if (document.visibilityState === 'visible') check() }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener(DM_CHANGED_EVENT, check)
+    // ?open=dm&c=<id> (a message push), or the push tapped while the app is open.
+    const c = new URLSearchParams(window.location.search)
+    if (c.get('open') === 'dm' && c.get('c')) window.setTimeout(() => setPages([{ k: 'dm', id: c.get('c')! }]), 0)
+    const onSw = (e: MessageEvent) => {
+      const url = String(e.data?.url ?? '')
+      if (e.data?.type !== 'open' || !url.includes('open=dm')) return
+      const id = new URL(url, window.location.origin).searchParams.get('c')
+      if (id) setPages([{ k: 'dm', id }])
+    }
+    navigator.serviceWorker?.addEventListener('message', onSw)
+    return () => {
+      live = false; window.clearInterval(t)
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener(DM_CHANGED_EVENT, check)
+      navigator.serviceWorker?.removeEventListener('message', onSw)
+    }
+  }, [me.role])
   useEffect(() => {
     const onConvert = () => { dropSheet(); closePages(); setConverting(true) }
     window.addEventListener(CONVERT_PLAN_EVENT, onConvert)
@@ -791,8 +836,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const meButton = (<>
     <SearchButton imperial={me.athlete.units === 'imperial'} />
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
-    <Button variant="ghost" size="icon" aria-label="Chats with Rabbit" data-tour="chat" onClick={() => open('threads')}>
+    <Button variant="ghost" size="icon" className="relative" data-tour="chat"
+      aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with Rabbit and friends'}
+      onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
       <MessagesSquare className="size-5" />
+      {dmCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </Button>
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
       me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
@@ -1102,6 +1150,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'block': return <BlockScreen id={pg.id} imperial={imperial} onClose={closePages} />
       case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
       case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />
+      case 'dm':
+        return <ConversationScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'activity':
         return <ActivityScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
       case 'workout':
@@ -1349,6 +1399,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
 
+      {newDm && (
+        <NewMessageSheet to={newDm.to} share={newDm.share} onClose={() => setNewDm(null)}
+          onOpened={(id) => { setNewDm(null); dropSheet(); setPages((st) => [...st.filter((p) => p.k !== 'dm'), { k: 'dm', id }]) }} />
+      )}
       {sheet === 'threads' && (
         <ThreadsSheet goal={goal} threads={threads} activeId={threadId} closing={closing} onDismissed={dismissNow}
           onSelect={(id) => { openThread(id); setTab('rabbit'); setHomeView('chat'); close() }}
@@ -1356,7 +1410,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onDelete={async (id) => {
             try { await deleteThread(id); await refreshThreads() } catch (e) { showToast((e as Error).message) }
           }}
-          onEditGoal={() => open('memory')} onClose={close} />
+          onEditGoal={() => open('memory')} onClose={close}
+          {...(me.role === 'athlete' ? {
+            view: chatsView, onView: setChatsView, dmUnread: dmCount,
+            onOpenDm: (id: string) => { close(); setPages([{ k: 'dm', id }]) },
+            onNewDm: () => { close(); setNewDm({}) },
+          } : {})} />
       )}
       {sheet === 'memory' && (
         <MemorySheet goal={goal} athlete={me.athlete} closing={closing} onClose={close} onDismissed={dismissNow}
