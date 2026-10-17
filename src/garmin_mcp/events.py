@@ -32,7 +32,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 from typing import Any
 
-from . import recur
+from . import recur, sports
 from .appstore import AppStore
 from .coaching import _TIME_RE, CoachError, CoachStore, _clean_text
 
@@ -72,6 +72,9 @@ KIND_LABEL = {"race": "race", "group_activity": "group activity", "trip": "trip"
 # Kinds that can be the main event (the plan builds toward it).
 MAIN_KINDS = ("race", "challenge", "other")
 INTENSITIES = ("easy", "moderate", "hard")
+# Who can find an event: private (only you; the default, and every event saved before this) or
+# public (people in your area find it in Local and search, and can say they're going).
+VISIBILITY = ("private", "public")
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 MAX_SPAN_DAYS = 30
 _HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -93,6 +96,11 @@ def kind_of(ev: dict[str, Any] | None) -> str:
     return k if k in KINDS else "race"
 
 
+def is_public(ev: dict[str, Any] | None) -> bool:
+    """Shown to people in the owner's area (Local, search); everything else is private."""
+    return (ev or {}).get("visibility") == "public"
+
+
 def is_race(ev: dict[str, Any] | None) -> bool:
     """Readiness, finish estimates and the race-week pack are for races only."""
     return kind_of(ev) == "race"
@@ -105,7 +113,7 @@ def type_for_distance(dist: str | None) -> str:
     return next((t for t, ds in TYPE_DISTANCES.items() if d in ds and t != "other"), "other")
 
 
-_PLAN_EXTRA = ("kind", "end_date", "recurring", "duration_min", "intensity", "time", "with", "at", "in_plan")
+_PLAN_EXTRA = ("kind", "end_date", "recurring", "duration_min", "intensity", "time", "with", "at", "in_plan", "activity")
 
 
 def _recurring(v: Any, start: date | None = None) -> dict[str, Any] | None:
@@ -202,6 +210,23 @@ class EventStore:
                     out[k] = int(round(v))
             elif k == "recurring":
                 out[k] = _recurring(v)
+            elif k == "activity":
+                # The specific sport from the dropdown (sports.py); it also sets the coarse type.
+                if v in (None, ""):
+                    out[k] = None
+                elif v not in sports.IDS:
+                    raise CoachError("Pick a sport from the list (or Something else).")
+                else:
+                    out[k] = v
+            elif k == "activity_other":
+                out[k] = _clean_text(v if v is not None else "", sports.OTHER_LEN, "sport")
+            elif k == "visibility":
+                if v in (None, ""):
+                    out[k] = "private"
+                elif v not in VISIBILITY:
+                    raise CoachError("visibility must be private or public")
+                else:
+                    out[k] = v
             elif k == "in_plan":
                 if v not in (True, False, None):
                     raise CoachError("in_plan must be true or false")
@@ -224,6 +249,10 @@ class EventStore:
                     out[k] = int(round(v))
             else:
                 raise CoachError(f"unknown event field {k!r}")
+        if out.get("activity") and "type" not in out:
+            out["type"] = sports.event_type(out["activity"])
+        if "activity" in out and out.get("activity") != "other" and "activity_other" not in out:
+            out["activity_other"] = ""
         if not partial:
             if not out.get("name"):
                 raise CoachError("Give the event a name.")
@@ -375,8 +404,9 @@ class EventStore:
             bad = set(changes) - allowed
             if bad:
                 raise CoachError(f"can't change {sorted(bad)[0]!r} for one date")
-            fields = {k: ev.get(k) for k in ("name", "type", "kind", "time", "duration_min", "location",
-                                            "neighborhood", "at", "with", "intensity", "url", "priority", "in_plan")
+            fields = {k: ev.get(k) for k in ("name", "type", "activity", "activity_other", "kind", "time", "duration_min",
+                                            "location", "neighborhood", "at", "with", "intensity", "url", "priority",
+                                            "in_plan", "visibility")
                       if ev.get(k) not in (None, "")}
             fields.update({"date": day, "notes": ""} | changes)
             fields = {k: v for k, v in fields.items() if v is not None}
@@ -415,7 +445,7 @@ class EventStore:
                         end = start
                 ds = [start + timedelta(days=i) for i in range((end - start).days + 1)
                       if frm <= start + timedelta(days=i) <= to]
-            item = {k: e.get(k) for k in ("id", "name", "kind", "type", "time", "duration_min", "location",
+            item = {k: e.get(k) for k in ("id", "name", "kind", "type", "activity", "time", "duration_min", "location",
                                           "neighborhood", "priority", "main", "series_id")}
             item["repeats"] = bool(rule)
             for d in ds:
@@ -572,7 +602,8 @@ class EventStore:
 
 
 # ------------------------------------------------------------------- lookup --
-_SPORT_WORD = {"run": "run", "bike": "ride", "swim": "swim", "brick": "brick", "other": "session"}
+_SPORT_WORD = {"run": "run", "bike": "ride", "swim": "swim", "brick": "brick", "strength": "strength session",
+               "other": "session"}
 
 
 def plan_links(events: list[dict[str, Any]], plan: dict[str, Any] | None, today: date) -> dict[str, dict[str, Any]]:
@@ -612,7 +643,7 @@ def plan_links(events: list[dict[str, Any]], plan: dict[str, Any] | None, today:
         elif e.get("in_plan") is False:
             info |= {"status": "calendar_only", "line": "On your calendar only. It isn't counted as a workout."}
         elif eid in placed or days:
-            sport = _SPORT_WORD.get(TYPE_SPORT.get(e.get("type") or "other", "run"), "session")
+            sport = _SPORT_WORD.get(sports.plan_sport(e.get("activity")) or TYPE_SPORT.get(e.get("type") or "other", "run"), "session")
             line = {
                 "race": ("A race in your plan: easy days before it and a rest day after."
                          if (e.get("priority") or "B") != "C" else "Raced as a hard training day, with easy days either side."),
@@ -793,5 +824,5 @@ def lookup_prompt(name: str, etype: str | None, when: str | None, location: str 
 Researcher = Callable[[str, str], Awaitable[str]]
 
 
-__all__ = ["KINDS", "KIND_LABEL", "MAIN_KINDS", "context_label", "is_race", "kind_of", "DEBRIEF_SYSTEM", "DEBRIEF_TOOL", "STRATEGY_SYSTEM", "STRATEGY_TOOL", "COURSE_PROFILES", "EventStore", "TYPES", "TYPE_SPORT", "TYPE_DISTANCES", "LOOKUP_SYSTEM", "REPORT_TOOL",
+__all__ = ["VISIBILITY", "is_public", "KINDS", "KIND_LABEL", "MAIN_KINDS", "context_label", "is_race", "kind_of", "DEBRIEF_SYSTEM", "DEBRIEF_TOOL", "STRATEGY_SYSTEM", "STRATEGY_TOOL", "COURSE_PROFILES", "EventStore", "TYPES", "TYPE_SPORT", "TYPE_DISTANCES", "LOOKUP_SYSTEM", "REPORT_TOOL",
            "clean_info", "parse_lookup", "lookup_prompt", "Researcher"]

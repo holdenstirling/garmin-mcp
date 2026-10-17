@@ -5,7 +5,7 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
@@ -16,7 +16,7 @@ import {
   listEvents, makeMainEvent, nextDate, takeOpenEvent, writeDebrief,
   type Debrief, type EventFields, type EventKind, type EventType, type RaceEvent,
 } from '@/lib/events'
-import { EventBasics, EventGoal, EventKindFields, InfoBlock, KIND_ICON, KindPicker, kindDefaults } from './EventForm'
+import { EventBasics, EventGoal, EventKindFields, EventVisibility, InfoBlock, KIND_ICON, KindPicker, kindDefaults } from './EventForm'
 import { RacePackScreen, packTitle } from './RacePackScreen'
 import { AddToCalendar, CalendarSync, EventPlanCard, UpcomingDates } from './EventLinks'
 import { RaceFitScreen } from './RaceFitScreen'
@@ -32,11 +32,13 @@ import { SaveStatus } from '@/components/ui/SaveStatus'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { ACTIVITY_LABEL, classifyActivity, type ActivityId } from '@/lib/activity'
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
+import { SPORT_ACTIVITY, SPORT_ICON, isSport, sportLabel } from '@/lib/sports'
 import { AreaBar } from '@/components/local/AreaBar'
 
 /** What an event is for (lib/activity): its words first ("Baker volleyball"), then its type. */
 function eventActivity(e: RaceEvent): ActivityId {
-  return classifyActivity([e.name, e.neighborhood, e.location], e.type)
+  if (isSport(e.activity) && e.activity !== 'other') return SPORT_ACTIVITY[e.activity]  // the sport picked in the form
+  return classifyActivity([e.name, e.neighborhood, e.location, e.activity_other], e.type)
 }
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
@@ -254,7 +256,8 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
   const kind = kindOf(e)
   // The activity's icon (a volleyball night is a volleyball, a group ride a bike), same as Local.
   const act = eventActivity(e)
-  const Icon = act !== 'other' ? ACTIVITY_ICON[act] : kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
+  const Icon = isSport(e.activity) && e.activity !== 'other' ? SPORT_ICON[e.activity]
+    : act !== 'other' ? ACTIVITY_ICON[act] : kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
   const when = nextDate(e)
   const n = daysUntil(when)
   return (
@@ -269,12 +272,13 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
         <span className="flex items-center gap-1.5">
           {e.main && <Star className="size-3.5 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
           <span className="truncate text-[0.9412rem] font-medium text-(--text)">{e.name}</span>
+          {e.visibility === 'public' && <Globe className="size-3.5 shrink-0 text-(--text-muted)" aria-label="Public" />}
         </span>
         <span className="block truncate text-[0.7059rem] text-(--text-muted)">
           {e.recurring && e.repeat_text ? `${e.repeat_text}${e.time ? ` · ${e.time}` : ''}`
             : new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           {e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
-          {kind === 'milestone' ? '' : ` · ${TYPE_LABEL[e.type]}`}
+          {kind === 'milestone' ? '' : ` · ${sportLabel(e) ?? TYPE_LABEL[e.type]}`}
           {kind !== 'race' || !e.distance || e.distance === 'other' ? '' : ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}`}
           {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}{e.neighborhood ? ` · ${e.neighborhood}` : ''}
         </span>
@@ -333,7 +337,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
   function payload(): EventFields {
     const f: EventFields = {}
     for (const k of ['name', 'kind', 'type', 'distance', 'date', 'location', 'url', 'priority', 'goal_type', 'target_time', 'course', 'notes', 'result', 'info', 'elevation_m', 'course_profile',
-      'end_date', 'time', 'recurring', 'with', 'at', 'duration_min', 'intensity', 'neighborhood', 'in_plan'] as const) {
+      'end_date', 'time', 'recurring', 'with', 'at', 'duration_min', 'intensity', 'neighborhood', 'in_plan',
+      'activity', 'activity_other', 'visibility'] as const) {
       if (v[k] !== undefined && (!event || JSON.stringify(v[k]) !== JSON.stringify(event[k]))) (f as Record<string, unknown>)[k] = v[k]
     }
     // Skipped dates are saved as you tap them (UpcomingDates): send the latest ones, never the
@@ -382,6 +387,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />
       <EventKindFields value={v} onChange={set} />
+      {kind !== 'milestone' && <EventVisibility value={v} onChange={set} />}
       {v.info && <Card className="p-4"><InfoBlock info={v.info} /></Card>}
       {(race || kind === 'challenge') && (
         <EventGoal value={v} onChange={set} hidePriority={event?.main || !race} imperial={imperial} raceOnly={race} />

@@ -7,7 +7,7 @@ Groups, each capped at ``PER_GROUP`` and each best effort (a failing source is j
 * ``people``: people I follow or who follow me (social.people), matched on first name.
 * ``clubs``: my clubs, clubs I could join (clubs.discover, which already skips blocked owners
   and full clubs), and the public clubs & leagues directory for my metro.
-* ``events``: my races and events (events.list).
+* ``events``: my races and events (events.list), then public events near me (publicevents.py).
 * ``sessions``: my plan's sessions (title, kind, sport, date), the nearest dates first.
 * ``workouts``: my past workouts from the cached activity list (stats.activities).
 
@@ -69,11 +69,13 @@ class Search:
                  events: Callable[[str], list[dict[str, Any]]] | None = None,
                  plan: Callable[[str], dict[str, Any] | None] | None = None,
                  activities: Callable[[str], list[dict[str, Any]]] | None = None,
-                 partners: Callable[[str, str], list[dict[str, Any]]] | None = None) -> None:
+                 partners: Callable[[str, str], list[dict[str, Any]]] | None = None,
+                 public_events: Callable[..., list[dict[str, Any]]] | None = None) -> None:
         self._today, self._people, self._person = today, people, person
         self._clubs, self._directory, self._events = clubs, directory, events
         self._plan, self._acts = plan, activities
         self._partners = partners
+        self._public_events = public_events
 
     def run(self, uid: str, q: Any) -> dict[str, Any]:
         query = norm(q)
@@ -141,9 +143,16 @@ class Search:
         day = lambda e: str(e.get("date") or "")  # noqa: E731
         rows = sorted((e for e in rows if day(e) >= today), key=day) + \
             sorted((e for e in rows if day(e) < today), key=day, reverse=True)
-        return [{"id": e.get("id"), "title": e.get("title") or e.get("name") or "Event", "date": e.get("date"),
-                 "location": e.get("location") or "", "kind": e.get("kind") or "race",
-                 "past": str(e.get("date") or "") < today} for e in rows[:PER_GROUP]]
+        out = [{"id": e.get("id"), "title": e.get("title") or e.get("name") or "Event", "date": e.get("date"),
+                "location": e.get("location") or "", "kind": e.get("kind") or "race",
+                "past": str(e.get("date") or "") < today} for e in rows[:PER_GROUP]]
+        # Public events near me (publicevents.py: never private ones, never my own, never blocked)
+        if self._public_events is not None and len(out) < PER_GROUP:
+            for e in self._public_events(uid, " ".join(words)):
+                out.append({"id": e["key"], "title": e.get("name") or "Event", "date": e.get("next_date"),
+                            "location": e.get("neighborhood") or e.get("location") or "", "kind": e.get("kind"),
+                            "past": False, "public": True, "activity": e.get("activity")})
+        return out[:PER_GROUP]
 
     def sessions(self, uid: str, words: list[str]) -> list[dict[str, Any]]:
         plan = self._plan(uid) if self._plan is not None else None

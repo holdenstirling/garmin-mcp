@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Clock, Flag, Search as SearchIcon, Users, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
+import { SPORT_ICON as EVENT_SPORT_ICON, isSport } from '@/lib/sports'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/Avatar'
 import { PartnerRow, PartnerSheet } from '@/components/community/Partners'
@@ -133,9 +134,9 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             </Group>
             <Group title="Races & events" n={res.events.length}>
               {res.events.map((e) => (
-                <Row key={e.id} onClick={() => pick({ kind: 'event', id: e.id })}
-                  icon={<Tile><Flag className="size-4" /></Tile>} title={e.title}
-                  sub={[e.date ? fmtDay(e.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be set', e.location, e.past ? 'Done' : ''].filter(Boolean).join(' · ')} />
+                <Row key={e.id} onClick={() => pick(e.public ? { kind: 'club', id: '', source: 'directory' } : { kind: 'event', id: e.id })}
+                  icon={<Tile>{(() => { const I = isSport(e.activity) ? EVENT_SPORT_ICON[e.activity] : Flag; return <I className="size-4" /> })()}</Tile>} title={e.title}
+                  sub={[e.public ? 'Public, near you' : '', e.date ? fmtDay(e.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be set', e.location, e.past ? 'Done' : ''].filter(Boolean).join(' · ')} />
               ))}
             </Group>
             <Group title="Your plan" n={res.sessions.length}>

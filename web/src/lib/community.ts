@@ -106,7 +106,7 @@ export type Level = 'all' | 'easy' | 'moderate' | 'fast'
 export const LEVELS: [Level, string][] = [['all', 'All paces'], ['easy', 'Easy'], ['moderate', 'Moderate'], ['fast', 'Fast']]
 export type ClubSummary = {
   id: string; kind: 'club' | 'race'; name: string; sport: Sport; city: string; state: string; description: string
-  emoji: string; privacy: 'open' | 'approval'; role: 'owner' | 'admin' | 'member' | null; members: number
+  emoji: string; privacy: 'open' | 'approval'; visibility?: 'public' | 'private'; role: 'owner' | 'admin' | 'member' | null; members: number
   requested: boolean; code?: string | null; requests?: number; event_id?: string; date?: string
   invited_by?: SocialUser | null; near?: 'city' | 'state' | null
 }
@@ -139,7 +139,7 @@ export type PostInput = {
   event_id?: string | null; audience?: Audience
 }
 export type ClubInput = {
-  name?: string; sport?: Sport; city?: string; state?: string; description?: string; emoji?: string; privacy?: 'open' | 'approval'
+  name?: string; sport?: Sport; city?: string; state?: string; description?: string; emoji?: string; privacy?: 'open' | 'approval'; visibility?: 'public' | 'private'
 }
 export type MeetupInput = { title: string; start: string; repeat: 'none' | 'weekly'; where: string; pace?: string; level?: Level; notes?: string }
 

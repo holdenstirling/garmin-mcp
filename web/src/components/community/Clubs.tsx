@@ -15,7 +15,8 @@ import { EmptyRabbit, HopIn, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row } from '@/components/settings/Grouped'
-import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
+import { Card, Field, OptionCard, Screen, inputCls } from '@/components/plan/ui'
+import { PublicEventsNear } from '@/components/events/PublicEventsNear'
 import { getChallenges, targetLine, type Suggestion } from '@/lib/challenges'
 import { getPeople, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
@@ -123,6 +124,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
       )}
       {/* One search (names, partners, public listings) lives in the directory, partners first. */}
       <ClubDirectory imperial={imperial} onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />
+      <PublicEventsNear />
 
       {near.length > 0 && (
         <Group label={home ? `Rabbit clubs near ${home}` : 'Rabbit clubs to join'}>
@@ -171,7 +173,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
   const [f, setF, draft] = useDraft<Required<ClubInput>>(`club.${initial?.id ?? 'new'}`, () => ({
     name: initial?.name ?? prefill?.name ?? '', sport: initial?.sport ?? prefill?.sport ?? 'running', city: initial?.city ?? home?.city ?? '',
     state: initial?.state ?? home?.state ?? '', description: initial?.description ?? prefill?.description ?? '', emoji: initial?.emoji || '🐇',
-    privacy: initial?.privacy ?? 'open',
+    privacy: initial?.privacy ?? 'open', visibility: initial?.visibility ?? 'public',
   }), { label: initial ? 'club changes' : 'new club' })
   const guard = useUnsavedGuard(draft.dirty, draft.discard)
   const [busy, setBusy] = useState(false)
@@ -190,7 +192,12 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
   }
   return (
-    <Sheet title={initial ? 'Edit club' : 'Start a club'} onClose={guard.wrap(onClose)} extra={guard.dialog}>
+    <Sheet title={initial ? 'Edit club' : 'Start a club'} onClose={guard.wrap(onClose)} extra={guard.dialog}
+      footer={
+        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy} disabled={!f.name.trim()} onClick={() => void save()}>
+          {!f.name.trim() ? 'Give your club a name' : initial ? 'Save changes' : 'Start club'}
+        </Button>
+      }>
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
       <Field label="Name"><input className={inputCls} maxLength={40} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Wash Park Run Club" /></Field>
       <Field label="Sport"><Choice label="Sport" value={f.sport} options={SPORTS} onChange={(v) => set('sport', v)} /></Field>
@@ -209,14 +216,17 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
           ))}
         </div>
       </Field>
-      <Field label="Who can join" hint={f.privacy === 'open' ? 'Anyone on Rabbit can join.' : 'People ask to join; you or an admin say yes. Invites and the club code skip the wait.'}>
-        <Choice label="Who can join" value={f.privacy} options={[['open', 'Anyone'], ['approval', 'Ask to join']]} onChange={(v) => set('privacy', v)} />
-      </Field>
+      <section aria-label="Who can find and join it" className="flex flex-col gap-2">
+        <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can find and join it</h3>
+        <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
+          description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
+        <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"
+          description="People nearby find it and ask; you or an admin say yes." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'approval' }))} />
+        <OptionCard selected={f.visibility === 'private'} title="Private · invite only"
+          description="Hidden from Local and search. People join with an invite or the club code." onClick={() => setF((x) => ({ ...x, visibility: 'private', privacy: 'open' }))} />
+      </section>
       {queued && <SaveStatus state="queued" />}
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!f.name.trim()} onClick={() => void save()}>
-        {initial ? 'Save' : 'Start club'}
-      </Button>
     </Sheet>
   )
 }
@@ -275,7 +285,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           <ClubIcon c={c} size={64} />
           <p className="font-display text-[1.2941rem] text-(--brand)">{c.name}</p>
           {c.description && <p className="text-[0.8235rem] text-(--text-secondary)">{c.description}</p>}
-          <p className="text-[0.7059rem] text-(--text-muted)">{c.privacy === 'open' ? 'Anyone on Rabbit can join.' : 'Admins approve new members.'}</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on Rabbit can join.' : 'Admins approve new members.'}</p>
           {c.requested ? (
             <Button variant="default" className="h-11 px-5 text-[0.7647rem]" loading={busy}
               onClick={() => { setBusy(true); void act(() => cancelJoinRequest(c.id), 'Request withdrawn.').finally(() => setBusy(false)) }}>Requested · withdraw</Button>

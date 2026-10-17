@@ -5,7 +5,7 @@
 //   * UpcomingDates: a repeating event's next dates, skip one or bring it back;
 //   * CalendarSync (Events screen): the private calendar link Google / Apple subscribe to.
 import { useEffect, useState } from 'react'
-import { CalendarCheck, CalendarDays, CalendarPlus, Check, Copy, Download, ExternalLink, Link2, RotateCcw, Undo2, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, CalendarPlus, Check, Copy, Download, ExternalLink, Link2, Ellipsis, RotateCcw, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/plan/ui'
 import { openPlanDay } from '@/lib/plancal'
@@ -162,16 +162,32 @@ export function CalendarSync() {
     catch { setError('Couldn’t copy. Press and hold the link to copy it.') }
   }
   if (!feed) return null
+  // A plain card (not a settings group): no row separators running into the buttons.
   return (
-    <Card className="flex flex-col gap-2.5 p-4">
+    <section aria-label="Keep your calendar in sync" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)" aria-hidden><Link2 className="size-4.5" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[0.8235rem] font-semibold text-(--text)">Keep your calendar in sync</p>
+          <p role="heading" aria-level={3} className="text-[0.8235rem] font-semibold text-(--text)">Keep your calendar in sync</p>
           <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
-            A private link your Google or Apple calendar follows: your events (with their repeats) and your plan’s workouts, updated on their own.
+            {feed.on ? 'Your Google or Apple calendar follows your events and workouts on its own.'
+              : 'One private link: your events and plan workouts show up in Google or Apple Calendar and stay updated.'}
           </p>
         </div>
+        {feed.on && (
+          <details className="relative shrink-0">
+            <summary aria-label="Calendar link options"
+              className="flex size-11 cursor-pointer list-none items-center justify-center rounded-lg text-(--text-muted) active:bg-(--bg-inset) [&::-webkit-details-marker]:hidden">
+              <Ellipsis className="size-4" aria-hidden />
+            </summary>
+            <div className="absolute right-0 top-12 z-20 flex w-52 flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) py-1 shadow-lg">
+              <button type="button" className="min-h-11 px-3.5 text-left text-[0.7647rem] text-(--text) active:bg-(--bg-inset)"
+                disabled={busy != null} onClick={() => void make()}>Make a new link</button>
+              <button type="button" className="min-h-11 px-3.5 text-left text-[0.7647rem] text-(--danger) active:bg-(--bg-inset)"
+                disabled={busy != null} onClick={() => void stop()}>Turn off</button>
+            </div>
+          </details>
+        )}
       </div>
       {feed.url ? (
         <>
@@ -182,14 +198,14 @@ export function CalendarSync() {
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <a href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feed.webcal ?? feed.url)}`} target="_blank" rel="noopener noreferrer"
-              className="flex min-h-11 items-center gap-1.5 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text)">
-              <ExternalLink className="size-4" aria-hidden /> Add to Google Calendar
+              className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-[0.7647rem] font-medium text-(--text) active:bg-(--bg-inset)">
+              <ExternalLink className="size-4 shrink-0" aria-hidden /> Google
             </a>
             {feed.webcal && (
-              <a href={feed.webcal} className="flex min-h-11 items-center gap-1.5 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text)">
-                <CalendarPlus className="size-4" aria-hidden /> Apple Calendar
+              <a href={feed.webcal} className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-[0.7647rem] font-medium text-(--text) active:bg-(--bg-inset)">
+                <CalendarPlus className="size-4 shrink-0" aria-hidden /> Apple
               </a>
             )}
           </div>
@@ -198,17 +214,13 @@ export function CalendarSync() {
           </p>
         </>
       ) : feed.on ? (
-        <p className="text-[0.7059rem] text-(--text-secondary)">Your link is on. Rabbit can’t show it again; make a new one if you need it (the old one stops working).</p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button variant={feed.on ? 'default' : 'primary'} className="h-11 px-3 text-[0.7647rem]" loading={busy === 'make'} onClick={() => void make()}>
-          {feed.on ? 'Make a new link' : 'Get my calendar link'}
+        <p className="text-[0.7059rem] text-(--text-secondary)">Your link is on. Rabbit can’t show it again; use ··· to make a new one (the old one stops working).</p>
+      ) : (
+        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy === 'make'} onClick={() => void make()}>
+          Get my calendar link
         </Button>
-        {feed.on && (
-          <Button variant="ghost" className="h-11 px-3 text-[0.7647rem] text-(--danger)" loading={busy === 'stop'} onClick={() => void stop()}>Turn off</Button>
-        )}
-      </div>
+      )}
       {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
-    </Card>
+    </section>
   )
 }

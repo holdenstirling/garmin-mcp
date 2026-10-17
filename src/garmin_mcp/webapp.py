@@ -3228,8 +3228,50 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             loc = _cm_home(uid)
             m = _cd.metro(loc.get("city"), loc.get("state"))
             return partners.near(m.city, m.state, query=q) if m else []
+        # Public events (publicevents.py): events their owner marked Public, findable by people in
+        # the same area (Local, search), with "I'm going". Re-synced on every events write.
+        from . import publicevents as _pev
+        _pubev = _pev.PublicEvents(store, blocked=soc.blocked_between)
+
+        def _pubev_sync(uid: str) -> None:
+            try:
+                evs = list((store.user_doc(uid, "events").load().get("events") or {}).values())
+                _pubev.sync(uid, evs, _cm_home(uid))
+            except Exception as e:  # never break the event save
+                log_event(logger, logging.WARNING, "public_events_sync_failed", error=type(e).__name__)
+        _ag._store.on_user_write(lambda uid, name: _pubev_sync(uid) if name == "events" and soc.is_athlete(uid) else None)
+
+        def _pubev_near(uid: str, q: str = "", activity: str = "") -> list[dict[str, Any]]:
+            return _pubev.nearby(uid, _cm_home(uid), _ag._now(uid).date(), q=q, activity=activity,
+                                 name=lambda o: (_soc_person(o) or {}).get("name"))
+
+        async def public_events_get(request: Request, user_id: str) -> Response:
+            q = (request.query_params.get("q") or "")[:60]
+            act = request.query_params.get("activity") or ""
+            if act and act not in _pev.sports.IDS:
+                return _err(400, "Unknown sport.")
+            home = await anyio.to_thread.run_sync(_cm_home, user_id)
+            rows = await anyio.to_thread.run_sync(lambda: _pubev_near(user_id, q, act))
+            label = ", ".join(x for x in (home.get("city"), home.get("state")) if x)
+            return JSONResponse({"events": rows, "area": label})
+
+        async def public_events_going(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            if not isinstance(body, dict) or not isinstance(body.get("key"), str) or not isinstance(body.get("going"), bool):
+                return _err(400, "Send {key, going}.")
+            key, going = body["key"][:120], body["going"]
+            try:
+                out = await anyio.to_thread.run_sync(lambda: _pubev.set_going(user_id, key, going, _cm_home(user_id)))
+            except _pev.PublicEventError as e:
+                return _err(e.status, str(e))
+            return JSONResponse(out)
+        friends_routes += [
+            Route("/app/api/events/public", _api(public_events_get, mutating=False), methods=["GET"]),
+            Route("/app/api/events/public/going", _api(public_events_going, mutating=True), methods=["POST"]),
+        ]
+
         _search = _srch.Search(
-            today=lambda u: _ag._now(u).date(), partners=_srch_partners,
+            today=lambda u: _ag._now(u).date(), partners=_srch_partners, public_events=_pubev_near,
             people=lambda u: {"following": [{"user_id": x} for x in soc.following_ids(u)],
                               "followers": [{"user_id": x} for x in soc.follower_ids(u)]},
             person=_soc_person, clubs=lambda u, q: clb.overview(u, q=q), directory=_srch_dir,

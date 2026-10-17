@@ -42,6 +42,10 @@ export type RaceEvent = {
   id: string; name: string; type: EventType; distance: string; date: string
   kind?: EventKind; end_date?: string | null; time?: string | null; recurring?: Recurring | null
   neighborhood?: string; in_plan?: boolean | null; seq?: number; series_id?: string | null
+  /** the sport from the dropdown (lib/sports); activity_other names "Something else" */
+  activity?: string | null; activity_other?: string
+  /** private (only you; the default) or public (people near you find it in Local) */
+  visibility?: 'private' | 'public'
   /** from the server: "Every Tuesday and Thursday", the iCalendar rule, the next dates */
   repeat_text?: string; rrule?: string; next_dates?: string[]
   google_url?: string | null; plan?: PlanLink | null
@@ -195,3 +199,15 @@ export function isUpcoming(e: RaceEvent): boolean {
 }
 /** The date the event card counts down to: the next date of a repeating event. */
 export const nextDate = (e: RaceEvent) => (e.recurring && e.next_dates?.[0]) || e.date
+
+/** Someone else's public event near you (server: publicevents.py). */
+export type PublicEvent = {
+  key: string; name: string; kind: EventKind; type: EventType | null; activity: string | null; activity_label: string | null
+  next_date: string; next_dates: string[]; time: string | null; duration_min: number | null; repeat_text: string | null
+  neighborhood: string; location: string; url: string; city: string; state: string
+  going: number; my_going: boolean; host: string
+}
+export const listPublicEvents = (q = '', activity = '') =>
+  getJSON<{ events: PublicEvent[]; area: string }>(`/api/events/public?${new URLSearchParams({ ...(q ? { q } : {}), ...(activity ? { activity } : {}) })}`)
+export const setPublicGoing = (key: string, going: boolean) =>
+  sendJSON<{ key: string; going: number; my_going: boolean }>('POST', '/api/events/public/going', { key, going })
