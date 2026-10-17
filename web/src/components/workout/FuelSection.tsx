@@ -28,7 +28,7 @@ function Row({ label, part, children, first }: { label: string; part: FuelPart; 
       <span className="w-[3.6rem] shrink-0 pt-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{label}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[0.8235rem] leading-snug text-(--text)">
-          {part.when && <b className="font-semibold">{part.when}: </b>}{part.headline}
+          {part.when ? <><b className="font-semibold">{part.when}: </b>{part.headline}</> : <b className="font-semibold">{part.headline}</b>}
         </p>
         {children}
         <Chips items={part.items} />
@@ -63,7 +63,7 @@ export function FuelSection({ fp, ahead, onSaved }: { fp: FuelPlan; ahead: boole
         </Row>
         <Row label="During" part={{ ...d, when: undefined, tip: d.note ?? null }}>
           <p className="mt-0.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
-            {d.carbs_g_per_h > 0 ? <><b className="font-semibold text-(--text)">{d.plan}</b>{d.start ? `. ${d.start}` : ''}</> : d.plan}
+            {d.carbs_g_per_h > 0 ? <><span className="text-(--text)">{d.plan}</span>{d.start ? `. ${d.start}` : ''}</> : d.plan}
           </p>
           {(d.fluids || d.sodium) && (
             <p className="mt-0.5 text-[0.7059rem] text-(--text-muted)">
@@ -109,7 +109,7 @@ function FuelPrefsSheet({ fp, onClose, onSaved }: { fp: FuelPlan; onClose: () =>
       footer={(
         <div className="flex flex-col gap-2">
           {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
-          <Button className="h-11 w-full" loading={busy} onClick={() => void save()}>Save</Button>
+          <Button variant="primary" className="h-11 w-full" loading={busy} onClick={() => void save()}>Save</Button>
         </div>
       )}>
       <div className="flex flex-col gap-3 p-4">
