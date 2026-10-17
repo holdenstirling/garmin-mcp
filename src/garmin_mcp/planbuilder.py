@@ -348,6 +348,12 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
     pace = float(css) + 12 if isinstance(css, int | float) and 50 <= css <= 240 else 125.0
     level_given = athlete.get("level") in LEVELS
     level = athlete.get("level") if level_given else "intermediate"
+    # "How hard should it feel?" (Adjust my plan): gentle is one level easier (fewer hard
+    # sessions, lower defaults), push one harder. The progression caps apply either way.
+    shift = {"gentle": -1, "push": 1}.get(str(athlete.get("plan_intensity") or ""), 0)
+    if shift:
+        order = list(LEVELS)
+        level = order[max(0, min(len(order) - 1, order.index(level) + shift))]
     def _pos(k: str) -> float | None:
         v = athlete.get(k)
         return float(v) if isinstance(v, int | float) and not isinstance(v, bool) and v > 0 else None
@@ -519,7 +525,10 @@ def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> di
     li = DAYS.index(long_day)
     after = DAYS[(li + 1) % 7]
     before = DAYS[(li - 1) % 7]
-    run_long_day = after if after in days else before if before in days else long_day
+    # Triathlon / multisport: long ride (or brick) on the long day, long run the day after (or
+    # before). A running plan has no long ride, so its long run goes on the long day itself.
+    bike_long = any(s["kind"] == "brick" or (s["kind"] == "long" and s["sport"] == "bike") for s in sessions)
+    run_long_day = (after if after in days else before if before in days else long_day) if bike_long else long_day
 
     def put(day: str, s: dict[str, Any]) -> None:
         out[day].append(s)

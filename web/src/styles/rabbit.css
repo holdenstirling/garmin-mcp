@@ -427,3 +427,11 @@ html.kb-open .tab-bar { display: none; }
 /* The tab's icon and label never take the tap themselves: the Home rabbit's twitch remounts its
    icon on pointer-down, and a tap whose target disappears mid-press never becomes a click. */
 .tab-bar__item > * { pointer-events: none; }
+/* Tall sheets (forms with several sections: session editor, Adjust my plan, weekly check-in):
+   nearly full height so every section is reachable by scrolling the body, with the footer
+   (Save / Cancel) pinned and the keyboard accounted for (--vv-h, lib/viewport.ts). */
+.modal.modal--tall {
+  height: min(92vh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
+  max-height: min(92vh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
+}
+.modal-body { -webkit-overflow-scrolling: touch; }

@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
@@ -30,12 +30,15 @@ import { athleteChat } from '@/lib/coach'
 import { OwnPlanImport } from './PlanImport'
 import { importApi, type ImportStatus } from '@/lib/planimport'
 import { TPCalendarList, TPDayItems, TPPlanBar, TPWorkoutSheet, useTrainingPeaks } from './TPItems'
+import { AdjustPlanSheet, RaceSwitcher, UndoBar, WeekCheckCard } from './PlanFlow'
+import { PLAN_RELOAD_EVENT } from '@/lib/planflow'
+import type { AthleteFull } from '@/lib/plan'
 
 type Editing = { session: PlanSession | null; date: string }
 const OWN = planApi()
 const OWN_IMPORT = importApi('/api')
 
-export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout, addRequest, onAddHandled, onOpenEvent }: {
+export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged, onMeChanged, onOpenEvents, api = OWN, coachMode, readOnly, onMessage, messageLabel, onOpenWorkout, addRequest, onAddHandled, onOpenEvent }: {
   me: Me
   goalTitle: string
   /** none when it is the Plan tab page (no X) */
@@ -135,8 +138,13 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   useEffect(() => {
     const on = () => { load(); loadCal() }
     window.addEventListener(PACES_CHANGED_EVENT, on)
-    return () => window.removeEventListener(PACES_CHANGED_EVENT, on)
+    window.addEventListener(PLAN_RELOAD_EVENT, on)
+    return () => { window.removeEventListener(PACES_CHANGED_EVENT, on); window.removeEventListener(PLAN_RELOAD_EVENT, on) }
   }, [load, loadCal])
+  // Adjust my plan (levers), its Undo, and the weekly check-in on demand.
+  const [adjusting, setAdjusting] = useState(false)
+  const [undo, setUndo] = useState<string | null>(null)
+  const [checkIn, setCheckIn] = useState(false)
 
   const close = onClose && (() => { setClosing(true); setTimeout(onClose, 200) })
   const closeSheet = () => { setSheetClosing(true); setTimeout(() => { setEditing(null); setSheetClosing(false) }, 200) }
@@ -238,20 +246,38 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
   return (
     <Screen title="Your plan" subtitle={`${goalTitle} · ${raceDay}`} closing={closing} onClose={close}>
-      {/* Season: one line; the phase chart is under "Season overview" below the calendar */}
-      <div className="px-1">
-        <p className="text-[0.8235rem] text-(--text-secondary)">
-          <span className="font-semibold text-(--brand)">{daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}</span>
-          {plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}
-        </p>
-        {plan.origin && (
+      {/* Which race the plan trains for (switch: each race keeps its plan) + Adjust my plan */}
+      {coachMode ? (
+        <div className="px-1">
+          <p className="text-[0.8235rem] text-(--text-secondary)">
+            <span className="font-semibold text-(--brand)">{daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}</span>
+            {plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <RaceSwitcher title={goalTitle} date={plan.race_date}
+            sub={`${daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}${plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}`}
+            onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
+            onAddRace={onOpenEvents} onBuild={onRebuild} />
+          {!readOnly && (
+            <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => setAdjusting(true)}>
+              <SlidersHorizontal className="size-4" aria-hidden /> Adjust my plan
+            </Button>
+          )}
+          {undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
+          {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}
+        </div>
+      )}
+      {plan.origin && (
+        <div className="px-1">
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7647rem] text-(--text-secondary)">
             {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : plan.origin.kind === 'block' ? `Built for ${plan.origin.name ?? 'your training block'}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
             {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
             {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>}
           </p>
-        )}
-      </div>
+        </div>
+      )}
       {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
       {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
       {!coachMode && suggestions.map((t) => (
@@ -275,6 +301,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
       <PlanCalendar plan={plan} cal={planCal} imperial={imperial} today={today} week={week} onWeek={setWeekIdx}
+        onAdjust={!coachMode && !readOnly ? () => setAdjusting(true) : undefined}
         editable={!coachMode && !readOnly} unread={unread} busyLabel={busyLabel}
         onOpen={(s, date) => setEditing({ session: s, date })}
         onAdd={readOnly ? undefined : (date) => setEditing({ session: null, date })}
@@ -399,6 +426,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           } : undefined} />
       )}
       <TPWorkoutSheet tp={tp} today={today} imperial={imperial} onToast={setNote} />
+      {adjusting && <AdjustPlanSheet athlete={me.athlete as Partial<AthleteFull>} onClose={() => setAdjusting(false)}
+        onApplied={(p, id) => { applied(p); setUndo(id); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null) }}
+        onCheckIn={() => setCheckIn(true)} />}
+      {checkIn && <WeekCheckCard force onApplied={(p) => applied(p)} onClose={() => setCheckIn(false)} />}
     </Screen>
   )
 }

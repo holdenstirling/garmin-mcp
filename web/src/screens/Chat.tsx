@@ -37,6 +37,7 @@ import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
 import { MonthRecapSheet, PartnersScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
+import { RaceSwitcher } from '@/components/plan/PlanFlow'
 import { CelebrationHost } from '@/components/reward/CelebrationHost'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
@@ -990,6 +991,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     return (
       <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
         <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
+          {goal && <RaceSwitcher title={goal.title} date={goal.date} sub="No plan for this race yet"
+            onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
           {weekLead}
           <TPPlanSection imperial={me.athlete.units === 'imperial'} />
           {goal?.plan ? (

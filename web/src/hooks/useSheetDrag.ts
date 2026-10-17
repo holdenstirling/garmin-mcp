@@ -27,7 +27,7 @@ type Sample = { y: number; t: number }
 export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolean; onEscape?: () => void } = {}) {
   const bodyDrags = opts.bodyDrags ?? true
   const ref = useRef<HTMLDivElement | null>(null)
-  const g = useRef<{ startY: number; active: boolean; samples: Sample[]; dy: number } | null>(null)
+  const g = useRef<{ startY: number; active: boolean; inBody: boolean; decided: boolean; samples: Sample[]; dy: number } | null>(null)
   const done = useRef(false)
   // Escape: `onEscape` when given (components/ui/Sheet animates its exit), else dismiss now.
   useDialog(ref, opts.onEscape ?? onDismissed)
@@ -51,9 +51,13 @@ export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolea
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (done.current) return
-    const body = (e.target as HTMLElement).closest('.modal-body')
+    const target = e.target as HTMLElement
+    const body = target.closest('.modal-body')
     const y = e.touches[0]!.clientY
-    g.current = { startY: y, active: !body || (bodyDrags && body.scrollTop <= 0),
+    // Form controls and inner scrollers keep their own gestures (sliders, text selection,
+    // sideways chip rows, a scrolled list inside the body).
+    const own = !!target.closest('input[type=range], textarea, select, [data-no-sheet-drag]')
+    g.current = { startY: y, active: !own && (!body || (bodyDrags && body.scrollTop <= 0)), inBody: !!body, decided: !body,
       samples: [{ y, t: performance.now() }], dy: 0 }
   }, [bodyDrags])
 
@@ -61,6 +65,15 @@ export function useSheetDrag(onDismissed: () => void, opts: { bodyDrags?: boolea
     const s = g.current
     if (!s?.active || done.current) return
     const y = e.touches[0]!.clientY
+    // In the body, the first few pixels decide: a pull down at the top drags the sheet; a
+    // push up scrolls the content (the sheet never rubber-bands against a scroll).
+    if (!s.decided) {
+      const raw0 = y - s.startY
+      if (Math.abs(raw0) < 6) return
+      s.decided = true
+      if (raw0 < 0) { s.active = false; return }
+      s.startY = y
+    }
     const now = performance.now()
     s.samples.push({ y, t: now })
     while (s.samples.length > 2 && now - s.samples[0]!.t > SAMPLE_MS) s.samples.shift()

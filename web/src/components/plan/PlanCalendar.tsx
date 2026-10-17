@@ -378,7 +378,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
 }
 
 // ------------------------------------------------------------- calendar --
-export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra, onStart, onAsk, onOpenSession }: {
+export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editable, unread, busyLabel, onOpen, onAdd, onResult, moving, onMoving, hidden, dayExtra, onStart, onAsk, onOpenSession, onAdjust }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   week: PlanWeekBuilt; onWeek: (index: number) => void
   /** drag, Move, Fix and goals (the athlete's own plan) */
@@ -399,6 +399,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   onAsk?: (s: PlanSession, date: string) => void
   /** tap a session: its full workout page (default: the rabbit:open-workout event) */
   onOpenSession?: (s: PlanSession, date: string) => void
+  /** Plan overview's "Adjust my plan" (levers sheet in PlanEditor) */
+  onAdjust?: () => void
 }) {
   const openPage = onOpenSession ?? ((s: PlanSession, date: string) => openWorkoutPage(s.id, date))
   const first = plan.weeks[0]!.days[0]!.date
@@ -709,7 +711,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
       {moving && cal && <MoveSheet key={`${moving.session.id}:${moving.mode ?? 'move'}`} session={moving.session} from={moving.date} initialMode={moving.mode}
         plan={plan} cal={cal} today={today} onClose={() => onMoving(null)} run={run} />}
-      {overview && <PlanOverview plan={plan} onClose={() => setOverview(false)} onWeek={(i) => { onWeek(i); setView('week') }} />}
+      {overview && <PlanOverview plan={plan} onAdjust={onAdjust ? () => { setOverview(false); onAdjust() } : undefined} onClose={() => setOverview(false)} onWeek={(i) => { onWeek(i); setView('week') }} />}
       {fix && cal && cal.sessions[fix.s.id] && (
         <FixSheet s={fix.s} date={fix.date} c={cal.sessions[fix.s.id]!} plan={plan} cal={cal} today={today} onClose={() => setFix(null)} run={run} />
       )}

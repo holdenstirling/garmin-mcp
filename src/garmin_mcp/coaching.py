@@ -51,7 +51,9 @@ _ATHLETE_NUM = {
 _ATHLETE_ENUM = {"sex": ("female", "male", "other"), "level": ("new", "intermediate", "advanced"),
                  "units": ("metric", "imperial"), "heat_tolerance": ("low", "normal", "high"),
                  "sweat": ("light", "average", "heavy", "salty"),
-                 "coach_status": ("have_coach", "looking", "self_coached")}
+                 "coach_status": ("have_coach", "looking", "self_coached"),
+                 # Plan feel (planbuilder.inputs_from): gentle = one level easier, push = one harder.
+                 "plan_intensity": ("gentle", "normal", "push")}
 _WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
 _FAVORITES = ("run", "trail", "bike", "gravel", "mtb", "swim", "open_water", "strength", "yoga",
@@ -464,6 +466,26 @@ class CoachStore:
                 goal["plan_source"] = "uploaded"
             return dict(goal)
         return self._goals_doc(user_id).update(apply)
+
+    def activate_goal(self, user_id: str, goal_id: str) -> dict[str, Any]:
+        """Make an earlier (archived) goal the active one again; the current one is archived.
+        Each goal keeps its own plan doc, so its plan comes back as it was."""
+        now = int(self._clock())
+
+        def apply(d: dict[str, Any]) -> dict[str, Any]:
+            goals = d.get("goals", {})
+            goal = goals.get(goal_id)
+            if goal is None:
+                raise CoachError("goal not found")
+            prev = d.get("active")
+            if prev and prev != goal_id and prev in goals:
+                goals[prev]["archived_at"] = goals[prev].get("archived_at") or now
+            goal["archived_at"] = None
+            d["active"] = goal_id
+            return dict(goal)
+        goal = self._goals_doc(user_id).update(apply)
+        self.coach_thread(user_id)  # the goal's pinned log
+        return goal
 
     def archive_goal(self, user_id: str, goal_id: str) -> None:
         def apply(d: dict[str, Any]) -> None:
