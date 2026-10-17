@@ -114,3 +114,5 @@ export const MonthRecapSheet = split(() => import('@/components/reward/MonthReca
 // Shared training blocks (blocks.py): the block page and the create flow
 export const BlockScreen = split(() => import('@/components/blocks/BlockScreen').then((m) => m.BlockScreen))
 export const UsageScreen = split(() => import('@/components/settings/UsageScreen').then((m) => m.UsageScreen))
+// Me -> Partners (owners only)
+export const PartnersScreen = split(() => import('@/components/settings/PartnersScreen').then((m) => m.PartnersScreen))

@@ -1,7 +1,7 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Connected apps and Settings. Friends
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
-import { ChartColumn, ClipboardList, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { ChartColumn, ClipboardList, Handshake, KeyRound, Mail, Plug, Search, Settings, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -14,7 +14,7 @@ import { goalCountdown, type Goal, type Me } from '@/lib/api'
 import type { Progress } from '@/lib/progress'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
-  | 'connections' | 'access' | 'usage'
+  | 'connections' | 'access' | 'usage' | 'partners'
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
@@ -95,6 +95,7 @@ export function MePage({ me, goal, progress, onOpen, onClose }: {
         <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title={me.can_invite ? 'Sign-in and invites' : 'Sign-in'}
           subtitle={me.can_invite ? 'Passkeys, invite links, members' : 'Passkeys on your devices'} onClick={() => onOpen('access')} />
         {me.owner && <Row icon={<Icon tone="muted"><ChartColumn /></Icon>} title="Usage" subtitle="Anonymous counts, last 30 days" onClick={() => onOpen('usage')} />}
+        {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
       </Group>
     </Screen>
   )

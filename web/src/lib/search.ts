@@ -2,6 +2,7 @@
 // device. Picking a result fires SEARCH_OPEN_EVENT; screens/Chat.tsx routes it to the right tab.
 import { getJSON } from '@/lib/api'
 import { openPlanDay } from '@/lib/plancal'
+import type { Partner } from '@/lib/clubdir'
 
 export type SearchPerson = { id: string; name: string; photo?: number | null; picture?: string; relation: string }
 export type SearchClub = { id: string; name: string; city: string; members?: number | null; mine: boolean; source: 'club' | 'directory'; kind?: string }
@@ -10,6 +11,8 @@ export type SearchSession = { id: string; date: string; title: string; sport: st
 export type SearchWorkout = { id: number; date: string; name: string; sport: string; minutes: number | null; km: number | null }
 export type SearchResults = {
   q: string
+  /** The owner's partners near you that fit the query (always labelled "Partner"). */
+  partners?: Partner[]
   people: SearchPerson[]; clubs: SearchClub[]; events: SearchEvent[]; sessions: SearchSession[]; workouts: SearchWorkout[]
 }
 export type SearchPick =

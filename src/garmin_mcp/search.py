@@ -2,6 +2,8 @@
 
 Groups, each capped at ``PER_GROUP`` and each best effort (a failing source is just empty):
 
+* ``partners``: the app owner's partners for my home metro (partners.py) whose name matches or
+  when the query is about that kind of group ("run club"); always labelled "Partner".
 * ``people``: people I follow or who follow me (social.people), matched on first name.
 * ``clubs``: my clubs, clubs I could join (clubs.discover, which already skips blocked owners
   and full clubs), and the public clubs & leagues directory for my metro.
@@ -19,6 +21,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
+from .clubdir import name_match
 from .planbuilder import iter_sessions
 from .stats import _rows
 
@@ -27,7 +30,7 @@ logger = logging.getLogger(__name__)
 PER_GROUP = 5
 MIN_LEN = 2
 MAX_LEN = 60
-GROUPS = ("people", "clubs", "events", "sessions", "workouts")
+GROUPS = ("partners", "people", "clubs", "events", "sessions", "workouts")
 SPORT_WORD = {"run": "run running", "bike": "bike ride cycling", "swim": "swim swimming",
               "brick": "brick", "strength": "strength gym", "rest": "rest", "other": "workout"}
 
@@ -57,10 +60,12 @@ class Search:
                  directory: Callable[[str], list[dict[str, Any]]] | None = None,
                  events: Callable[[str], list[dict[str, Any]]] | None = None,
                  plan: Callable[[str], dict[str, Any] | None] | None = None,
-                 activities: Callable[[str], list[dict[str, Any]]] | None = None) -> None:
+                 activities: Callable[[str], list[dict[str, Any]]] | None = None,
+                 partners: Callable[[str, str], list[dict[str, Any]]] | None = None) -> None:
         self._today, self._people, self._person = today, people, person
         self._clubs, self._directory, self._events = clubs, directory, events
         self._plan, self._acts = plan, activities
+        self._partners = partners
 
     def run(self, uid: str, q: Any) -> dict[str, Any]:
         query = norm(q)
@@ -68,6 +73,8 @@ class Search:
         if len(query) < MIN_LEN:
             return out
         words = query.split()
+        if self._partners is not None:
+            out["partners"] = _safe("partners", lambda: self._partners(uid, query)[:2])  # type: ignore[misc]
         out["people"] = _safe("people", lambda: self.people(uid, words))
         out["clubs"] = _safe("clubs", lambda: self.clubs(uid, query, words))
         out["events"] = _safe("events", lambda: self.events(uid, words))
@@ -109,7 +116,8 @@ class Search:
                                 "mine": False, "source": "club"})
         if self._directory is not None and len(out) < PER_GROUP:
             for x in self._directory(uid):
-                if matches(words, x.get("name"), x.get("kind_label"), x.get("meet_spot"), x.get("description")):
+                if matches(words, x.get("name"), x.get("kind_label"), x.get("meet_spot"), x.get("description")) \
+                        or name_match(" ".join(words), x.get("name")):
                     out.append({"id": x["id"], "name": x.get("name") or "Group", "city": x.get("meet_spot") or "",
                                 "kind": x.get("kind_label") or "Group", "mine": False, "source": "directory"})
         return out[:PER_GROUP]
