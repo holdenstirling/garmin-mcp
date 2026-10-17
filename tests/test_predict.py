@@ -217,7 +217,9 @@ def test_compact_shape_for_explore() -> None:
 
 # ------------------------------------------------------------------- API --
 def _fixed_clock(agent) -> None:
-    noon = datetime(2026, 10, 14, 12).timestamp()
+    # Noon of the real today: the fake Garmin data is generated relative to the real date, so a
+    # fixed calendar day here stopped matching it a few weeks later (no "recent runs" any more).
+    noon = datetime.combine(date.today(), datetime.min.time()).replace(hour=12).timestamp()
     agent._clock = lambda: noon  # type: ignore[method-assign]
 
 
