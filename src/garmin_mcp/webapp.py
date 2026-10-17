@@ -52,6 +52,8 @@ from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
 from .sources import garmin_recovery, prefs_for, recovery_for, validate as validate_sources
 from .adjust import propose as propose_adjustment
+from . import planflow as _pf
+from .races import RaceDesk as _RaceDesk
 from . import racefit, racepack
 from .profilephoto import MAX_PHOTO, PhotoError, PhotoStore
 from .share import Shares
@@ -1871,6 +1873,110 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return _plan_resp(user_id, plans.get(user_id), applied=0)
         plan = await _plan_call(lambda: plans.apply_adjustment(user_id, prop["changes"]))
         return _plan_resp(user_id, plan, applied=len(prop["changes"]))
+
+    # ------------------------------------------------- races / levers / check-in --
+    # races.py: which race the plan trains for (each goal keeps its plan); planflow.py: the
+    # Review / Adjust summaries and diffs, and the weekly "How was this week?" check-in.
+    def _races() -> Any:
+        assert chat is not None and plans is not None
+        return _RaceDesk(_coach(), plans, chat.agent.events)
+
+    async def races_get(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        return JSONResponse(await _plan_call(lambda: _races().list(user_id, plans.today(user_id))))
+
+    async def races_train(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("id"), str):
+            raise ValueError("body")
+        out = await _plan_call(lambda: _races().train_for(user_id, body["id"]))
+        return _plan_resp(user_id, plans.get(user_id), goal=out["goal"], has_plan=out["has_plan"],
+                          races=await _plan_call(lambda: _races().list(user_id, plans.today(user_id))))
+
+    async def races_tuneup(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("event_id"), str):
+            raise ValueError("body")
+        await _plan_call(lambda: _races().tune_up(user_id, body["event_id"]))
+        return JSONResponse(await _plan_call(lambda: _races().list(user_id, plans.today(user_id))))
+
+    async def plan_preview(request: Request, user_id: str) -> Response:
+        """{athlete?, goal?, start_date?, new_goal?} -> {summary, diff?}: nothing is saved."""
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        a, g = body.get("athlete") or {}, body.get("goal") or None
+        start = body.get("start_date")
+        if not isinstance(a, dict) or (g is not None and not isinstance(g, dict)) or (start is not None and not isinstance(start, str)):
+            raise ValueError("body")
+        new_goal = body.get("new_goal") is True
+
+        def run() -> dict[str, Any]:
+            today = plans.today(user_id)
+            new = plans.preview(user_id, a, g, start=start or None, new_goal=new_goal)
+            out: dict[str, Any] = {"summary": _pf.plan_summary(new, today)}
+            cur = None if new_goal else plans.get(user_id)
+            if cur:
+                out["diff"] = _pf.plan_diff(cur, new, today)
+            return out
+        return JSONResponse(await _plan_call(run))
+
+    async def plan_levers(request: Request, user_id: str) -> Response:
+        """{levers: {available_days?, long_day?, weekly_hours?, plan_intensity?}, start_date?}."""
+        assert plans is not None
+        body = await read_json(request)
+        lv = body.get("levers") if isinstance(body, dict) else None
+        start = body.get("start_date") if isinstance(body, dict) else None
+        if not isinstance(lv, dict) or (start is not None and not isinstance(start, str)):
+            raise ValueError("body")
+        plan, undo = await _plan_call(lambda: plans.apply_levers(user_id, lv, start or None))
+        return _plan_resp(user_id, plan, undo=undo)
+
+    async def plan_levers_undo(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("id"), str):
+            raise ValueError("body")
+        return _plan_resp(user_id, await _plan_call(lambda: plans.undo_levers(user_id, body["id"])))
+
+    async def weekcheck_get(request: Request, user_id: str) -> Response:
+        assert plans is not None
+        return JSONResponse(await _plan_call(lambda: _pf.checkin_due(
+            plans.get(user_id), plans.today(user_id), plans.checkin_answered(user_id))))
+
+    async def weekcheck_post(request: Request, user_id: str) -> Response:
+        """{answers, action: preview|apply|skip, id?}: preview proposes next week's changes;
+        apply re-checks the id (409 when the plan changed) and applies; skip just records."""
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or body.get("action") not in ("preview", "apply", "skip"):
+            raise ValueError("body")
+        try:
+            answers = _pf.clean_answers(body.get("answers") or {})
+        except ValueError as e:
+            raise _UserError(f"Check your answer for {str(e).replace('_', ' ')}.") from None
+
+        def run() -> dict[str, Any] | JSONResponse:
+            plan = plans.get(user_id)
+            today = plans.today(user_id)
+            prop = _pf.checkin_proposal(plan, today, answers)
+            due = _pf.checkin_due(plan, today, plans.checkin_answered(user_id))
+            week = due.get("week_start") or prop.get("week_start") or today.isoformat()
+            if body["action"] == "preview":
+                return {"proposal": prop}
+            if body["action"] == "skip" or prop.get("status") != "suggest":
+                plans.mark_checkin(user_id, week, answers)
+                return {"proposal": prop, "applied": 0, "plan": public_plan(plan, today)}
+            if prop.get("id") != body.get("id"):
+                return _err(409, "Your plan changed since these suggestions. Take another look.")
+            new = plans.apply_adjustment(user_id, prop["changes"])
+            plans.mark_checkin(user_id, week, answers)
+            return {"proposal": prop, "applied": len(prop["changes"]), "plan": public_plan(new, today)}
+        out = await _plan_call(run)
+        return out if isinstance(out, JSONResponse) else JSONResponse(out)
 
     async def racepack_get(request: Request, user_id: str) -> Response:
         assert chat is not None and plans is not None
@@ -4195,6 +4301,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/about", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),
+        Route("/app/api/races", _plan_api(races_get, mutating=False), methods=["GET"]),
+        Route("/app/api/races/train", _plan_api(races_train, mutating=True), methods=["POST"]),
+        Route("/app/api/races/tuneup", _plan_api(races_tuneup, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/preview", _plan_api(plan_preview, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/levers", _plan_api(plan_levers, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/levers/undo", _plan_api(plan_levers_undo, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/weekcheck", _plan_api(weekcheck_get, mutating=False), methods=["GET"]),
+        Route("/app/api/plan/weekcheck", _plan_api(weekcheck_post, mutating=True), methods=["POST"]),
         Route("/app/api/plan/travel/{trip_id}", _plan_api(travel_remove, mutating=True), methods=["DELETE"]),
         Route("/app/api/coaches", _plan_api(coaches_get, mutating=False), methods=["GET"]),
         Route("/app/api/coaches", _plan_api(coach_invite, mutating=True), methods=["POST"]),

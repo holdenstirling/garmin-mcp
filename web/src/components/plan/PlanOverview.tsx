@@ -1,6 +1,8 @@
 // "Plan overview": what the plan prescribes from today to race day. Each phase with its dates,
 // weeks and hours, what it's for, and the weekly hours chart (tap a week to open it).
+import { SlidersHorizontal } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
+import { Button } from '@/components/ui/button'
 import { PHASE_LABEL, placedEventLabel, type BuiltPlan, type PlanWeekBuilt } from '@/lib/plan'
 import { cn } from '@/lib/utils'
 import { PhaseStrip, fmtDay } from './PlanParts'
@@ -24,7 +26,7 @@ function blocks(plan: BuiltPlan): Block[] {
   return out
 }
 
-export function PlanOverview({ plan, onWeek, onClose }: { plan: BuiltPlan; onWeek: (index: number) => void; onClose: () => void }) {
+export function PlanOverview({ plan, onWeek, onClose, onAdjust }: { plan: BuiltPlan; onWeek: (index: number) => void; onClose: () => void; onAdjust?: () => void }) {
   const cur = plan.current_week
   return (
     <Sheet title="Plan overview" onClose={onClose} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
@@ -32,6 +34,11 @@ export function PlanOverview({ plan, onWeek, onClose }: { plan: BuiltPlan; onWee
         {plan.weeks.length} weeks to race day ({fmtDay(plan.race_date, { weekday: 'short', month: 'short', day: 'numeric' })}),
         building from about {plan.start_hours}h to {plan.peak_hours}h a week. Tap a week to open it.
       </p>
+      {onAdjust && (
+        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onAdjust}>
+          <SlidersHorizontal className="size-4" aria-hidden /> Adjust my plan
+        </Button>
+      )}
       <div className="rounded-xl border border-(--border) bg-(--bg-surface) p-3">
         <PhaseStrip plan={plan} selected={cur ?? undefined} onSelect={(i) => { onWeek(i); onClose() }} />
       </div>

@@ -16,9 +16,10 @@ import {
   setupPlan, sportsFor, syncGarmin, weeksUntil,
   type AthleteFull, type BuiltPlan, type GoalFull, type SyncResult,
 } from '@/lib/plan'
-import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, StepIntro, areaCls, inputCls } from './ui'
+import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, StepIntro, areaCls } from './ui'
 import { PhaseStrip, SPORT_ICON, WeekPreview } from './PlanParts'
 import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
+import { LeverFields, PlanSummaryView, usePreview } from './PlanFlow'
 import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
 import { track } from '@/lib/usage'
@@ -201,18 +202,26 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
     } finally { setBusy(false) }
   }
 
+  // What the server builds from (setup and the live Review preview send the same thing).
+  const payload = () => {
+    const goal: Partial<GoalFull> = { ...g }
+    const dist = DISTANCES.find((d) => d.value === g.distance)
+    goal.title = (g.title || g.event || dist?.label || 'My race').trim()
+    if (g.goal_type !== 'time') goal.target_time = null
+    const athlete: Partial<AthleteFull> = { ...a }
+    for (const k of Object.keys(athlete) as (keyof AthleteFull)[]) {
+      if (athlete[k] === '' && k !== 'injuries' && k !== 'experience') delete athlete[k]
+    }
+    if (athlete.long_day && !(athlete.available_days ?? []).includes(athlete.long_day)) athlete.long_day = null
+    return { athlete, goal }
+  }
+  const newGoal = (draft.newGoal && !!me.goal) || !me.goal
+  const preview = usePreview(step === 'review' && !busy ? { ...payload(), start_date: draft.start_date, new_goal: newGoal } : null)
+
   async function build() {
     setBusy(true); setError(null)
     try {
-      const goal: Partial<GoalFull> = { ...g }
-      const dist = DISTANCES.find((d) => d.value === g.distance)
-      goal.title = (g.title || g.event || dist?.label || 'My race').trim()
-      if (g.goal_type !== 'time') goal.target_time = null
-      const athlete: Partial<AthleteFull> = { ...a }
-      for (const k of Object.keys(athlete) as (keyof AthleteFull)[]) {
-        if (athlete[k] === '' && k !== 'injuries' && k !== 'experience') delete athlete[k]
-      }
-      if (athlete.long_day && !(athlete.available_days ?? []).includes(athlete.long_day)) athlete.long_day = null
+      const { athlete, goal } = payload()
       const r = await setupPlan({ athlete, goal, event: draft.event, start_date: draft.start_date, new_goal: draft.newGoal && !!me.goal })
       setPlan(r.plan)
       clearDraft(DRAFT_KEY)
@@ -247,7 +256,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       {idx > 1 && <Button variant="default" className="h-11 px-5 text-[0.8235rem]" onClick={back}>Back</Button>}
       {step === 'review' ? (
         <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void build()}>
-          <Route className="size-4" aria-hidden /> Build my plan
+          <Route className="size-4" aria-hidden /> Start this plan
         </Button>
       ) : (
         <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={next}>
@@ -416,31 +425,35 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
       {step === 'review' && !busy && (
         <>
-          <StepIntro eyebrow="Review" title="Ready to build">
-            Check your answers. You can change anything later and rebuild.
+          <StepIntro eyebrow="Review" title="Here's your plan">
+            Tweak anything below and the plan updates right away. Nothing is saved until you start it.
           </StepIntro>
-          <Card>
-            <ReviewRow label="Race" onEdit={() => setStep('race')}
-              value={[DISTANCES.find((d) => d.value === g.distance)?.label, g.event, g.date && new Date(`${g.date}T12:00:00`).toLocaleDateString([], { dateStyle: 'medium' }), g.priority && `${g.priority} race`].filter(Boolean).join(' · ')} />
-            <ReviewRow label="Goal" onEdit={() => setStep('goal')}
-              value={[g.goal_type === 'time' ? `Target ${g.target_time}` : g.goal_type === 'compete' ? 'Compete' : 'Finish strong',
-                (g.limiters ?? []).length ? `Focus: ${(g.limiters ?? []).join(', ')}` : ''].filter(Boolean).join(' · ')} />
-            <ReviewRow label="You" onEdit={() => setStep('you')}
-              value={[levelLabel(a.level), a.age && `${a.age} yrs`, a.height_cm && (imperial ? `${cmToFtIn(a.height_cm).ft}'${cmToFtIn(a.height_cm).inch}"` : `${a.height_cm} cm`),
-                a.weight_kg && (imperial ? `${kgToLb(a.weight_kg)} lb` : `${a.weight_kg} kg`)].filter(Boolean).join(' · ') || 'Not set'} />
-            <ReviewRow label="Numbers" onEdit={() => setStep('numbers')}
-              value={[a.threshold_hr && `LTHR ${a.threshold_hr}`, a.ftp_w && `FTP ${a.ftp_w} W`,
-                a.run_threshold_pace && `Run ${fmtPace(imperial ? a.run_threshold_pace * KM_PER_MI : a.run_threshold_pace)}/${imperial ? 'mi' : 'km'}`,
-                a.swim_css && `CSS ${fmtPace(a.swim_css)}/100m`].filter(Boolean).join(' · ') || 'Heart-rate zones from Garmin'} />
-            <ReviewRow label="Week" onEdit={() => setStep('week')}
-              value={`${a.weekly_hours ?? '?'} h now · ${(a.available_days ?? []).map((d) => d[0]!.toUpperCase() + d.slice(1)).join(', ')} · long day ${a.long_day ?? '?'}`} />
-          </Card>
-          <Card>
-            <Field label="Start the plan on" hint="Usually today. Week 1 runs to the end of this week.">
-              <input type="date" className={inputCls} value={draft.start_date} min={todayIso()} max={g.date ?? undefined}
-                onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value || todayIso() }))} />
-            </Field>
-          </Card>
+          {preview.summary ? <PlanSummaryView s={preview.summary} /> : preview.error ? (
+            <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{preview.error}</p>
+          ) : <RabbitLoader className="py-6" label="Sketching your plan" cycle={['Mapping your weeks…', 'Placing long sessions…', 'Balancing hard and easy days…']} />}
+          {preview.busy && preview.summary && <RabbitLoader inline className="px-1 text-[0.7059rem]" label="Updating…" />}
+          <LeverFields v={{ available_days: a.available_days, long_day: a.long_day, weekly_hours: a.weekly_hours, plan_intensity: a.plan_intensity }}
+            set={(p) => setA({ ...p, ...(p.available_days && a.long_day && !p.available_days.includes(a.long_day) ? { long_day: p.available_days.slice(-1)[0] ?? null } : {}) })}
+            start={draft.start_date} setStart={(d) => setDraft((x) => ({ ...x, start_date: d }))} minStart={todayIso()} maxStart={g.date ?? undefined} />
+          <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-[0.8235rem] font-medium text-(--text) [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">Your answers</span><span className="text-[0.7059rem] text-(--accent)">Edit</span>
+            </summary>
+            <div className="border-t border-(--border)">
+              <ReviewRow label="Race" onEdit={() => setStep('race')}
+                value={[DISTANCES.find((d) => d.value === g.distance)?.label, g.event, g.date && new Date(`${g.date}T12:00:00`).toLocaleDateString([], { dateStyle: 'medium' }), g.priority && `${g.priority} race`].filter(Boolean).join(' · ')} />
+              <ReviewRow label="Goal" onEdit={() => setStep('goal')}
+                value={[g.goal_type === 'time' ? `Target ${g.target_time}` : g.goal_type === 'compete' ? 'Compete' : 'Finish strong',
+                  (g.limiters ?? []).length ? `Focus: ${(g.limiters ?? []).join(', ')}` : ''].filter(Boolean).join(' · ')} />
+              <ReviewRow label="You" onEdit={() => setStep('you')}
+                value={[levelLabel(a.level), a.age && `${a.age} yrs`, a.height_cm && (imperial ? `${cmToFtIn(a.height_cm).ft}'${cmToFtIn(a.height_cm).inch}"` : `${a.height_cm} cm`),
+                  a.weight_kg && (imperial ? `${kgToLb(a.weight_kg)} lb` : `${a.weight_kg} kg`)].filter(Boolean).join(' · ') || 'Not set'} />
+              <ReviewRow label="Numbers" onEdit={() => setStep('numbers')}
+                value={[a.threshold_hr && `LTHR ${a.threshold_hr}`, a.ftp_w && `FTP ${a.ftp_w} W`,
+                  a.run_threshold_pace && `Run ${fmtPace(imperial ? a.run_threshold_pace * KM_PER_MI : a.run_threshold_pace)}/${imperial ? 'mi' : 'km'}`,
+                  a.swim_css && `CSS ${fmtPace(a.swim_css)}/100m`].filter(Boolean).join(' · ') || 'Heart-rate zones from Garmin'} />
+            </div>
+          </details>
           {me.goal?.plan && !draft.newGoal && (
             <p className="px-1 text-[0.7647rem] text-(--warning-text)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
           )}

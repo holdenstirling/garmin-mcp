@@ -444,6 +444,31 @@ class PlanService:
             swim_pace = plan.get("swim_pace", 125.0)
             for c in changes:
                 to = c["to"]
+                if c["action"] == "relocate":
+                    # Move an upcoming session to another day (weekly check-in), keeping it
+                    # as it is unless the change also makes it shorter or easier.
+                    try:
+                        w0, day0, i0 = self._find(plan, c["session_id"])
+                    except PlanError:
+                        continue
+                    w1 = week_for(plan, date.fromisoformat(c["date"]))
+                    if w1 is None or day0 < today.isoformat() or c["date"] < today.isoformat():
+                        continue
+                    if len([x for x in w1["days"].get(c["date"], []) if x["sport"] != "rest"]) >= MAX_SESSIONS_PER_DAY:
+                        continue
+                    cur = w0["days"][day0].pop(i0)
+                    if not [x for x in w0["days"][day0] if x["sport"] != "rest"]:
+                        rest = make_session("rest", "rest", 0)
+                        w0["days"][day0] = [rest]
+                    if (to.get("minutes") and to.get("minutes") != cur.get("minutes")) or (to.get("kind") and to.get("kind") != cur.get("kind")):
+                        cur = dict(cur, kind=to.get("kind") or cur.get("kind"), minutes=to.get("minutes") or cur.get("minutes"))
+                        cur.pop("legs", None)
+                        cur = rebuild_session(cur, swim_pace=swim_pace, phase=w1["phase"])
+                    cur["edited"], cur["adjusted"] = True, True
+                    w1["days"][c["date"]] = [x for x in w1["days"].get(c["date"], []) if x["sport"] != "rest"] + [cur]
+                    recompute_week(w0)
+                    recompute_week(w1)
+                    continue
                 if c["action"] == "move":
                     w = week_for(plan, date.fromisoformat(c["date"]))
                     if w is None or c["date"] < today.isoformat():
@@ -479,6 +504,64 @@ class PlanService:
                     w["days"][day][i] = upd
                 recompute_week(w)
         return self._edit(user_id, fn)
+
+    # ------------------------------------------------ preview / levers --
+    LEVERS = ("available_days", "long_day", "weekly_hours", "plan_intensity")
+
+    def preview(self, user_id: str, athlete: dict[str, Any] | None = None, goal: dict[str, Any] | None = None,
+                *, start: str | None = None, new_goal: bool = False) -> dict[str, Any]:
+        """Build a plan in memory (nothing saved): the setup Review screen and Adjust my plan.
+        ``athlete``/``goal`` are validated patches over what's stored."""
+        a = self._coach.athlete(user_id) | self._coach.validate_athlete(athlete or {})
+        cur = self._coach.active_goal(user_id)
+        g_patch = self._coach._validate_goal(goal or {}, partial=not new_goal) if goal else {}
+        g = ({} if new_goal or cur is None else dict(cur)) | g_patch
+        try:
+            first = date.fromisoformat(start) if start else None
+        except ValueError:
+            raise PlanError("Start date must be YYYY-MM-DD.") from None
+        events = self._events.plan_events(user_id) if self._events is not None and not new_goal else []
+        return build_plan(a, g, today=self.today(user_id), start=first, events=events, fitness=self.fitness(user_id))
+
+    def apply_levers(self, user_id: str, levers: dict[str, Any], start: str | None = None) -> tuple[dict[str, Any], str]:
+        """Save the plan levers (days, long day, hours, intensity) and rebuild from today.
+        Returns (plan, undo id): the replaced plan and the old lever values are kept."""
+        bad = set(levers) - set(self.LEVERS)
+        if bad:
+            raise PlanError(f"Can't adjust {', '.join(sorted(bad))} here.")
+        upd = self._coach.validate_athlete(levers)
+        goal = self._goal(user_id)
+        before = self._doc(user_id, goal["id"]).load()
+        if not before:
+            raise PlanError("Build a plan first.")
+        athlete = self._coach.athlete(user_id)
+        undo_id = f"u{int(self._clock() * 1000):x}"
+        self._s.user_doc(user_id, "plan-undo").update(lambda d: (d.clear(), d.update({
+            "id": undo_id, "goal_id": goal["id"], "plan": before,
+            "athlete": {k: athlete.get(k) for k in upd}})))
+        self._coach.update_athlete(user_id, levers)
+        return self.build(user_id, start), undo_id
+
+    def undo_levers(self, user_id: str, undo_id: str) -> dict[str, Any]:
+        snap = self._s.user_doc(user_id, "plan-undo").load()
+        goal = self._goal(user_id)
+        if not snap or snap.get("id") != undo_id or snap.get("goal_id") != goal["id"]:
+            raise PlanError("That change can't be undone any more.")
+        self._coach.update_athlete(user_id, snap.get("athlete") or {})
+        out = self.install(user_id, goal, snap["plan"])
+        self._s.user_doc(user_id, "plan-undo").update(lambda d: d.clear())
+        return out
+
+    def checkin_answered(self, user_id: str) -> dict[str, Any]:
+        return self._s.user_doc(user_id, "weekcheck").load().get("weeks", {})
+
+    def mark_checkin(self, user_id: str, week_start: str, answers: dict[str, Any]) -> None:
+        def fn(d: dict[str, Any]) -> None:
+            w = d.setdefault("weeks", {})
+            w[week_start] = {"at": int(self._clock()), "answers": answers}
+            for k in sorted(w)[:-26]:
+                w.pop(k, None)
+        self._s.user_doc(user_id, "weekcheck").update(fn)
 
     def dismiss_adjustment(self, user_id: str, pid: str) -> None:
         goal = self._goal(user_id)
