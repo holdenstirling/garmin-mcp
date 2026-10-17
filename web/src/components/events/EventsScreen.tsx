@@ -12,6 +12,7 @@ import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { ChecklistButton, ChecklistRow } from './ChecklistLink'
 import {
   DISTANCE_LABEL, KIND_LABEL, MAIN_KINDS, OPEN_EVENT_EVENT, TYPE_LABEL, countdown, deleteEvent, daysUntil, isRace, isUpcoming, kindOf,
   listEvents, makeMainEvent, nextDate, takeOpenEvent, writeDebrief,
@@ -248,6 +249,7 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
           <Backpack className="size-3.5" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
         </button>
       )}
+      {(kindOf(e) === 'race' || kindOf(e) === 'challenge' || kindOf(e) === 'trip') && n >= -7 && <ChecklistRow eventId={e.id} />}
       {onPeople && <PeopleRow s={people} onOpen={onPeople} />}
     </div>
   )
@@ -383,6 +385,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       )}
       {event && <EventPlanCard event={event} onOpenPlan={() => { onOpenPlan(); close() }} onBuildPlan={() => { onBuildPlan(); close() }} />}
       {event && !past && <UpcomingDates event={event} onSaved={onUpdated} />}
+      {event && !past && <ChecklistButton eventId={event.id} onBefore={close} />}
       {event && !past && <AddToCalendar event={event} />}
       {event && !past && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"

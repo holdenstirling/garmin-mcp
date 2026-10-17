@@ -16,6 +16,7 @@ import {
   type Packing, type RaceWeekPage, type RaceWeekPatch, type Reminder,
 } from '@/lib/raceweek'
 import { cn } from '@/lib/utils'
+import { ChecklistButton } from '@/components/events/ChecklistLink'
 
 const cToF = (c: number) => Math.round(c * 9 / 5 + 32)
 const SOURCE: Record<string, string> = { you: 'your target', goal: 'your goal time', estimate: 'your estimated finish' }
@@ -319,6 +320,7 @@ export function RaceWeekScreen({ eventId, section, onClose, onAsk }: {
               </Field>
             </Card>
           )}
+          <ChecklistButton eventId={p.event.id} />
           <PackingCard eventId={p.event.id} packing={p.packing} onChange={(pk) => setP((x) => x ? { ...x, packing: pk } : x)} />
           {n && (
             <Card>

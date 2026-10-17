@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { CheckSquare, CloudSun, Gauge, ListChecks, Square, Utensils } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Card, Field, Screen } from '@/components/plan/ui'
+import { ChecklistButton } from './ChecklistLink'
 import { fmtDuration, fmtSpeed } from '@/lib/format'
 import { KIND_LABEL, fmtDist } from '@/lib/gear'
 import { getRacePack, type RacePack } from '@/lib/racepack'
@@ -68,6 +69,7 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
       {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
       {p && (
         <>
+          <ChecklistButton eventId={p.event.id} />
           {race && <Card>
             <Field label="Pacing by leg">
               <div className="flex flex-col gap-3">

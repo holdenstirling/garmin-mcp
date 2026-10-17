@@ -56,6 +56,7 @@ from .adjust import propose as propose_adjustment
 from . import planflow as _pf
 from .races import RaceDesk as _RaceDesk
 from . import racefit, racepack
+from . import racechecklist as _rcl
 from .profilephoto import MAX_PHOTO, PhotoError, PhotoStore
 from .share import Shares
 from .share import render as render_share
@@ -2017,6 +2018,100 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         gear = (await anyio.to_thread.run_sync(lambda: _gear_items(user_id)))[0] if gear_store else []
         return JSONResponse(racepack.build(event, athlete, plans.get(user_id) if event.get("main") else None, today, wx,
                                            gear=gear))
+
+    # ------------------------------------------------------------ race checklist --
+    # racechecklist.py: a timeline checklist for each race / challenge / trip (12+ weeks out to
+    # after the race); ticks, hidden items and your own items in the encrypted ``racechecklist``
+    # doc. Athletes only (coach accounts get 403 through _api); only your own events.
+    _checklists = _rcl.Checklists(store) if store is not None else None
+
+    def _cl_event(user_id: str, event_id: str) -> dict[str, Any]:
+        try:
+            ev = _events().get(user_id, event_id)
+        except CoachError:
+            raise _UserError("That event isn't in your calendar.", 404) from None
+        if not _rcl.applies(ev):
+            raise _UserError("Checklists are for races, challenges and trips.")
+        return ev
+
+    def _cl_gear(user_id: str, ev: dict[str, Any]) -> list[dict[str, Any]]:
+        """Worn-out / brand-new shoe warnings for the race's sport (best effort, never blocks)."""
+        if gear_store is None or ev.get("kind") not in (None, "race"):
+            return []
+        try:
+            views = _gear_items(user_id)[0]
+            imperial = _coach().athlete(user_id).get("units") != "metric"
+            from .gear import for_race
+            return [g for g in for_race(views, ev.get("type") or "other", imperial=imperial) if g.get("warning")]
+        except Exception:
+            return []
+
+    def _cl_view(user_id: str, ev: dict[str, Any]) -> dict[str, Any]:
+        assert _checklists is not None and plans is not None
+        return _rcl.view(ev, _checklists.state(user_id, ev["id"]), plans.today(user_id),
+                         gear_warnings=_cl_gear(user_id, ev))
+
+    async def checklist_get(request: Request, user_id: str) -> Response:
+        if _checklists is None:
+            raise _UserError("Checklists aren't available on this server.", 503)
+        eid = request.path_params["event_id"]
+        out = await anyio.to_thread.run_sync(lambda: _cl_view(user_id, _cl_event(user_id, eid)))
+        return JSONResponse(out)
+
+    async def checklist_post(request: Request, user_id: str) -> Response:
+        if _checklists is None:
+            raise _UserError("Checklists aren't available on this server.", 503)
+        body = await read_json(request)
+        if not isinstance(body, dict):
+            raise ValueError("body")
+        eid = request.path_params["event_id"]
+
+        def run() -> dict[str, Any]:
+            assert _checklists is not None
+            ev = _cl_event(user_id, eid)
+            try:
+                _checklists.act(user_id, ev, body, gear_warnings=_cl_gear(user_id, ev))
+            except _rcl.ChecklistError as e:
+                raise _UserError(str(e)) from None
+            return _cl_view(user_id, ev)
+        return JSONResponse(await anyio.to_thread.run_sync(run))
+
+    def _cl_upcoming(user_id: str) -> list[dict[str, Any]]:
+        assert plans is not None
+        today = plans.today(user_id).isoformat()
+        week_ago = (plans.today(user_id) - timedelta(days=7)).isoformat()
+        return [e for e in _events().list(user_id) if _rcl.applies(e) and (e.get("date") or "") >= week_ago
+                and (e.get("date") or "") >= (today if e.get("kind") == "trip" else week_ago)]
+
+    async def checklist_summary(request: Request, user_id: str) -> Response:
+        """{event_id: {done, total}} for upcoming races, challenges and trips (race cards)."""
+        if _checklists is None:
+            return JSONResponse({"events": {}})
+
+        def run() -> dict[str, Any]:
+            out = {}
+            for e in _cl_upcoming(user_id):
+                v = _rcl.view(e, _checklists.state(user_id, e["id"]), plans.today(user_id))  # type: ignore[union-attr]
+                out[e["id"]] = {"done": v["done"], "total": v["total"]}
+            return {"events": out}
+        return JSONResponse(await anyio.to_thread.run_sync(run))
+
+    async def checklist_next(request: Request, user_id: str) -> Response:
+        """Home: the next A/B race within 12 weeks, this window's progress and the next 2 items."""
+        if _checklists is None:
+            return JSONResponse({"next": None})
+
+        def run() -> dict[str, Any]:
+            assert plans is not None
+            today = plans.today(user_id)
+            races = [e for e in _cl_upcoming(user_id)
+                     if (e.get("kind") or "race") == "race" and (e.get("main") or e.get("priority") in ("A", "B"))
+                     and 0 <= (date.fromisoformat(e["date"]) - today).days <= 84]
+            if not races:
+                return {"next": None}
+            ev = min(races, key=lambda e: (e["date"], not e.get("main")))
+            return {"next": _rcl.summary(_cl_view(user_id, ev))}
+        return JSONResponse(await anyio.to_thread.run_sync(run))
 
     async def travel_add(request: Request, user_id: str) -> Response:
         assert plans is not None
@@ -4411,6 +4506,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_get, mutating=False), methods=["GET"]),
         Route("/app/api/racepack", _plan_api(racepack_get, mutating=False), methods=["GET"]),
+        Route("/app/api/events/{event_id}/checklist", _plan_api(checklist_get, mutating=False), methods=["GET"]),
+        Route("/app/api/events/{event_id}/checklist", _plan_api(checklist_post, mutating=True), methods=["POST"]),
+        Route("/app/api/checklist/summary", _plan_api(checklist_summary, mutating=False), methods=["GET"]),
+        Route("/app/api/checklist/next", _plan_api(checklist_next, mutating=False), methods=["GET"]),
         Route("/app/api/share", _plan_api(share_get, mutating=False), methods=["GET"]),
         Route("/app/api/share", _plan_api(share_create, mutating=True), methods=["POST"]),
         Route("/app/api/share", _plan_api(share_delete, mutating=True), methods=["DELETE"]),

@@ -5,7 +5,7 @@ import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, RaceChecklistScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
@@ -25,6 +25,8 @@ import { OPEN_EVENT_EVENT } from '@/lib/events'
 import { OPEN_TRAVEL_EVENT, openTravel } from '@/lib/plantools'
 import { OPEN_WORKOUT_EVENT, type OpenWorkout } from '@/lib/workoutnav'
 import { OPEN_ACTIVITY_EVENT, type OpenActivity } from '@/lib/activitynav'
+import { OPEN_CHECKLIST_EVENT } from '@/lib/racechecklist'
+import { RaceChecklistCard } from '@/components/home/RaceChecklistCard'
 import { DM_CHANGED_EVENT, NEW_DM_EVENT, OPEN_DM_EVENT, dmUnread as getDmUnread, type DMShare } from '@/lib/dm'
 import { CONVERT_PLAN_EVENT, startPlanConversion } from '@/lib/planconvert'
 import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
@@ -139,9 +141,9 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // opened from a page is pushed (back arrow to the previous one + X), a top-level destination
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
-type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string }
+type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -434,6 +436,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
     window.addEventListener(OPEN_ACTIVITY_EVENT, onActivity)
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onActivity)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // lib/racechecklist openChecklist (event page, race cards, race pack, race week, Home): the
+    // race checklist page; from another page (race pack, race week) it stacks (Back returns).
+    const onChecklist = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail
+      if (!id) return
+      dropSheet(); setRevealed(false)
+      setPages((st) => st.length ? [...st, { k: 'checklist', id }] : [{ k: 'checklist', id }])
+    }
+    window.addEventListener(OPEN_CHECKLIST_EVENT, onChecklist)
+    return () => window.removeEventListener(OPEN_CHECKLIST_EVENT, onChecklist)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Direct messages: open a chat (lib/dm openConversation, a push, a shared card) or start one.
@@ -952,6 +966,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
             {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
+            {athlete && <RaceChecklistCard refreshKey={feedTick} />}
             {upnext && (
               <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                 onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
@@ -1160,6 +1175,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />
       case 'dm':
         return <ConversationScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
+      case 'checklist':
+        return <RaceChecklistScreen eventId={pg.id} onClose={pages.length > 1 ? popPage : closePages} />
       case 'activity':
         return <ActivityScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
       case 'workout':
