@@ -31,9 +31,10 @@ logger = logging.getLogger(__name__)
 AUTH_URL = "https://cloud.ouraring.com/oauth/authorize"
 TOKEN_URL = "https://api.ouraring.com/oauth/token"
 API = "https://api.ouraring.com/v2/usercollection"
-# No "workout": Oura workouts are never imported (Garmin is the only workout source, so
-# nothing is double counted; see sources.py). "session" is unused too.
-SCOPES = "personal daily heartrate"
+# "workout": Oura workouts Garmin didn't record are imported display-only (workouts.py: shown in
+# the Day view / shared as a feed card, never in stats, plan matching or the AI). Connections made
+# before this scope existed get a "reconnect to import workouts" note. "session" is unused.
+SCOPES = "personal daily heartrate workout"
 CACHE_S = 900
 
 
@@ -43,6 +44,10 @@ class OuraError(GarminError):
 
 class OuraNotConnected(OuraError):
     pass
+
+
+class OuraWorkoutsScope(OuraError):
+    """Connected, but the token can't read workouts (connected before the ``workout`` scope)."""
 
 
 def merge_days(readiness: list[dict[str, Any]], daily_sleep: list[dict[str, Any]],
@@ -169,6 +174,24 @@ class OuraClient:
     def disconnect(self, user_id: str) -> None:
         self._doc(user_id).delete()
         self._cache.pop(user_id, None)
+        from .workouts import drop_source
+        drop_source(self._s, user_id, "oura")  # imported Oura workouts go too
+
+    async def workouts(self, user_id: str, start: date, end: date) -> list[dict[str, Any]]:
+        """Oura workouts between ``start`` and ``end`` as ``workouts.from_oura`` rows (display-only:
+        never cached with recovery data, never passed to the AI). A connection made before the
+        ``workout`` scope existed is refused by Oura: ``OuraWorkoutsScope`` says to reconnect."""
+        from .workouts import from_oura
+        token = await self.access_token(user_id)
+        try:
+            raw = await self._get(token, "workout", start, end)
+        except OuraNotConnected:
+            raise OuraWorkoutsScope("Connect Oura again to import its workouts.") from None
+        except OuraError as e:
+            if "refused" in str(e):
+                raise OuraWorkoutsScope("Connect Oura again to import its workouts.") from None
+            raise
+        return [w for r in raw if isinstance(r, dict) and (w := from_oura(r))]
 
     async def _get(self, token: str, path: str, start: date, end: date) -> list[dict[str, Any]]:
         client = self._client()
@@ -207,4 +230,4 @@ class OuraClient:
         return out
 
 
-__all__ = ["OuraClient", "OuraError", "OuraNotConnected", "merge_days", "baseline"]
+__all__ = ["OuraClient", "OuraError", "OuraNotConnected", "OuraWorkoutsScope", "merge_days", "baseline"]

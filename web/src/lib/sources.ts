@@ -1,4 +1,4 @@
-// Data sources: workouts always come from Garmin (Oura workouts are never imported, so
+// Data sources: workouts that count come from Garmin (Oura workouts Garmin missed are display-only, so
 // nothing is counted twice); recovery and sleep come from Garmin or Oura, the athlete's call.
 import { useSyncExternalStore } from 'react'
 import { getJSON, type DataSource, type DataSources } from '@/lib/api'

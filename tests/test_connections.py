@@ -34,10 +34,11 @@ def test_facts_match_the_privacy_policy() -> None:
     page = legal.privacy()
     # The popup's promises are ones the policy (and sources.py) make.
     assert "Oura data is never sent to the AI coach" in page
-    assert "Oura workouts are not imported; workouts come from Garmin only" in page
+    assert "they don't count toward streaks, stats or plan matching, which use Garmin workouts only" in page
+    assert "deleted when you disconnect Oura" in page
     assert "Google Calendar</b> (when you connect it, read-only)" in page
     assert any("never goes to Rabbit's AI" in s for s in conn.APPS["oura"]["never"])
-    assert any("never imported" in s for s in conn.APPS["oura"]["never"])
+    assert any("never counts twice" in s for s in conn.APPS["oura"]["never"])
     assert any("read-only" in s for s in conn.APPS["calendar"]["reads"])
     assert all(conn.APPS[a]["reads"] and conn.APPS[a]["never"] for a in conn.ORDER)
     assert conn.APPS["trainingpeaks"]["kind"] == "cookie"  # pasted session value (tpsync.py)

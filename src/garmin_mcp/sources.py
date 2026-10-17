@@ -5,9 +5,10 @@ Stored in the athlete's ``profile`` doc (next to ``brief_enabled`` etc.):
 * ``data_sources`` = ``{"recovery": "garmin"|"oura", "sleep": "garmin"|"oura", "show_both": bool}``
 * ``data_sources_asked`` = ``True`` once the athlete answered "How should Rabbit use your data?"
 
-**Workouts always come from Garmin** (fixed ``"workouts": "garmin"``): Oura workouts are never
-imported, so nothing is counted twice (streak, XP, stats, gear and plan matching all read
-Garmin activities only).
+**Workouts that count come from Garmin** (fixed ``"workouts": "garmin"``): streak, XP, stats,
+gear, plan matching and everything the coach sees read Garmin activities only. Oura workouts
+Garmin didn't record are imported display-only (``workouts.py``: Day view, shared feed card),
+matched against Garmin so nothing is counted twice.
 
 **Recovery** (readiness, HRV, resting HR) picks which numbers the Today card, plan
 adjustments and Progress use. Default: ``"oura"`` when Oura is connected, else ``"garmin"``.

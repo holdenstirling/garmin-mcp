@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/ui/ErrorState'
 import { RowsSkeleton } from '@/components/ui/Skeleton'
 import { getJSON } from '@/lib/api'
 import type { UsageSummary } from '@/lib/usage'
+import { getConnections, type SoonApp } from '@/lib/connections'
 import { cn } from '@/lib/utils'
 
 const STEP_LABEL: Record<string, string> = {
@@ -59,6 +60,9 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
     getJSON<UsageSummary>('/api/usage/summary').then(setS, (e: Error) => setError(e.message))
   }, [])
   useEffect(() => { load() }, [load])
+  // "I want this" on coming-soon apps (demand.py): one per person; counts are owner-only.
+  const [soon, setSoon] = useState<SoonApp[] | null>(null)
+  useEffect(() => { getConnections().then((c) => setSoon(c.soon ?? []), () => setSoon([])) }, [])
 
   const peak = s ? Math.max(1, ...s.series.map((d) => d.dau)) : 1
   const ret = (r: { pct: number | null; returned: number; cohort: number }) => (r.pct == null ? '–' : `${r.pct}%`)
@@ -91,6 +95,14 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
               <Stat n={ret(s.retention.d7)} label={`Day 7 (${s.retention.d7.returned}/${s.retention.d7.cohort})`} />
             </div>
           </Section>
+
+          {soon && soon.some((a) => a.wanted_by != null) && (
+            <Section title="Apps people want" note="People who tapped “I want this” on a coming-soon app (each person once).">
+              {soon.map((a) => (
+                <Bar key={a.id} label={a.name} value={a.wanted_by ?? 0} max={Math.max(1, ...soon.map((x) => x.wanted_by ?? 0))} />
+              ))}
+            </Section>
+          )}
 
           <Section title="Setup funnel" note="People reaching each plan setup step (share of those who started).">
             {s.funnel[0]?.users ? s.funnel.map((f) => (

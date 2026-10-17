@@ -215,6 +215,9 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
   )
 }
 
+/** Where a workout outside the plan came from (workouts.py sources). */
+const SOURCE_NAME: Record<string, string> = { oura: 'Oura', whoop: 'Whoop', coros: 'Coros', apple: 'Apple Watch', manual: 'added by you' }
+
 export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidden, extra, actions, onAdd }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   date: string; onDate: (d: string) => void
@@ -304,7 +307,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       {extra}
       {did.length > 0 && (
         <section aria-label="Workouts you did" className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{work.length ? 'Also from Garmin' : 'From Garmin'}</p>
+          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{did.some((a) => a.source && a.source !== 'garmin') ? (work.length ? 'Also from your apps' : 'From your apps') : work.length ? 'Also from Garmin' : 'From Garmin'}</p>
           <ul className="flex flex-col">
             {did.map((a, i) => {
               const I = SPORT_ICON[(a.sport in SPORT_ICON ? a.sport : 'other') as keyof typeof SPORT_ICON] ?? Check
@@ -314,7 +317,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{a.name}</span>
                     <span className="block text-[0.7059rem] text-(--text-muted)">
-                      {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : ''].filter(Boolean).join(' · ')}
+                      {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : '', a.source && a.source !== 'garmin' ? `via ${SOURCE_NAME[a.source] ?? a.source}` : ''].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <Check className="size-4 shrink-0 text-(--accent)" aria-label="Done" />

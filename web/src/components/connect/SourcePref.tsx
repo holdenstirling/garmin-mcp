@@ -1,6 +1,6 @@
 // "Recovery & sleep from Garmin or Oura?" (sources.py): asked in the Oura popup right after
 // connecting and kept there (and in Garmin's) while both are connected. Workouts always come
-// from Garmin; Oura workouts are never imported, so nothing counts twice.
+// from Garmin; Oura workouts Garmin missed are shown only (workouts.py), so nothing counts twice.
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { putSettings, type Me } from '@/lib/api'
@@ -66,7 +66,7 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
         </div>
       )}
       <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-        Workouts come from Garmin only. Rabbit's AI never sees Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
+        Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. Rabbit's AI never sees Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
       </p>
     </div>
   )

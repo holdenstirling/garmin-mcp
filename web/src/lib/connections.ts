@@ -1,5 +1,6 @@
 // Connected apps (server: connections.py): Garmin, Oura, Google Calendar and TrainingPeaks, one status row
-// each for the Me -> Connected apps hub and the connect popup (components/connect/).
+// each for the Me -> Connected apps hub and the connect popup (components/connect/), plus the
+// coming-soon apps (Whoop, Apple Watch, Coros; demand.py) with "I want this".
 // Any screen opens an app's popup with requestConnect(app); screens/Chat.tsx listens.
 import { getJSON, sendJSON, type DataSources } from '@/lib/api'
 import { OURA_CONNECT_URL } from '@/lib/oura'
@@ -16,12 +17,20 @@ export type Connection = {
   import_weeks: number; import_label: string
   /** what Rabbit reads / what it never does (connections.APPS, matches the privacy policy) */
   reads: string[]; never: string[]
+  /** a gentle note on a connected app (e.g. "Connect Oura again to import its workouts.") */
+  note?: string
 }
-export type Connections = { apps: Connection[]; sources: DataSources | null }
+/** Apps that can't connect yet (server: demand.py). `wanted_by` only for the app's owners. */
+export type SoonId = 'whoop' | 'apple' | 'coros'
+export type SoonApp = { id: SoonId; name: string; state: 'soon'; why: string; would_use: string[]; wanted: boolean; wanted_by?: number }
+export type Connections = { apps: Connection[]; sources: DataSources | null; soon?: SoonApp[] }
 
 export const getConnections = () => getJSON<Connections>('/api/connections')
 export const syncConnection = (app: 'oura' | 'calendar' | 'trainingpeaks') =>
   sendJSON<{ app: Connection }>('POST', `/api/connections/${app}/sync`, {})
+/** "I want this" on a coming-soon app; counts once per person. */
+export const wantApp = (app: SoonId, want: boolean) =>
+  sendJSON<{ app: SoonId; wanted: boolean; wanted_by?: number }>('POST', `/api/connections/${app}/want`, { want })
 export const OAUTH_URL: Record<'oura' | 'calendar', string> = { oura: OURA_CONNECT_URL, calendar: CALENDAR_CONNECT_URL }
 
 /** Back from a provider: `?oura=connected|failed`, `?calendar=connected|...`. */

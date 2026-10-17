@@ -39,10 +39,11 @@ APPS: dict[str, dict[str, Any]] = {
         "reads": [
             "Readiness, sleep and HRV",
             "Resting heart rate and daily activity summaries",
+            "Workouts Garmin didn't record (time, sport, distance), shown in your day",
         ],
         "never": [
             "Oura data never goes to Rabbit's AI: it is only shown in the app and used by fixed rules",
-            "Oura workouts are never imported (workouts come from Garmin only, so nothing counts twice)",
+            "A workout never counts twice: if Garmin has it too, only Garmin's is used",
             "Never posts or changes anything in Oura",
         ],
     },
