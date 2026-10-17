@@ -22,6 +22,7 @@ import {
 } from '@/lib/planflow'
 import { Card, Chip, ChipRow, Field, NumberStepper, inputCls } from './ui'
 import { SPORT_ICON, fmtDay } from './PlanParts'
+import { useSick } from './SickHost'
 
 const bodyCls = 'settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]'
 const day = (d: string) => fmtDay(d, { weekday: 'short', month: 'short', day: 'numeric' })
@@ -416,8 +417,9 @@ const TIME: [NonNullable<CheckinAnswers['time']>, string][] = [['less', 'Less'],
 export function WeekCheckCard({ force, onApplied, onClose }: { force?: boolean; onApplied: (plan: BuiltPlan) => void; onClose?: () => void }) {
   const [due, setDue] = useState(!!force)
   const [open, setOpen] = useState(!!force)
+  const sick = useSick()  // no weekly check-in while sick or easing back
   useEffect(() => { if (!force) getWeekCheck().then((r) => setDue(r.due), () => {}) }, [force])
-  if (!due) return null
+  if (!due || (!force && (sick?.active || sick?.returning))) return null
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)}
