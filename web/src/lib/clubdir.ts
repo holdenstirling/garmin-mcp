@@ -1,9 +1,11 @@
 // Community -> "Clubs & leagues near you": Rabbit's public-web directory per city
 // (clubdir.py, routes in clubdir_web.py).
-import { getJSON, postJSON } from '@/lib/api'
+import { getJSON, postJSON, sendJSON } from '@/lib/api'
 import type { LocalGroup } from '@/lib/community'
 import type { SocialUser } from '@/lib/social'
 import { counted } from '@/lib/usage'
+
+const P = '/api/community/directory'
 
 export type DirChip = 'run' | 'trail' | 'tri' | 'ride' | 'swim' | 'leagues'
 export type DirKind = 'run_club' | 'trail' | 'tri' | 'ride' | 'swim' | 'league' | 'other'
@@ -33,6 +35,8 @@ export type DirListing = {
   /** Has a weekly session with a time (an .ics is available). */
   calendar?: boolean
   going?: DirGoing | null
+  /** "search" when someone looked this club up by name (directory = found by Rabbit's own update). */
+  found_by?: 'directory' | 'search'
 }
 export type DirView = {
   metro: { city: string; state: string; label: string } | null
@@ -43,9 +47,45 @@ export type DirView = {
   fallback: LocalGroup[]
   /** Metro centre for the map. */
   center?: { lat: number; lon: number } | null
+  /** The owner's partners for this city (partners.py), always shown labelled "Partner". */
+  partners?: Partner[]
 }
 
-const P = '/api/community/directory'
+// ------------------------------------------------------------------ partners --
+export type PartnerKind = 'run_club' | 'tri_club' | 'ride' | 'swim' | 'trail' | 'store' | 'coach' | 'other'
+export type Partner = {
+  id: string; label: 'Partner'; name: string; kind: PartnerKind; kind_label: string; tagline: string
+  description: string; schedule: string; website: string; instagram: string; signup: string; monogram: string
+}
+export type PartnerCount = 'view' | 'website' | 'instagram' | 'signup' | 'interested'
+export type PartnerAdmin = Partner & {
+  metros: { city: string; state: string }[]; starts: string | null; ends: string | null; active: boolean; live: boolean
+  stats: Record<PartnerCount, number>
+}
+export type PartnerAdminList = { partners: PartnerAdmin[]; kinds: { id: PartnerKind; label: string }[]; stats_days: number }
+export type PartnerDraft = {
+  name: string; kind: PartnerKind; tagline: string; description: string; schedule: string
+  website: string; instagram: string; signup: string; metros: string[]; starts: string | null; ends: string | null; active: boolean
+}
+const A = '/api/partners'
+export const getPartner = (id: string) => getJSON<Partner>(`${A}/${encodeURIComponent(id)}`)
+/** Anonymous count (once per person, partner, kind and day; skipped when usage counting is off). */
+export const countPartner = (id: string, what: PartnerCount) =>
+  postJSON<{ counted: boolean }>(`${A}/${encodeURIComponent(id)}/count`, { what })
+export const listPartnersAdmin = () => getJSON<PartnerAdminList>(`${A}/admin`)
+export const addPartner = (d: PartnerDraft) => postJSON<PartnerAdminList & { id: string }>(`${A}/admin`, d)
+export const editPartner = (id: string, d: PartnerDraft) => sendJSON<PartnerAdminList & { id: string }>('PUT', `${A}/admin/${encodeURIComponent(id)}`, d)
+export const removePartner = (id: string) => sendJSON<PartnerAdminList>('DELETE', `${A}/admin/${encodeURIComponent(id)}`, {})
+
+// ---------------------------------------------------------------- name search --
+export type DirSearch = {
+  q: string; metro: { city: string; state: string; label: string } | null
+  partners: Partner[]; listings: DirListing[]; can_look_up: boolean
+}
+export type DirLookup = { status: 'found' | 'none' | 'limit' | 'unavailable'; listings: DirListing[] }
+export const searchDirectory = (q: string) => getJSON<DirSearch>(`${P}/search?q=${encodeURIComponent(q)}`)
+export const lookUpClub = (q: string) => postJSON<DirLookup>(`${P}/lookup`, { q })
+
 export function getDirectory(kind?: DirChip | null): Promise<DirView> {
   return getJSON<DirView>(`${P}${kind ? `?kind=${kind}` : ''}`)
 }

@@ -7,6 +7,8 @@ import { Clock, Flag, Search as SearchIcon, Users, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/Avatar'
+import { PartnerRow, PartnerSheet } from '@/components/community/Partners'
+import type { Partner } from '@/lib/clubdir'
 import { SPORT_ICON, fmtDay } from '@/components/plan/PlanParts'
 import type { Sport } from '@/lib/api'
 import { fmtDist, fmtDuration } from '@/lib/format'
@@ -60,7 +62,8 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
     openSearchResult(p)
   }
 
-  const total = res ? res.people.length + res.clubs.length + res.events.length + res.sessions.length + res.workouts.length : 0
+  const [partner, setPartner] = useState<Partner | null>(null)
+  const total = res ? (res.partners?.length ?? 0) + res.people.length + res.clubs.length + res.events.length + res.sessions.length + res.workouts.length : 0
   const short = q.trim().length < MIN_QUERY
 
   return (
@@ -107,6 +110,12 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
           <EmptyState compact title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”." />
         ) : res ? (
           <div className={busy ? 'opacity-60' : undefined}>
+            {(res.partners?.length ?? 0) > 0 && (
+              <section className="mt-2 flex flex-col gap-1.5 px-4">
+                <h3 className="sr-only">Partners</h3>
+                {res.partners!.map((p) => <PartnerRow key={p.id} p={p} onOpen={() => setPartner(p)} />)}
+              </section>
+            )}
             <Group title="People" n={res.people.length}>
               {res.people.map((p) => (
                 <Row key={p.id} onClick={() => pick({ kind: 'person', id: p.id })}
@@ -152,6 +161,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
         ) : (
           <p className="px-4 py-6 text-center text-[0.7647rem] text-(--text-muted)">Searching…</p>
         )}
+        {partner && <PartnerSheet p={partner} onClose={() => setPartner(null)} />}
       </div>
     </Sheet>
   )

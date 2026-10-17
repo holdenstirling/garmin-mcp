@@ -13,6 +13,19 @@ allowlisted athlete).
     POST /app/api/community/directory/{lid}/going    {going: bool, date?} -> {going: {date, count, me,
          friends, more_friends}} for the listing's next occurrence (409 when ``date`` moved on)
     GET  /app/api/community/directory/{lid}/calendar.ics   weekly .ics (text/calendar, attachment)
+    GET  /app/api/community/directory/search?q=      -> {q, metro, partners, listings, can_look_up}
+         fuzzy name match ("5280 run club" finds "5280 Runners"); partners pinned, labelled
+    POST /app/api/community/directory/lookup         {q} -> {status: found|none|limit|unavailable,
+         listings}: one targeted web search for that name in my metro, read safely, added here
+
+Partners (partners.py), labelled "Partner" wherever they show; the directory view carries
+``partners`` (live partners for my metro):
+    GET    /app/api/partners/{pid}                    one partner (only if it serves my metro)
+    POST   /app/api/partners/{pid}/count              {what: view|website|instagram|signup|interested}
+    GET    /app/api/partners/admin                    owner only: all partners + 30-day counts
+    POST   /app/api/partners/admin                    owner only: add
+    PUT    /app/api/partners/admin/{pid}              owner only: edit
+    DELETE /app/api/partners/admin/{pid}              owner only: remove
 
 Listing rows also carry ``lat``/``lon`` (geocoded public meet spot or null), ``calendar`` (has a
 weekly time), ``next.date`` and ``going`` (null without a session); the view has ``center``.
@@ -32,6 +45,7 @@ from starlette.routing import BaseRoute, Route
 
 from . import clubics
 from .clubdir import CHIPS, Directory, DirectoryError, Metro, metro, weekday_of
+from .partners import PartnerError, Partners
 
 Handler = Callable[[Request, str], Awaitable[Response]]
 
@@ -40,7 +54,8 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                 now: Callable[[str], datetime], today: Callable[[str], date],
                 local_groups: Callable[[str, str, date], list[dict[str, Any]] | None],
                 is_owner: Callable[[str], bool], club_role: Callable[[str, str], str | None],
-                read_json: Callable[[Request], Awaitable[Any]], going: Any = None) -> list[BaseRoute]:
+                read_json: Callable[[Request], Awaitable[Any]], going: Any = None,
+                partners: Partners | None = None) -> list[BaseRoute]:
     """``wrap(handler, mutating=)`` is community_web's guard; ``club_role(uid, cid)`` the
     athlete's role in a club or None."""
 
@@ -51,7 +66,7 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         async def inner(request: Request, user_id: str) -> Response:
             try:
                 return await h(request, user_id)
-            except DirectoryError as e:
+            except (DirectoryError, PartnerError) as e:
                 return JSONResponse({"error": e.message}, status_code=e.status)
         return wrap(inner, mutating=mutating)
 
@@ -92,7 +107,75 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
                 raw = []
             fallback = [{k: g.get(k) for k in ("id", "name", "category", "organizer", "when", "where", "url")}
                         for g in raw if isinstance(g, dict)][:8]
-        return JSONResponse({**v, "status": status, "fallback": fallback})
+        near = await run(lambda: partners.near(m.city, m.state)) if partners is not None and not wd else []
+        return JSONResponse({**v, "status": status, "fallback": fallback, "partners": near})
+
+    async def search(request: Request, user_id: str) -> Response:
+        q = " ".join((request.query_params.get("q") or "").split())[:60]
+        m = await my_metro(user_id)
+        if m is None:
+            return JSONResponse({"q": q, "metro": None, "partners": [], "listings": [], "can_look_up": False})
+        local_now = await run(lambda: now(user_id))
+        rows = await run(lambda: directory.search(m, q, now_local=local_now, uid=user_id))
+        if going is not None and rows:
+            await run(lambda: going.attach(user_id, m, rows))
+        near = await run(lambda: partners.near(m.city, m.state, query=q)) if partners is not None and len(q) >= 2 else []
+        return JSONResponse({"q": q, "metro": {"city": m.city, "state": m.state, "label": m.label},
+                             "partners": near, "listings": rows,
+                             "can_look_up": len(q) >= 3 and directory.can_look_up(user_id)})
+
+    async def lookup(request: Request, user_id: str) -> Response:
+        b = await body_of(request)
+        m = await my_metro(user_id)
+        if m is None:
+            raise DirectoryError("Add your home city in your training profile first.")
+        local_now = await run(lambda: now(user_id))
+        out = await directory.look_up(m, b.get("q"), uid=user_id, now_local=local_now)
+        if going is not None and out["listings"]:
+            await run(lambda: going.attach(user_id, m, out["listings"]))
+        return JSONResponse(out)
+
+    # ---------------------------------------------------------- partners --
+    def need_partners() -> Partners:
+        if partners is None:
+            raise PartnerError("not found", 404)
+        return partners
+
+    async def partner_get(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        m = await my_metro(user_id)
+        if m is None:
+            raise PartnerError("not found", 404)
+        return JSONResponse(await run(lambda: p.get(request.path_params["pid"], m.city, m.state)))
+
+    async def partner_count(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        b = await body_of(request)
+        m = await my_metro(user_id)
+        if m is None:
+            raise PartnerError("not found", 404)
+        ok = await run(lambda: p.count(user_id, request.path_params["pid"], b.get("what"), m.city, m.state))
+        return JSONResponse({"counted": ok})
+
+    async def partner_admin(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        return JSONResponse(await run(lambda: p.admin_list(user_id)))
+
+    async def partner_add(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        p.require_owner(user_id)
+        b = await body_of(request)
+        return JSONResponse(await run(lambda: p.save(user_id, b)), status_code=201)
+
+    async def partner_edit(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        p.require_owner(user_id)
+        b = await body_of(request)
+        return JSONResponse(await run(lambda: p.save(user_id, b, request.path_params["pid"])))
+
+    async def partner_delete(request: Request, user_id: str) -> Response:
+        p = need_partners()
+        return JSONResponse(await run(lambda: p.remove(user_id, request.path_params["pid"])))
 
     async def suggest(request: Request, user_id: str) -> Response:
         b = await body_of(request)
@@ -159,8 +242,17 @@ def make_routes(*, directory: Directory, wrap: Callable[..., Any], home: Callabl
         return JSONResponse({"status": directory.kick(m, force=True), "metro": m.label}, status_code=202)
 
     P = "/app/api/community/directory"
+    A = "/app/api/partners"
     return [
         Route(P, guarded(listing, mutating=False), methods=["GET"]),
+        Route(f"{P}/search", guarded(search, mutating=False), methods=["GET"]),
+        Route(f"{P}/lookup", guarded(lookup, mutating=True), methods=["POST"]),
+        Route(f"{A}/admin", guarded(partner_admin, mutating=False), methods=["GET"]),
+        Route(f"{A}/admin", guarded(partner_add, mutating=True), methods=["POST"]),
+        Route(f"{A}/admin/{{pid}}", guarded(partner_edit, mutating=True), methods=["PUT"]),
+        Route(f"{A}/admin/{{pid}}", guarded(partner_delete, mutating=True), methods=["DELETE"]),
+        Route(f"{A}/{{pid}}", guarded(partner_get, mutating=False), methods=["GET"]),
+        Route(f"{A}/{{pid}}/count", guarded(partner_count, mutating=True), methods=["POST"]),
         Route(f"{P}/suggest", guarded(suggest, mutating=True), methods=["POST"]),
         Route(f"{P}/refresh", guarded(refresh, mutating=True), methods=["POST"]),
         Route(f"{P}/{{listing_id}}/report", guarded(report, mutating=True), methods=["POST"]),

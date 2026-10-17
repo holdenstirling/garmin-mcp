@@ -3090,10 +3090,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                     pass
             return directory.lookup(m, now_local=_ag._now(uid), kind=kind, weekday=weekday)
         _ag.club_directory = _cd_lookup
+        # Partners (partners.py): owner-curated clubs/shops promoted, labelled "Partner", to people
+        # in their metros (Clubs near you, club search, Search everywhere). Routes in clubdir_web.
+        from . import partners as _pt
+        partners = _pt.Partners(store, is_owner=auth.is_owner)
         directory_routes = _cdw.make_routes(
             directory=directory, wrap=_cd_wrap, home=_cm_home, now=_ag._now, today=lambda u: _ag._now(u).date(),
             local_groups=_local_finder.cached, is_owner=auth.is_owner, club_role=_cd_role, read_json=read_json,
-            going=_cd_going)
+            going=_cd_going, partners=partners)
 
         # Search everywhere (search.py): GET /app/api/search?q= -> people / clubs / events /
         # sessions / workouts, from stored and cached data only (no Garmin call per keystroke).
@@ -3102,8 +3106,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def _srch_dir(uid: str) -> list[dict[str, Any]]:
             m = _cd.metro(**_cm_home(uid))
             return directory.view(m, now_local=_ag._now(uid), uid=uid)["listings"] if m else []
+        def _srch_partners(uid: str, q: str) -> list[dict[str, Any]]:
+            loc = _cm_home(uid)
+            m = _cd.metro(loc.get("city"), loc.get("state"))
+            return partners.near(m.city, m.state, query=q) if m else []
         _search = _srch.Search(
-            today=lambda u: _ag._now(u).date(),
+            today=lambda u: _ag._now(u).date(), partners=_srch_partners,
             people=lambda u: {"following": [{"user_id": x} for x in soc.following_ids(u)],
                               "followers": [{"user_id": x} for x in soc.follower_ids(u)]},
             person=_soc_person, clubs=lambda u, q: clb.overview(u, q=q), directory=_srch_dir,

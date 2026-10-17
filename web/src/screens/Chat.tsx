@@ -31,7 +31,7 @@ import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { ReactionCard } from '@/components/workout/ReactionCard'
 import { markReactionShown, reactionShown } from '@/lib/workout'
-import { MonthRecapSheet, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
+import { MonthRecapSheet, PartnersScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
 import { CelebrationHost } from '@/components/reward/CelebrationHost'
 import { MonthRecapEntry } from '@/components/reward/MonthRecapEntry'
 import { getReward, lastMonth, type Reward } from '@/lib/reward'
@@ -131,7 +131,7 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string }
-  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
+  | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
 const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k
 type ProgressView = 'overview' | 'recap'
 type RacesView = 'mine' | 'explore'
@@ -897,7 +897,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openMeRow = (r: MeRow) => {
     if (r === 'friends') openCommunity('people')
     else if (r === 'settings') open('settings')
-    else if (r === 'connections' || r === 'access' || r === 'usage') pushPage({ k: r })
+    else if (r === 'connections' || r === 'access' || r === 'usage' || r === 'partners') pushPage({ k: r })
     else if (r === 'memory') open('memory')
     else if (r === 'inbox') { setCoachMsgThread(null); showScreen('coach') }
     else if (r === 'coachstatus') setCoachAsk(true)
@@ -996,6 +996,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'connections': return <ConnectionsScreen onClose={closePages} />
       case 'access': return <AccessScreen onClose={closePages} />
       case 'usage': return <UsageScreen onClose={closePages} />
+      case 'partners': return <PartnersScreen onClose={closePages} />
       case 'block': return <BlockScreen id={pg.id} imperial={imperial} onClose={closePages} />
       case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
       case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />
