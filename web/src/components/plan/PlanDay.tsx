@@ -8,6 +8,7 @@ import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDow
 import { Button } from '@/components/ui/button'
 import { openEvent } from '@/lib/events'
 import { cn } from '@/lib/utils'
+import { openActivity } from '@/lib/activitynav'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
 import { KIND_LABEL, fmtMin, type BuiltPlan, type PlanSession, type Step } from '@/lib/plan'
@@ -319,7 +320,10 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
             {did.map((a, i) => {
               const I = SPORT_ICON[(a.sport in SPORT_ICON ? a.sport : 'other') as keyof typeof SPORT_ICON] ?? Check
               return (
-                <li key={a.id ?? i} className="flex min-h-11 items-center gap-3">
+                <li key={a.id ?? a.key ?? i}>
+                <button type="button" disabled={a.id == null && !a.key} onClick={() => openActivity(a.id ?? a.key!)}
+                  aria-label={`${a.name}, done. Open the workout`}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-lg text-left active:bg-(--bg-inset) disabled:cursor-default">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-4" aria-hidden /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{a.name}</span>
@@ -327,7 +331,8 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
                       {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : '', a.source && a.source !== 'garmin' ? `via ${SOURCE_NAME[a.source] ?? a.source}` : ''].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  <Check className="size-4 shrink-0 text-(--accent)" aria-label="Done" />
+                  {a.id != null || a.key ? <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden /> : <Check className="size-4 shrink-0 text-(--accent)" aria-label="Done" />}
+                </button>
                 </li>
               )
             })}

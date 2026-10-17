@@ -15,6 +15,7 @@ import { syncGarmin } from '@/lib/plan'
 import type { UpNext } from '@/lib/upnext'
 import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
+import { openActivity } from '@/lib/activitynav'
 
 // "Move" today's session to another day (loaded on first use).
 const MoveSessionSheet = lazy(() => import('@/components/plan/MoveSheet').then((m) => ({ default: m.MoveSessionSheet })))
@@ -72,8 +73,10 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
     ? (hideStreak ? up.signals.filter((s) => s.label !== 'Streak') : up.signals).slice(0, 1) : []
   const todayKind = up.today?.action.kind
 
+  const logged = up.tone === 'done' ? up.today?.activity_id : undefined
   const primary = () => {
     const k = up.primary.kind
+    if (logged != null && todayKind === 'ask' && k === 'today') { openActivity(logged); return } // "How did it go?": its page
     if (k === 'start' && up.session?.id) onStart(up.session.id)
     else if (k === 'today') { if (todayKind) onToday(todayKind); else onAsk('About today: ') }
     else if (k === 'open_plan') onPlan()
@@ -104,6 +107,9 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
           <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Up next</span>
           {s?.id && up.kind === 'session' ? (
             <button type="button" onClick={() => openWorkout(s.id!, isoToday())} aria-label={`${headline}. Open the workout`}
+              className="block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+          ) : logged != null ? (
+            <button type="button" onClick={() => openActivity(logged)} aria-label={`${headline}. Open your workout`}
               className="block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
           ) : (
             <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{headline}</span>

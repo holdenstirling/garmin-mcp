@@ -202,7 +202,7 @@ class ExternalWorkouts:
             out.setdefault(day, []).append({
                 "id": None, "name": w.get("name") or "Workout", "sport": w.get("sport") or "other",
                 "km": w.get("km"), "minutes": round(w["minutes"]) if w.get("minutes") else None,
-                "avg_hr": None, "source": w.get("source")})
+                "avg_hr": None, "source": w.get("source"), "key": w.get("key")})  # key: its page (/api/activity/<key>)
         return out
 
 

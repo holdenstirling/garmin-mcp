@@ -160,8 +160,11 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
         what = f"{a.get('name') or 'Workout'}{_mins(a.get('minutes'))}" if a else "Today's training"
         cur = (streak or {}).get("current") or 0
         tail = f" {cur}-day streak." if cur >= 2 else ""
-        return card("done", "Done for today. Nice work", f"{what} logged.{tail} Refuel, hydrate and sleep well.",
-                    ("ask", "How did it go?"), done_s[0] if done_s else None)
+        out = card("done", "Done for today. Nice work", f"{what} logged.{tail} Refuel, hydrate and sleep well.",
+                   ("ask", "How did it go?"), done_s[0] if done_s else None)
+        if isinstance(a.get("id"), int) and not isinstance(a.get("id"), bool):
+            out["activity_id"] = a["id"]  # the logged workout's page (web ActivityScreen)
+        return out
 
     # 4. Recovery low.
     low_ready = readiness is not None and readiness < LOW_READINESS and (

@@ -23,6 +23,7 @@ import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
 import { fmtTime, getCalendar, openPlanDay, requestPlanFix, type CalSession, type CalView, type DistSport } from '@/lib/plancal'
 import { checkinChips, createCheckin, type Checkin } from '@/lib/checkins'
 import { cn } from '@/lib/utils'
+import { openActivity } from '@/lib/activitynav'
 import {
   CHECKLIST, fmtTemp, getWorkoutFeedback, getWorkoutToday, readChecklist, writeChecklist,
   type CheckInRequest, type Target, type Weather, type WorkoutFeedback, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
@@ -164,7 +165,7 @@ function WorkoutSkeleton() {
   )
 }
 
-function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bike; title: string; meta: string; line: string; chip?: { label: string; cls: string } }) {
+export function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bike; title: string; meta: string; line: string; chip?: { label: string; cls: string } }) {
   return (
     <div className="celebrate flex flex-col gap-3 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-4">
       <div className="flex items-center gap-3">
@@ -186,7 +187,7 @@ function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bike; titl
   )
 }
 
-function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
+export function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
       <h4 className="flex items-center gap-1.5 px-3.5 pt-3 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
@@ -283,6 +284,11 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         </div>
       )}
       {c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport} />}
+      {c?.activity?.id != null && (
+        <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-[0.8235rem]" onClick={() => openActivity(c.activity!.id!)}>
+          <Activity className="size-4" aria-hidden /> See your recorded workout
+        </Button>
+      )}
 
       {t ? (
         <>
@@ -356,12 +362,12 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
   )
 }
 
-const RPE_WORD = ['', 'Very easy', 'Very easy', 'Easy', 'Easy', 'Moderate', 'Moderate', 'Hard', 'Hard', 'Very hard', 'All out']
-const FEELS = [
+export const RPE_WORD = ['', 'Very easy', 'Very easy', 'Easy', 'Easy', 'Moderate', 'Moderate', 'Hard', 'Hard', 'Very hard', 'All out']
+export const FEELS = [
   { id: 'great', label: 'Great', feel: 5 }, { id: 'ok', label: 'OK', feel: 3 },
   { id: 'tough', label: 'Tough', feel: 2 }, { id: 'pain', label: 'Something hurts', feel: 2 },
 ] as const
-const TONE: Record<WorkoutFeedback['tone'], string> = {
+export const TONE: Record<WorkoutFeedback['tone'], string> = {
   good: 'border-(--accent)/30 bg-(--accent-subtle)', info: 'border-(--border) bg-(--bg-surface)',
   ease: 'border-(--warning)/30 bg-(--warning-subtle)', care: 'border-(--danger)/30 bg-(--danger)/5',
 }

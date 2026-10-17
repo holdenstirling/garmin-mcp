@@ -73,7 +73,7 @@ def test_store_save_visible_by_day_and_drop(tmp_path, fernet_key) -> None:
     assert len(ext.visible("ann", [])) == 2
     day = ext.by_day("ann", [G_RUN])["2026-10-13"]
     assert day == [{"id": None, "name": "Workout", "sport": "other", "km": None, "minutes": 40,
-                    "avg_hr": None, "source": "oura"}]
+                    "avg_hr": None, "source": "oura", "key": "oura:o-yoga"}]  # key: opens its page
     # Old ones age out.
     assert ext.save("ann", "oura", [], date(2027, 6, 1)) == [] and ext.all("ann") == []
     ext.save("ann", "oura", items, date(2026, 10, 14))

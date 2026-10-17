@@ -11,6 +11,7 @@ import { fmtDuration, fmtMeters } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { burst, useCountUp } from '@/components/anim'
 import { ShareWorkoutButton } from '@/components/community/ShareWorkout'
+import { openActivity } from '@/lib/activitynav'
 import { fmtDist, getReaction, type CheckInRequest, type Reaction, type Verdict } from '@/lib/workout'
 
 const LOADING = ['Studying your splits…', 'Comparing to plan…', 'Counting your XP…']
@@ -171,6 +172,11 @@ function Body({ r, imperial, onCheckIn, onOpenSession, onDone }: {
         <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={onDone}>Done</Button>
       </div>
       {typeof a.id === 'number' && <ShareWorkoutButton activityId={a.id} />}
+      {typeof a.id === 'number' && (
+        <Button variant="ghost" className="h-11 gap-1 text-[0.7647rem]" onClick={() => { const id = a.id as number; onDone(); window.setTimeout(() => openActivity(id), 220) }}>
+          See every detail: laps, zones, heart rate <ChevronRight className="size-4" aria-hidden />
+        </Button>
+      )}
     </>
   )
 }

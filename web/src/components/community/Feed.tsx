@@ -7,7 +7,7 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Ban, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X,
+  Ban, ChevronRight, CalendarDays, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
@@ -22,6 +22,7 @@ import { listGroups, type FeedGroup } from '@/lib/community2'
 import { Sheet } from '@/components/ui/Sheet'
 import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
+import { openActivity } from '@/lib/activitynav'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, MAX_PHOTOS, REACTIONS, TEMPLATES, TEXT_LEN,
   ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft,
@@ -607,7 +608,8 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
         <p className="mt-2.5 whitespace-pre-wrap break-words text-[0.9412rem] leading-snug text-(--text)">{p.text}</p>
       ) : null}
       {photos.length > 0 && <PhotoGrid urls={photos} />}
-      {p.workout && <WorkoutCard w={p.workout} imperial={imperial} />}
+      {p.workout && <WorkoutCard w={p.workout} imperial={imperial}
+        onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id) : undefined} />}
       {p.event && <EventChip e={p.event} />}
       {notice && <p className="mt-2 text-[0.7059rem] text-(--accent)" role="status">{notice}</p>}
 
@@ -722,7 +724,7 @@ const SOURCE_LABEL: Record<string, string> = {
   garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', coros: 'COROS', strava: 'Strava', polar: 'Polar', suunto: 'Suunto', wahoo: 'Wahoo',
 }
 
-function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperial: boolean }) {
+function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>; imperial: boolean; onOpen?: () => void }) {
   const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
     : w.pace_s_100m ? fmtSwim100(w.pace_s_100m, imperial) : null
   const stats: [string, string][] = ([
@@ -752,6 +754,11 @@ function WorkoutCard({ w, imperial }: { w: NonNullable<Post['workout']>; imperia
         </dl>
       )}
       {w.splits && w.splits.length >= 2 && <SplitBars splits={w.splits} sport={w.sport} />}
+      {onOpen && (
+        <button type="button" onClick={onOpen} className="mt-2 flex min-h-11 w-full items-center justify-between border-t border-(--border) pt-1 text-[0.7647rem] font-medium text-(--accent)">
+          See all the details <ChevronRight className="size-4" aria-hidden />
+        </button>
+      )}
     </div>
   )
 }

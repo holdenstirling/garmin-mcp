@@ -11,6 +11,7 @@ import { SPORT_ICON } from '@/components/plan/PlanParts'
 import { weekTitle } from '@/components/week/WeekStrip'
 import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
+import { openActivity } from '@/lib/activitynav'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
 
@@ -79,7 +80,8 @@ function DayLine({ d, imperial, onOpen }: { d: WeekDay; imperial: boolean; onOpe
         {d.extra.map((a, i) => {
           const Icon = SPORT_ICON[a.sport] ?? Activity
           return (
-            <button key={`x${i}`} type="button" onClick={() => onOpen(d.date)} aria-label={`${a.name}, done, ${dayLabel}. Open this day`}
+            <button key={`x${i}`} type="button" onClick={() => (a.id != null ? openActivity(a.id) : onOpen(d.date))}
+              aria-label={`${a.name}, done, ${dayLabel}. ${a.id != null ? 'Open the workout' : 'Open this day'}`}
               className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
               <StateMark st="done" />
               <Icon className="size-3.5 shrink-0 text-(--text-secondary)" aria-hidden />

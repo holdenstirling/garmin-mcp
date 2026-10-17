@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/nav/Segmented'
 import { Sheet } from '@/components/ui/Sheet'
 import { cn } from '@/lib/utils'
+import { openActivity } from '@/lib/activitynav'
 import { haptic } from '@/lib/haptics'
 import { KM_PER_MI, fmtDist, fmtDuration } from '@/lib/format'
 import { KIND_LABEL, type BuiltPlan, type PlanSession, type PlanWeekBuilt } from '@/lib/plan'
@@ -560,10 +561,13 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           {extra}
           {/* Workouts from your apps that aren't plan sessions (cal.extra): so a rest day you trained on says so. */}
           {done.map((a, i) => (
-            <p key={`x${a.id ?? i}`} className="flex items-center gap-1.5 text-[0.7059rem] text-(--accent)">
+            <button key={`x${a.id ?? a.key ?? i}`} type="button" disabled={a.id == null && !a.key} onClick={() => openActivity(a.id ?? a.key!)}
+              aria-label={`${a.name}, done. Open the workout`}
+              className="flex min-h-11 w-full items-center gap-1.5 rounded-lg text-left text-[0.7059rem] text-(--accent) active:bg-(--bg-inset) disabled:cursor-default">
               <Check className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
-            </p>
+              <span className="min-w-0 flex-1 truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
+              {(a.id != null || a.key) && <ChevronRight className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />}
+            </button>
           ))}
           {!work.length && !extra && !done.length && <p className={cn('text-[0.7647rem] text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
         </div>

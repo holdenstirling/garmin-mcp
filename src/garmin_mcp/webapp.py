@@ -3585,7 +3585,83 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             last = max(cks, key=lambda c: c.get("ts") or 0) if cks else None
             return JSONResponse({"checkin": last, "feedback": _coach_fb(sess, item.get("went"), last)})
 
+        # One recorded workout (activitypage.py; web ActivityScreen): Garmin summary, laps and
+        # time in zones, the plan session it counted for, the athlete's check-in and Rabbit's
+        # deterministic feedback. Laps + get_activity are read once per activity (cached 30 min,
+        # bounded). Imported workouts (workouts.py, display-only) come from the import doc here.
+        from . import activitypage as _ap
+        from .paces import laps_from_splits as _laps_from_splits
+        _ap_cache: dict[tuple[str, int], tuple[float, list[dict[str, Any]], dict[str, Any]]] = {}
+
+        def _ap_detail(uid: str, aid: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+            hit = _ap_cache.get((uid, aid))
+            if hit and time.time() - hit[0] < 1800:
+                return hit[1], hit[2]
+            laps: list[dict[str, Any]] = []
+            extra: dict[str, Any] = {}
+            try:
+                laps = _laps_from_splits(chat.agent._service.read_uncached(uid, "get_activity_splits", {"activity_id": str(aid)}))
+            except Exception as e:
+                log_event(logger, logging.INFO, "activity_splits_failed", error=type(e).__name__)
+            try:
+                extra = _ap.extra_from(chat.agent._service.read_uncached(uid, "get_activity", {"activity_id": str(aid)}))
+            except Exception as e:
+                log_event(logger, logging.INFO, "activity_summary_failed", error=type(e).__name__)
+            if len(_ap_cache) > 300:
+                for k in sorted(_ap_cache, key=lambda k: _ap_cache[k][0])[:100]:
+                    _ap_cache.pop(k, None)
+            _ap_cache[(uid, aid)] = (time.time(), laps, extra)
+            return laps, extra
+
+        def _ap_last_checkin(uid: str, ref: str, sid: str | None) -> dict[str, Any] | None:
+            cks = [c for c in chat.agent.checkins.list(uid, 120)
+                   if c.get("activity_id") == ref or (sid and c.get("session_id") == sid)]
+            return max(cks, key=lambda c: c.get("ts") or 0) if cks else None
+
+        def _ap_view(uid: str, raw: str) -> dict[str, Any]:
+            from .workoutday import coach_feedback as _coach_fb
+            if raw.isdigit() and len(raw) <= 20:
+                aid = int(raw)
+                try:
+                    _, acts = chat.agent.stats.activities(uid)
+                except Exception:
+                    raise _UserError("Garmin isn't reachable right now. Try again in a minute.", 503) from None
+                act = next((a for a in acts if a.get("activity_id") == aid), None)
+                if act is None:
+                    raise _UserError("That workout isn't in your Garmin history.", 404)
+                laps, extra = _ap_detail(uid, aid)
+                athlete, _est = _pc.hr_estimate(chat.agent.coach.athlete(uid) or {}, acts)
+                planned, sess = None, None
+                plan = plans.get(uid)
+                if plan is not None:
+                    cal = _pcal.view(uid) or {}
+                    for sid, item in (cal.get("sessions") or {}).items():
+                        if (item.get("activity") or {}).get("id") == aid:
+                            for _, d, s0 in _pc.iter_sessions(plan):
+                                if s0.get("id") == sid:
+                                    sess = s0
+                                    planned = {"id": sid, "date": d, "title": s0.get("title"), "kind": s0.get("kind"),
+                                               "went": item.get("went")}
+                                    break
+                            break
+                ck = _ap_last_checkin(uid, raw, planned["id"] if planned else None)
+                fb = _coach_fb(sess or {"kind": "", "sport": _ap.sport_of(act.get("sport"))},
+                               (planned or {}).get("went"), ck)
+                return _ap.build_view(act, laps=laps, extra=extra, athlete=athlete, planned=planned, checkin=ck, feedback=fb)
+            if re.fullmatch(r"[a-z]{2,12}:[A-Za-z0-9_.-]{1,64}", raw) and _ext_w is not None:
+                w = next((x for x in _ext_w.all(uid) if x.get("key") == raw), None)
+                if w is None:
+                    raise _UserError("That workout isn't in your history anymore.", 404)
+                ck = _ap_last_checkin(uid, _ap.checkin_ref(raw), None)
+                return _ap.build_imported(w, checkin=ck, feedback=_coach_fb({"kind": ""}, None, ck))
+            raise ValueError("activity id")
+
+        async def activity_get(request: Request, user_id: str) -> Response:
+            raw = request.path_params["aid"]
+            return JSONResponse(await anyio.to_thread.run_sync(lambda: _ap_view(user_id, raw)))
+
         home_routes += [
+            Route("/app/api/activity/{aid}", _plan_api(activity_get, mutating=False), methods=["GET"]),
             Route("/app/api/workout/feedback", _plan_api(workout_feedback_get, mutating=False), methods=["GET"]),
             Route("/app/api/plan/sessions/{sid}/calendar.ics", _plan_api(session_ics, mutating=False), methods=["GET"]),
             Route("/app/api/plan/calendar", _plan_api(plancal_get, mutating=False), methods=["GET"]),

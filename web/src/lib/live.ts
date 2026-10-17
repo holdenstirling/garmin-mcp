@@ -15,6 +15,8 @@ export type Today = {
   action: { kind: TodayActionKind; label: string }
   signals: { label: string; value: string; good: boolean }[]
   garmin: boolean
+  /** "Done for today": the logged workout (its page: lib/activitynav) */
+  activity_id?: number
 }
 export const getToday = () => getJSON<Today>('/api/today')
 

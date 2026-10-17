@@ -105,6 +105,7 @@ export const CoachStatusSheet = split(() => import('@/components/coach/CoachStat
 export const FindCoachScreen = split(() => import('@/components/coach/FindCoachScreen').then((m) => m.FindCoachScreen))
 export const CoachApp = split(() => import('@/components/coach/CoachApp').then((m) => m.CoachApp))
 export const WorkoutDayScreen = split(() => import('@/components/workout/WorkoutDayScreen').then((m) => m.WorkoutDayScreen))
+export const ActivityScreen = split(() => import('@/components/workout/ActivityScreen').then((m) => m.ActivityScreen))
 export const SettingsPanels = split(() => import('@/components/SettingsPanels').then((m) => m.SettingsPanels), 'tab')
 // Me -> Connected apps (hub page) and the one connect popup per app
 export const ConnectionsScreen = split(() => import('@/components/connect/ConnectionsScreen').then((m) => m.ConnectionsScreen))
