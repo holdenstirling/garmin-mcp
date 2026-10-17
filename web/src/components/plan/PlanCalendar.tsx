@@ -292,16 +292,16 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
       {editing && (onMove || onShift) && (
         <div className="flex items-center gap-1 border-t border-(--border) px-1.5 py-0.5">
           <button type="button" disabled={!onShift?.[-1]} onClick={onShift?.[-1]} aria-label={`Move ${s.title} one day earlier`}
-            className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
-            <ChevronLeft className="size-3.5" aria-hidden />Day earlier
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            <ChevronLeft className="size-3.5" aria-hidden />Earlier
           </button>
           <button type="button" disabled={!onShift?.[1]} onClick={onShift?.[1]} aria-label={`Move ${s.title} one day later`}
-            className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
-            Day later<ChevronRight className="size-3.5" aria-hidden />
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            Later<ChevronRight className="size-3.5" aria-hidden />
           </button>
           {onMove && (
-            <button type="button" onClick={onMove} className="ml-auto flex min-h-11 items-center gap-1 rounded-lg px-2 text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-              <ArrowLeftRight className="size-3.5" aria-hidden />Move or swap
+            <button type="button" onClick={onMove} className="ml-auto flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)" aria-label={`Move ${s.title} to any day, or swap days`}>
+              <ArrowLeftRight className="size-3.5" aria-hidden />Move
             </button>
           )}
         </div>
@@ -671,7 +671,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
           <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
-            {editable && cal ? (editing ? 'Press and hold a session to drag it, or use Day earlier / Day later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
+            {editable && cal ? (editing ? 'Press and hold a session to drag it, or use Earlier / Later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
       ) : view === 'list' ? (
@@ -731,7 +731,7 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
   return (
     <div className="flex flex-col gap-3">
       <p className="px-1 text-[0.7647rem] text-(--text-muted)">
-        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a session to drag it, or use Day earlier / Day later.' : 'Tap a workout to see it in full.'}
+        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a session to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
       </p>
       {from > 0 && (
         <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>
