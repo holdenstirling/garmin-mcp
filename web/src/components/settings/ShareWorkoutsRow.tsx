@@ -4,26 +4,35 @@
 import { useEffect, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import { Icon, Row, Switch } from '@/components/settings/Grouped'
-import { getCommunitySettings, putCommunitySettings, sharingWorkouts } from '@/lib/community'
+import { ago, getCommunitySettings, putCommunitySettings, sharingWorkouts } from '@/lib/community'
 
 export function ShareWorkoutsRow() {
   const [on, setOn] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [last, setLast] = useState<number | null>(null)
   useEffect(() => {
     let live = true
-    getCommunitySettings().then((r) => { if (live) setOn(sharingWorkouts(r.settings)) }, () => {})
+    getCommunitySettings().then((r) => {
+      if (!live) return
+      setOn(sharingWorkouts(r.settings)); setLast(r.settings.last_shared_at ?? null)
+    }, () => {})
     return () => { live = false }
   }, [])
   if (on === null) return null
   async function change(v: boolean) {
     const prev = on
     setOn(v); setError(null)
-    try { setOn(sharingWorkouts((await putCommunitySettings({ share_workouts: v })).settings)) }
+    try {
+      const s = (await putCommunitySettings({ share_workouts: v })).settings
+      setOn(sharingWorkouts(s)); setLast(s.last_shared_at ?? null)
+    }
     catch (e) { setOn(prev); setError((e as Error).message) }
   }
   return (
     <Row icon={<Icon><Share2 /></Icon>} title="Share my workouts with friends"
-      subtitle={error ?? (on ? 'Followers see sport, time and distance. Never heart rate or where.' : 'Private: only you see them')}
+      subtitle={error ?? (on
+        ? `On · ${last ? `last shared ${ago(last) === 'now' ? 'just now' : `${ago(last)} ago`}` : 'your next workout posts after it syncs'}. Followers see sport, time and distance, never heart rate or where.`
+        : 'Off · only you see your workouts. Turn on so friends see them on the Feed.')}
       trailing={<Switch label="Share my workouts with friends" checked={on} onChange={(v) => void change(v)} />} />
   )
 }

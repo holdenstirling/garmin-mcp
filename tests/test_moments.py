@@ -338,3 +338,14 @@ def test_long_reply_is_logged_not_truncated(env, monkeypatch) -> None:
     assert [x["words"] for x in logged if x["event"] == "long_reply"] == [300]
     asyncio.run(agent.run("friend", "Quick one", lambda e: None, thread_id=tid))
     assert len([x for x in logged if x["event"] == "long_reply"]) == 1
+
+
+def test_late_synced_workout_still_reaches_friends(env) -> None:
+    """A workout from 2 days ago (late sync or manual upload) gets no moment, but
+    after_workouts (community auto-share) still runs."""
+    m, _, coach, _ = make(env, NOON)
+    ran: list[str] = []
+    m.after_workouts = ran.append
+    assert m.workouts("friend", [gact(20, day=NOON.date() - timedelta(days=2))]) == 0
+    assert feed(coach) == [] and ran == ["friend"]
+    assert m.workouts("friend", []) == 0 and ran == ["friend"]  # nothing synced: nothing to do

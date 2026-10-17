@@ -3450,12 +3450,20 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                             push=(lambda to, t, b: push.send(to, t, b, url="/app/?open=community")) if push else None)
         _ext_feed["share"] = cm.auto_share_external
 
+        def _cm_workouts(uid: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+            """Garmin activities and other sources' workouts, for the share-on backfill."""
+            acts = _ag.stats.activities(uid)[1] if _garmin_connected(uid) else []
+            ext = _ext_w.visible(uid, acts) if _ext_w is not None else []
+            return acts, ext
+        cm.workouts_of = _cm_workouts
+
         def _cm_scan(uid: str, *, workouts: bool) -> None:
             today = _ag._now(uid).date()
             acts: list[dict[str, Any]] = []
             if workouts:
                 _, acts = _ag.stats.activities(uid)
                 cm.auto_share_workouts(uid, acts, today)  # "Share my workouts with friends"
+                cm.backfill(uid)  # only if sharing just turned on and the first try failed
                 cm.scan_bests(uid, acts, today, imperial=_ag.coach.athlete(uid).get("units") != "metric")
             # The raw doc, not events.list: this runs inside an events write (list may write).
             evs = list((store.user_doc(uid, "events").load().get("events") or {}).values())
@@ -3476,6 +3484,18 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         _ag.moments.on_milestone = cm.from_moment
         _ag.moments.after_workouts = lambda uid: _cm_scan(uid, workouts=True)
+
+        def _cm_wants_share(uid: str) -> bool:
+            try:
+                return _garmin_connected(uid) and cm.sharing_workouts(cm.settings(uid))
+            except Exception:
+                return False
+
+        def _cm_share_scan(uid: str) -> None:
+            if _cm_wants_share(uid):
+                _cm_scan(uid, workouts=True)
+        _ag.moments.wants_share = _cm_wants_share
+        _ag.moments.share_scan = _cm_share_scan
         _ag.moments.on_tick = cm.meetup_reminders
         _ag._store.on_user_write(lambda uid, name: _cm_scan(uid, workouts=False)
                                  if name == "events" and soc.is_athlete(uid) else None)

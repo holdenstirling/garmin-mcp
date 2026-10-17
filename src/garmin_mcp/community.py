@@ -133,8 +133,10 @@ MAX_GROUP_AUDIENCE = 10
 # Auto-shared workouts are titled by sport (Garmin's names often include the city).
 SPORT_TITLE = {"run": "Run", "bike": "Ride", "swim": "Swim", "brick": "Brick", "strength": "Strength",
                "hike": "Hike", "ski": "Ski", "climb": "Climb", "paddle": "Paddle"}
-AUTO_DAYS = 1             # auto-share workouts from today and yesterday only
+AUTO_DAYS = 2             # auto-share workouts from today and the 2 days before (late syncs, uploads)
 AUTO_PER_SYNC = 3
+BACKFILL_DAYS = 2         # turning sharing on posts today and the 2 days before, once
+BACKFILL_MAX = 5
 MAX_UNREAD_POSTS = 200
 EVENT_FIELDS = ("id", "name", "date", "type", "distance")
 _PID = re.compile(r"^p[0-9a-f]{16}$")
@@ -422,6 +424,9 @@ class Community:
         self.groups: Any = None
         self.splits: Callable[[str, int], list[dict[str, Any]]] | None = None
         self.headline: Callable[[str, int], str | None] | None = None
+        # Set by webapp: ``workouts_of(uid) -> (garmin_acts, external_workouts)`` for the
+        # one-time backfill when "Share my workouts with friends" turns on.
+        self.workouts_of: Callable[[str], tuple[list[dict[str, Any]], list[dict[str, Any]]]] | None = None
         self._pushed: dict[tuple[str, str], float] = {}
         self._reminded: dict[str, float] = {}
 
@@ -462,7 +467,35 @@ class Community:
 
     def settings(self, uid: str) -> dict[str, Any]:
         self.require(uid)
-        return self._settings_of(self._mine(uid).load())
+        return {**self._settings_of(self._mine(uid).load()), "last_shared_at": self.last_shared_at(uid)}
+
+    def last_shared_at(self, uid: str) -> int | None:
+        """When my newest workout post went out (auto or by hand), for "Sharing: On · last shared"."""
+        ts = [int(p["created"]) for p in (self._posts(uid).load().get("posts") or {}).values()
+              if p.get("author") == uid and p.get("workout")]
+        return max(ts) if ts else None
+
+    def workout_post(self, uid: str, aid: Any) -> str | None:
+        """My post for this workout (auto-shared or shared by hand), if any."""
+        key = activity_key(aid)
+        if key is None:
+            return None
+        for p in (self._posts(uid).load().get("posts") or {}).values():
+            w = p.get("workout") or {}
+            if p.get("author") == uid and activity_key(w.get("activity_id")) == key:
+                return str(p["id"])
+        return None
+
+    def claim_workout(self, uid: str, aid: Any) -> None:
+        """Shared by hand: auto-share must not post it again."""
+        key = activity_key(aid)
+        if key is None:
+            return
+        today = self._now(uid).date().isoformat()
+
+        def apply(d: dict[str, Any]) -> None:
+            d.setdefault("keys", {})[f"auto:{key}"] = today
+        self._mine(uid).update(apply)
 
     def put_settings(self, uid: str, patch: Any) -> dict[str, Any]:
         self.require(uid)
@@ -506,10 +539,34 @@ class Community:
                 if k in clean:
                     cur[k] = clean[k]
             if self.sharing_workouts(cur) and not was:
-                cur["share_since"] = today  # nothing from before sharing started
+                # Sharing starts with the last few days (posted once, below), never older.
+                cur["share_since"] = (self._now(uid).date() - timedelta(days=BACKFILL_DAYS)).isoformat()
+                d["backfill_due"] = True
             d["settings"] = cur
             return cur
-        return self._mine(uid).update(apply)
+        out = self._mine(uid).update(apply)
+        self.backfill(uid)
+        return {**out, "last_shared_at": self.last_shared_at(uid)}
+
+    def backfill(self, uid: str) -> list[str]:
+        """Once, right after sharing turns on: post the last ``BACKFILL_DAYS`` days of workouts
+        (Garmin and other sources, oldest first, at most ``BACKFILL_MAX``) so friends see
+        something straight away. Same cards and once-per-workout keys as auto-sharing, so the
+        regular sync never posts them again. Best effort: a failure leaves it due for the next try."""
+        if self.workouts_of is None or not self._mine(uid).load().get("backfill_due"):
+            return []
+        try:
+            acts, ext = self.workouts_of(uid)
+        except Exception:
+            return []
+        today = self._now(uid).date()
+        out = self.auto_share_workouts(uid, acts, today, days=BACKFILL_DAYS, cap=BACKFILL_MAX)
+        out += self.auto_share_external(uid, ext, today, days=BACKFILL_DAYS, cap=max(0, BACKFILL_MAX - len(out)))
+
+        def done(d: dict[str, Any]) -> None:
+            d.pop("backfill_due", None)
+        self._mine(uid).update(done)
+        return out
 
     # ----------------------------------------------------------- access --
     @staticmethod
@@ -1027,7 +1084,8 @@ class Community:
         self._mine(uid).update(apply)
 
     # ----------------------------------------------------- auto-sharing --
-    def auto_share_workouts(self, uid: str, acts: list[dict[str, Any]], today: date) -> list[str]:
+    def auto_share_workouts(self, uid: str, acts: list[dict[str, Any]], today: date, *,
+                            days: int = AUTO_DAYS, cap: int = AUTO_PER_SYNC) -> list[str]:
         """Post each newly synced workout (today/yesterday, on or after ``share_since``) to
         friends, once per activity, when "Share my workouts with friends" is on. Returns the
         new post ids. Same compact card as "Share this workout"; title = the sport."""
@@ -1038,10 +1096,10 @@ class Community:
             return []
         since = s["share_since"] or today.isoformat()
         rows = [r for r in _rows(acts) if activity_key(r["id"]) is not None
-                and 0 <= (today - r["date"]).days <= AUTO_DAYS and r["date"].isoformat() >= since]
+                and 0 <= (today - r["date"]).days <= days and r["date"].isoformat() >= since]
         rows.sort(key=lambda r: (r["date"], str(r["id"])))
         out: list[str] = []
-        for r in rows[-AUTO_PER_SYNC:]:
+        for r in (rows[-cap:] if cap > 0 else []):
             key = f"auto:{activity_key(r['id'])}"
 
             def claim(d: dict[str, Any], key: str = key) -> bool:
@@ -1067,7 +1125,8 @@ class Community:
             out.append(post["id"])
         return out
 
-    def auto_share_external(self, uid: str, workouts: list[dict[str, Any]], today: date) -> list[str]:
+    def auto_share_external(self, uid: str, workouts: list[dict[str, Any]], today: date, *,
+                            days: int = AUTO_DAYS, cap: int = AUTO_PER_SYNC) -> list[str]:
         """Same as ``auto_share_workouts`` for workouts another source recorded and Garmin didn't
         (``workouts.py`` model, e.g. Oura): sport, distance and time only, labelled with the
         source. Never heart rate or calories. Once per workout."""
@@ -1078,13 +1137,14 @@ class Community:
             return []
         since = s["share_since"] or today.isoformat()
         out: list[str] = []
-        for w in sorted(workouts, key=lambda x: str(x.get("start")))[-AUTO_PER_SYNC:]:
+        ws = sorted(workouts, key=lambda x: str(x.get("start")))
+        for w in (ws[-cap:] if cap > 0 else []):
             day = str(w.get("start") or "")[:10]
             try:
                 d0 = date.fromisoformat(day)
             except ValueError:
                 continue
-            if not (0 <= (today - d0).days <= AUTO_DAYS) or day < since or not isinstance(w.get("key"), str):
+            if not (0 <= (today - d0).days <= days) or day < since or not isinstance(w.get("key"), str):
                 continue
             key = f"auto:{w['key']}"
 

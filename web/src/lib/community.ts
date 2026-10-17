@@ -92,6 +92,8 @@ export type CommunitySettings = {
   /** where auto-shared workouts go: "friends" or "grp:<gid>[,...]" */
   share_audience?: string
   default_view?: 'feed' | 'clubs'
+  /** when my newest workout post went out (unix seconds), or null */
+  last_shared_at?: number | null
 }
 /** Effective "Share my workouts with friends" (community.py `sharing_workouts`). */
 export const sharingWorkouts = (s: CommunitySettings) =>
@@ -176,6 +178,9 @@ export const getDrafts = () => getJSON<{ drafts: Draft[] }>(`${P}/drafts`)
 export const shareDraft = (id: string, b: PostInput = {}) =>
   counted(postJSON<{ post: Post; message: string }>(`${P}/drafts/${encodeURIComponent(id)}/share`, b), 'share', { what: 'post' })
 export const dismissDraft = (id: string) => sendJSON<{ ok: boolean }>('DELETE', `${P}/drafts/${encodeURIComponent(id)}`)
+/** Is this workout of mine already on the feed? (auto-shared or shared by hand) */
+export const getWorkoutPost = (id: number | string) =>
+  getJSON<{ post_id: string | null }>(`${P}/workouts/${encodeURIComponent(String(id))}/post`)
 export const getCommunitySettings = () => getJSON<{ settings: CommunitySettings; usage: Usage }>(`${P}/settings`)
 export const putCommunitySettings = (patch: Partial<CommunitySettings>) =>
   sendJSON<{ settings: CommunitySettings; usage: Usage }>('PUT', `${P}/settings`, patch)

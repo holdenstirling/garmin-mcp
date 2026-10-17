@@ -37,6 +37,7 @@ import {
 } from '@/lib/connections'
 import { cn } from '@/lib/utils'
 import { RabbitNap } from '@/components/anim'
+import { ShareChoice } from '@/components/connect/ShareChoice'
 
 const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
@@ -382,6 +383,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           <h3 id="conn-next" className="text-[0.7647rem] font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT[app]} tone="yes" />
         </section>
+        {app !== 'calendar' && app !== 'trainingpeaks' && <ShareChoice />}
         {app === 'oura' && <SourcePref pref={pref} ouraOn />}
         {app === 'trainingpeaks' && tpSource && <TPSourcePref source={tpSource} onSaved={setTpSource} onToast={onToast} />}
         <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy}

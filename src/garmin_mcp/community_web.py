@@ -18,6 +18,7 @@ with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, c
     POST   /app/api/community/posts/{pid}/report     {reason?}
     POST   /app/api/community/photos                 raw JPEG/WebP body -> {photo_id}
     GET    /app/api/community/drafts
+    GET    /app/api/community/workouts/{wid}/post    {post_id|null}: is my workout on the feed
     POST   /app/api/community/drafts/{did}/share     {text?, audience?, photo_ids?, feeling?}
     DELETE /app/api/community/drafts/{did}
     GET    /app/api/community/settings               + photo usage
@@ -146,8 +147,19 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
             if card is None:
                 raise CommunityError("That workout hasn't synced yet.", 404)
             b.setdefault("category", "other")
+            have = await run(lambda: cm.workout_post(user_id, wid))
+            if have is not None:  # already on the feed (auto-shared or shared before): no copy
+                return JSONResponse({"post": deco(await run(lambda: cm.get(user_id, have))), "already": True})
         post = await run(lambda: cm.create(user_id, b, workout=card))
+        if wid is not None:
+            await run(lambda: cm.claim_workout(user_id, wid))
         return JSONResponse({"post": deco(post)}, status_code=201)
+
+    async def workout_post(request: Request, user_id: str) -> Response:
+        """Is this workout of mine on the feed? ``{post_id}`` or null (for "Post to feed")."""
+        raw = str(request.path_params["workout_id"])[:80]
+        wid: Any = int(raw) if raw.isdigit() else raw
+        return JSONResponse({"post_id": await run(lambda: cm.workout_post(user_id, wid))})
 
     async def post_get(request: Request, user_id: str) -> Response:
         pid = pid_of(request)
@@ -463,6 +475,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
     return [
         Route(f"{P}/feed", wrap(feed, mutating=False), methods=["GET"]),
         Route(f"{P}/posts", wrap(post_create, mutating=True), methods=["POST"]),
+        Route(f"{P}/workouts/{{workout_id}}/post", wrap(workout_post, mutating=False), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}", wrap(post_get, mutating=False), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}", wrap(post_patch, mutating=True), methods=["PATCH"]),
         Route(f"{P}/posts/{{post_id}}", wrap(post_delete, mutating=True), methods=["DELETE"]),

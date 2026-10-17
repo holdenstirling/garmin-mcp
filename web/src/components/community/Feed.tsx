@@ -38,6 +38,7 @@ import { saveDurably } from '@/lib/outbox'
 import { counted } from '@/lib/usage'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
+import { FeedHint } from '@/components/community/FeedHint'
 
 
 export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
@@ -168,6 +169,9 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {items == null ? (error ? null : <FeedSkeleton />) : (
         <>
+          {main && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
+            <FeedHint onInvite={items.length > 0 ? onInvite : undefined} onShared={() => void load()} />
+          )}
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
               title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}

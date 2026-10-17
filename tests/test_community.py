@@ -604,6 +604,13 @@ def test_http_flow(env, tmp_path) -> None:
         w = r.json()["post"]
         assert r.status_code == 201 and w["workout"]["highlight"] and "avg_hr" not in json.dumps(w)
         assert (await ann.post("/app/api/community/posts", headers=H, json={"workout_id": 999})).status_code == 404
+        # Shared again (or after auto-share): the same post, no copy; the workout page can tell.
+        again = await ann.post("/app/api/community/posts", headers=H, json={"workout_id": 11})
+        assert again.status_code == 200 and again.json()["already"] and again.json()["post"]["id"] == w["id"]
+        assert (await ann.get("/app/api/community/workouts/11/post")).json() == {"post_id": w["id"]}
+        assert (await ann.get("/app/api/community/workouts/12/post")).json() == {"post_id": None}
+        st = (await ann.get("/app/api/community/settings")).json()["settings"]
+        assert st["last_shared_at"] is not None
         # Drafts: a debrief result makes a race draft; sharing posts it.
         ev = agent.events.create("ann", {"name": "Bolder Boulder", "type": "running", "distance": "10k",
                                          "date": (agent._now("ann").date() - timedelta(days=1)).isoformat()})
