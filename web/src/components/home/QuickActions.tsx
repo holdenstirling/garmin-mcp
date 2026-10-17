@@ -1,7 +1,7 @@
 // One-tap actions on the Rabbit home (server: quickactions.py): "How did it feel?", "RSVP",
 // "Cheer a friend", "Send to watch". Each is shown only when it applies and completes right
-// here (no navigation). Plus the one-time "Share my workouts with friends" prompt. A separate
-// component from the Up next card on purpose.
+// here (no navigation). At most two at once, so Home stays calm. SharePrompt (the one-time
+// "Share my workouts with friends" question) is exported for Home's single next-step slot.
 import { useEffect, useState } from 'react'
 import { CalendarCheck, Check, PartyPopper, Share2, Smile, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -88,10 +88,9 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
   return (
     <div className="px-4" data-usage-card="actions">
       <div className="mx-auto max-w-2xl">
-        <SharePrompt />
         {shown.length > 0 && (
-          <div role="group" aria-label="Quick actions" className="-mx-1 flex gap-2 overflow-x-auto px-1 py-1.5 [scrollbar-width:none]">
-            {shown.map((a) => {
+          <div role="group" aria-label="Quick actions" className="mt-2 flex flex-wrap gap-2">
+            {shown.slice(0, 2).map((a) => {
               const Icon = done === a.kind ? Check : ICON[a.kind]
               const active = a.kind === 'feel' && feelOpen
               return (
@@ -125,9 +124,10 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
   )
 }
 
-/** The one-time "Share my workouts with friends" card. Shown once: being shown turns the
- *  default on (server-side), "Keep private" turns it off. Changeable in Me. */
-function SharePrompt() {
+/** The one-time "Share my workouts with friends" card (Home's "next step" slot). Shown once:
+ *  being shown turns the default on (server-side), "Keep private" turns it off. Changeable in
+ *  Me. `onShown` tells Home whether it's up, so no other prompt stacks under it. */
+export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void }) {
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [answered, setAnswered] = useState<boolean | null>(null)
   useEffect(() => {
@@ -139,7 +139,9 @@ function SharePrompt() {
     }, () => {})
     return () => { live = false }
   }, [])
-  if (!s || s.share_workouts != null || (s.share_prompted && answered === null)) return null
+  const hidden = !s || s.share_workouts != null || (s.share_prompted && answered === null)
+  useEffect(() => { onShown?.(!hidden && answered === null) }, [hidden, answered]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (hidden) return null
   if (answered !== null) {
     return (
       <p role="status" className="py-1.5 text-[0.7059rem] text-(--text-muted)">

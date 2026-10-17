@@ -1,4 +1,4 @@
-// Community feed: "Share something" (+ quick life-event templates), the milestone drafts tray,
+// Community feed: "Share something" (life-event ideas inside the composer), the milestone drafts tray,
 // meetups coming up, and calm post cards (category, text, up to 4 photos, linked event, four
 // reactions with a burst, one-level comment threads). Also a club's feed (``clubId``): the
 // composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
@@ -118,22 +118,12 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           </Button>
         )}
       </div>
-      {main && (
-        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" aria-label="Quick milestones">
-          {TEMPLATES.map((t) => (
-            <button key={t.label} type="button" onClick={() => setComposer(t)}
-              className="hit-44 inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-(--border) bg-(--bg-surface) px-3 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-              <span aria-hidden>{t.emoji}</span>{t.label}
-            </button>
-          ))}
-        </div>
-      )}
       {drafts.length > 0 && (
         <DraftsTray drafts={drafts} onShared={(d, p) => { setDrafts((xs) => xs.filter((x) => x.id !== d.id)); add(p) }}
           onDismissed={(d) => setDrafts((xs) => xs.filter((x) => x.id !== d.id))} />
       )}
       {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
-      {main && (
+      {main && ((items?.length ?? 0) > 0 || groups.length > 0 || filter !== 'all') && (
         <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4" role="radiogroup" aria-label="Show">
           {chips.map(([v, label]) => (
             <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
@@ -308,6 +298,16 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
         </div>
         <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          {!template && !text.trim() && !fixed && (
+            <div className="flex flex-wrap gap-1.5" aria-label="Ideas">
+              {TEMPLATES.map((t) => (
+                <button key={t.label} type="button" onClick={() => setD((x) => ({ ...x, text: t.text, category: t.category }))}
+                  className="hit-44 inline-flex min-h-9 items-center gap-1 rounded-full border border-(--border) bg-(--bg-surface) px-3 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+                  <span aria-hidden>{t.emoji}</span>{t.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="-mx-1 flex flex-wrap gap-1" role="radiogroup" aria-label="What is it">
             {CATEGORIES.map(([id, label]) => (
               <button key={id} type="button" role="radio" aria-checked={category === id} onClick={() => setCategory(id)}

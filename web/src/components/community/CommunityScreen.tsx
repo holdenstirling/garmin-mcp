@@ -44,13 +44,12 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
-    <Screen title="Community"
+    <Screen title="Community" subtitle="Friends, clubs and group runs near you"
       headerExtra={<Segmented label="Community" value={view} onChange={onView}
         options={[['feed', 'Feed'], ['clubs', 'Clubs'], ['people', 'People']] as const} />}>
       {(view === 'feed' || view === 'clubs') && featured && featured.length > 0 && (
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
-      {view === 'feed' && <BlocksEntry compact />}
       {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub}
         onOpenGroup={setGroup} onNewGroup={() => setNewGroup(true)} groupsKey={groupsKey} />}
       {view === 'clubs' && <ClubsTab imperial={imperial} openId={club} onOpen={onClub} />}
@@ -58,6 +57,7 @@ export function CommunityScreen({ imperial, view, onView, onChanged, club, onClu
         onSaved={(g) => { setNewGroup(false); setGroupsKey((k) => k + 1); setGroup(g.id) }} />}
       {group && <GroupPage id={group} imperial={imperial} onClose={() => setGroup(null)} onChanged={() => setGroupsKey((k) => k + 1)} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
+      {view === 'people' && <BlocksEntry compact />}
       {settings && <SharingSheet onClose={() => setSettings(false)} />}
     </Screen>
   )

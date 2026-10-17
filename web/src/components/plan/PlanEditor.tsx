@@ -1,17 +1,18 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, ChevronDown, FileUp, MessageCircle, Plane, RefreshCw, Trash2, Undo2, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
+import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import type { Me, Sport } from '@/lib/api'
 import {
   deletePlan, placedEventLabel, planApi, rebuildPlan, removeFromGarmin, sportsFor, syncGarmin, type PlanApi,
   type BuiltPlan, type PlanSession, type SyncResult,
 } from '@/lib/plan'
-import { Card, Chip, ChipRow, Field, Screen } from './ui'
+import { Field, Screen } from './ui'
 import { PhaseStrip, fmtDay, planToday, sessionMinutes } from './PlanParts'
 import { PlanCalendar, paceText, type MoveTarget } from './PlanCalendar'
 import { getCalendar as getPlanCal, type CalView } from '@/lib/plancal'
@@ -204,14 +205,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
   return (
     <Screen title="Your plan" subtitle={`${goalTitle} · ${raceDay}`} closing={closing} onClose={close}>
-      {/* Season */}
+      {/* Season: one line; the phase chart is under "Season overview" below the calendar */}
       <div className="px-1">
-        <p className="font-display text-[1.4118rem] leading-tight text-(--brand)">
-          {daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}
-        </p>
-        <p className="mt-1 text-[0.7647rem] text-(--text-muted)">
-          {plan.weeks.length} weeks · about {plan.start_hours}h building to {plan.peak_hours}h a week
-          {plan.current_week ? ` · you're in week ${plan.current_week}` : ''}
+        <p className="text-[0.8235rem] text-(--text-secondary)">
+          <span className="font-semibold text-(--brand)">{daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}</span>
+          {plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}
         </p>
         {plan.origin && (
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7647rem] text-(--text-secondary)">
@@ -240,14 +238,6 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
         </div>
       )}
-      {plan.events.length > 0 && (
-        <p className="-mb-2 px-1 text-[0.7059rem] text-(--text-muted)">
-          Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${placedEventLabel(e)})`).join(' · ')}
-        </p>
-      )}
-      <Card className="p-4">
-        <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
-      </Card>
 
       <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
@@ -261,21 +251,39 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
         onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
 
+      {/* Season overview: phases and hours by week (tap a week to open it), events in the plan */}
+      <details className="group rounded-xl border border-(--border) bg-(--bg-surface)">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[0.8235rem] font-medium text-(--text) [&::-webkit-details-marker]:hidden">
+          <span className="flex-1">Season overview</span>
+          <span className="text-[0.7059rem] text-(--text-muted)">{plan.weeks.length} weeks · {plan.start_hours}h to {plan.peak_hours}h a week</span>
+          <ChevronDown className="size-4 text-(--text-muted) transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
+        <div className="flex flex-col gap-3 px-4 pb-4">
+          <PhaseStrip plan={plan} selected={week.index} onSelect={setWeekIdx} />
+          {plan.events.length > 0 && (
+            <p className="text-[0.7059rem] text-(--text-muted)">
+              Also in this plan: {plan.events.map((e) => `${e.name} (${fmtDay(e.date, { month: 'short', day: 'numeric' })}, ${placedEventLabel(e)})`).join(' · ')}
+            </p>
+          )}
+        </div>
+      </details>
+
       {!coachMode && <>
       {/* Garmin */}
-      <Group label="Garmin calendar" footer={me.garmin.connected
-        ? 'Rabbit adds upcoming sessions as structured workouts with your zones. Sync again after changes; edited and moved sessions get updated.'
+      <Group label="Send to your watch" footer={me.garmin.connected
+        ? 'Upcoming sessions go to your Garmin calendar as structured workouts. Moved or edited sessions update on the next sync.'
         : undefined}>
         <Field label={me.garmin.connected ? (lastSync ? `Last synced ${lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${synced} on your calendar` : 'Not synced yet') : 'Connect Garmin'}>
           {me.garmin.connected ? (
             <div className="flex flex-col gap-2.5">
-              <ChipRow>
-                {[7, 14, 28].map((n) => <Chip key={n} selected={syncDays === n} onClick={() => setSyncDays(n)}>Next {n} days</Chip>)}
-              </ChipRow>
               <div className="flex gap-2">
+                <select aria-label="How far ahead" value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))}
+                  className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-[0.8235rem] text-(--text)">
+                  {[7, 14, 28].map((n) => <option key={n} value={n}>Next {n} days</option>)}
+                </select>
                 <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={sync.busy === 'sync'}
                   disabled={sync.busy != null} onClick={() => void doSync()}>
-                  <Watch className="size-4" /> Sync to Garmin
+                  <Watch className="size-4" /> Sync
                 </Button>
                 {(synced > 0 || plan.pending_removals > 0) && (
                   <Button variant="default" className="h-11 px-4 text-[0.8235rem]" loading={sync.busy === 'remove'}
@@ -296,8 +304,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       </Group>
       {sync.error && <p className="-mt-3 px-4 text-[0.7647rem] text-(--danger)" role="alert">{sync.error}</p>}
 
+      <BlocksEntry compact />
+
       {/* Plan actions */}
-      <Group label="Plan">
+      <Group label="Plan settings">
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close?.(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"

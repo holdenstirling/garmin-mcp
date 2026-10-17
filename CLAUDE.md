@@ -30,6 +30,7 @@ uv lock                  # only when dependencies change; deploy refuses without
 There is no linter/formatter configured. `scripts/smoke_live.py` hits the real Garmin account and is run on the VM only, never in CI.
 
 ## Architecture
+- **Calm layout (one next step per screen)**: Rabbit Home = greeting, Rabbit notes row, race-week card, Up next (one primary button, at most one readiness signal before the session), intent strip, This week panel, at most 2 quick actions (wrapped, no scroller), then ONE next-step slot (StatusBanner setup/recap/plan, else the one-time SharePrompt from QuickActions, else FirstVisitCard), then friends. Streak/level/race grade/week ring live only in Progress; the race countdown is the header subtitle (WeekGoalsCard, NextRaceCard, ProgressGlance removed). Chat shows only error/Garmin banners. Plan tab: one-line season, calendar first, then Season overview (collapsed PhaseStrip + events), Send to your watch (days select + Sync), Train together, Plan settings. Community: Train together moved to People; post ideas live inside the composer; feed filters only when there's something to filter. Events: the how-it-works text is collapsed.
 
 Request path: `server.py` (MCPServer tools) → `tools.GarminService` (transport-independent; this is what unit tests target) → `registry.Registry` (validate method + args) → `GarminProvider.get_client(user_id)` → `GarminSession.call(fn, kwargs, retry=...)` → `shaping.shape()` on the result.
 
