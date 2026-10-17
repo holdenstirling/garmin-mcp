@@ -8,9 +8,10 @@
 // the bottom: Move, Edit, Ask Rabbit.
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Send, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench } from 'lucide-react'
+import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
+import { ShareButton } from '@/components/ui/ShareSheet'
 import { RabbitNote } from '@/components/ui/brand'
 import { celebrate } from '@/components/fx'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -95,10 +96,8 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
             </Button>
           )}
           {s.id && data && (
-            <Button variant="default" size="icon" className="size-11 shrink-0" aria-label="Send this workout to a friend"
-              onClick={() => shareToFriends({ type: 'workout', ref: { kind: 'session', id: s.id!, date: data.date }, label: s.title })}>
-              <Send className="size-4" aria-hidden />
-            </Button>
+            <ShareButton iconOnly target={{ kind: 'workout', ref: s.id, label: s.title }}
+              onSendInRabbit={() => shareToFriends({ type: 'workout', ref: { kind: 'session', id: s.id!, date: data.date }, label: s.title })} />
           )}
           {s.id && status === 'done' ? (
             <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]"

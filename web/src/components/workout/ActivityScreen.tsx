@@ -4,9 +4,10 @@
 // Workouts another app recorded (Oura) are display-only: no "Ask Rabbit" for them.
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Bike, CalendarDays, ExternalLink, Footprints, HeartPulse, MessageCircle, Mountain, Send, Sparkles, Waves } from 'lucide-react'
+import { Activity, Bike, CalendarDays, ExternalLink, Footprints, HeartPulse, MessageCircle, Mountain, Sparkles, Waves } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
+import { ShareButton } from '@/components/ui/ShareSheet'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Screen } from '@/components/plan/ui'
 import { fmtDay } from '@/components/plan/PlanParts'
@@ -47,11 +48,11 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
       footer={v ? (
         <>
           {typeof v.id === 'number' && <div className="flex-1"><ShareWorkoutButton activityId={v.id} /></div>}
-          {typeof v.id === 'number' && (
-            <Button variant="default" size="icon" className="size-11 shrink-0" aria-label="Send this workout to a friend"
-              onClick={() => shareToFriends({ type: 'workout', ref: { kind: 'activity', id: String(v.id) }, label: v.name ?? 'Workout' })}>
-              <Send className="size-4" aria-hidden />
-            </Button>
+          {v.key && (
+            <ShareButton iconOnly hrOption={v.source === 'garmin'} target={{ kind: 'activity', ref: String(v.key), label: v.name ?? 'Workout' }}
+              onSendInRabbit={typeof v.id === 'number'
+                ? () => shareToFriends({ type: 'workout', ref: { kind: 'activity', id: String(v.id) }, label: v.name ?? 'Workout' })
+                : undefined} />
           )}
           {ask && (
             <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={ask}>

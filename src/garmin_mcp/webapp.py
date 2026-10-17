@@ -4014,6 +4014,119 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
               for k in ("move", "swap", "fix", "undo", "goal")],
         ]
 
+        # Share by text (sharelinks.py): public read-only links (/app/l/<token>) for a planned
+        # workout, a recorded workout, an event, a club or an invite, opened from Messages etc.
+        # A snapshot of safe fields is frozen at share time (no heart rate unless the sharer
+        # includes it; never location). Only token hashes are stored; revoking 404s at once.
+        from . import sharelinks as _sl
+        _slinks = _sl.ShareLinks(store)
+        _sl_clb = locals().get("clb")
+        _sl_base = settings.public_base_url.rstrip("/")
+
+        def _sl_snap(uid: str, body: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+            kind = body.get("kind")
+            ref = str(body.get("ref") or "")[:80]
+            hr = body.get("include_hr") is True
+            who = auth.profile(uid).get("name") or ""
+            athlete = chat.agent.coach.athlete(uid) or {}
+            imperial = athlete.get("units") != "metric"
+            if kind == "workout":
+                plan = plans.get(uid)
+                hit = next(((d, s0) for _, d, s0 in _pc.iter_sessions(plan or {}) if s0.get("id") == ref), None) if plan else None
+                if hit is None:
+                    raise _UserError("That workout isn't in your plan anymore.", 404)
+                item = ((_pcal.view(uid) or {}).get("sessions") or {}).get(ref)
+                return kind, ref, _sl.planned_snap(hit[1], hit[0], item, who=who, imperial=imperial, include_hr=hr)
+            if kind == "activity":
+                view = _ap_view(uid, ref)
+                return kind, ref, _sl.activity_snap(view, who=who, imperial=imperial, include_hr=hr)
+            if kind == "event":
+                ev = next((e for e in chat.agent.events.list(uid) if e.get("id") == ref), None)
+                if ev is None:
+                    raise _UserError("That event isn't on your calendar anymore.", 404)
+                today = plans.today(uid)
+                ev = chat.agent.events.decorate(ev, today)
+                if ev.get("next_dates"):
+                    ev = ev | {"date": ev["next_dates"][0]}
+                return kind, ref, _sl.event_snap(ev, who=who)
+            if kind == "club":
+                if _sl_clb is None:
+                    raise _UserError("Clubs aren't available here.", 404)
+                try:
+                    c = _sl_clb.get(uid, ref)
+                except Exception:
+                    raise _UserError("Club not found.", 404) from None
+                admin = c.get("role") in ("owner", "admin")
+                if c.get("visibility") == "private" and not admin:
+                    raise _UserError("Only the club's organizers can share a private club.", 403)
+                code = c.get("code") if (c.get("visibility") == "private" or body.get("include_code") is True) and admin else None
+                return kind, ref, _sl.club_snap(c, who=who, code=code)
+            if kind == "invite":
+                return kind, "invite", _sl.invite_snap(who=who)
+            raise ValueError("kind")
+
+        def _sl_cta(uid: str, snap: dict[str, Any]) -> tuple[str, str]:
+            """Join link when the sharer can invite (a reusable access invite), else the app."""
+            if auth.can_invite(uid) and auth.access is not None:
+                def make() -> tuple[str, int]:
+                    tok, _iid = auth.access.create_invite(uid, max_uses=25, days=60)
+                    return tok, int(time.time()) + 60 * 86400
+                try:
+                    tok = _slinks.invite_token(uid, make)
+                    label = "Join Rabbit" if snap.get("kind") in ("invite", "club", "event") else "Train with me on Rabbit"
+                    return f"{_sl_base}/app/join/{tok}", label
+                except Exception as e:  # too many invites etc.: the page still works
+                    log_event(logger, logging.INFO, "share_invite_failed", error=type(e).__name__)
+            return f"{_sl_base}/app/", "Open Rabbit"
+
+        async def sharelink_create(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            if not isinstance(body, dict) or body.get("kind") not in _sl.KINDS:
+                raise ValueError("kind")
+            kind, ref, snap = await anyio.to_thread.run_sync(lambda: _sl_snap(user_id, body))
+            try:
+                token, lid = _slinks.create(user_id, kind, ref, snap)
+            except _sl.ShareError as e:
+                raise _UserError(str(e), e.status) from None
+            return JSONResponse({"id": lid, "url": f"{_sl_base}/app/l/{token}", "title": snap.get("title"),
+                                 "text": _sl.default_text(snap)}, status_code=201)
+
+        async def sharelink_list(request: Request, user_id: str) -> Response:
+            return JSONResponse({"links": _slinks.list(user_id)})
+
+        async def sharelink_delete(request: Request, user_id: str) -> Response:
+            lid = request.path_params["lid"]
+            if not re.fullmatch(r"[0-9a-f]{12}", lid):
+                raise ValueError("link id")
+            if not _slinks.revoke(user_id, lid):
+                raise _UserError("That link is already off.", 404)
+            return JSONResponse({"ok": True})
+
+        async def sharelink_page(request: Request) -> Response:
+            headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer",
+                       "X-Content-Type-Options": "nosniff",
+                       "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; "
+                                                  "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}
+            if not host_ok(request):
+                return HTMLResponse("Not found", status_code=404, headers=headers)
+            token = request.path_params["token"]
+            got = await anyio.to_thread.run_sync(lambda: _slinks.resolve(token))
+            if got is None:
+                return HTMLResponse("This link isn't active anymore.", status_code=404, headers=headers)
+            uid, rec = got
+            snap = rec.get("snap") or {}
+            cta_url, cta_label = await anyio.to_thread.run_sync(lambda: _sl_cta(uid, snap))
+            page = _sl.render(snap, url=f"{_sl_base}/app/l/{token}", og_image=f"{_sl_base}/app/og-image.png",
+                              cta_url=cta_url, cta_label=cta_label)
+            return HTMLResponse(page, headers=headers)
+
+        home_routes += [
+            Route("/app/api/sharelinks", _plan_api(sharelink_list, mutating=False), methods=["GET"]),
+            Route("/app/api/sharelinks", _plan_api(sharelink_create, mutating=True), methods=["POST"]),
+            Route("/app/api/sharelinks/{lid}", _plan_api(sharelink_delete, mutating=True), methods=["DELETE"]),
+            Route("/app/l/{token}", sharelink_page, methods=["GET"]),
+        ]
+
         # Weather-aware workouts (weather.py rules, weather_web.py): Home's next 3 days and one
         # session's hourly strip, adjusted paces and best time to go. Display only.
         from .weather_web import WeatherService as _WxSvc

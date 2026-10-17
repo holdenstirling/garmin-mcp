@@ -13,6 +13,7 @@ import {
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
+import { ShareButton } from '@/components/ui/ShareSheet'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Group, Row } from '@/components/settings/Grouped'
 import { Card, Field, OptionCard, Screen, inputCls } from '@/components/plan/ui'
@@ -398,6 +399,9 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                     <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setSheet('invite')}>
                       <UserPlus className="size-4" /> Invite friends
                     </Button>
+                  )}
+                  {(c.visibility !== 'private' || admin) && (
+                    <ShareButton label="Text the club to someone" target={{ kind: 'club', ref: c.id, label: c.name }} />
                   )}
                   {c.code && (
                     <div className="flex items-center gap-2">
