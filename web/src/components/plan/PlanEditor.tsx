@@ -2,7 +2,7 @@
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
-import { openSick } from '@/lib/sick'
+import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
 import { SickBanner } from './SickHost'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
@@ -131,7 +131,11 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   }, [coachMode, canMessage])
   useEffect(() => {
     if (coachMode) return
-    getAdjust().then(setProposal, () => {})
+    const fetchAdjust = () => { getAdjust().then(setProposal, () => {}) }
+    fetchAdjust()
+    // Sick mode on/off changes what Rabbit suggests (nothing while sick or easing back).
+    window.addEventListener(SICK_CHANGED_EVENT, fetchAdjust)
+    return () => window.removeEventListener(SICK_CHANGED_EVENT, fetchAdjust)
   }, [coachMode])
   useEffect(() => {
     if (coachMode || !me.calendar?.connected) return

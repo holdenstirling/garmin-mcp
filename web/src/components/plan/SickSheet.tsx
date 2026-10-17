@@ -92,7 +92,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
           <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">Day {view.day} · Rest up</p>
           <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{view.line}</p>
           <p className="text-[0.7059rem] text-(--text-muted)">
-            {view.severity === 'head' ? 'Head cold' : 'Fever or below the neck'} · since {short(view.start!)}
+            Since {short(view.start!)}
             {view.until && view.until !== 'better' ? ` · back by ${short(view.until)}` : ' · until you feel better'}
           </p>
         </div>
@@ -135,7 +135,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
                 </Field>
                 <Field label="Back by">
                   {openEnded
-                    ? <button type="button" className={cn(inputCls, 'text-left text-(--text-secondary)')} onClick={() => setOpenEnded(false)}>When I feel better</button>
+                    ? <button type="button" className={cn(inputCls, 'text-left text-(--text-secondary)')} onClick={() => setOpenEnded(false)}>Not sure yet</button>
                     : <input type="date" className={inputCls} value={until} min={today} onChange={(e) => e.target.value && setUntil(e.target.value)} />}
                 </Field>
               </div>
