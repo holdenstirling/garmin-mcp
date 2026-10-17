@@ -3646,6 +3646,30 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             first_name=_soc_name, today=lambda u: _ag._now(u).date(), home=_cm_home, sports=_f2_sports,
             listing_ref=_f2_listing_ref, notify=_f2_notify)
 
+        # Connected screens (people.py, routes in people_web.py): person profiles (only people you
+        # may already see; workouts per their sharing settings), the notifications inbox, the
+        # Home "Friends today" strip, "Who else is doing this?" and each club's group chat.
+        from . import people as _ppl, people_web as _pplw
+
+        def _ppl_club_chat(uid: str, cid: str) -> dict[str, Any]:
+            if not clb.is_member(cid, uid):
+                raise _ppl.PeopleError("Join the club to see its chat.", 404)
+            return dms.club_chat(uid, cid, clb.name_of(cid, uid) or "Club chat", clb.member_ids(cid, uid))
+
+        def _ppl_on_follow(uid: str, other: str, res: dict[str, Any]) -> None:
+            if res.get("notify"):
+                title = "New follower" if res.get("status") == "active" else "Follow request"
+                verb = "is now following" if res.get("status") == "active" else "wants to follow"
+                _social_push(res["notify"], f"social-follow:{res['notify']}:{uid}", 86400, title,
+                             f"{_soc_name(uid)} {verb} your training on Rabbit.")
+        people_svc = _ppl.People(
+            store, soc=soc, feed=soc_feed, clubs=clb, dms=dms, related=cm.related, person=_soc_person,
+            name=_soc_name, home=_cm_home, today=lambda u: _ag._now(u).date(),
+            public_events=lambda: (_pubev._doc.load().get("items") or {}),
+            events=lambda u: _ag.events.list(u), post_unread=lambda u: (cm._mine(u).load().get("unread") or {}))
+        community_routes += _pplw.make_routes(people=people_svc, wrap=_cd_wrap, read_json=read_json,
+                                              club_chat=_ppl_club_chat, on_follow=_ppl_on_follow)
+
     # ------------------------------------------------- shared training blocks --
     # blocks.py (routes in blocks_web.py): friends or a club start the same N-week block. Each
     # member gets their OWN plan from the plan builder on the same weeks (replacing a goal only
