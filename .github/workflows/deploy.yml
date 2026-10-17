@@ -59,11 +59,13 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mcp }}
         run: ./deploy.sh
 
-      - name: Check it's up
+      - name: Check it's up and serving this build
         run: |
-          for i in 1 2 3 4 5 6; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' https://rabbit.holdenottolini.com/app/privacy || true)
-            [ "$code" = 200 ] && { echo "Rabbit is up"; exit 0; }
+          built=$(grep -o '/app/assets/index-[^"]*\.js' src/garmin_mcp/web_dist/index.html | head -1)
+          echo "this build: $built"
+          for i in $(seq 1 12); do
+            page=$(curl -s --max-time 10 https://rabbit.holdenottolini.com/app/ || true)
+            if grep -qF "$built" <<<"$page"; then echo "Rabbit is up and serving this build"; exit 0; fi
             sleep 10
           done
-          echo "Rabbit didn't answer 200"; exit 1
+          echo "Rabbit isn't serving this build"; exit 1

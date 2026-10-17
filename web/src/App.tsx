@@ -11,6 +11,7 @@ import { RabbitLoader } from './components/RabbitLoader'
 import { FxHost } from './components/fx/CarrotBurst'
 import { SessionLost } from './components/ui/SessionLost'
 import { OutboxPill, ResumeNote } from './components/ui/SaveSafety'
+import { UpdatePill } from './components/ui/UpdatePill'
 import { setDraftUser } from './lib/drafts'
 import { startOutbox } from './lib/outbox'
 
@@ -97,6 +98,7 @@ function MainApp() {
         </div>
       )}
       <FxHost />
+      <UpdatePill />
     </div>
   )
 }
