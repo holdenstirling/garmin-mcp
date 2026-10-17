@@ -39,6 +39,7 @@ import { WhoElse } from '@/components/people/WhoElse'
 import { Related } from '@/components/nav/Related'
 import { CalendarDays } from 'lucide-react'
 import { sportIcon } from '@/lib/sportIcon'
+import { FuelSection } from './FuelSection'
 
 const LOADING = ['Lacing up…', 'Loading your targets…', 'Checking the sky…', 'Stretching the hamstrings…']
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -356,7 +357,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         </RabbitNote>
       )) : <CueCard cue={s.cue} />}
       {s.id && ahead && status !== 'done' && <WeatherSection sessionId={s.id} imperial={imperial} onShown={setWxShown} />}
-      <FuelCard s={s} />
+      {s.fuel_plan ? <FuelSection fp={s.fuel_plan} ahead={!!ahead && status !== 'done'} onSaved={onSynced} /> : <FuelCard s={s} />}
       {(s.gear.length > 0 || (isToday && d.weather && !wxShown)) && (
         <div className="flex flex-col gap-2">
           {s.gear.map((g) => (

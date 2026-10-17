@@ -40,7 +40,7 @@ from .planbuilder import (
     summary_markdown,
     week_for,
 )
-from .nutrition import fuel
+from .nutrition import fuel, fuel_plan
 from .providers import GarminError, ReauthRequired
 
 if TYPE_CHECKING:
@@ -992,6 +992,14 @@ def clean_time(v: Any) -> str:
     return f"{int(m.group(1)):02d}:{m.group(2)}"
 
 
+def _fuel_hint(s: dict[str, Any], d: str, plan: dict[str, Any]) -> str | None:
+    """The one-line "Fuel: ..." for plan days (nutrition.fuel_plan; the full plan is on the workout page)."""
+    try:
+        return (fuel_plan(s, d, None, plan) or {}).get("hint")
+    except Exception:
+        return None
+
+
 def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | None:
     """What the app shows: drops internal fields, adds per-session sync state."""
     if plan is None:
@@ -1009,7 +1017,8 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
-                             "fuel": fuel(s, d, race_date=plan.get("race_date"), distance=plan.get("distance"))})
+                             "fuel": fuel(s, d, race_date=plan.get("race_date"), distance=plan.get("distance")),
+                             "fuel_hint": _fuel_hint(s, d, plan)})
             days.append({"date": d, "sessions": ss})
         weeks.append({k: w[k] for k in ("index", "start", "phase", "recovery", "hours", "focus")}
                      | {"days": days})

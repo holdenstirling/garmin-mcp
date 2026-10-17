@@ -621,7 +621,30 @@ class Agent:
                 s["title"] + (f" ({s['minutes']} min)" if s.get("minutes") else "")
                 + (f": {s['detail']}" if s.get("detail") else "") for s in sessions)
             lines.append(f"{label} ({day:%A}) in their plan: {desc or 'nothing scheduled'}.")
-        return lines
+        return lines + self._fuel_lines(user_id, now)
+
+    def _fuel_lines(self, user_id: str, now: datetime) -> list[str]:
+        """The fueling plan the app shows (nutrition.fuel_plan) for today's and tomorrow's built-plan
+        sessions, so Rabbit's food advice matches the workout page. Plan data only."""
+        from .nutrition import fuel_context
+        from .planbuilder import week_for as _wk
+        from .workoutday import clean_fuel_plan
+        try:
+            plan = self.plans.get(user_id)
+        except Exception:
+            return []
+        if not plan:
+            return []
+        athlete = self.coach.athlete(user_id)
+        out: list[str] = []
+        for offset in (0, 1):
+            day = now.date() + timedelta(days=offset)
+            w = _wk(plan, day)
+            for s in ((w or {}).get("days") or {}).get(day.isoformat(), []):
+                fp = clean_fuel_plan(s, day.isoformat(), athlete, plan)
+                if fp and (fp.get("hint") or fp.get("night_before")):
+                    out.append(f"{'Today' if offset == 0 else 'Tomorrow'}: " + fuel_context(s, fp))
+        return out[:4]
 
     def _used_today(self, user_id: str, day: str) -> int:
         u = self._store.user_doc(user_id, "usage").load()
