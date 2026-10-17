@@ -7,7 +7,7 @@ export const COURSE_PROFILES: [CourseProfile, string][] = [
   ['flat', 'Flat'], ['rolling', 'Rolling'], ['hilly', 'Hilly'], ['mountainous', 'Mountainous'],
 ]
 
-export type EventType = 'triathlon' | 'running' | 'trail' | 'cycling' | 'swimming' | 'duathlon' | 'mountaineering' | 'other'
+export type EventType = 'triathlon' | 'running' | 'trail' | 'cycling' | 'swimming' | 'duathlon' | 'mountaineering' | 'team_sport' | 'other'
 
 export type EventInfo = {
   summary?: string; date?: string; location?: string; start_time?: string; distances?: string
@@ -20,11 +20,31 @@ export type EventInfo = {
 /** What kind of event it is. Events saved before kinds existed come back as "race". */
 export type EventKind = 'race' | 'group_activity' | 'trip' | 'challenge' | 'milestone' | 'other'
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
-export type Recurring = { weekday: Weekday; until: string }
+/** How an event repeats (server: recur.py). Older events have just {weekday, until} (weekly). */
+export type Recurring = {
+  freq?: 'weekly' | 'monthly'; interval?: 1 | 2; weekdays?: Weekday[]; weekday?: Weekday
+  /** monthly: 1st..4th, or -1 = last */
+  setpos?: 1 | 2 | 3 | 4 | -1
+  until?: string | null; count?: number | null
+  /** skipped dates */
+  except?: string[]
+}
+/** How the event shows up in the plan (server: events.plan_links). */
+export type PlanLink = {
+  status: 'main' | 'in_plan' | 'calendar_only' | 'pending' | 'outside' | 'no_plan' | 'past'
+  line: string
+  /** plan days with a session made from this event (upcoming first) */
+  days: string[]
+  action: 'build_plan' | 'update_plan' | null
+}
 
 export type RaceEvent = {
   id: string; name: string; type: EventType; distance: string; date: string
   kind?: EventKind; end_date?: string | null; time?: string | null; recurring?: Recurring | null
+  neighborhood?: string; in_plan?: boolean | null; seq?: number; series_id?: string | null
+  /** from the server: "Every Tuesday and Thursday", the iCalendar rule, the next dates */
+  repeat_text?: string; rrule?: string; next_dates?: string[]
+  google_url?: string | null; plan?: PlanLink | null
   with?: string; at?: string; duration_min?: number | null; intensity?: 'easy' | 'moderate' | 'hard' | null
   location: string; url: string; priority: 'A' | 'B' | 'C'
   goal_type: 'finish' | 'time' | 'compete' | null; target_time: string | null
@@ -42,14 +62,55 @@ export type EventFields = Partial<Omit<RaceEvent, 'id' | 'created' | 'updated' |
 type ListResp = { events: RaceEvent[]; types: Record<EventType, string[]>; kinds?: EventKind[] }
 
 export const listEvents = () => getJSON<ListResp>('/api/events')
+/** Every change drops the cached event days (eventsOn) so the calendars show it at once. */
+const fresh = <T,>(p: Promise<T>) => p.then((r) => { clearEventDays(); return r })
 export const createEvent = (e: EventFields & { main?: boolean }) =>
-  sendJSON<ListResp & { event: RaceEvent }>('POST', '/api/events', e)
+  fresh(sendJSON<ListResp & { event: RaceEvent }>('POST', '/api/events', e))
 export const updateEvent = (id: string, e: EventFields) =>
-  sendJSON<ListResp & { event: RaceEvent }>('PATCH', `/api/events/${id}`, e)
-export const deleteEvent = (id: string) => sendJSON<ListResp>('DELETE', `/api/events/${id}`)
+  fresh(sendJSON<ListResp & { event: RaceEvent }>('PATCH', `/api/events/${id}`, e))
+export const deleteEvent = (id: string) => fresh(sendJSON<ListResp>('DELETE', `/api/events/${id}`))
 export const makeMainEvent = (id: string) => sendJSON<ListResp & { event: RaceEvent }>('POST', `/api/events/${id}/main`)
 export const writeDebrief = (id: string, b: { result?: string; feel?: number; notes?: string }) =>
   sendJSON<ListResp & { debrief: Debrief }>('POST', `/api/events/${id}/debrief`, b)
+/** One date of a repeating event: skip it ({skip: true}), bring it back ({skip: false}) or
+ * change just that date (time, place, notes...; saved as a one-off linked to the series). */
+export const editOccurrence = (id: string, day: string, body: Partial<EventFields> & { skip?: boolean }) =>
+  fresh(sendJSON<ListResp & { event: RaceEvent; one_off: RaceEvent | null }>('POST', `/api/events/${id}/occurrences/${day}`, body))
+/** Stop a repeating event after a date. */
+export const endSeries = (id: string, after: string) => fresh(sendJSON<ListResp & { event: RaceEvent }>('POST', `/api/events/${id}/end`, { after }))
+/** .ics download (Apple Calendar, Outlook): a repeating event comes with its repeat rule. */
+export const eventIcsUrl = (id: string) => `/app/api/events/${encodeURIComponent(id)}/calendar.ics`
+
+export type DayEvent = Pick<RaceEvent, 'id' | 'name' | 'kind' | 'type' | 'time' | 'duration_min' | 'location' | 'neighborhood' | 'priority' | 'main' | 'series_id'> & { repeats: boolean }
+/** Events on each day in [from, to] (at most 120 days): one-offs, trips and every date of a
+ * repeating event. For the Day / Week / Month views. */
+export const eventDays = (from: string, to: string) =>
+  getJSON<{ from: string; to: string; days: Record<string, DayEvent[]> }>(`/api/events/days?from=${from}&to=${to}`)
+
+const dayCache = new Map<string, Promise<Record<string, DayEvent[]>>>()
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/** Events on one date, fetched in 6-week windows and cached until clearEventDays(). */
+export function eventsOn(date: string): Promise<DayEvent[]> {
+  const d = new Date(`${date}T12:00:00`)
+  const start = new Date(d); start.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  const end = new Date(start); end.setDate(start.getDate() + 41)
+  const key = iso(start)
+  let p = dayCache.get(key)
+  if (!p) {
+    p = eventDays(key, iso(end)).then((r) => r.days, (e) => { dayCache.delete(key); throw e })
+    dayCache.set(key, p)
+  }
+  return p.then((days) => days[date] ?? [])
+}
+export function clearEventDays() { dayCache.clear() }
+
+/** The private calendar link (Google / Apple subscribe to it and stay in sync). */
+export type CalFeed = { on: boolean; created?: number | null; url?: string; webcal?: string }
+export const getCalFeed = () => getJSON<CalFeed>('/api/calendar/feed')
+/** Makes a new link (an older one stops working). */
+export const makeCalFeed = () => sendJSON<CalFeed>('POST', '/api/calendar/feed', {})
+export const stopCalFeed = () => sendJSON<CalFeed>('DELETE', '/api/calendar/feed', {})
+
 export const lookupEvent = (q: { name: string; type?: string; date?: string; location?: string; event_id?: string }) =>
   sendJSON<{ info: EventInfo }>('POST', '/api/events/lookup', q)
 
@@ -61,7 +122,7 @@ export const KIND_LABEL = Object.fromEntries(EVENT_KINDS) as Record<EventKind, s
 /** One line under each kind chip. */
 export const KIND_HINT: Record<EventKind, string> = {
   race: 'A race with a start line. Rabbit tapers you for it.',
-  group_activity: 'Group ride, run, swim or a league game. Rabbit counts it as a session.',
+  group_activity: 'Group ride or run, a league game, Tuesday volleyball. Repeat it weekly or monthly.',
   trip: 'Training camp, adventure or hut trip. Rabbit lightens those days.',
   challenge: 'A 14er, an FKT attempt, a solo century. Prepped like a training race.',
   milestone: 'Wedding, a move, a new baby. Rabbit plans rest around it.',
@@ -77,7 +138,8 @@ export const WEEKDAYS: [Weekday, string][] = [
 
 export const EVENT_TYPES: [EventType, string][] = [
   ['triathlon', 'Triathlon'], ['running', 'Road run'], ['trail', 'Trail / ultra'], ['cycling', 'Cycling'],
-  ['swimming', 'Swim'], ['duathlon', 'Duathlon'], ['mountaineering', 'Climb / hike'], ['other', 'Other'],
+  ['swimming', 'Swim'], ['duathlon', 'Duathlon'], ['mountaineering', 'Climb / hike'],
+  ['team_sport', 'Volleyball / team sport'], ['other', 'Other'],
 ]
 export const TYPE_LABEL = Object.fromEntries(EVENT_TYPES) as Record<EventType, string>
 
@@ -87,7 +149,7 @@ export const TYPE_DISTANCES: Record<EventType, string[]> = {
   running: ['5k', '10k', 'half marathon', 'marathon'],
   trail: ['10k', 'half marathon', 'marathon', 'ultra'],
   cycling: ['century ride', 'other'],
-  swimming: ['other'], duathlon: ['other'], mountaineering: ['other'], other: ['other'],
+  swimming: ['other'], duathlon: ['other'], mountaineering: ['other'], team_sport: ['other'], other: ['other'],
 }
 export const DISTANCE_LABEL: Record<string, string> = {
   'sprint triathlon': 'Sprint', 'olympic triathlon': 'Olympic', '70.3': '70.3', '140.6': 'Ironman',
@@ -113,3 +175,23 @@ export function countdown(d: string): string {
   if (n < 70) return `${Math.round(n / 7)} weeks`
   return `${Math.round(n / 30.4)} months`
 }
+
+/** Open one event's page from anywhere (a plan day's "From: …" line, search): screens/Chat
+ * switches to the tab that shows events on OPEN_EVENT_EVENT; EventsScreen opens the event from
+ * sessionStorage on mount, or from the event while it's already showing. */
+export const OPEN_EVENT_EVENT = 'rabbit:open-event'
+export const OPEN_EVENT_KEY = 'rabbit.events.open'
+export function openEvent(id: string) {
+  try { sessionStorage.setItem(OPEN_EVENT_KEY, id) } catch { /* the event still carries the id */ }
+  try { window.dispatchEvent(new CustomEvent(OPEN_EVENT_EVENT, { detail: id })) } catch { /* old browsers */ }
+}
+export function takeOpenEvent(): string | null {
+  try { const id = sessionStorage.getItem(OPEN_EVENT_KEY); sessionStorage.removeItem(OPEN_EVENT_KEY); return id } catch { return null }
+}
+/** Still ahead: a one-off on or after today, or a repeating event with dates left. */
+export function isUpcoming(e: RaceEvent): boolean {
+  if (e.recurring) return (e.next_dates?.length ?? 0) > 0 || daysUntil(e.date) >= 0
+  return daysUntil(e.end_date || e.date) >= 0
+}
+/** The date the event card counts down to: the next date of a repeating event. */
+export const nextDate = (e: RaceEvent) => (e.recurring && e.next_dates?.[0]) || e.date

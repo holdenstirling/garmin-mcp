@@ -10,6 +10,8 @@ export type PlanSession = {
   /** start time "HH:MM" (24 h), when the athlete set one */
   time?: string | null
   detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null
+  /** made from one of the athlete's events (group ride, B race, trip...): lib/events openEvent */
+  event_id?: string | null
   exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
   fuel?: { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string } | null
   steps: Step[]; legs: { sport: Sport; minutes: number; steps: Step[] }[]

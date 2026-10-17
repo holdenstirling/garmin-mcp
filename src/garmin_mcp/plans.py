@@ -894,7 +894,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
             for s in sorted(w["days"][d], key=lambda x: x.get("time") or "~"):
                 g = s.get("garmin") or {}
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
-                                                 "detail", "meters", "edited", "travel", "time")}
+                                                 "detail", "meters", "edited", "travel", "time", "event_id")}
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],

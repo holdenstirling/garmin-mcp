@@ -29,9 +29,10 @@ import secrets
 import threading
 import time
 from collections.abc import Awaitable, Callable
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
+from . import recur
 from .appstore import AppStore
 from .coaching import _TIME_RE, CoachError, CoachStore, _clean_text
 
@@ -39,10 +40,11 @@ MAX_EVENTS = 60
 LOOKUPS_PER_DAY = 15
 
 TYPES = ("triathlon", "running", "trail", "cycling", "swimming", "duathlon", "mountaineering",
-         "other")
+         "team_sport", "other")
 # Event type -> what it trains (for the plan builder) and the distances that fit it.
 TYPE_SPORT = {"triathlon": "brick", "running": "run", "trail": "run", "cycling": "bike",
-              "swimming": "swim", "duathlon": "brick", "mountaineering": "run", "other": "run"}
+              "swimming": "swim", "duathlon": "brick", "mountaineering": "run", "team_sport": "other",
+              "other": "run"}
 TYPE_DISTANCES = {
     "triathlon": ("sprint triathlon", "olympic triathlon", "70.3", "140.6"),
     "running": ("5k", "10k", "half marathon", "marathon"),
@@ -51,10 +53,11 @@ TYPE_DISTANCES = {
     "swimming": ("other",),
     "duathlon": ("other",),
     "mountaineering": ("other",),
+    "team_sport": ("other",),  # volleyball, pickleball, soccer, kickball: community and league games
     "other": ("other",),
 }
 _TEXT = {"name": 120, "distance": 40, "location": 120, "url": 300, "course": 300,
-         "notes": 1000, "result": 120, "with": 80, "at": 80}
+         "notes": 1000, "result": 120, "with": 80, "at": 80, "neighborhood": 80}
 # What kind of event it is. Existing events have no ``kind`` and are races.
 #   race: priority A/B/C, plan building, readiness, finish estimate, race pack.
 #   group_activity: group ride/run/swim or league game; each occurrence (weekly when
@@ -102,24 +105,16 @@ def type_for_distance(dist: str | None) -> str:
     return next((t for t, ds in TYPE_DISTANCES.items() if d in ds and t != "other"), "other")
 
 
-_PLAN_EXTRA = ("kind", "end_date", "recurring", "duration_min", "intensity", "time", "with", "at")
+_PLAN_EXTRA = ("kind", "end_date", "recurring", "duration_min", "intensity", "time", "with", "at", "in_plan")
 
 
-def _recurring(v: Any) -> dict[str, str] | None:
-    """{"weekday": "tue", "until": "YYYY-MM-DD"} (weekly), or None."""
-    if v in (None, "", False):
-        return None
-    if not isinstance(v, dict) or set(v) - {"weekday", "until", "every"}:
-        raise CoachError("repeat must be {weekday, until}")
-    if v.get("every") not in (None, "week"):
-        raise CoachError("events can only repeat weekly")
-    if v.get("weekday") not in WEEKDAYS:
-        raise CoachError("pick the weekday it repeats on")
+def _recurring(v: Any, start: date | None = None) -> dict[str, Any] | None:
+    """A repeat rule (recur.clean_rule): weekly on some weekdays, every 2 weeks, or monthly on
+    the nth weekday; optional end date or count; skipped dates. None = doesn't repeat."""
     try:
-        until = date.fromisoformat(str(v.get("until")))
-    except ValueError:
-        raise CoachError("pick the date it repeats until") from None
-    return {"weekday": v["weekday"], "until": until.isoformat()}
+        return recur.stored(recur.clean_rule(v, start))
+    except recur.RuleError as e:
+        raise CoachError(str(e)) from None
 
 
 def context_label(e: dict[str, Any], main_id: str | None) -> str:
@@ -131,8 +126,10 @@ def context_label(e: dict[str, Any], main_id: str | None) -> str:
         return f"{e.get('priority') or 'B'} race"
     bits = [KIND_LABEL[k]]
     rec = e.get("recurring")
-    if isinstance(rec, dict) and rec.get("weekday"):
+    if isinstance(rec, dict) and set(rec) == {"weekday", "until"}:
         bits.append(f"weekly on {rec['weekday']} until {rec.get('until')}")
+    elif (rule := recur.loose(rec, None)):
+        bits.append(recur.describe(rule).lower())
     if e.get("end_date"):
         bits.append(f"until {e['end_date']}")
     return ", ".join(bits)
@@ -205,6 +202,10 @@ class EventStore:
                     out[k] = int(round(v))
             elif k == "recurring":
                 out[k] = _recurring(v)
+            elif k == "in_plan":
+                if v not in (True, False, None):
+                    raise CoachError("in_plan must be true or false")
+                out[k] = v
             elif k == "target_time":
                 if v in (None, ""):
                     out[k] = None
@@ -238,9 +239,10 @@ class EventStore:
                 raise CoachError("The end date is before the start date.")
             if (date.fromisoformat(ev["end_date"]) - date.fromisoformat(ev["date"])).days >= MAX_SPAN_DAYS:
                 raise CoachError(f"An event can span up to {MAX_SPAN_DAYS} days.")
-        rec = ev.get("recurring")
-        if rec and rec.get("until") and rec["until"] < ev["date"]:
-            raise CoachError("A weekly event has to repeat until after its first date.")
+        if ev.get("recurring"):
+            if ev.get("end_date"):
+                raise CoachError("A repeating event happens on one day each time; remove the end date.")
+            ev["recurring"] = _recurring(ev["recurring"], date.fromisoformat(ev["date"]))
 
     def validate_extra(self, extra: dict[str, Any] | None) -> dict[str, Any]:
         """The setup wizard's event-only fields (type, location, url, info), checked."""
@@ -319,10 +321,13 @@ class EventStore:
                 raise CoachError("event not found")
             merged = ev | e
             self._check(merged)
+            if merged.get("recurring"):
+                e["recurring"] = merged["recurring"]  # normalized against the (new) first date
             if g_main == event_id and kind_of(merged) not in MAIN_KINDS:
                 raise CoachError("Your main event has to be a race or a challenge.")
             ev.update(e)
             ev["updated"] = int(self._clock())
+            ev["seq"] = int(ev.get("seq") or 0) + 1  # calendars replace the old copy
             return dict(ev)
         ev = self._doc(user_id).update(apply)
         g = self._coach.active_goal(user_id)
@@ -338,6 +343,101 @@ class EventStore:
             if d.get("events", {}).pop(event_id, None) is None:
                 raise CoachError("event not found")
         self._doc(user_id).update(apply)
+
+    # ------------------------------------------------- repeating events --
+    def edit_occurrence(self, user_id: str, event_id: str, day: str, body: dict[str, Any]) -> dict[str, Any]:
+        """One date of a repeating event: {"skip": true} drops it, {"skip": false} brings it back,
+        other fields (time, duration_min, location, at, notes, date...) move or change only that
+        date: it's skipped in the series and saved as a one-off event linked by ``series_id``.
+        Returns the series (and ``event``: the one-off, when one was made)."""
+        try:
+            d = date.fromisoformat(day)
+        except ValueError:
+            raise CoachError("date must be YYYY-MM-DD") from None
+        if not isinstance(body, dict) or not body:
+            raise CoachError("say what to change on that date")
+        ev = self.get(user_id, event_id)
+        rule = recur.loose(ev.get("recurring"), date.fromisoformat(ev["date"]))
+        if not rule:
+            raise CoachError("This event doesn't repeat; edit it instead.")
+        if d not in recur.dates(rule, date.fromisoformat(ev["date"]), d, d, keep_except=True):
+            raise CoachError("That date isn't one of this event's dates.")
+        skip = body.get("skip")
+        changes = {k: v for k, v in body.items() if k != "skip"}
+        if skip is False and not changes:
+            exc = [x for x in rule["except"] if x != day]
+        else:
+            exc = sorted(set(rule["except"]) | {day})
+        one_off = None
+        if changes:
+            allowed = {"date", "time", "duration_min", "location", "neighborhood", "at", "with", "notes", "name",
+                       "intensity", "in_plan"}
+            bad = set(changes) - allowed
+            if bad:
+                raise CoachError(f"can't change {sorted(bad)[0]!r} for one date")
+            fields = {k: ev.get(k) for k in ("name", "type", "kind", "time", "duration_min", "location",
+                                            "neighborhood", "at", "with", "intensity", "url", "priority", "in_plan")
+                      if ev.get(k) not in (None, "")}
+            fields.update({"date": day, "notes": ""} | changes)
+            fields = {k: v for k, v in fields.items() if v is not None}
+            one_off = self.create(user_id, fields)
+            self._set(user_id, one_off["id"], "series_id", event_id)
+            one_off["series_id"] = event_id
+        series = self.update(user_id, event_id, {"recurring": rule | {"except": exc}})
+        return {"series": series, "event": one_off}
+
+    def end_series(self, user_id: str, event_id: str, after: str) -> dict[str, Any]:
+        """Stop a repeating event after a date (keeps its past)."""
+        ev = self.get(user_id, event_id)
+        rule = recur.loose(ev.get("recurring"), date.fromisoformat(ev["date"]))
+        if not rule:
+            raise CoachError("This event doesn't repeat.")
+        return self.update(user_id, event_id, {"recurring": rule | {"until": after, "count": None}})
+
+    def days(self, user_id: str, frm: date, to: date) -> dict[str, list[dict[str, Any]]]:
+        """{YYYY-MM-DD: [event summary, ...]} for every event day in [frm, to]: one-offs, multi-day
+        spans and each date of a repeating event (skipped dates left out)."""
+        out: dict[str, list[dict[str, Any]]] = {}
+        for e in self.list(user_id):
+            try:
+                start = date.fromisoformat(e.get("date") or "")
+            except ValueError:
+                continue
+            rule = recur.loose(e.get("recurring"), start)
+            if rule:
+                ds = recur.dates(rule, start, frm, to)
+            else:
+                end = start
+                if e.get("end_date"):
+                    try:
+                        end = date.fromisoformat(e["end_date"])
+                    except ValueError:
+                        end = start
+                ds = [start + timedelta(days=i) for i in range((end - start).days + 1)
+                      if frm <= start + timedelta(days=i) <= to]
+            item = {k: e.get(k) for k in ("id", "name", "kind", "type", "time", "duration_min", "location",
+                                          "neighborhood", "priority", "main", "series_id")}
+            item["repeats"] = bool(rule)
+            for d in ds:
+                out.setdefault(d.isoformat(), []).append(item)
+        for v in out.values():
+            v.sort(key=lambda x: (x.get("time") or "99", x.get("name") or ""))
+        return out
+
+    @staticmethod
+    def decorate(e: dict[str, Any], today: date, *, upcoming: int = 6) -> dict[str, Any]:
+        """Add what the screens show for a repeating event: ``repeat_text`` ("Every Tuesday"),
+        ``rrule`` (iCalendar) and ``next_dates`` (the next few dates, today included)."""
+        try:
+            start = date.fromisoformat(e.get("date") or "")
+        except ValueError:
+            return e
+        rule = recur.loose(e.get("recurring"), start)
+        if not rule:
+            return e
+        nxt = recur.dates(rule, start, max(today, start), today + timedelta(days=730), limit=upcoming)
+        return e | {"recurring": rule, "repeat_text": recur.describe(rule), "rrule": recur.rrule(rule, timed=bool(e.get("time"))),
+                    "next_dates": [d.isoformat() for d in nxt]}
 
     def set_main(self, user_id: str, event_id: str) -> dict[str, Any]:
         """Point the active goal at this event (or create the goal if there is none)."""
@@ -472,6 +572,73 @@ class EventStore:
 
 
 # ------------------------------------------------------------------- lookup --
+_SPORT_WORD = {"run": "run", "bike": "ride", "swim": "swim", "brick": "brick", "other": "session"}
+
+
+def plan_links(events: list[dict[str, Any]], plan: dict[str, Any] | None, today: date) -> dict[str, dict[str, Any]]:
+    """{event id: {"status", "line", "days", "action"}}: how each event shows up in the plan.
+
+    status: main | in_plan | calendar_only | pending (changed since the plan was built) |
+            outside (before the plan starts, after the race, or in race week) | no_plan | past
+    days:   plan days with a session made from the event (upcoming first, at most 8)
+    action: what the event screen offers: build_plan | update_plan | None"""
+    out: dict[str, dict[str, Any]] = {}
+    by_event: dict[str, list[str]] = {}
+    if plan:
+        for w in plan.get("weeks") or []:
+            for d, ss in (w.get("days") or {}).items():
+                for s in ss:
+                    if s.get("event_id"):
+                        by_event.setdefault(s["event_id"], []).append(d)
+    placed = {p.get("id"): p for p in (plan or {}).get("events") or [] if isinstance(p, dict)}
+    changed = bool((plan or {}).get("events_changed"))
+    t = today.isoformat()
+    for e in events:
+        eid, kind = e.get("id"), kind_of(e)
+        days = sorted(set(by_event.get(eid, [])))
+        upcoming = [d for d in days if d >= t][:8]
+        last = e.get("end_date") or e.get("date") or ""
+        rule = recur.loose(e.get("recurring"), None)
+        if rule and (rule.get("until") or "9999") >= t:
+            last = "9999-12-31"
+        info: dict[str, Any] = {"days": upcoming or days[-3:], "action": None}
+        if e.get("main"):
+            info |= {"status": "main", "line": "Your plan builds to this: every week leads here, with a taper "
+                                               "in the last weeks."}
+        elif plan is None:
+            info |= {"status": "no_plan", "line": "You don't have a plan yet. Build one and Rabbit trains you around this.",
+                     "action": "build_plan"}
+        elif last < t:
+            info |= {"status": "past", "line": "This is in the past."}
+        elif e.get("in_plan") is False:
+            info |= {"status": "calendar_only", "line": "On your calendar only. It isn't counted as a workout."}
+        elif eid in placed or days:
+            sport = _SPORT_WORD.get(TYPE_SPORT.get(e.get("type") or "other", "run"), "session")
+            line = {
+                "race": ("A race in your plan: easy days before it and a rest day after."
+                         if (e.get("priority") or "B") != "C" else "Raced as a hard training day, with easy days either side."),
+                "challenge": "Treated like a training race: easier days around it.",
+                "group_activity": f"Counts as your {sport} on {'each date' if rule else 'that day'}, in place of the plan's.",
+                "trip": "Your sessions on those days are short and easy.",
+                "milestone": "Rest planned on the day, with easy days either side.",
+                "other": "In your plan as a session on that day.",
+            }.get(kind, "In your plan.")
+            if changed:
+                line += " You've changed events since, so update your plan to include the latest."
+                info["action"] = "update_plan"
+            info |= {"status": "in_plan", "line": line}
+        elif changed:
+            info |= {"status": "pending", "line": "Not in your plan yet. Update your plan to fit it in.",
+                     "action": "update_plan"}
+        elif kind == "other" and not e.get("duration_min"):
+            info |= {"status": "calendar_only", "line": "On your calendar only. Add how long it lasts to count it as a workout."}
+        else:
+            info |= {"status": "outside", "line": "Outside your plan's dates (before it starts, in race week or after "
+                                                 "the race), so the plan doesn't change for it."}
+        out[eid] = info
+    return out
+
+
 LOOKUP_SYSTEM = """You research endurance events (races, rides, swims, climbs) for an \
 athlete's training app. Use web search to find the event's official page and reliable \
 sources, then call report_event exactly once with what you found. Report only what the \
