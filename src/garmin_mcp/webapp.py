@@ -16,7 +16,7 @@ import re
 import secrets
 import threading
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
@@ -2982,6 +2982,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     community_routes: list[BaseRoute] = []
     directory_routes: list[BaseRoute] = []
     friends_routes: list[BaseRoute] = []
+    from . import workouts as _workouts
+    _ext_w = _workouts.ExternalWorkouts(store) if store is not None else None  # Oura etc. (display-only)
+    _ext_feed: dict[str, Any] = {}  # workouts.py imports -> community auto-share (set below)
     if soc is not None and chat is not None and plans is not None and store is not None:
         _ag = chat.agent
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
@@ -2989,6 +2992,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         cm = _cmm.Community(store, social=soc, clubs=clb, now=_ag._now, moment=_ag.moments.post, name=_soc_name,
                             quiet=lambda u: _ag.moments.quiet(_ag._now(u)),
                             push=(lambda to, t, b: push.send(to, t, b, url="/app/?open=community")) if push else None)
+        _ext_feed["share"] = cm.auto_share_external
 
         def _cm_scan(uid: str, *, workouts: bool) -> None:
             today = _ag._now(uid).date()
@@ -3412,8 +3416,21 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             _pcal.check_missed(uid)
         chat.agent.moments.on_tick = _pc_tick
 
+        def _cal_with_imports(uid: str) -> Any:
+            # Workouts other sources recorded and Garmin didn't (workouts.py, display-only) join
+            # the Day view's "extra" list; this is UI data only, never the coach's context.
+            cal = _pcal.view(uid)
+            if cal is not None and _ext_w is not None:
+                try:
+                    acts = chat.agent.stats.activities(uid)[1] if _garmin_connected(uid) else []
+                    for day, rows in _ext_w.by_day(uid, acts).items():
+                        cal.setdefault("extra", {}).setdefault(day, []).extend(rows)
+                except Exception as e:
+                    log_event(logger, logging.INFO, "ext_workouts_view_failed", error=type(e).__name__)
+            return cal
+
         async def plancal_get(request: Request, user_id: str) -> Response:
-            return JSONResponse({"cal": await _plan_call(lambda: _pcal.view(user_id))})
+            return JSONResponse({"cal": await _plan_call(lambda: _cal_with_imports(user_id))})
 
         def _pc_op(kind: str) -> Handler:
             async def handler(request: Request, user_id: str) -> Response:
@@ -3542,9 +3559,88 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return None
         return prefs_for(store, uid, bool(auth.oura and auth.oura.connected(uid)))[0]
 
+    # Workouts from other sources (workouts.py): Oura's are imported every EXT_EVERY_S from the
+    # minute tick (and on "Sync now"), matched against Garmin so nothing counts twice, shown in
+    # the Day view and auto-shared like Garmin workouts when the athlete shares workouts.
+    # Display-only: never in Stats.activities, plan matching or anything the coach sees.
+    from . import demand as _dem
+    from .oura import OuraWorkoutsScope
+    EXT_EVERY_S = 1800
+    _ext_notes: dict[str, str] = {}  # user -> "Connect Oura again to import its workouts."
+    _demand = _dem.Demand(store) if store is not None else None
+
+    async def _import_oura(uid: str, *, force: bool = False) -> int:
+        o = auth.oura
+        if _ext_w is None or o is None or not o.connected(uid):
+            return 0
+        last = _ext_w.imported_at(uid, "oura")
+        if not force and last is not None and time.time() - last < EXT_EVERY_S:
+            return 0
+        today = plans.today(uid) if plans else date.today()
+        try:
+            items = await o.workouts(uid, today - timedelta(days=14), today)
+            _ext_notes.pop(uid, None)
+        except OuraWorkoutsScope as e:
+            _ext_notes[uid] = str(e)
+            _ext_w.save(uid, "oura", [], today)  # remember the attempt (no retry storm)
+            return 0
+        new = set(await anyio.to_thread.run_sync(lambda: _ext_w.save(uid, "oura", items, today)))
+        if new and "share" in _ext_feed:
+            def share() -> None:
+                acts = chat.agent.stats.activities(uid)[1] if chat is not None and _garmin_connected(uid) else []
+                fresh = [w for w in _ext_w.visible(uid, acts) if w["key"] in new]
+                if fresh:
+                    _ext_feed["share"](uid, fresh, today)
+            try:
+                await anyio.to_thread.run_sync(share)
+            except Exception as e:
+                log_event(logger, logging.INFO, "ext_workouts_share_failed", error=type(e).__name__)
+        log_event(logger, logging.INFO, "ext_workouts_import", user_id=uid, source="oura", new=len(new))
+        return len(new)
+
+    if chat is not None and _ext_w is not None:
+        _ext_tick_prev = chat.agent.moments.on_tick
+
+        def _ext_tick(uid: str) -> None:
+            if _ext_tick_prev is not None:
+                _ext_tick_prev(uid)
+            o = auth.oura
+            if o is None or not o.connected(uid):
+                return
+            last = _ext_w.imported_at(uid, "oura")
+            if last is not None and time.time() - last < EXT_EVERY_S:
+                return
+            asyncio.run(_import_oura(uid))  # the proactive thread has no event loop of its own
+        chat.agent.moments.on_tick = _ext_tick
+
     async def connections_get(request: Request, user_id: str) -> Response:
         rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
-        return JSONResponse(_conn.view(rows, _conn_sources(user_id)))
+        out = _conn.view(rows, _conn_sources(user_id))
+        if _demand is not None:
+            owner = auth.is_owner(user_id)
+            out["soon"] = await anyio.to_thread.run_sync(lambda: _demand.rows(user_id, owner=owner))
+        if user_id in _ext_notes:
+            for a in out["apps"]:
+                if a["id"] == "oura" and a["connected"]:
+                    a["note"] = _ext_notes[user_id]
+        return JSONResponse(out)
+
+    async def connections_want(request: Request, user_id: str) -> Response:
+        """``{want: bool}``: "I want this" for a coming-soon app (demand.py)."""
+        if _demand is None:
+            return _err(503, "Not available on this server.")
+        body = await read_json(request)
+        if not isinstance(body, dict) or not isinstance(body.get("want"), bool):
+            return _err(400, "Send want: true or false.")
+        app_id = request.path_params["app"]
+        try:
+            on = await anyio.to_thread.run_sync(lambda: _demand.vote(user_id, app_id, body["want"]))
+        except _dem.DemandError as e:
+            return _err(400, str(e))
+        out: dict[str, Any] = {"app": app_id, "wanted": on}
+        if auth.is_owner(user_id):
+            out["wanted_by"] = (await anyio.to_thread.run_sync(_demand.counts)).get(app_id, 0)
+        return JSONResponse(out)
 
     async def connections_sync(request: Request, user_id: str) -> Response:
         app_id = request.path_params["app"]
@@ -3564,6 +3660,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                     return _err(409, "Oura isn't connected.")
                 auth.oura.forget(user_id)
                 await auth.oura.recovery(user_id, today, 28)
+                await _import_oura(user_id, force=True)
             else:
                 cal = auth.calendar
                 if cal is None or not cal.connected(user_id):
@@ -3585,6 +3682,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     home_routes += [
         Route("/app/api/connections", _api(connections_get, mutating=False), methods=["GET"]),
         Route("/app/api/connections/{app}/sync", _api(connections_sync, mutating=True), methods=["POST"]),
+        Route("/app/api/connections/{app}/want", _api(connections_want, mutating=True), methods=["POST"]),
     ]
 
     # ---------------------------------------- workout reward + month recap --

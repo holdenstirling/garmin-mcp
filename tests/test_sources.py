@@ -86,9 +86,9 @@ def test_context_block_has_source_line(env) -> None:  # noqa: F811
     assert "Recovery source: Garmin." in agent.coach.context_block("friend", agent._now("friend"), None)
 
 
-def test_oura_scopes_drop_workout() -> None:
-    assert "workout" not in oura_mod.SCOPES.split()
-    assert oura_mod.SCOPES.split() == ["personal", "daily", "heartrate"]
+def test_oura_scopes_include_workout_for_display_only_imports() -> None:
+    # workouts.py imports Oura workouts Garmin missed, display-only (tests/test_workouts.py).
+    assert oura_mod.SCOPES.split() == ["personal", "daily", "heartrate", "workout"]
 
 
 # ------------------------------------------------------------ Garmin reads --

@@ -71,7 +71,7 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
   const usesOura = r.oura_connected && (r.sources.show_both || r.sources.recovery === 'oura' || r.sources.sleep === 'oura')
   const foot = (
     <p className="px-1 text-[0.6471rem] text-(--text-muted)">
-      Workouts come from Garmin only.{usesOura ? ' Oura data is shown here only and never sent to Rabbit.' : ''} Change in Settings → Data sources.
+      Stats and your plan count Garmin workouts; a workout two apps recorded counts once.{usesOura ? ' Oura data is shown here only and never sent to Rabbit.' : ''} Change in Settings → Data sources.
     </p>
   )
 

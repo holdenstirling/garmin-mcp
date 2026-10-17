@@ -55,7 +55,7 @@ export type CalView = {
   months: Record<string, Partial<Record<DistSport, { done: number; planned: number }>>>
   total: Partial<Record<DistSport, { done: number; planned: number }>>
   /** Garmin workouts not tied to a plan session, by day */
-  extra?: Record<string, { id: number | null; name: string; sport: string; km: number | null; minutes: number | null; avg_hr: number | null }[]>
+  extra?: Record<string, { id: number | null; name: string; sport: string; km: number | null; minutes: number | null; avg_hr: number | null; source?: string }[]>
 }
 export type CalChange = { id: string | null; summary: string; rebalanced: string[]; rebalance_undo: string | null }
 export type CalResult = { plan: BuiltPlan; cal: CalView; change: CalChange | null }

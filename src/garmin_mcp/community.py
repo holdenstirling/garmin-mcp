@@ -105,7 +105,7 @@ FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First h
 RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto")
+                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source")
 MAX_SPLITS = 40
 PIN_S = 3600              # the author's fresh auto-shared workout leads their feed this long
 LATEST_N = 3
@@ -1042,6 +1042,46 @@ class Community:
             card["title"] = SPORT_TITLE.get(card["sport"], "Workout")
             card["auto"] = True
             card.update(self._extras(uid, r["id"]))
+            post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
+                               workout=card, limited=False)
+            out.append(post["id"])
+        return out
+
+    def auto_share_external(self, uid: str, workouts: list[dict[str, Any]], today: date) -> list[str]:
+        """Same as ``auto_share_workouts`` for workouts another source recorded and Garmin didn't
+        (``workouts.py`` model, e.g. Oura): sport, distance and time only, labelled with the
+        source. Never heart rate or calories. Once per workout."""
+        if uid.startswith("coach_") or not self.social.is_athlete(uid):
+            return []
+        s = self._settings_of(self._mine(uid).load())
+        if not self.sharing_workouts(s):
+            return []
+        since = s["share_since"] or today.isoformat()
+        out: list[str] = []
+        for w in sorted(workouts, key=lambda x: str(x.get("start")))[-AUTO_PER_SYNC:]:
+            day = str(w.get("start") or "")[:10]
+            try:
+                d0 = date.fromisoformat(day)
+            except ValueError:
+                continue
+            if not (0 <= (today - d0).days <= AUTO_DAYS) or day < since or not isinstance(w.get("key"), str):
+                continue
+            key = f"auto:{w['key']}"
+
+            def claim(d: dict[str, Any], key: str = key) -> bool:
+                if self._seen(d, key, today, None):
+                    return False
+                d.setdefault("keys", {})[key] = today.isoformat()
+                return True
+            if not self._mine(uid).update(claim):
+                continue
+            sport = str(w.get("sport") or "other")
+            km = w.get("km") if isinstance(w.get("km"), int | float) else None
+            mins = w.get("minutes") if isinstance(w.get("minutes"), int | float) else None
+            card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport,
+                    "title": SPORT_TITLE.get(sport, "Workout"), "date": day,
+                    "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
+                    "climb_m": None, "highlight": "", "auto": True, **pace_fields(sport, km, mins)}
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])

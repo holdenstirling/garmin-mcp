@@ -47,7 +47,7 @@ const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', calendar: 'Cal',
 /** What each app is for, in one line (Connected apps hub). */
 export const PURPOSE: Record<ConnApp, string> = {
   garmin: 'Workouts, heart rate, sleep and readiness',
-  oura: 'Readiness, sleep and HRV',
+  oura: 'Readiness, sleep, HRV and workouts Garmin missed',
   calendar: 'Trips and busy days, so your plan fits',
   trainingpeaks: 'Your coach’s planned workouts',
 }
@@ -80,7 +80,7 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
 // "You're all set": what happens now, in plain words.
 const NEXT: Record<ConnApp, string[]> = {
   garmin: ['Your recent workouts are coming in now', 'New workouts show up on their own after your watch syncs with Garmin', 'Send planned workouts to your watch from Plan'],
-  oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night'],
+  oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night', 'Workouts Oura records that Garmin didn’t show on their day'],
   calendar: ['Trips and busy days show next to your plan', 'Rabbit works your sessions around them'],
   trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
 }
@@ -97,7 +97,7 @@ export function AppTile({ app, size = 44 }: { app: ConnApp; size?: number }) {
 }
 
 /** Rabbit's own tile, matching AppTile. */
-function RabbitTile({ size = 56 }: { size?: number }) {
+export function RabbitTile({ size = 56 }: { size?: number }) {
   return (
     <span className="logo-tile flex shrink-0 items-center justify-center rounded-[22%] bg-(--brand) shadow-sm" style={{ width: size, height: size }} aria-hidden>
       <RabbitLogo size={size * 0.72} />
@@ -131,7 +131,7 @@ export function StateChip({ state }: { state: ConnState }) {
   )
 }
 
-function Bullets({ items, tone }: { items: string[]; tone: 'yes' | 'no' }) {
+export function Bullets({ items, tone }: { items: string[]; tone: 'yes' | 'no' }) {
   return (
     <ul className="flex flex-col gap-1.5">
       {items.map((t) => (
@@ -417,6 +417,16 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           </span>
           <StateChip state={state} />
         </div>
+        {conn?.note && !conn.error && (
+          <div className="flex flex-col gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5">
+            <p className="flex items-start gap-2 text-[0.7647rem] text-(--text-secondary)">
+              <RefreshCw className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />{conn.note}
+            </p>
+            {state === 'connected' && conn.kind === 'oauth' && (
+              <Button variant="default" className="h-11 text-[0.7647rem]" onClick={cont}>Reconnect {SHORT[app]}</Button>
+            )}
+          </div>
+        )}
         {conn?.error && (
           <p role="alert" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7647rem] text-(--warning-text)">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />{conn.error}
