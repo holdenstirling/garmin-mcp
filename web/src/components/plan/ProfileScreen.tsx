@@ -164,7 +164,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         </>
       )}
       {saved && hasBuiltPlan && (
-        <p className="px-1 text-[0.7647rem] text-(--text-muted)">Your plan was built with your old answers. Rebuild it to use these (edited sessions are replaced).</p>
+        <p className="px-1 text-[0.7647rem] text-(--text-muted)">Your plan was built with your old answers. Rebuild it to use these (workouts you edited are replaced).</p>
       )}
     </Screen>
     {editInterests && <InterestsSheet initial={interests} onClose={() => setEditInterests(false)} onSaved={(i) => { setInterests(i); onSaved() }} />}

@@ -79,7 +79,7 @@ export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = t
       </h2>
       {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
       {week.plan_status === 'error' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Couldn't read this week from your plan. Showing what you've done.</p>}
-      {week.plan_status === 'over_budget' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Planned sessions show up tomorrow (today's limit is used up).</p>}
+      {week.plan_status === 'over_budget' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Planned workouts show up tomorrow (today's limit is used up).</p>}
       <div className="divide-y divide-(--border)">
         {week.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey} onAsk={onAskDay}
           onOpen={(day) => setDayOpen(day.date)} />)}

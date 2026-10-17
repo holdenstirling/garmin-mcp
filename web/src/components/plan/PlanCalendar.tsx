@@ -574,7 +574,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           {!work.length && !extra && !done.length && <p className={cn('text-[0.7647rem] text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
         </div>
         {canAdd && (editing || !compact) && (
-          <button type="button" aria-label={`Add a session on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
+          <button type="button" aria-label={`Add a workout on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
             className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
             <Plus className="size-3.5" />
           </button>
@@ -593,7 +593,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     return (
       <div className="flex flex-col gap-0.5 border-b border-(--border) px-4 py-2.5 text-[0.7647rem] leading-snug">
         {w.focus && <p className="text-(--text-secondary)">{w.focus}</p>}
-        {keys.length > 0 && <p className="text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key sessions:</span> {keys.join(' · ')}</p>}
+        {keys.length > 0 && <p className="text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key workouts:</span> {keys.join(' · ')}</p>}
       </div>
     )
   }
@@ -677,7 +677,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
           <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
-            {editable && cal ? (editing ? 'Press and hold a session to drag it, or use Earlier / Later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
+            {editable && cal ? (editing ? 'Press and hold a workout to drag it, or use Earlier / Later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
       ) : view === 'list' ? (
@@ -737,7 +737,7 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
   return (
     <div className="flex flex-col gap-3">
       <p className="px-1 text-[0.7647rem] text-(--text-muted)">
-        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a session to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
+        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a workout to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
       </p>
       {from > 0 && (
         <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>

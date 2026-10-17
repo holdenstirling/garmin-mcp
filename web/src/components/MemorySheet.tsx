@@ -179,7 +179,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
               ) : goal.notes ? (
                 <p className="whitespace-pre-wrap text-sm text-(--text-secondary)">{goal.notes}</p>
               ) : (
-                <Empty>What Rabbit learns during this block (how sessions felt, niggles, what works).</Empty>
+                <Empty>What Rabbit learns during this block (how workouts felt, niggles, what works).</Empty>
               )}
             </Section>
           )}

@@ -73,7 +73,7 @@ const PROMPTS: Record<Intent, string[]> = {
   explore: ['What can Rabbit do for me?'],
 }
 const SUGGEST: Record<Intent, string[]> = {
-  train: ['How did my training go this week?', 'Am I recovered enough for a hard session today?'],
+  train: ['How did my training go this week?', 'Am I recovered enough for a hard workout today?'],
   consistent: ['Give me a quick workout I can do today.', 'Help me keep my streak alive this week.'],
   community: ['Find a group run this weekend.', 'How do I find a running club near me?'],
   events: ['Find me a fun race in the next two months.', 'What group activities are near me this weekend?'],

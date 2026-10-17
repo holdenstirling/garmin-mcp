@@ -83,7 +83,7 @@ export function passkeyError(e: unknown): string {
   if (name === 'InvalidStateError') return 'This device already has a Rabbit passkey for this account.'
   if (name === 'SecurityError') return "Passkeys don't work on this address. Open Rabbit from its usual link."
   if (name === 'NotSupportedError') return "This browser can't make passkeys. Try Safari, Chrome or Edge."
-  return (e as Error)?.message || 'Something went wrong. Please try again.'
+  return (e as Error)?.message || "That didn't work. Give it another try."
 }
 
 /** A short name for the passkey, so the list makes sense later ("iPhone", "Mac"). */

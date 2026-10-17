@@ -127,7 +127,7 @@ export function WeekFields({ a, setA, sports }: Props) {
         <Field label="Training days" hint={(a.available_days ?? []).length < 3 ? 'Three or more days works best.' : `${(a.available_days ?? []).length} days a week. The rest are rest days.`}>
           <MultiChoice value={a.available_days ?? []} options={WEEKDAYS} onChange={(v) => setA({ available_days: v, long_day: v.includes(a.long_day ?? '') ? a.long_day : v[v.length - 1] ?? null })} />
         </Field>
-        <Field label="Long-session day" hint={sports.includes('bike') && sports.includes('run') ? 'Your long ride (or brick). The long run goes the day after.' : 'Your longest session of the week.'}>
+        <Field label="Long-session day" hint={sports.includes('bike') && sports.includes('run') ? 'Your long ride (or brick). The long run goes the day after.' : 'Your longest workout of the week.'}>
           <Choice value={a.long_day ?? null} onChange={(v) => setA({ long_day: v })}
             options={WEEKDAYS.filter(([d]) => (a.available_days ?? []).includes(d))} />
         </Field>

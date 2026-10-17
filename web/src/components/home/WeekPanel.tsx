@@ -132,7 +132,7 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
     m + (s.status !== 'rest' && (i < ti || (i === ti && s.status === 'done')) ? s.minutes ?? 0 : 0), 0), 0)
   const allDone = week.totals.planned_sessions > 0 && week.totals.done_sessions >= week.totals.planned_sessions
   // Big number = what you've done; the line under it = the target it counts against.
-  const head = sport ? fmtDist(sport[1].done, imperial, sport[0]) : doneMin > 0 || planMin > 0 ? fmtDuration(doneMin) : 'No sessions yet'
+  const head = sport ? fmtDist(sport[1].done, imperial, sport[0]) : doneMin > 0 || planMin > 0 ? fmtDuration(doneMin) : 'No workouts yet'
   const unit = sport ? `of ${fmtDist(sport[1].goal, imperial, sport[0])} ${SPORT_DIST_LABEL[sport[0]].toLowerCase()} this week`
     : planMin > 0 ? `done · ${fmtDuration(planMin)} planned this week` : doneMin > 0 ? 'done this week' : 'this week'
   let trend = ''

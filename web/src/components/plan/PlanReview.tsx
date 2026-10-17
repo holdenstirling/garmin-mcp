@@ -39,8 +39,8 @@ const intensityOf = (r: DraftRow): Intensity =>
   r.intensity ?? KIND_TO_INTENSITY[r.kind ?? ''] ?? ((r.kind ?? 'easy') in INTENSITY_LABEL ? r.kind as Intensity : 'easy')
 const MODES: { id: ImportMode; label: string; text: string }[] = [
   { id: 'replace', label: 'Replace the plan', text: 'Everything from the first day on becomes this plan.' },
-  { id: 'fill', label: 'Fill empty days only', text: 'Keeps every current session; these go only on free days.' },
-  { id: 'add', label: 'Add on top', text: 'Keeps every current session and adds all of these (up to 4 a day).' },
+  { id: 'fill', label: 'Fill empty days only', text: 'Keeps every current workout; these go only on free days.' },
+  { id: 'add', label: 'Add on top', text: 'Keeps every current workout and adds all of these (up to 4 a day).' },
   { id: 'weeks', label: 'Replace only these weeks', text: 'Swaps the weeks this covers; other weeks stay.' },
 ]
 type How = Schedule['how']
@@ -450,7 +450,7 @@ export function PlanReview({ api, initial, who, athleteName, onClose, onApplied,
                     </li>
                   )
                 })}
-                {!w.rows.length && <li className="px-4 py-2.5 text-[0.7059rem] text-(--text-muted)">No sessions this week</li>}
+                {!w.rows.length && <li className="px-4 py-2.5 text-[0.7059rem] text-(--text-muted)">No workouts this week</li>}
               </ul>
               {editing && 'add' in editing && editing.add === w.start ? (
                 <div className="border-t border-(--border)">
@@ -549,7 +549,7 @@ function SessionEditor({ initial, onSave, onCancel, onDelete, onDuplicate }: {
       </ChipRow>
       {!isRace && <NumberStepper label="minutes" value={s.minutes} onChange={(v) => setS({ ...s, minutes: v })} step={5} min={10} max={600} suffix="min" />}
       <div className="flex gap-2">
-        {onDelete && <Button variant="ghostDanger" className="h-11 px-3" aria-label="Delete session" onClick={onDelete}><Trash2 className="size-4" /></Button>}
+        {onDelete && <Button variant="ghostDanger" className="h-11 px-3" aria-label="Delete workout" onClick={onDelete}><Trash2 className="size-4" /></Button>}
         {onDuplicate && <Button variant="ghost" className="h-11 px-3" aria-label="Duplicate session" onClick={onDuplicate}><Copy className="size-4" /></Button>}
         <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" className="h-11 flex-1 gap-1 text-[0.7647rem]" disabled={!isRace && !s.minutes} onClick={save}>

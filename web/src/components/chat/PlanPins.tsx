@@ -270,7 +270,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
             </button>
             {week?.garmin_error && <p className="px-2 py-1 text-[0.6471rem] text-(--warning-text)">{week.garmin_error}</p>}
             {week?.plan_status === 'error' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Couldn't read this week from your plan. Showing what you've done.</p>}
-            {week?.plan_status === 'over_budget' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Planned sessions show up tomorrow (today's limit is used up).</p>}
+            {week?.plan_status === 'over_budget' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Planned workouts show up tomorrow (today's limit is used up).</p>}
             <div className="divide-y divide-(--border)">
               {week?.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey}
                 onAsk={(day, session) => { setOpen(false); onAskDay(day, session) }} />)}

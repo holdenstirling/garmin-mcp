@@ -55,7 +55,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
   }
   // Unsaved edits are kept per session (or new-session day) on this device until saved.
   const [d, setD, draft] = useDraft<SessionDraft>(readOnly ? null : `session.${session?.id ?? `new.${date}`}`, initial,
-    { label: session ? `changes to ${session.title}` : 'new session' })
+    { label: session ? `changes to ${session.title}` : 'new workout' })
   const guard = useUnsavedGuard(draft.dirty, draft.discard)
   const close = guard.wrap(onClose)
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null)
@@ -99,13 +99,13 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
   const [confirmDelete, setConfirmDelete] = useState(false)
   const section = 'font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted) px-1 -mb-2'
   return (
-    <Sheet title={session ? session.title : 'Add a session'} className="modal--tall" footer={!locked ? (
+    <Sheet title={session ? session.title : 'Add a workout'} className="modal--tall" footer={!locked ? (
         // Pinned under the form so Save is always in reach (also with the keyboard open).
         <div className="flex gap-2">
           <Button variant="default" className="h-11 px-5 text-[0.8235rem]" disabled={!!busy} onClick={close}>Cancel</Button>
           <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
             disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
-            {adding ? 'Add session' : Object.keys(changed).length === 0 ? 'No changes yet' : 'Save changes'}
+            {adding ? 'Add workout' : Object.keys(changed).length === 0 ? 'No changes yet' : 'Save changes'}
           </Button>
         </div>
       ) : undefined} onClose={close} closing={closing} onDismissed={onDismissed} extra={guard.dialog} dismissible={!busy}
@@ -280,7 +280,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
         <div className="mt-2 border-t border-(--border) pt-4">
           {confirmDelete ? (
             <div className="flex flex-col gap-2 rounded-xl border border-(--danger)/40 px-3.5 py-3" role="alertdialog" aria-label="Delete this session?">
-              <p className="text-[0.8235rem] text-(--text)">Delete {session?.title ?? 'this session'}? {session?.synced ? 'It comes off your watch on the next sync.' : ''}</p>
+              <p className="text-[0.8235rem] text-(--text)">Delete {session?.title ?? 'this workout'}? {session?.synced ? 'It comes off your watch on the next sync.' : ''}</p>
               <div className="flex gap-2">
                 <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={() => setConfirmDelete(false)}>Keep it</Button>
                 <Button variant="default" className="h-11 flex-1 text-[0.7647rem] text-(--danger)" loading={busy === 'delete'} onClick={() => void remove()}>Delete</Button>

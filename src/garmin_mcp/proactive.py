@@ -45,6 +45,7 @@ from .poller import FireOutcome, FireResult, Poller, Schedule, StateStore, token
 from .tokens import TokenStore
 from .tools import GarminService
 from .webchat import ChatRunner, TurnBusy
+from .voice import SHORT_VOICE
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ WORKOUT_PROMPT = (
     "win or verdict vs. what today's planned session was for (e.g. **Nailed the tempo.** 7:42/mi "
     "held right in zone). Then one practical note for the next day or two of their plan. Look up "
     "details or recent load/HRV with tools if that helps. No greeting, no recap of the data you "
-    "read. This will be sent as a phone notification."
+    "read. This will be sent as a phone notification. " + SHORT_VOICE
 )
 BRIEF_PROMPT = (
     "Write this morning's brief for the athlete. Check last night's sleep, HRV and training "
@@ -76,7 +77,7 @@ BRIEF_PROMPT = (
     "Sleep, HRV and readiness often haven't synced from the watch this early. If they're "
     "missing, say \"Sleep hasn't synced yet.\" and base the call on the plan and "
     "recent training; don't explain further. Don't restate the plan or open with a greeting. "
-    "This will be sent as a phone notification."
+    "This will be sent as a phone notification. " + SHORT_VOICE
 )
 
 Deliver = Callable[[str, str, str], FireResult]  # (user_id, kind, prompt) -> result

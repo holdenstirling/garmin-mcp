@@ -188,7 +188,7 @@ function BlockPage({ id, imperial, onClose }: { id: string; imperial: boolean; o
     <Screen title={b?.name ?? 'Training block'} subtitle={b ? weekLine(b.week) : undefined} onClose={onClose}>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">
         <p role="status" aria-live="polite" className={cn('text-[0.7647rem] text-(--accent)', !note && 'sr-only')}>{note}</p>
-        {!b && !error && <RabbitLoader className="py-10" label="Loading" cycle={['Gathering the crew', 'Counting sessions']} />}
+        {!b && !error && <RabbitLoader className="py-10" label="Loading" cycle={['Gathering the crew', 'Counting workouts']} />}
         {!b && error && <ErrorState message={error} onRetry={() => void load()} />}
         {b && !b.member && <Invite b={b} onJoined={(x) => setB(x)} onDeclined={onClose} />}
         {b && b.member && (

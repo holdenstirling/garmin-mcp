@@ -11,10 +11,10 @@ import { PhaseStrip, fmtDay } from './PlanParts'
 
 const PHASE_INFO: Record<PlanWeekBuilt['phase'], string> = {
   base: 'Mostly easy miles that build your aerobic engine and the habit of training. Volume rises slowly, with a lighter week every few weeks so your body absorbs the work.',
-  build: 'Workouts get more specific: tempo and threshold efforts, longer long sessions. Still mostly easy, with one or two harder days a week.',
-  peak: 'Your biggest, most race-like weeks: race-pace work and the longest sessions. Recovery matters most here.',
+  build: 'Workouts get more specific: tempo and threshold efforts, longer long workouts. Still mostly easy, with one or two harder days a week.',
+  peak: 'Your biggest, most race-like weeks: race-pace work and the longest workouts. Recovery matters most here.',
   taper: 'Volume drops while some intensity stays, so you arrive fresh and sharp. Feeling restless is normal.',
-  race: 'Short, easy sessions with a few quick openers. Rest, fuel and get to the start line ready.',
+  race: 'Short, easy workouts with a few quick openers. Rest, fuel and get to the start line ready.',
 }
 
 type Block = { phase: PlanWeekBuilt['phase']; first: PlanWeekBuilt; last: PlanWeekBuilt; weeks: PlanWeekBuilt[] }

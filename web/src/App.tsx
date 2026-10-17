@@ -96,7 +96,7 @@ function MainApp() {
       {state.kind === 'error' && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <RabbitLogo size={40} />
-          <p className="text-(--text-secondary)">Something went wrong: {state.message}</p>
+          <p className="text-(--text-secondary)">Rabbit tripped over something: {state.message}</p>
           <button className="hit-44 underline" onClick={() => void load()}>Try again</button>
         </div>
       )}

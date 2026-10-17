@@ -9,7 +9,7 @@ import { PlanReview } from '@/components/plan/PlanReview'
 import { importApi, type Preview } from '@/lib/planimport'
 import { importFromGoal } from '@/lib/planconvert'
 
-const READING = ['Reading your plan file…', 'Finding every session…', 'Working out zones and paces…', 'Lining up the weeks…']
+const READING = ['Reading your plan file…', 'Finding every workout…', 'Working out zones and paces…', 'Lining up the weeks…']
 const api = importApi('/api')
 
 export function ConvertPlanScreen({ onClose, onApplied, onImportOther }: {

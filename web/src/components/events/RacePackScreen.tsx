@@ -94,7 +94,7 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
               <ul className="mt-1 flex flex-col gap-1 text-[0.7647rem] leading-snug text-(--text-secondary)">{p.fueling.steps.map((s) => <li key={s}>• {s}</li>)}</ul>
               {p.fueling.carbs_g_per_h > 0 && (
                 <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>
-                  {p.fueling.practised_g_per_h != null ? `You've practised ${p.fueling.practised_g_per_h} g/h well · see your fueling log` : 'Log fueling on long sessions so Rabbit learns your rate'}
+                  {p.fueling.practised_g_per_h != null ? `You've practised ${p.fueling.practised_g_per_h} g/h well · see your fueling log` : 'Log fueling on long workouts so Rabbit learns your rate'}
                 </button>
               )}
             </Field>

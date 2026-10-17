@@ -40,7 +40,7 @@ export function kindDefaults(kind: EventKind, isFirst: boolean): EventFields {
 export function KindPicker({ value, onChange }: { value: EventKind | null; onChange: (k: EventKind) => void }) {
   return (
     <Card>
-      <Field label="What is it?" hint={value ? KIND_HINT[value] : 'Races, group sessions, trips and big life days all shape your plan.'}>
+      <Field label="What is it?" hint={value ? KIND_HINT[value] : 'Races, group workouts, trips and big life days all shape your plan.'}>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Kind of event">
           {EVENT_KINDS.map(([k, label]) => {
             const Icon = KIND_ICON[k]
@@ -86,13 +86,13 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
           <Field label="Start time" className="border-t border-(--border)">
             <input type="time" className={inputCls} value={value.time ?? ''} onChange={(e) => onChange({ time: e.target.value || null })} />
           </Field>
-          <Field label="How long" className="border-t border-(--border)" hint={kind === 'other' ? 'Add a length and Rabbit counts it as a session.' : undefined}>
+          <Field label="How long" className="border-t border-(--border)" hint={kind === 'other' ? 'Add a length and Rabbit counts it as a workout.' : undefined}>
             <NumberStepper label="how long" value={value.duration_min ?? null} min={10} max={600} step={15} suffix="min"
               onChange={(v) => onChange({ duration_min: v })} />
           </Field>
           <Field label="In your training" className="border-t border-(--border)"
             hint={value.in_plan === false ? 'It stays on your calendar; your workouts that day don’t change.'
-              : 'Each date counts as a workout in your plan, in place of that day’s session of the same sport.'}>
+              : 'Each date counts as a workout in your plan, in place of that day’s workout of the same sport.'}>
             <Choice value={value.in_plan === false ? 'no' : 'yes'} onChange={(v) => onChange({ in_plan: v === 'no' ? false : null })}
               options={[['yes', 'Count as a workout'], ['no', 'Calendar only']]} />
           </Field>

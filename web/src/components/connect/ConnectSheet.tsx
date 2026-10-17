@@ -81,7 +81,7 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
 const NEXT: Record<ConnApp, string[]> = {
   garmin: ['Your recent workouts are coming in now', 'New workouts show up on their own after your watch syncs with Garmin', 'Send planned workouts to your watch from Plan'],
   oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night', 'Workouts Oura records that Garmin didn’t show on their day'],
-  calendar: ['Trips and busy days show next to your plan', 'Rabbit works your sessions around them'],
+  calendar: ['Trips and busy days show next to your plan', 'Rabbit works your workouts around them'],
   trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
 }
 

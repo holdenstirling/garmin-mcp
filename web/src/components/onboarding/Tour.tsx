@@ -16,8 +16,8 @@ const STEPS: Step[] = [
   { target: 'tab-feed', title: 'Feed', body: "What your friends and groups are up to. Make a group feed with just a few people." },
   { target: 'tab-clubs', title: 'Local', body: 'Clubs, leagues and meetups near you, from run clubs to volleyball, plus people to follow.' },
   { target: 'tab-progress', title: 'Progress', body: 'How your fitness is trending, in plain words.' },
-  { target: 'chat', title: 'Chat with Rabbit', body: 'From any screen: questions, swaps, travel weeks.' },
-  { target: 'search', title: 'Search', body: 'Find people, clubs, races, sessions and past workouts from any screen.' },
+  { target: 'chat', title: 'Chat with Rabbit', body: 'Questions, swaps, travel weeks: Rabbit is one tap away on every screen.' },
+  { target: 'search', title: 'Search', body: 'Find people, clubs, races and workouts (planned or done) from any screen.' },
 ]
 const PAD = 6
 

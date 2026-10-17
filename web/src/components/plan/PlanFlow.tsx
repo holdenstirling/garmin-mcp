@@ -80,7 +80,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
       )}
       {longLine.length > 0 && (
         <p className="px-1 text-[0.7647rem] text-(--text-secondary)">
-          <b className="font-semibold text-(--text)">Long session:</b> {longLine[0]}′ to start, {longLine[1]}′ by week 3, up to {longLine[2]}′ at its longest. It grows about 10% a week at most.
+          <b className="font-semibold text-(--text)">Long workout:</b> {longLine[0]}′ to start, {longLine[1]}′ by week 3, up to {longLine[2]}′ at its longest. It grows about 10% a week at most.
         </p>
       )}
       {!compact && firstWeeks.length > 0 && (

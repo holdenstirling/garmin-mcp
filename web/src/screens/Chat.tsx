@@ -101,7 +101,7 @@ import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
-  'Am I recovered enough for a hard session today?',
+  'Am I recovered enough for a hard workout today?',
   "How's my sleep been lately?",
 ]
 const TOPIC_SUGGESTIONS = ['Help me plan next week.', 'Can I move my long ride to Sunday?', 'What should I eat before a long run?']

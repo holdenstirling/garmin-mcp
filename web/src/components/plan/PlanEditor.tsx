@@ -341,7 +341,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       {!coachMode && <>
       {/* Garmin */}
       <Group label="Send to your watch" footer={me.garmin.connected
-        ? 'Upcoming sessions go to your Garmin calendar as structured workouts. Moved or edited sessions update on the next sync.'
+        ? 'Upcoming workouts go to your Garmin calendar with steps and targets. Moved or edited workouts update on the next sync.'
         : undefined}>
         <Field label={me.garmin.connected ? (lastSync ? `Last synced ${lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${synced} on your calendar` : 'Not synced yet') : 'Connect Garmin'}>
           {me.garmin.connected ? (

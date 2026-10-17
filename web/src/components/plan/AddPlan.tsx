@@ -90,7 +90,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
     const reads = extra.ai || sent.names.some((n) => READ_BY_RABBIT.test(n))
     const many = sent.files.length > 1
     setBusy(reads
-      ? { label: 'Reading your plan…', cycle: ['Reading your plan…', many ? `Reading all ${sent.files.length} pages…` : 'Finding the sessions…', 'Lining up the weeks…'] }
+      ? { label: 'Reading your plan…', cycle: ['Reading your plan…', many ? `Reading all ${sent.files.length} pages…` : 'Finding the workouts…', 'Lining up the weeks…'] }
       : { label: 'Reading your plan…', cycle: ['Reading your plan…', 'Lining up the weeks…'] })
     try {
       handle(await api.upload(sent.files, sent.names, { start, sheet: sent.sheet, ...extra }), sent)
@@ -257,7 +257,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
           </button>
           {help === 'csv' && (
             <div className="px-4 pb-3.5">
-              <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">One row per session with a date (or week + day), sport, title and time works best, in any column order. A week grid works too (weeks down, Monday to Sunday across, cells like “45' easy run”).</p>
+              <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">One row per workout with a date (or week + day), sport, title and time works best, in any column order. A week grid works too (weeks down, Monday to Sunday across, cells like “45' easy run”).</p>
               <a href={api.templateUrl} download="rabbit-plan-template.csv"
                 className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text)">
                 <Download className="size-4" /> Download the CSV template
@@ -403,7 +403,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
   )
   return (
     <Screen title="Match the columns" subtitle={info.name} onBack={onBack} onClose={onBack} footer={footer}>
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">Rabbit wasn't sure about this sheet, so it guessed what each column means. Fix anything that's off: it needs a date (or week + day) and what the session is.</p>
+      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">Rabbit wasn't sure about this sheet, so it guessed what each column means. Fix anything that's off: it needs a date (or week + day) and what the workout is.</p>
       <Card>
         <p className="border-b border-(--border) px-4 py-2 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Your sheet: first 3 rows</p>
         <div className="overflow-x-auto">

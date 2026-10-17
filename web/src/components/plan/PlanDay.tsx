@@ -355,14 +355,14 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : 'Rest day'}</p>
           {day && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{did.length ? 'Nothing was on the plan today, and you got a workout in anyway.' : 'Fitness sinks in while you recover. A walk or some light stretching is plenty.'}</p>}
           {day && restAdd && date >= today && (
-            <Button variant="default" className="mt-1 h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={restAdd}><Plus className="size-4" aria-hidden />Add a session</Button>
+            <Button variant="default" className="mt-1 h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={restAdd}><Plus className="size-4" aria-hidden />Add a workout</Button>
           )}
         </div>
       )}
       {(work.length > 0 || did.length > 0) && restAdd && date >= today && work.length < 4 && (
         <button type="button" onClick={restAdd}
           className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border-strong) text-[0.7647rem] text-(--text-muted) active:bg-(--bg-inset)">
-          <Plus className="size-3.5" aria-hidden />Add a session on {fmtDay(date, { weekday: 'long' })}
+          <Plus className="size-3.5" aria-hidden />Add a workout on {fmtDay(date, { weekday: 'long' })}
         </button>
       )}
       </div>

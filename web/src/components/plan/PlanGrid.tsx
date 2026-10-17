@@ -161,7 +161,7 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
                         {!d.length && <span className="self-center text-[0.7059rem] text-(--text-muted)">Rest</span>}
                       </div>
                       {d.length < 4 && (
-                        <button type="button" aria-label={`Add a session on ${DAY_NAMES[di]}`} onClick={() => setEditing({ w: wi, d: di, i: null })}
+                        <button type="button" aria-label={`Add a workout on ${DAY_NAMES[di]}`} onClick={() => setEditing({ w: wi, d: di, i: null })}
                           className="hit-44 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted)">
                           <Plus className="size-3.5" />
                         </button>
@@ -205,7 +205,7 @@ function QuickAdd({ sports, initial, onSave, onCancel, onDelete }: {
       <ChipRow>
         {sports.map((sp) => <Chip key={sp} selected={s.sport === sp} onClick={() => setS({ ...s, sport: sp })}>{SPORT_LABEL[sp]}</Chip>)}
       </ChipRow>
-      <input className={inputCls} aria-label="Session title" placeholder={`Title (e.g. ${s.sport === 'run' ? 'Hill repeats' : s.sport === 'bike' ? 'Sweet spot 3x12' : 'Easy session'})`}
+      <input className={inputCls} aria-label="Session title" placeholder={`Title (e.g. ${s.sport === 'run' ? 'Hill repeats' : s.sport === 'bike' ? 'Sweet spot 3x12' : 'Easy workout'})`}
         maxLength={60} value={s.title} onChange={(e) => setS({ ...s, title: e.target.value })} />
       <ChipRow>
         {QUICK_INTENSITY.map((it) => <Chip key={it} selected={s.intensity === it} onClick={() => setS({ ...s, intensity: it })}>{INTENSITY_LABEL[it]}</Chip>)}
@@ -214,7 +214,7 @@ function QuickAdd({ sports, initial, onSave, onCancel, onDelete }: {
       <input className={inputCls} aria-label="Notes" placeholder="Notes (optional): intervals, targets, cues" maxLength={400}
         value={s.notes} onChange={(e) => setS({ ...s, notes: e.target.value })} />
       <div className="flex gap-2">
-        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-[0.7647rem]" aria-label="Delete session" onClick={onDelete}><Trash2 className="size-4" /></Button>}
+        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-[0.7647rem]" aria-label="Delete workout" onClick={onDelete}><Trash2 className="size-4" /></Button>}
         <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" className="h-11 flex-1 gap-1 text-[0.7647rem]" disabled={!isRace && !s.minutes}
           onClick={() => onSave({ ...s, title: s.title.trim(), minutes: isRace ? null : s.minutes })}>

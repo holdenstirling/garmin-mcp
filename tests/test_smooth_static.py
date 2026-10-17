@@ -49,9 +49,9 @@ def test_tabs_stay_mounted_once_visited() -> None:
 
 def test_session_sheet_save_is_pinned() -> None:
     s = (SRC / "components" / "plan" / "SessionSheet.tsx").read_text()
-    head = s[s.index("<Sheet title={session ? session.title : 'Add a session'}"):]
+    head = s[s.index("<Sheet title={session ? session.title : 'Add a workout'}"):]
     head = head[:head.index("bodyClassName")]
-    assert "footer=" in head and "Add session" in head
+    assert "footer=" in head and "Add workout" in head
 
 
 def test_tab_bar_children_never_take_the_tap() -> None:

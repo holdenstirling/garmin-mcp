@@ -306,7 +306,7 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
           )}
           {d.learnings.trend.length > 0 ? (
             <section aria-label="Carbs per hour on your long sessions" className="flex flex-col gap-1.5">
-              <SectionLabel as="h3">Carbs per hour, recent long sessions</SectionLabel>
+              <SectionLabel as="h3">Carbs per hour, recent long workouts</SectionLabel>
               <FuelBars t={d.learnings.trend} target={d.target} />
             </section>
           ) : (

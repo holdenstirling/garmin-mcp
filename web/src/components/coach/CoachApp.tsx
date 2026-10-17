@@ -270,7 +270,7 @@ function Messages({ chat, onOpen, onNew, name }: {
   return (
     <>
       <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onNew}><MessageSquare className="size-4" /> Message {name.split(' ')[0]}</Button>
-      <p className="px-1 text-[0.7059rem] text-(--text-muted)">To talk about one workout, open the plan, tap the session and choose Message.</p>
+      <p className="px-1 text-[0.7059rem] text-(--text-muted)">To talk about one workout, open the plan, tap the workout and choose Message.</p>
       {threads && threads.length > 0 && <ThreadList threads={threads} onOpen={onOpen} me="coach" />}
     </>
   )

@@ -177,7 +177,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
         </p>
       </div>
       <ChipRow>
-        <Chip selected={mode === 'move'} onClick={() => setMode('move')}>Move this session</Chip>
+        <Chip selected={mode === 'move'} onClick={() => setMode('move')}>Move this workout</Chip>
         <Chip selected={mode === 'swap'} onClick={() => setMode('swap')}><ArrowLeftRight className="mr-1 inline size-3.5" aria-hidden />Swap whole days</Chip>
       </ChipRow>
       {mode === 'move' && (tomorrowOk || best) && (
@@ -192,7 +192,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       {group('Next week', nextWeek)}
       {!thisWeek.length && !nextWeek.length && <p className="px-1 text-[0.8235rem] text-(--text-secondary)">There's no free day left before race day to move this to.</p>}
       {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
-      {!inline && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Tip: on the week calendar you can also press and hold a session, then drag it to a day.</p>}
+      {!inline && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Tip: on the week calendar you can also press and hold a workout, then drag it to a day.</p>}
     </Sheet>
   )
 }
@@ -204,7 +204,7 @@ export function MoveSessionSheet({ sessionId, onClose, onMoved }: { sessionId: s
   useEffect(() => {
     Promise.all([getPlan(), getCalendar()]).then(([p, c]) => {
       if (p.plan && c.cal) setData({ plan: p.plan, cal: c.cal })
-      else setErr("This session isn't in a plan built in Rabbit, so it can't be moved here.")
+      else setErr("This workout isn't in a plan built in Rabbit, so it can't be moved here.")
     }, (e: Error) => setErr(e.message))
   }, [])
   const hit = useMemo(() => {
@@ -216,7 +216,7 @@ export function MoveSessionSheet({ sessionId, onClose, onMoved }: { sessionId: s
     return (
       <Sheet title="Move this session" onClose={onClose} bodyClassName="flex flex-col gap-4 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         {err || (data && !hit)
-          ? <p className="text-[0.8235rem] text-(--text-secondary)" role="alert">{err ?? "Couldn't find this session in your plan. Open Schedule to move it."}</p>
+          ? <p className="text-[0.8235rem] text-(--text-secondary)" role="alert">{err ?? "Couldn't find this workout in your plan. Open Schedule to move it."}</p>
           : <RabbitLoader className="py-10" label="Loading your week" cycle={['Loading your week…', 'Finding free days…']} />}
       </Sheet>
     )

@@ -160,3 +160,20 @@ Request path: `server.py` (MCPServer tools) → `tools.GarminService` (transport
 - **Plan flow (planflow.py, races.py, components/plan/PlanFlow.tsx)**: Schedule's race switcher (`/api/races`, `/api/races/train`, `/api/races/tuneup`; each goal keeps its own `plan-<goal>` doc, so switching back restores it; `coach.activate_goal`), live plan preview (`POST /api/plan/preview` -> summary + diff, nothing saved) used by the setup Review screen and Adjust my plan (`POST /api/plan/levers` saves available_days/long_day/weekly_hours/plan_intensity and rebuilds from today; `/api/plan/levers/undo` restores the snapshot in the `plan-undo` doc), and the weekly check-in (`GET/POST /api/plan/weekcheck`: Fri-Mon once per plan week; answers -> adjust-style changes incl. `relocate`, applied via `plans.apply_adjustment`; `weekcheck` doc). `plan_intensity` gentle/push shifts the builder level one step. Running plans put the long run on the chosen long day (tri: long ride there, long run the day after).
 - Weather-aware workouts (weather.py rules, weather_web.py routes `GET /app/api/weather/next`, `GET /app/api/weather/session?session_id=`): 72 h Open-Meteo forecast for the saved location or home city (cached 45 min, failures show nothing; `RABBIT_FAKE_WEATHER=1` for offline dev), heat (temp + dew point), cold, wind, altitude vs home elevation, storms/ice/rain and AQI adjust run paces for display only (the plan never changes) and suggest the best time to go. UI: workout page Weather section (components/workout/WeatherSection.tsx), Day view chip (components/plan/WxChip.tsx), Home "Next 3 days" (components/home/NextDays.tsx).
 - Sponsored partners (partners.py `sponsored`, `zip_metro`, `Partners.sponsored/hide/placement_count`; web `SponsoredCard` in components/community/Partners.tsx): a paid-placement partner shows as ONE disclosed "Sponsored partner" card (Sponsored label + "Why am I seeing this?" + Hide) per find-clubs screen (Local top or empty state, Local club search, Discover For you, Explore search, global search) when the person's area is a partner metro or they search/set a Front Range zip (static prefix table 800-802 + named suburbs). Hide = off that screen 30 days (hashed per person). Owner sees impressions/taps/hides by placement in Me > Partners and can toggle Sponsored per partner. Routes: GET /app/api/partners/sponsored?placement=&zip=, POST /app/api/partners/{pid}/hide {placement}, POST /app/api/partners/{pid}/count {what: impression|tap, placement}.
+
+
+## Rabbit's voice
+
+Everything Rabbit says (chat, morning brief, workout reactions, feedback, moments, push text) and the
+app's microcopy follow one guide: `src/garmin_mcp/voice.py` (`PROMPT_VOICE` goes into the coach's
+system prompt, `SHORT_VOICE` into one-shot writers: brief, workout reaction, race debrief/strategy).
+- **Personality:** a friendly running rabbit and a sharp coach. Warm, upbeat, quick, honest and specific
+  (real numbers in the athlete's units), coach-like confidence without hype, plain words, second
+  person, short sentences. Celebrates effort and consistency. Never shames a missed workout: reset it
+  and give the next step.
+- **Playful, lightly:** at most one light rabbit/hop line per reply, never forced. No puns, jokes or
+  emoji for pain, injury, illness, heat, a bad race or bad news: calm, kind, safety-first.
+- **Never:** "as an AI", "great question", stacked exclamation marks, vague praise ("looks good overall").
+- **Microcopy:** sentence case; say what happened and what to do next ("Couldn't reach Google. Check
+  your connection and try again."); users see **workout** (not session), plan, race, event, club, Local.
+- Do/don't examples live in `voice.DO` / `voice.DONT`; tests: `tests/test_brand_voice.py`.

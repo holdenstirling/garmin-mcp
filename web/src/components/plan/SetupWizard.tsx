@@ -419,7 +419,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
         <div className="flex flex-col items-center px-2 pt-6 text-center">
           <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Building your plan</h3>
           <RabbitLoader size={72} className="pt-4" label="Building your plan"
-            cycle={['Mapping your weeks…', 'Placing long sessions…', 'Balancing hard and easy days…', 'Tapering into race day…']} />
+            cycle={['Mapping your weeks…', 'Placing long workouts…', 'Balancing hard and easy days…', 'Tapering into race day…']} />
         </div>
       )}
 
@@ -430,7 +430,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
           </StepIntro>
           {preview.summary ? <PlanSummaryView s={preview.summary} /> : preview.error ? (
             <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{preview.error}</p>
-          ) : <RabbitLoader className="py-6" label="Sketching your plan" cycle={['Mapping your weeks…', 'Placing long sessions…', 'Balancing hard and easy days…']} />}
+          ) : <RabbitLoader className="py-6" label="Sketching your plan" cycle={['Mapping your weeks…', 'Placing long workouts…', 'Balancing hard and easy days…']} />}
           {preview.busy && preview.summary && <RabbitLoader inline className="px-1 text-[0.7059rem]" label="Updating…" />}
           <LeverFields v={{ available_days: a.available_days, long_day: a.long_day, weekly_hours: a.weekly_hours, plan_intensity: a.plan_intensity }}
             set={(p) => setA({ ...p, ...(p.available_days && a.long_day && !p.available_days.includes(a.long_day) ? { long_day: p.available_days.slice(-1)[0] ?? null } : {}) })}

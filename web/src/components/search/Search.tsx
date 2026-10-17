@@ -104,7 +104,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             </section>
           ) : (
             <EmptyState compact icon={<SearchIcon className="size-6" />} title="Search everything"
-              body="Friends, clubs, races, your plan's sessions and past workouts. Try “tempo”, a friend's name or your race." />
+              body="Friends, clubs, races, your plan's workouts (planned and done). Try “tempo”, a friend's name or your race." />
           )
         ) : error ? (
           <p role="alert" className="px-4 py-6 text-center text-[0.7647rem] text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
