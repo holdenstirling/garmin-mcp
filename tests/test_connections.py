@@ -27,13 +27,13 @@ def test_status_states() -> None:
     off = conn.status("oura", available=True, connected=False, last_sync=5, error="x")
     assert off["last_sync"] is None and off["error"] is None
     v = conn.view({a: conn.status(a, available=True, connected=False) for a in reversed(conn.ORDER)})
-    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "calendar", "trainingpeaks"]
+    assert [a["id"] for a in v["apps"]] == ["garmin", "oura", "whoop", "calendar", "trainingpeaks"]
 
 
 def test_facts_match_the_privacy_policy() -> None:
     page = legal.privacy()
     # The popup's promises are ones the policy (and sources.py) make.
-    assert "Oura data is never sent to the AI coach" in page
+    assert "Oura and WHOOP data is never sent to the AI coach" in page
     assert "they don't count toward streaks, stats or plan matching, which use Garmin workouts only" in page
     assert "deleted when you disconnect Oura" in page
     assert "Google Calendar</b> (when you connect it, read-only)" in page

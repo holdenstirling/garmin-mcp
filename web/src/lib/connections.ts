@@ -1,12 +1,13 @@
-// Connected apps (server: connections.py): Garmin, Oura, Google Calendar and TrainingPeaks, one status row
+// Connected apps (server: connections.py): Garmin, Oura, WHOOP, Google Calendar and TrainingPeaks, one status row
 // each for the Me -> Connected apps hub and the connect popup (components/connect/), plus the
 // coming-soon apps (Whoop, Apple Watch, Coros; demand.py) with "I want this".
 // Any screen opens an app's popup with requestConnect(app); screens/Chat.tsx listens.
 import { getJSON, sendJSON, type DataSources } from '@/lib/api'
 import { OURA_CONNECT_URL } from '@/lib/oura'
+import { WHOOP_CONNECT_URL } from '@/lib/whoop'
 import { CALENDAR_CONNECT_URL } from '@/lib/calendar'
 
-export type ConnApp = 'garmin' | 'oura' | 'calendar' | 'trainingpeaks'
+export type ConnApp = 'garmin' | 'oura' | 'whoop' | 'calendar' | 'trainingpeaks'
 export type ConnState = 'connected' | 'attention' | 'not_connected' | 'unavailable'
 export type Connection = {
   id: ConnApp; name: string; kind: 'password' | 'oauth' | 'cookie'
@@ -26,14 +27,14 @@ export type SoonApp = { id: SoonId; name: string; state: 'soon'; why: string; wo
 export type Connections = { apps: Connection[]; sources: DataSources | null; soon?: SoonApp[] }
 
 export const getConnections = () => getJSON<Connections>('/api/connections')
-export const syncConnection = (app: 'oura' | 'calendar' | 'trainingpeaks') =>
+export const syncConnection = (app: 'oura' | 'whoop' | 'calendar' | 'trainingpeaks') =>
   sendJSON<{ app: Connection }>('POST', `/api/connections/${app}/sync`, {})
 /** "I want this" on a coming-soon app; counts once per person. */
 export const wantApp = (app: SoonId, want: boolean) =>
   sendJSON<{ app: SoonId; wanted: boolean; wanted_by?: number }>('POST', `/api/connections/${app}/want`, { want })
-export const OAUTH_URL: Record<'oura' | 'calendar', string> = { oura: OURA_CONNECT_URL, calendar: CALENDAR_CONNECT_URL }
+export const OAUTH_URL: Record<'oura' | 'whoop' | 'calendar', string> = { oura: OURA_CONNECT_URL, whoop: WHOOP_CONNECT_URL, calendar: CALENDAR_CONNECT_URL }
 
-/** Back from a provider: `?oura=connected|failed`, `?calendar=connected|...`. */
+/** Back from a provider: `?oura=connected|failed`, `?whoop=...`, `?calendar=connected|...`. */
 export type ConnResult = 'connected' | 'failed'
 export type ConnectRequest = { app: ConnApp; result?: ConnResult; ask?: boolean }
 

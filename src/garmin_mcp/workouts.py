@@ -1,8 +1,9 @@
 """One workout model for every source, and the rule that keeps a workout from counting twice.
 
 Garmin is the primary source (``GarminService`` + the poller sync it on their own). Other
-connected sources add workouts Garmin doesn't have: today that is **Oura** (v2
-``usercollection/workout``); Whoop, Coros and Apple Health are "Coming soon" (``demand.py``).
+connected sources add workouts Garmin doesn't have: **Oura** (v2 ``usercollection/workout``)
+and **WHOOP** (v2 ``activity/workout``, ``whoop.py``); Coros and Apple Health are "Coming
+soon" (``demand.py``) until they connect.
 
 Model (``Workout``-shaped dict)::
 
@@ -15,12 +16,12 @@ Same workout (``same_workout``): same sport family, starts within ``START_WINDOW
 the time ranges overlap. When two sources saw it, the richer one wins (``PRIORITY``: Garmin first),
 so a run recorded on a Garmin watch and auto-detected by an Oura ring counts once.
 
-Privacy (Oura's API agreement, section 4(d), see ``oura.py``): workouts imported from Oura are
-**display-only**. They are stored per user (``extworkouts`` doc, encrypted) and shown in the Day
+Privacy (Oura's API agreement, section 4(d), see ``oura.py``; WHOOP by the same rule): workouts
+imported from Oura or WHOOP are **display-only**. They are stored per user (``extworkouts`` doc, encrypted) and shown in the Day
 view ("From Oura") and, when "Share my workouts with friends" is on, as the same compact feed
-card (sport, distance, time; never heart rate). They never enter ``GarminService`` /
-``Stats.activities`` / plan status / agent tools, so nothing from Oura reaches Rabbit's AI.
-Disconnecting Oura deletes them (``drop_source``).
+card (sport, distance, time; never heart rate, strain or calories). They never enter
+``GarminService`` / ``Stats.activities`` / plan status / agent tools, so nothing from Oura or
+WHOOP reaches Rabbit's AI. Disconnecting the app deletes them (``drop_source``).
 """
 
 from __future__ import annotations
@@ -43,6 +44,15 @@ _OURA_SPORT = {
     "strength_training": "strength", "weightlifting": "strength", "weight_lifting": "strength",
     "yoga": "other", "pilates": "other", "elliptical": "other", "rowing": "other",
 }
+# WHOOP sport_name values (lowercase, words joined by spaces or dashes) -> Rabbit sport.
+_WHOOP_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("swim", "water polo"), "swim"),
+    (("cycl", "bik", "spin", "peloton"), "bike"),
+    (("hik", "ruck"), "hike"),
+    (("walk",), "walk"),
+    (("run", "track"), "run"),
+    (("weight", "strength", "functional", "powerlift", "crossfit", "lift"), "strength"),
+)
 SPORT_NAME = {"run": "Run", "bike": "Ride", "swim": "Swim", "walk": "Walk", "hike": "Hike",
               "strength": "Strength", "other": "Workout"}
 # Families that count as the same kind of workout when matching across sources.
@@ -118,6 +128,43 @@ def from_oura(w: dict[str, Any]) -> dict[str, Any] | None:
             "minutes": round(minutes) if minutes else None,
             "km": round(dist / 1000, 2) if dist and dist > 0 else None,
             "avg_hr": None, "calories": _num(w.get("calories"))}
+
+
+def whoop_sport(name: Any) -> str:
+    k = str(name or "").lower().replace("_", " ").replace("-", " ")
+    for words, sport in _WHOOP_RULES:
+        if any(w in k for w in words):
+            return sport
+    return "other"
+
+
+def from_whoop(w: dict[str, Any]) -> dict[str, Any] | None:
+    """WHOOP v2 workout -> model; None when it can't be placed in time. ``start``/``end`` are
+    UTC; ``timezone_offset`` ("-06:00") turns them into the athlete's wall time. Distance only
+    when WHOOP scored it; heart rate and strain are left out (never shown or shared)."""
+    wid = w.get("id")
+    if not isinstance(wid, str | int) or isinstance(wid, bool) or wid == "":
+        return None
+    start, end = _local(w.get("start")), _local(w.get("end"))
+    if start is None:
+        return None
+    off = re.fullmatch(r"([+-])(\d{2}):?(\d{2})", str(w.get("timezone_offset") or "").strip())
+    if off:
+        delta = timedelta(hours=int(off.group(2)), minutes=int(off.group(3)))
+        delta = delta if off.group(1) == "+" else -delta
+        start = start + delta
+        end = end + delta if end is not None else None
+    sport = whoop_sport(w.get("sport_name"))
+    minutes = (end - start).total_seconds() / 60 if end and end > start else None
+    score = w.get("score") if isinstance(w.get("score"), dict) else {}
+    dist = _num(score.get("distance_meter"))
+    raw = str(w.get("sport_name") or "").replace("-", " ").replace("_", " ").strip()
+    name = raw.title() if raw and sport == "other" and raw.lower() not in ("activity", "other") else SPORT_NAME[sport]
+    return {"key": f"whoop:{wid}", "source": "whoop", "id": str(wid), "sport": sport,
+            "name": name[:80], "start": start.isoformat(),
+            "minutes": round(minutes) if minutes else None,
+            "km": round(dist / 1000, 2) if dist and dist > 0 else None,
+            "avg_hr": None, "calories": None}
 
 
 def same_workout(a: dict[str, Any], b: dict[str, Any]) -> bool:
@@ -215,5 +262,5 @@ def drop_source(store: Any, uid: str, source: str) -> None:
     store.user_doc(uid, DOC).update(apply)
 
 
-__all__ = ["PRIORITY", "ExternalWorkouts", "drop_source", "from_garmin", "from_oura", "garmin_sport",
-           "merge", "same_workout"]
+__all__ = ["PRIORITY", "ExternalWorkouts", "drop_source", "from_garmin", "from_oura", "from_whoop",
+           "garmin_sport", "merge", "same_workout", "whoop_sport"]

@@ -15,7 +15,7 @@ import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thi
 
 // "Garmin, Oura · 1 more to connect" for the Connected apps row.
 function connectedLine(me: Me): string {
-  const on = [me.garmin.connected && 'Garmin', me.oura.connected && 'Oura', me.calendar.connected && 'Google Calendar']
+  const on = [me.garmin.connected && 'Garmin', me.oura.connected && 'Oura', me.whoop?.connected && 'WHOOP', me.calendar.connected && 'Google Calendar']
     .filter(Boolean) as string[]
   const avail = 1 + (me.oura.available ? 1 : 0) + (me.calendar.available ? 1 : 0)
   if (!on.length) return 'Connect Garmin, Oura or Google Calendar'

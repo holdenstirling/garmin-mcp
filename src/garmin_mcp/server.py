@@ -25,6 +25,7 @@ from starlette.routing import Route
 
 from .agent import Agent, AnthropicBackend
 from .oura import OuraClient
+from .whoop import WhoopClient
 from .appstore import AppStore
 from .garminlogin import LoginManager
 from .proactive import AgentDelivery, Proactive, ProactiveThread
@@ -306,6 +307,13 @@ def build_rabbit(settings: Settings, fernet_key: str, token_store: EncryptedFile
                                    f"{settings.public_base_url.rstrip('/')}/app/auth/oura/callback")
         except Exception as e:  # Oura is optional; the app works without it
             log_event(logger, logging.ERROR, "oura_disabled", error=type(e).__name__)
+    if settings.whoop_client_id:
+        try:
+            whoop_secret = get_secret(settings.whoop_client_secret_name, "WHOOP_CLIENT_SECRET", settings.gcp_project)
+            auth.whoop = WhoopClient(store, settings.whoop_client_id, whoop_secret,
+                                     f"{settings.public_base_url.rstrip('/')}/app/auth/whoop/callback")
+        except Exception as e:  # WHOOP is optional; without it WHOOP stays "Coming soon"
+            log_event(logger, logging.ERROR, "whoop_disabled", error=type(e).__name__)
     push = None
     if settings.vapid_subject:
         try:

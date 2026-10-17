@@ -2,7 +2,7 @@
 
 Pure helpers (``status``, ``view``) plus the per-app facts the connect popup shows: what Rabbit
 reads and what it never does. The facts restate ``legal.privacy`` and ``sources.py`` (workouts
-come from Garmin only; Oura data never reaches the AI model); ``tests/test_connections.py``
+come from Garmin only; Oura and WHOOP data never reach the AI model); ``tests/test_connections.py``
 pins them against the privacy page so the popup can't promise something the policy doesn't.
 
 TrainingPeaks (``tpsync.py``) connects with the athlete's pasted session value (``kind:
@@ -47,6 +47,21 @@ APPS: dict[str, dict[str, Any]] = {
             "Never posts or changes anything in Oura",
         ],
     },
+    "whoop": {
+        "name": "WHOOP",
+        "kind": "oauth",
+        "import_weeks": 2,
+        "import_label": "Importing your last 2 weeks of WHOOP workouts…",
+        "reads": [
+            "Workouts Garmin didn't record (time, sport, distance), shown in your day",
+            "Shared with friends as a workout card only if you share workouts",
+        ],
+        "never": [
+            "WHOOP data never goes to Rabbit's AI: it is only shown in the app",
+            "A workout never counts twice: if Garmin has it too, only Garmin's is used",
+            "Never shares your strain, heart rate or calories, and never changes anything in WHOOP",
+        ],
+    },
     "calendar": {
         "name": "Google Calendar",
         "kind": "oauth",
@@ -77,7 +92,7 @@ APPS: dict[str, dict[str, Any]] = {
         ],
     },
 }
-ORDER = ("garmin", "oura", "calendar", "trainingpeaks")
+ORDER = ("garmin", "oura", "whoop", "calendar", "trainingpeaks")
 
 
 def _iso(ts: float | str | None) -> str | None:

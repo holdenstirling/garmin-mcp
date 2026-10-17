@@ -52,6 +52,7 @@ from . import body as _body_mod
 from .coaches import CoachChat, CoachNotes
 from .gcalendar import CalendarError, CalendarNotConnected
 from .oura import OuraError, OuraNotConnected
+from .whoop import WhoopError, WhoopNotConnected
 from .sources import garmin_recovery, prefs_for, recovery_for, validate as validate_sources
 from .adjust import propose as propose_adjustment
 from . import planflow as _pf
@@ -272,6 +273,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                      "connected": bool(auth.oura and auth.oura.connected(user_id))},
             "calendar": {"available": auth.calendar is not None,
                          "connected": bool(auth.calendar and auth.calendar.connected(user_id))},
+            "whoop": {"available": auth.whoop is not None,
+                      "connected": bool(auth.whoop and auth.whoop.connected(user_id))},
             "coach_unread": coach_chat.unread(user_id, "athlete")
             if coach_chat is not None and not user_id.startswith("coach_") else 0,
             "profile": auth.profile(user_id),
@@ -1956,6 +1959,25 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if auth.oura is not None:
             auth.oura.disconnect(user_id)
         return JSONResponse({"connected": False})
+
+    async def whoop_delete(request: Request, user_id: str) -> Response:
+        if auth.whoop is not None:
+            await auth.whoop.disconnect(user_id)
+        return JSONResponse({"connected": False})
+
+    async def whoop_start(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        if _is_coach_account(auth.user_for(request)):
+            return _err(403, "Coach accounts can only use the coach view.")
+        return await auth.start_whoop(request)
+
+    async def whoop_callback(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        if _is_coach_account(auth.user_for(request)):
+            return _err(403, "Coach accounts can only use the coach view.")
+        return await auth.whoop_callback(request)
 
     async def oura_start(request: Request) -> Response:
         if not host_ok(request):
@@ -4555,7 +4577,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "calendar", available=cal is not None, connected=c_on,
                 last_sync=(cal.last_read(uid) if cal is not None else None),
                 error=_conn_errors.get((uid, "calendar")), attention=(uid, "calendar") in _conn_errors),
-        } | ({"trainingpeaks": _conn.status(
+        } | ({"whoop": _conn.status(
+            "whoop", available=True, connected=bool(auth.whoop and auth.whoop.connected(uid)),
+            last_sync=(auth.whoop.last_read(uid) if auth.whoop is not None else None),
+            error=_conn_errors.get((uid, "whoop")), attention=(uid, "whoop") in _conn_errors)}
+            if auth.whoop is not None else {}) | ({"trainingpeaks": _conn.status(
             "trainingpeaks", available=True, connected=(tps := tp_sync.status(uid))["connected"],
             last_sync=tps["last_sync"], error=tps["error"], attention=tps["attention"])}
             if tp_sync is not None else {})
@@ -4590,7 +4616,32 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             _ext_notes[uid] = str(e)
             _ext_w.save(uid, "oura", [], today)  # remember the attempt (no retry storm)
             return 0
-        new = set(await anyio.to_thread.run_sync(lambda: _ext_w.save(uid, "oura", items, today)))
+        return await _ext_store(uid, "oura", items, today)
+
+    async def _import_whoop(uid: str, *, force: bool = False) -> int:
+        w = auth.whoop
+        if _ext_w is None or w is None or not w.connected(uid):
+            return 0
+        last = _ext_w.imported_at(uid, "whoop")
+        if not force and last is not None and time.time() - last < EXT_EVERY_S:
+            return 0
+        today = plans.today(uid) if plans else date.today()
+        try:
+            items = await w.workouts(uid, today - timedelta(days=14), today)
+            _conn_errors.pop((uid, "whoop"), None)
+        except WhoopNotConnected:
+            return 0
+        except WhoopError as e:
+            _conn_errors[(uid, "whoop")] = str(e)
+            _ext_w.save(uid, "whoop", [], today)  # remember the attempt (no retry storm)
+            return 0
+        return await _ext_store(uid, "whoop", items, today)
+
+    async def _ext_store(uid: str, source: str, items: list[dict[str, Any]], today: date) -> int:
+        """Save one source's import; new workouts Garmin doesn't have go to the feed (when the
+        athlete shares workouts)."""
+        assert _ext_w is not None
+        new = set(await anyio.to_thread.run_sync(lambda: _ext_w.save(uid, source, items, today)))
         if new and "share" in _ext_feed:
             def share() -> None:
                 acts = chat.agent.stats.activities(uid)[1] if chat is not None and _garmin_connected(uid) else []
@@ -4601,7 +4652,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 await anyio.to_thread.run_sync(share)
             except Exception as e:
                 log_event(logger, logging.INFO, "ext_workouts_share_failed", error=type(e).__name__)
-        log_event(logger, logging.INFO, "ext_workouts_import", user_id=uid, source="oura", new=len(new))
+        log_event(logger, logging.INFO, "ext_workouts_import", user_id=uid, source=source, new=len(new))
         return len(new)
 
     if chat is not None and _ext_w is not None:
@@ -4610,13 +4661,16 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def _ext_tick(uid: str) -> None:
             if _ext_tick_prev is not None:
                 _ext_tick_prev(uid)
-            o = auth.oura
-            if o is None or not o.connected(uid):
-                return
-            last = _ext_w.imported_at(uid, "oura")
-            if last is not None and time.time() - last < EXT_EVERY_S:
-                return
-            asyncio.run(_import_oura(uid))  # the proactive thread has no event loop of its own
+            for src, client, run in (("oura", auth.oura, _import_oura), ("whoop", auth.whoop, _import_whoop)):
+                if client is None or not client.connected(uid):
+                    continue
+                last = _ext_w.imported_at(uid, src)
+                if last is not None and time.time() - last < EXT_EVERY_S:
+                    continue
+                try:
+                    asyncio.run(run(uid))  # the proactive thread has no event loop of its own
+                except Exception as e:  # one source failing never blocks the other
+                    log_event(logger, logging.INFO, "ext_workouts_tick_failed", source=src, error=type(e).__name__)
         chat.agent.moments.on_tick = _ext_tick
 
     async def connections_get(request: Request, user_id: str) -> Response:
@@ -4624,7 +4678,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         out = _conn.view(rows, _conn_sources(user_id))
         if _demand is not None:
             owner = auth.is_owner(user_id)
-            out["soon"] = await anyio.to_thread.run_sync(lambda: _demand.rows(user_id, owner=owner))
+            live = {"whoop"} if auth.whoop is not None else set()  # connectable now: not "coming soon"
+            out["soon"] = await anyio.to_thread.run_sync(lambda: _demand.rows(user_id, owner=owner, skip=live))
         if user_id in _ext_notes:
             for a in out["apps"]:
                 if a["id"] == "oura" and a["connected"]:
@@ -4654,6 +4709,17 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if not await anyio.to_thread.run_sync(lambda: tp_sync.connected(user_id)):
                 return _err(409, "TrainingPeaks isn't connected.")
             await anyio.to_thread.run_sync(lambda: tp_sync.sync(user_id))
+            rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
+            return JSONResponse({"app": rows[app_id]})
+        if app_id == "whoop":
+            if auth.whoop is None or not auth.whoop.connected(user_id):
+                return _err(409, "WHOOP isn't connected.")
+            auth.whoop.forget(user_id)
+            try:
+                await _import_whoop(user_id, force=True)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "connection_sync_failed", app=app_id, error=type(e).__name__)
+                _conn_errors[(user_id, "whoop")] = "Didn't answer just now. Try again later."
             rows = await anyio.to_thread.run_sync(lambda: _conn_rows(user_id))
             return JSONResponse({"app": rows[app_id]})
         if app_id not in ("oura", "calendar"):
@@ -4822,6 +4888,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             acct.on_delete("garmin", token_store.delete)
         if auth.oura is not None:
             acct.on_delete("oura", lambda u: auth.oura.disconnect(u))  # type: ignore[union-attr]
+        if auth.whoop is not None:
+            acct.on_delete("whoop", lambda u: auth.whoop.forget_tokens(u))  # type: ignore[union-attr]
         if auth.calendar is not None:
             acct.on_delete("google calendar", lambda u: auth.calendar.disconnect(u))  # type: ignore[union-attr]  # revokes the Google token
         acct.on_delete("coach links", auth.coach_links.forget_user)
@@ -5048,6 +5116,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/oura", _plan_api(oura_get, mutating=False), methods=["GET"]),
         Route("/app/api/oura", _plan_api(oura_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/recovery", _plan_api(recovery_get, mutating=False), methods=["GET"]),
+        Route("/app/api/whoop", _plan_api(whoop_delete, mutating=True), methods=["DELETE"]),
+        Route("/app/auth/whoop/start", whoop_start, methods=["GET"]),
+        Route("/app/auth/whoop/callback", whoop_callback, methods=["GET"]),
         Route("/app/auth/oura/start", oura_start, methods=["GET"]),
         Route("/app/auth/oura/callback", oura_callback, methods=["GET"]),
         Route("/app/api/plan/travel", _plan_api(travel_add, mutating=True), methods=["POST"]),

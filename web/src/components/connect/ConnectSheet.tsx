@@ -30,6 +30,7 @@ import { postJSON, type Me } from '@/lib/api'
 import { syncNow } from '@/lib/live'
 import { getProgress } from '@/lib/progress'
 import { disconnectOura, getOura } from '@/lib/oura'
+import { disconnectWhoop } from '@/lib/whoop'
 import { disconnectCalendar, getCalendar } from '@/lib/calendar'
 import {
   OAUTH_URL, STATE_LABEL, connectionsChanged, getConnections, syncConnection, syncedAgo,
@@ -39,17 +40,18 @@ import { cn } from '@/lib/utils'
 import { RabbitNap } from '@/components/anim'
 import { ShareChoice } from '@/components/connect/ShareChoice'
 
-const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
-const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
+const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', whoop: 'WHOOP', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
+const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 type View = 'loading' | 'intro' | 'garmin' | 'tp' | 'redirect' | 'importing' | 'done' | 'failed' | 'manage'
 
 /** Text monograms on a plain tile: recognisable without anyone's logo artwork. */
-const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', calendar: 'Cal', trainingpeaks: 'TP' }
+const MONO: Record<ConnApp, string> = { garmin: 'G', oura: 'O', whoop: 'W', calendar: 'Cal', trainingpeaks: 'TP' }
 
 /** What each app is for, in one line (Connected apps hub). */
 export const PURPOSE: Record<ConnApp, string> = {
   garmin: 'Workouts, heart rate, sleep and readiness',
   oura: 'Readiness, sleep, HRV and workouts Garmin missed',
+  whoop: 'Workouts Garmin missed, for your day and your friends’ feed',
   calendar: 'Trips and busy days, so your plan fits',
   trainingpeaks: 'Your coach’s planned workouts',
 }
@@ -67,6 +69,11 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
     kept: 'The access Oura gives Rabbit is stored encrypted. Disconnect anytime and it’s deleted.',
     cta: 'Continue to Oura', icon: ShieldCheck,
   },
+  whoop: {
+    how: 'You’ll sign in on WHOOP’s own page and approve access to your workouts, then come right back. Rabbit never sees your WHOOP password.',
+    kept: 'The access WHOOP gives Rabbit is stored encrypted. Disconnect anytime: Rabbit deletes it and tells WHOOP to revoke it.',
+    cta: 'Continue to WHOOP', icon: ShieldCheck,
+  },
   calendar: {
     how: 'You’ll sign in on Google’s own page and approve read-only access, then come right back. Rabbit never sees your Google password.',
     kept: 'The access Google gives Rabbit is stored encrypted. Disconnect anytime: Rabbit deletes it and tells Google to revoke it.',
@@ -83,6 +90,7 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
 const NEXT: Record<ConnApp, string[]> = {
   garmin: ['Your recent workouts are coming in now', 'New workouts show up on their own after your watch syncs with Garmin', 'Send planned workouts to your watch from Plan'],
   oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night', 'Workouts Oura records that Garmin didn’t show on their day'],
+  whoop: ['Workouts WHOOP records that Garmin didn’t show on their day', 'If you share workouts, friends see them in their feed', 'Strain, heart rate and calories stay private'],
   calendar: ['Trips and busy days show next to your plan', 'Rabbit works your workouts around them'],
   trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
 }
@@ -159,6 +167,7 @@ const GARMIN_STEPS: { id: GarminStep | 'import'; label: string }[] = [
 async function runImport(app: ConnApp): Promise<void> {
   if (app === 'garmin') { await syncNow().catch(() => null); await getProgress() }
   else if (app === 'oura') await getOura(28)
+  else if (app === 'whoop') await syncConnection('whoop')
   else if (app === 'trainingpeaks') { await syncTP(); tpChanged() }
   else await getCalendar(42)
 }
@@ -252,6 +261,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
     try {
       if (app === 'garmin') await postJSON('/api/garmin/disconnect')
       else if (app === 'oura') await disconnectOura()
+      else if (app === 'whoop') await disconnectWhoop()
       else if (app === 'trainingpeaks') { await disconnectTP(); tpChanged() }
       else await disconnectCalendar()
       onToast(`${SHORT[app]} disconnected`)
@@ -272,7 +282,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
   }
 
   const available = conn ? conn.available || conn.connected : app === 'garmin' ? me.garmin.can_connect
-    : app === 'oura' ? me.oura.available : app === 'calendar' ? me.calendar.available : false
+    : app === 'oura' ? me.oura.available : app === 'whoop' ? !!me.whoop?.available : app === 'calendar' ? me.calendar.available : false
   const reads = conn?.reads ?? []
   const never = conn?.never ?? []
   const title = view === 'manage' ? SHORT[app] : view === 'done' ? `${SHORT[app]} connected`
@@ -293,6 +303,7 @@ export function ConnectSheet({ me, req, onClose, onChanged, onToast }: {
           <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
             {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
               : app === 'oura' ? 'Your readiness and sleep show in Progress and help Rabbit ease your week after a rough night.'
+              : app === 'whoop' ? 'Workouts you record on WHOOP show on their day and, if you share workouts, in your friends’ feed.'
               : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your Rabbit plan, or Rabbit’s plan goes to TrainingPeaks. You choose which one leads.'
               : 'Rabbit spots trips and busy days so your plan can work around them.'}
           </p>
