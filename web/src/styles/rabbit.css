@@ -252,7 +252,7 @@ html.kb-open .tab-bar { display: none; }
   color: var(--text-secondary); font-size: 0.8235rem; line-height: 1.2; cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
 }
-.plan-chip { position: relative; }
+.plan-chip { position: relative; flex-shrink: 0; white-space: nowrap; } /* chip rows that scroll sideways keep chips one line high */
 /* 44px tap target around the 36px chip. */
 .plan-chip::after { content: ''; position: absolute; inset: -4px 0; }
 .plan-chip:active { transform: scale(0.97); }
