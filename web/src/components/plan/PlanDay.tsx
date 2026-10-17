@@ -327,7 +327,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           </ul>
         </section>
       )}
-      {!work.length && !extra && (
+      {!work.length && !extra && !did.length && (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-6 py-8 text-center">
           {!did.length && <span className="flex size-12 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><Moon className="size-6" aria-hidden /></span>}
           <p className="text-[0.9412rem] font-semibold text-(--text)">{!day ? 'Outside your plan' : did.length ? 'Nothing planned' : 'Rest day'}</p>
@@ -337,7 +337,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
           )}
         </div>
       )}
-      {work.length > 0 && restAdd && date >= today && work.length < 4 && (
+      {(work.length > 0 || did.length > 0) && restAdd && date >= today && work.length < 4 && (
         <button type="button" onClick={restAdd}
           className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border-strong) text-[0.7647rem] text-(--text-muted) active:bg-(--bg-inset)">
           <Plus className="size-3.5" aria-hidden />Add a session on {fmtDay(date, { weekday: 'long' })}

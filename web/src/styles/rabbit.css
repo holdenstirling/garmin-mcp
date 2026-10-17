@@ -17,6 +17,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Settings: system font like iOS Settings; section labels stay in DM Mono. */
 .settings { font-family: var(--font); letter-spacing: normal; }
 .settings-group > * + * { border-top: 1px solid var(--border); }
+/* A card laid out as one row (photo + text, icon + label) has no row separators between its parts. */
+.settings-group.flex:not(.flex-col) > * + * { border-top: none; }
 /* Sheet bodies scroll as a flex column: cards keep their height instead of being squeezed and clipped. */
 .settings.flex-col.overflow-y-auto > * { flex-shrink: 0; }
 

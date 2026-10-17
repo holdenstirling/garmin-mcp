@@ -75,8 +75,11 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[0.9412rem] text-(--text)">{a.name}</span>
                     <span className={cn('mt-0.5 flex items-center gap-1.5 text-[0.7059rem] font-medium', a.wanted ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                      {a.wanted ? <><Check className="size-3" aria-hidden />You asked for this</> : <><BellRing className="size-3" aria-hidden />Coming soon · tap to ask for it</>}
-                      {a.wanted_by != null && <span className="text-(--text-muted)"> · {a.wanted_by} want{a.wanted_by === 1 ? 's' : ''} it</span>}
+                      {a.wanted ? <Check className="size-3 shrink-0" aria-hidden /> : <BellRing className="size-3 shrink-0" aria-hidden />}
+                      <span className="min-w-0 truncate">
+                        {a.wanted ? 'You asked for this' : 'Coming soon · tap to ask'}
+                        {a.wanted_by != null && <span className="text-(--text-muted)"> · {a.wanted_by} want{a.wanted_by === 1 ? 's' : ''} it</span>}
+                      </span>
                     </span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />

@@ -69,7 +69,8 @@ export function GearScreen({ onClose, imperial, onAsk }: {
       <Screen title="Gear garage"
         subtitle={items && items.length > 0 ? `${active.length} in use${attention ? ` · ${attention} need${attention === 1 ? 's' : ''} attention` : ''}` : 'Shoes, bikes and the rest'}
         closing={closing} onClose={close}
-        footer={<>
+        // With nothing in the garage, the empty state's own buttons are the only ones (no duplicates).
+        footer={items && items.length === 0 ? undefined : <>
           <Button variant="default" className="h-11 gap-1.5 px-3.5 text-[0.7647rem]" loading={importing}
             disabled={items === null} onClick={() => void runImport()}>
             <RefreshCw className="size-4" /> Import from Garmin

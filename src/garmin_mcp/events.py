@@ -603,8 +603,7 @@ def plan_links(events: list[dict[str, Any]], plan: dict[str, Any] | None, today:
             last = "9999-12-31"
         info: dict[str, Any] = {"days": upcoming or days[-3:], "action": None}
         if e.get("main"):
-            info |= {"status": "main", "line": "Your plan builds to this: every week leads here, with a taper "
-                                               "in the last weeks."}
+            info |= {"status": "main", "line": "Every week leads here, with a taper in the last weeks."}
         elif plan is None:
             info |= {"status": "no_plan", "line": "You don't have a plan yet. Build one and Rabbit trains you around this.",
                      "action": "build_plan"}

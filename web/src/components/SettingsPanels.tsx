@@ -80,7 +80,7 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
 
   return (
     <div className="settings flex flex-col gap-6">
-      <Group label="Connected apps" footer="Garmin, Oura and Google Calendar: connect, sync or disconnect.">
+      <Group label="Connected apps" footer="Connect, sync or disconnect your watch, ring and calendar.">
         <Row icon={<Icon><Plug /></Icon>} title="Connected apps"
           subtitle={connectedLine(me)} onClick={onOpenConnections} />
       </Group>

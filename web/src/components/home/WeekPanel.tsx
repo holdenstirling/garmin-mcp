@@ -141,7 +141,8 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
         ) : (
           <div className="flex flex-col gap-2" aria-label="Loading this week">
             <span className="skeleton h-3 w-40" aria-hidden />
-            {[0, 1, 2, 3].map((i) => <span key={i} className="skeleton h-9" aria-hidden />)}
+            {/* Seven day rows at their real height, so the panel doesn't jump when the week lands. */}
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => <span key={i} className="skeleton h-10" aria-hidden />)}
           </div>
         )}
       </section>
