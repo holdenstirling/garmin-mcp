@@ -153,7 +153,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
 
       {/* --row: height of one line of text (or the 36px send button, if taller). Buttons sit
           centered on that first line and stay at the bottom as the text grows. */}
-      <div style={{ ['--row' as string]: 'max(36px, 1.375rem + 10px)' }} className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border-strong) bg-(--bg-surface) py-1.5 pl-1.5 pr-1.5 shadow-sm focus-within:border-(--accent)">
+      <div style={{ ['--row' as string]: 'max(44px, 1.375rem + 10px)' }} className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border-strong) bg-(--bg-surface) py-1.5 pl-1.5 pr-1.5 shadow-sm focus-within:border-(--accent)">
         <button type="button" aria-label="Attach" onClick={() => picker.current?.click()} style={{ marginBottom: 'calc((var(--row) - 32px) / 2)' }}
           disabled={files.length >= MAX_FILES}
           className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40">
@@ -178,7 +178,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() }
           }}
           placeholder={placeholder}
-          className="chat-text max-h-[calc(1.375em*5+36px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((36px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+          className="chat-text max-h-[calc(1.375em*5+44px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((44px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
           style={{ overflowY: 'auto' }}
         />
         {onMic && !input.trim() && (

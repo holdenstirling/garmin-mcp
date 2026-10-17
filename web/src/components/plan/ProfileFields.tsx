@@ -1,6 +1,6 @@
 // The athlete-profile fields shared by the setup wizard and Settings > Training profile:
 // about you, training numbers, and your week.
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { DurationInput } from '@/components/ui/DurationInput'
 import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
@@ -241,10 +241,11 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
 /** US or metric, at the top of every step with numbers. Changing it converts nothing: values are
  *  stored metric and only shown in the athlete's units. */
 export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
+  const labelId = useId()  // the toggle can show twice on one page (unique ids)
   return (
     <div className="flex items-center justify-between gap-3 px-1">
-      <span id="units-label" className="text-[0.7647rem] text-(--text-secondary)">Units</span>
-      <div role="radiogroup" aria-labelledby="units-label" className="flex rounded-full border border-(--border) p-0.5">
+      <span id={labelId} className="text-[0.7647rem] text-(--text-secondary)">Units</span>
+      <div role="radiogroup" aria-labelledby={labelId} className="flex rounded-full border border-(--border) p-0.5">
         {([['imperial', 'Miles', 'mi · lb · ft'], ['metric', 'Kilometers', 'km · kg · m']] as const).map(([v, name, hint]) => {
           const on = (a.units ?? guessUnits()) === v
           return (

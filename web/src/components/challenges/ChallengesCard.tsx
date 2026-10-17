@@ -1,6 +1,7 @@
 // Challenges on the Progress tab: this week's and month's joined challenges with live
 // progress, a small celebration when one is done, friend invites and the group leaderboard.
 // "Pick a challenge" opens a sheet with 3 personal suggestions per period (easy, stretch, fun).
+import { confirmAsk } from '@/lib/confirm'
 import { useCallback, useEffect, useState } from 'react'
 import { Carrot, Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Target, Trophy, UserPlus, X } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
@@ -162,7 +163,7 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
             <JoinedRow key={c.id} c={c} first={i === 0} imperial={imperial} party={party === c.id}
               canInvite={v.can_invite && !c.done}
               onInvite={() => setInviting(c)}
-              onLeave={() => { if (window.confirm(`Leave "${c.name}"?`)) void act(`l${c.id}`, () => leaveChallenge(c.id)) }} />
+              onLeave={() => { void confirmAsk(`Leave "${c.name}"?`, { confirm: 'Leave', danger: true }).then((ok) => { if (ok) void act(`l${c.id}`, () => leaveChallenge(c.id)) }) }} />
           ))}
         </Card>
       )}
@@ -185,7 +186,7 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
 function Label({ streak }: { streak?: number }) {
   return (
     <div className="flex items-center justify-between px-1">
-      <h3 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Challenges</h3>
+      <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Challenges</h2>
       {!!streak && streak > 0 && (
         <span className="inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
           <Flame className="size-3" /> {streak}-week challenge streak

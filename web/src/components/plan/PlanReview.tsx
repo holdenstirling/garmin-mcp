@@ -7,6 +7,7 @@
 // fill empty days / add / replace only these weeks. Edits save to the server-side draft
 // (debounced), so closing never loses them. After "Looks good": a small celebration (off with
 // reduced motion) and, for the athlete, "Send the first 2 weeks to Garmin".
+import { smooth } from '@/lib/scrollMotion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { celebrate } from '@/components/fx'
 import { BookmarkPlus, Check, ChevronDown, ChevronUp, CircleAlert, Copy, Pencil, Plus, Trash2, TriangleAlert, Watch, X } from 'lucide-react'
@@ -496,7 +497,7 @@ function VolumeBars({ weeks, max }: { weeks: { start: string; minutes: number }[
         {weeks.map((w, i) => (
           <button key={w.start} type="button" title={`Week ${i + 1}: ${fmtDuration(w.minutes) || 'rest'}`}
             aria-label={`Week ${i + 1}, ${fmtDuration(w.minutes) || 'rest'}`}
-            onClick={() => document.getElementById(`rw-${w.start}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => document.getElementById(`rw-${w.start}`)?.scrollIntoView({ behavior: smooth(), block: 'start' })}
             className="flex h-full min-w-0 flex-1 items-end">
             <span className="block w-full rounded-t-sm bg-(--accent) opacity-80" style={{ height: `${Math.max(4, (w.minutes / max) * 100)}%` }} />
           </button>

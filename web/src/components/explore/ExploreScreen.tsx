@@ -240,7 +240,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             {capped && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
             {groups.map((g) => (
               <section key={g.month} className="flex flex-col gap-2">
-                <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{g.month}</h3>
+                <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{g.month}</h2>
                 {g.races.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}
               </section>
             ))}
@@ -252,7 +252,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
         )}
         {web && (
           <section className="flex flex-col gap-2">
-            <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Found on the web by Rabbit</h3>
+            <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Found on the web by Rabbit</h2>
             {web.length === 0 ? (
               <p className="px-1 text-[0.7647rem] text-(--text-muted)">Rabbit didn't find anything else that fits. Try different filters.</p>
             ) : web.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}

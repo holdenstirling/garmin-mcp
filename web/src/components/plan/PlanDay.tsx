@@ -134,7 +134,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         <div className="min-w-0 flex-1">
           <h3 className={cn('text-[0.9412rem] font-semibold leading-tight text-(--text)', status === 'skipped' && 'line-through')}>
             {a.onOpenPage ? (
-              <button type="button" onClick={() => a.onOpenPage!(s)} className="text-left underline-offset-2 hover:underline">{s.title}</button>
+              <button type="button" onClick={() => a.onOpenPage!(s)} className="hit-44 text-left underline-offset-2 hover:underline">{s.title}</button>
             ) : s.title}
           </h3>
           <p className="mt-0.5 text-[0.7059rem] text-(--text-muted)">
@@ -282,7 +282,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       <div className="flex items-center gap-1 px-1">
         <button type="button" className="modal-close" aria-label="Previous day" disabled={date <= first} onClick={() => go(-1)}><ChevronLeft className="size-4" /></button>
         <div className="min-w-0 flex-1 text-center" aria-live="polite">
-          <p className="text-[0.9412rem] font-semibold leading-tight text-(--text)">{head}</p>
+          <h2 className="text-[0.9412rem] font-semibold leading-tight text-(--text)">{head}</h2>
           <p className="text-[0.7059rem] text-(--text-muted)">
             {fmtDay(date, { month: 'long', day: 'numeric' })}{week ? ` · week ${week.index} · ${weekPhaseLabel(week)}` : ''}
             {date !== today && today >= first && today <= last && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onDate(today)}>Jump to today</button></>}

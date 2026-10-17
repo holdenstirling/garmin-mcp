@@ -4,6 +4,7 @@
 // composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
 // each feed group / Clubs; a group's own feed (``groupId``) posts to that group only. My fresh
 // auto-shared workout is pinned on top for an hour with "Add a photo or caption".
+import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Ban, CalendarDays, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
@@ -531,7 +532,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   }
   async function remove() {
     setMenu(false)
-    if (!window.confirm('Delete this post?')) return
+    if (!(await confirmAsk('Delete this post?', { confirm: 'Delete', danger: true }))) return
     try { await deletePost(p.id); onDelete() } catch (e) { setErr((e as Error).message) }
   }
   async function hide() {
@@ -541,13 +542,13 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   }
   async function report() {
     setMenu(false)
-    if (!window.confirm('Report this post? It disappears for you and the Rabbit team takes a look.')) return
+    if (!(await confirmAsk('Report this post?', { detail: 'It disappears for you and the Rabbit team takes a look.', confirm: 'Report', danger: true }))) return
     try { const r = await reportPost(p.id); setNotice(r.message); window.setTimeout(onDelete, 1500) }
     catch (e) { setErr((e as Error).message) }
   }
   async function block() {
     setMenu(false)
-    if (!window.confirm(`Block ${p.user?.name ?? 'this person'}? You won't see each other's posts or comments anywhere on Rabbit.`)) return
+    if (!(await confirmAsk(`Block ${p.user?.name ?? 'this person'}?`, { detail: "You won't see each other's posts or comments anywhere on Rabbit.", confirm: 'Block', danger: true }))) return
     try { await blockUser(p.author); setNotice('Blocked.'); window.setTimeout(() => (onBlocked ?? onDelete)(), 1000) }
     catch (e) { setErr((e as Error).message) }
   }

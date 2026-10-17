@@ -9,6 +9,7 @@ import { JoinScreen } from './screens/JoinScreen'
 import { RabbitLogo } from './components/RabbitLogo'
 import { RabbitLoader } from './components/RabbitLoader'
 import { FxHost } from './components/fx/CarrotBurst'
+import { ConfirmHost } from './components/ui/ConfirmHost'
 import { SessionLost } from './components/ui/SessionLost'
 import { OutboxPill, ResumeNote } from './components/ui/SaveSafety'
 import { UpdatePill } from './components/ui/UpdatePill'
@@ -101,6 +102,7 @@ function MainApp() {
         </div>
       )}
       <FxHost />
+      <ConfirmHost />
       <UpdatePill />
     </div>
   )

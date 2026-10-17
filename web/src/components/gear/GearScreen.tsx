@@ -99,7 +99,7 @@ export function GearScreen({ onClose, imperial, onAsk }: {
               if (!list.length) return null
               return (
                 <section key={k} className="flex flex-col gap-2">
-                  <h3 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{KIND_GROUP[k]}</h3>
+                  <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{KIND_GROUP[k]}</h2>
                   {list.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}
                 </section>
               )

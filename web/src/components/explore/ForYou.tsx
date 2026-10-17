@@ -182,10 +182,10 @@ function SectionTitle({ s }: { s: ForYouSection }) {
   const icon = s.id === 'friends' ? <Users className="size-3.5" /> : s.id === 'picks' ? <Carrot className="size-3.5" />
     : s.id === 'bucket' || s.id === 'popular' ? <MountainSnow className="size-3.5" /> : null
   return (
-    <h3 className={cn('flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest',
+    <h2 className={cn('flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest',
       s.id === 'picks' ? 'text-(--accent)' : 'text-(--text-muted)')}>
       {icon}{s.title}
-    </h3>
+    </h2>
   )
 }
 

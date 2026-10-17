@@ -214,7 +214,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
       )}
       {open && (
         <div className="mt-2 flex items-center gap-2">
-          <input aria-label="Cheer" className={cn(inputCls, 'h-9 text-[0.8235rem]')} maxLength={140} autoFocus placeholder="Nice work!"
+          <input aria-label="Cheer" className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={140} autoFocus placeholder="Nice work!"
             value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send() }} />
           <Button variant="primary" className="h-9 w-9 shrink-0 p-0" aria-label="Send cheer" loading={busy} disabled={!text.trim()} onClick={() => void send()}>
             <Send className="size-4" />

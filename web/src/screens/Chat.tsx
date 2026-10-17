@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
 import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
@@ -323,7 +324,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // An approval is waiting on you: bring it into view.
   const pendingCount = items.filter((it) => it.kind === 'approval' && it.status === 'pending').length
   useEffect(() => {
-    if (pendingCount) feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
+    if (pendingCount) feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
   }, [pendingCount])
 
   // Stick to the bottom while streaming, unless the user scrolled up to read.
@@ -331,7 +332,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     const el = feed.current
     if (!el) return
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 150 || status !== 'streaming') {
-      el.scrollTo({ top: el.scrollHeight, behavior: status === 'streaming' ? 'instant' : 'smooth' })
+      el.scrollTo({ top: el.scrollHeight, behavior: status === 'streaming' ? 'instant' : smooth() })
     }
   }, [items, status])
 
@@ -963,20 +964,22 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const meButton = (<>
     <SearchButton imperial={me.athlete.units !== 'metric'} />
     {me.role === 'athlete' && (
-      <Button variant="ghost" size="icon" className="relative -mx-1"
+      // Header icons are full 44px buttons side by side: no enlarged hit areas or negative margins
+      // that overlap a neighbour (the bell's used to swallow taps meant for Search).
+      <button type="button" className="relative flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)"
         aria-label={notifCount > 0 ? `Notifications, ${notifCount} unread` : 'Notifications'}
         onClick={() => { dropSheet(); setNotifsOpen(true) }}>
-        <Bell className="size-5" />
-        {notifCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-      </Button>
+        <Bell className="size-5" aria-hidden />
+        {notifCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+      </button>
     )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
-    <Button variant="ghost" size="icon" className="relative" data-tour="chat"
+    <button type="button" className="relative flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)" data-tour="chat"
       aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with Rabbit and friends'}
       onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
-      <MessagesSquare className="size-5" />
-      {dmCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-    </Button>
+      <MessagesSquare className="size-5" aria-hidden />
+      {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+    </button>
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
       me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
@@ -1164,8 +1167,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (t === tab && t === 'rabbit') {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
-      else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
-      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: 'smooth' })
+      else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: smooth() })
+      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
       return
     }
     if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
@@ -1394,7 +1397,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <div className="chat-empty flex flex-1 flex-col items-center justify-center py-6 text-center">
               <EmptyHero suggestions={pending.seedMsg ? undefined : TOPIC_SUGGESTIONS.map((q) => (
                     <button key={q} disabled={!me.chat.available || busy}
-                      className="w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                      className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                       onClick={() => void sendPending(q, [])}>{q}</button>
                   ))}>
                 {!pending.seedMsg && <RabbitLogo size={64} className="mb-3 opacity-40" />}
@@ -1462,7 +1465,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <div className="chat-empty flex flex-1 flex-col items-center justify-center px-6 text-center">
           <EmptyHero gap={20} suggestions={suggestions.map((s) => (
               <button key={s} disabled={!me.chat.available}
-                className="w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                 onClick={() => void (isCoach ? sendFromLog(s, []) : send(s))}>{s}</button>
             ))}>
           <RabbitLogo size={80} className="mb-3 opacity-40" />
