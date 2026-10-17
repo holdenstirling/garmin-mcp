@@ -624,6 +624,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             Run {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })}
           </span>
         )}
+        {(view === 'week' || view === 'list') && editToggle}
       </div>
 
       {change && change.rebalanced.length > 0 && (
@@ -669,15 +670,12 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             {prescription(week)}
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
-          <div className="flex items-start gap-2 px-1">
-            <p className="flex-1 px-3 pt-1 text-[0.7647rem] leading-snug text-(--text-muted)">
-              {editable && cal ? (editing ? 'Drag a session (press and hold) or use Day earlier / Day later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Edit to move things around.') : 'Tap a workout to see it in full.'}
-            </p>
-            {editToggle}
-          </div>
+          <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
+            {editable && cal ? (editing ? 'Press and hold a session to drag it, or use Day earlier / Day later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
+          </p>
         </>
       ) : view === 'list' ? (
-        <PlanList plan={plan} cal={cal} imperial={imperial} today={today} dayRow={dayRow} prescription={prescription} editToggle={editToggle}
+        <PlanList plan={plan} cal={cal} imperial={imperial} today={today} dayRow={dayRow} prescription={prescription} editing={editing}
           onWeek={(i) => { onWeek(i); setView('week') }} />
       ) : (
         <MonthView plan={plan} cal={cal} imperial={imperial} today={today} anchor={week.start}
@@ -717,11 +715,11 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
 /** List view: the plan as a scrolling agenda, a few weeks at a time, grouped by week with what
  *  each week prescribes. Same day rows (and drag / Edit controls) as the Week view. */
-function PlanList({ plan, cal, imperial, today, dayRow, prescription, editToggle, onWeek }: {
+function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, onWeek }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
   dayRow: (d: { date: string; sessions: PlanSession[] }, compact?: boolean) => React.ReactNode
   prescription: (w: PlanWeekBuilt) => React.ReactNode
-  editToggle: React.ReactNode
+  editing: boolean
   onWeek: (index: number) => void
 }) {
   const STEP = 4
@@ -732,12 +730,9 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editToggle
   const sessionsOf = (w: PlanWeekBuilt) => w.days.flatMap((d) => d.sessions.filter((s) => s.sport !== 'rest' && s.kind !== 'race'))
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 px-1">
-        <p className="min-w-0 flex-1 text-[0.7647rem] text-(--text-muted)">
-          Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. Tap a workout to see it in full.
-        </p>
-        {editToggle}
-      </div>
+      <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+        Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a session to drag it, or use Day earlier / Day later.' : 'Tap a workout to see it in full.'}
+      </p>
       {from > 0 && (
         <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>
       )}
