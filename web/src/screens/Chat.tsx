@@ -163,6 +163,8 @@ const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${St
 // Touch devices: focusing the composer means the keyboard is coming, so make room for it.
 const coarsePointer = () => { try { return window.matchMedia('(pointer: coarse)').matches } catch { return false } }
 
+const HEADER_ICON = 'relative flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)'
+
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [goal, setGoal] = useState<Goal | null>(me.goal)
@@ -686,7 +688,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     void run()
     const onVis = () => { if (document.visibilityState === 'visible') { setFeedTick((n) => n + 1); void run() } }
     document.addEventListener('visibilitychange', onVis)
-    const timer = window.setInterval(() => void run(), 60_000)
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void run() }, 60_000)  // hidden: the visibility handler catches up
     return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
   }, [overlayFree, me.garmin.connected, loadToday]) // eslint-disable-line react-hooks/exhaustive-deps
   // App icon badge (lib/unread.ts): unread cheers, requests, invites, coach messages.
@@ -967,23 +969,25 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const typing = composerFocus
 
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
+  // Header icons are 44px buttons side by side: no enlarged tap areas reaching into a neighbour
+  // (the bell's and chat's used to overlap, so a tap near the bell could open Chats).
   const meButton = (<>
     <SearchButton imperial={me.athlete.units !== 'metric'} />
     {me.role === 'athlete' && (
-      <Button variant="ghost" size="icon" className="relative -mx-1"
+      <button type="button" className={HEADER_ICON}
         aria-label={notifCount > 0 ? `Notifications, ${notifCount} unread` : 'Notifications'}
         onClick={() => { dropSheet(); setNotifsOpen(true) }}>
-        <Bell className="size-5" />
-        {notifCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-      </Button>
+        <Bell className="size-5" aria-hidden />
+        {notifCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+      </button>
     )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
-    <Button variant="ghost" size="icon" className="relative" data-tour="chat"
+    <button type="button" className={HEADER_ICON} data-tour="chat"
       aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with Rabbit and friends'}
       onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
-      <MessagesSquare className="size-5" />
-      {dmCount > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-    </Button>
+      <MessagesSquare className="size-5" aria-hidden />
+      {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+    </button>
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
       me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />

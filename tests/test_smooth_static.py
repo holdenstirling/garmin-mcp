@@ -80,3 +80,12 @@ def test_no_off_scale_font_sizes() -> None:
             if round(float(m.group(1)), 4) not in ok:
                 bad.append(f"{p.name}: {m.group(0)}")
     assert not bad, bad
+
+
+def test_header_icons_have_their_own_tap_areas() -> None:
+    # The bell sat 4px into its neighbours with enlarged tap areas (size="icon" + -mx-1), so a tap
+    # near it could open Chats. Header icons are plain 44px buttons side by side.
+    chat = (SRC / "screens" / "Chat.tsx").read_text()
+    block = chat[chat.index("const meButton = (<>"):chat.index("function renderHeader(")]
+    assert "-mx-1" not in block and 'size="icon"' not in block
+    assert block.count("className={HEADER_ICON}") >= 2
