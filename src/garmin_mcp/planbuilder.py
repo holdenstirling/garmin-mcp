@@ -110,8 +110,37 @@ def new_id() -> str:
     return "s" + secrets.token_hex(5)
 
 
+# Free-text distances people type ("100 mile", "Leadville Trail 100 Run", "half", "21.1k", "Ironman")
+# -> the builder's race keys. Checked in order; the first match wins.
+_ALIASES: list[tuple[str, str]] = [
+    (r"\b(sprint)\b.*\b(tri|triathlon)\b|\bsprint tri", "sprint triathlon"),
+    (r"\bolympic\b|\bstandard\b.*\btri", "olympic triathlon"),
+    (r"\b70\.3\b|half\s*iron|\bim\s*70", "70.3"),
+    (r"\b140\.6\b|\biron\s*man\b|\bironman\b|full\s*iron", "140.6"),
+    (r"\bcentury\b|\bgran\s*fondo|\b(ride|bike|cycl\w*|gravel)\b", "century ride"),
+    (r"\bultra|\b(50|60|80|100|160|200|240)\s*(k|km)\b|\b(50|100|150|200|240)\s*(mi|mile|miles|miler)\b"
+     r"|\btrail\s*100\b|\b100\s*run\b|\b(50|100)\b.*\b(trail|endurance run)", "ultra"),
+    (r"\bhalf\b|\b21(\.1)?\s*k(m)?\b|\b13\.1\b", "half marathon"),
+    (r"\bmarathon\b|\b42(\.2)?\s*k(m)?\b|\b26\.2\b", "marathon"),
+    (r"\b10\s*k(m)?\b|\b6\.2\s*mi", "10k"),
+    (r"\b5\s*k(m)?\b|\b3\.1\s*mi|parkrun", "5k"),
+]
+
+
+def race_key(distance: str | None) -> str:
+    """The builder's race key for a typed distance; "other" when nothing matches."""
+    d = " ".join((distance or "").strip().lower().split())
+    if d in RACES:
+        return d
+    import re as _re
+    for pat, key in _ALIASES:
+        if _re.search(pat, d):
+            return key
+    return "other"
+
+
 def race_profile(distance: str | None) -> dict[str, Any]:
-    return RACES.get((distance or "").strip().lower(), RACES["other"])
+    return RACES[race_key(distance)]
 
 
 def _r5(x: float) -> int:

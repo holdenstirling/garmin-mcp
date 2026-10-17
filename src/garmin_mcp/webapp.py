@@ -678,6 +678,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         body = await read_json(request)
         if not isinstance(body, dict):
             raise ValueError("body")
+        if not any(str(body.get(k) or "").strip() for k in ("title", "event", "distance", "date")):
+            return _err(400, "Give the goal a name, a distance or a date.")  # an empty body never replaces your goal
         try:
             return JSONResponse(chat.agent.plans.switch_goal(user_id, lambda: _coach().create_goal(user_id, body)),
                                 status_code=201)
