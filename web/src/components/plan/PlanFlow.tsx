@@ -35,7 +35,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 px-1">
         <p className="text-[0.9412rem] font-semibold leading-snug text-(--text)">
-          {s.weeks} weeks, building from about {s.start_hours}h to {s.peak_hours}h a week
+          {s.weeks} weeks, {s.start_hours === s.peak_hours ? `about ${s.peak_hours}h a week` : `building from about ${s.start_hours}h to ${s.peak_hours}h a week`}
         </p>
         {s.first_session && (
           <p className="text-[0.7647rem] text-(--text-secondary)">
