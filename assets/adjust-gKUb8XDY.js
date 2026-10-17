@@ -1,0 +1,1 @@
+import{i as e,p as t}from"./api-nyaEl62T.js";var n=()=>e(`/api/plan/adjust`),r=(e,n)=>t(`POST`,`/api/plan/adjust`,{id:e,action:n});export{n,r as t};

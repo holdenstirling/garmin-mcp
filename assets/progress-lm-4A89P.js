@@ -1,0 +1,1 @@
+import{i as e,p as t}from"./api-nyaEl62T.js";var n=()=>e(`/api/progress`),r=()=>t(`POST`,`/api/progress/seen`,{}),i=e=>e.quests.find(e=>!e.optional&&!e.done)??null;export{r as n,i as r,n as t};
