@@ -5,9 +5,10 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Send, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
+import { ShareButton } from '@/components/ui/ShareSheet'
 import { HopIn, PullToRefresh } from '@/components/anim'
 import { celebrate } from '@/components/fx/motion'
 import { Card, Field, Screen, areaCls, inputCls } from '@/components/plan/ui'
@@ -388,10 +389,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {event && !past && <ChecklistButton eventId={event.id} onBefore={close} />}
       {event && !past && <AddToCalendar event={event} />}
       {event && !past && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"
-          onClick={() => shareToFriends({ type: 'event', ref: { id: event.id }, label: event.name })}>
-          <Send className="size-4" aria-hidden /> Send to friends
-        </Button>
+        <ShareButton label="Share or text this event" target={{ kind: 'event', ref: event.id, label: event.name }}
+          onSendInRabbit={() => shareToFriends({ type: 'event', ref: { id: event.id }, label: event.name })} />
       )}
       {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
       {kind && (<>

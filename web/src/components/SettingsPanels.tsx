@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
+import { SharedLinks } from '@/components/settings/SharedLinks'
 import { LocationRow } from '@/components/settings/LocationRow'
 import { PrivacyRows } from '@/components/settings/PrivacyRows'
 import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
@@ -98,6 +99,9 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />
       )}
 
+      <Group label="Shared links" footer="Links you've texted to people. Anyone with a link can open it; turn one off and it stops working at once.">
+        <SharedLinks />
+      </Group>
       <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
         <ShareRow />
       </Group>
