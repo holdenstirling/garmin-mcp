@@ -883,8 +883,9 @@ function PhotoViewer({ urls, start, who, onClose }: { urls: string[]; start: num
   })
   const navCls = 'hit-44 absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white disabled:opacity-0'
   return (
-    <div ref={box} className="modal-overlay flex items-center justify-center bg-black/90" onClick={onClose} role="dialog" aria-modal="true"
-      aria-label={`Photo ${i + 1} of ${n}`}
+    // Inline style: .modal-overlay's own background and bottom alignment (for sheets) win over utilities.
+    <div ref={box} className="modal-overlay justify-center" style={{ background: 'rgba(0,0,0,0.92)', alignItems: 'center' }}
+      onClick={onClose} role="dialog" aria-modal="true" aria-label={`Photo ${i + 1} of ${n}`}
       onTouchStart={(e) => { x0.current = e.touches[0]?.clientX ?? null }}
       onTouchEnd={(e) => {
         const dx = (e.changedTouches[0]?.clientX ?? 0) - (x0.current ?? 0)
