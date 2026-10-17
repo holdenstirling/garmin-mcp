@@ -51,6 +51,8 @@ export type AthleteNumbers = {
 export type AthleteFull = Athlete & Partial<AthleteNumbers> & Partial<AthleteTraits> & {
   sex?: 'female' | 'male' | 'other' | null; level?: 'new' | 'intermediate' | 'advanced' | null
   available_days?: string[]; long_day?: string | null; equipment?: string[]; favorite_sports?: string[]
+  /** longest run / ride in the last month, minutes (the plan's first long session starts there) */
+  longest_run_min?: number | null; longest_ride_min?: number | null
 }
 export type Trait = typeof TRAITS[number][0]
 export type Terrain = typeof TERRAIN[number][0]

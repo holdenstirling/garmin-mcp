@@ -45,6 +45,8 @@ _ATHLETE_NUM = {
     "resting_hr": (25, 120, True), "max_hr": (100, 230, True), "threshold_hr": (80, 220, True),
     "ftp_w": (50, 600, True), "run_threshold_pace": (150, 600, True), "swim_css": (50, 240, True),
     "home_elevation_m": (0, 5500, True), "years_training": (0, 60, True),
+    # Longest run / ride in the last month, minutes (the plan's first long session starts there).
+    "longest_run_min": (0, 600, True), "longest_ride_min": (0, 900, True),
 }
 _ATHLETE_ENUM = {"sex": ("female", "male", "other"), "level": ("new", "intermediate", "advanced"),
                  "units": ("metric", "imperial"), "heat_tolerance": ("low", "normal", "high"),
@@ -221,6 +223,7 @@ def _fmt_athlete(k: str, v: Any) -> str:
         return f"{int(v) // 60}:{int(v) % 60:02d} per {'km' if k == 'run_threshold_pace' else '100 m'}"
     unit = {"height_cm": " cm", "weight_kg": " kg", "ftp_w": " W", "resting_hr": " bpm",
             "max_hr": " bpm", "threshold_hr": " bpm", "weekly_hours": " h", "home_elevation_m": " m",
+            "longest_run_min": " min", "longest_ride_min": " min",
             "years_training": " years"}.get(k, "")
     if isinstance(v, str):
         return _flat(v, 500)
