@@ -5,13 +5,17 @@ import { Component, lazy, Suspense, type ComponentProps, type ComponentType, typ
 import { X } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 
-type Kind = 'tab' | 'screen'
+// 'popup': a small menu or card that opens on a tap. Its chunk is fetched in the background
+// shortly after start (see prefetch), so it shows no loader; if it isn't in yet, nothing
+// flashes and it simply appears when ready.
+type Kind = 'tab' | 'screen' | 'popup'
 
 // A screen's loading cover sits over the app like the screen will, so it keeps the way out:
 // the X (and Escape/Back via the screen once it loads) closes it even if the chunk is slow.
 const HOPS = ['Hopping over…', 'Lacing up…', 'Almost there…']
 
 function Fallback({ kind, onClose }: { kind: Kind; onClose?: () => void }) {
+  if (kind === 'popup') return null
   return kind === 'tab'
     ? <div className="flex min-h-0 flex-1 items-center justify-center p-8"><RabbitLoader label="Loading" cycle={HOPS} /></div>
     : (
@@ -66,7 +70,22 @@ function fresh<T>(load: () => Promise<T>): Promise<T> {
   })
 }
 
+// Popup chunks to fetch while the app is idle after start, so the first tap opens instantly.
+const prefetch: (() => Promise<unknown>)[] = []
+let prefetchQueued = false
+function queuePrefetch(load: () => Promise<unknown>) {
+  prefetch.push(load)
+  if (prefetchQueued || typeof window === 'undefined') return
+  prefetchQueued = true
+  const run = () => { for (const l of prefetch.splice(0)) void l().catch(() => {}) }
+  const idle = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback
+  window.setTimeout(() => (idle ? idle(run, { timeout: 4000 }) : run()), 3000)
+}
+
 function split<T extends ComponentType<any>>(load: () => Promise<T>, kind: Kind = 'screen'): (props: ComponentProps<T>) => ReactElement {
+  // Prefetch uses the plain import (a failure there must never reload the page); the browser
+  // keeps the module, so the real open below resolves at once.
+  if (kind === 'popup') queuePrefetch(load)
   const L = lazy(() => fresh(load).then((C) => ({ default: C })))
   function Split(props: ComponentProps<T>) {
     const Any = L as ComponentType<any>
@@ -129,3 +148,8 @@ export const BlockScreen = split(() => import('@/components/blocks/BlockScreen')
 export const UsageScreen = split(() => import('@/components/settings/UsageScreen').then((m) => m.UsageScreen))
 // Me -> Partners (owners only)
 export const PartnersScreen = split(() => import('@/components/settings/PartnersScreen').then((m) => m.PartnersScreen))
+
+// Popups that open on a tap from chat/home: small menus and cards, kept out of the first load.
+export const MessageMenu = split(() => import('@/components/chat/MessageMenu').then((m) => m.MessageMenu), 'popup')
+export const ThreadPeek = split(() => import('@/components/chat/ThreadPeek').then((m) => m.ThreadPeek), 'popup')
+export const ReactionCard = split(() => import('@/components/workout/ReactionCard').then((m) => m.ReactionCard), 'popup')

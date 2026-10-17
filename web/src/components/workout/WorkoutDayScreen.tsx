@@ -9,7 +9,7 @@
 import { smooth } from '@/lib/scrollMotion'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Dumbbell, Footprints, Layers, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Waves, Wind, Wrench } from 'lucide-react'
+import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -38,10 +38,8 @@ import { WeatherSection } from './WeatherSection'
 import { WhoElse } from '@/components/people/WhoElse'
 import { Related } from '@/components/nav/Related'
 import { CalendarDays } from 'lucide-react'
+import { sportIcon } from '@/lib/sportIcon'
 
-const ICON: Record<string, typeof Bike> = {
-  swim: Waves, bike: Bike, run: Footprints, brick: Layers, strength: Dumbbell, rest: Moon, other: Activity,
-}
 const LOADING = ['Lacing up…', 'Loading your targets…', 'Checking the sky…', 'Stretching the hamstrings…']
 const STATUS: Record<string, { label: string; cls: string }> = {
   done: { label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' },
@@ -129,7 +127,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
         <div className="no-scrollbar -mb-2 flex gap-2 overflow-x-auto" role="tablist" aria-label="Sessions this day">
           {data.others.map((o) => {
             const on = !!s && o.id === s.id
-            const I = ICON[o.sport] ?? Activity
+            const I = sportIcon(o.sport)
             return (
               <button key={o.id ?? o.title} type="button" role="tab" aria-selected={on} disabled={!o.id}
                 onClick={() => o.id && setSid(o.id)} className={cn('plan-chip shrink-0 gap-1.5', on && 'plan-chip--on')}>
@@ -280,7 +278,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
   const note = c?.note
   return (
     <>
-      <Hero icon={ICON[s.sport] ?? Activity} title={s.title} meta={meta || 'Workout'} line={note?.why || s.purpose}
+      <Hero icon={sportIcon(s.sport)} title={s.title} meta={meta || 'Workout'} line={note?.why || s.purpose}
         chip={STATUS[status] ?? STATUS.planned} />
       {s.time && (
         <p className="-mt-1 flex items-center gap-1.5 px-1 text-[0.7647rem] text-(--text-secondary)">

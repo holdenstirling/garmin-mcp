@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PersonAvatar } from '@/components/community/Feed'
 import { DM_CHANGED_EVENT, convTitle, listConvs, timeAgo, type DMConv } from '@/lib/dm'
 import { cn } from '@/lib/utils'
+import { hopIn } from '@/components/anim'
 
 function ConvAvatar({ c }: { c: DMConv }) {
   if (c.kind === 'group' || c.members.length !== 1) {
@@ -20,11 +21,11 @@ function ConvAvatar({ c }: { c: DMConv }) {
   return <PersonAvatar u={{ ...c.members[0]!, photo: c.members[0]!.photo ?? null, picture: c.members[0]!.picture ?? '' }} size={44} />
 }
 
-export function ConvRow({ c, onOpen }: { c: DMConv; onOpen: (id: string) => void }) {
+export function ConvRow({ c, i, onOpen }: { c: DMConv; i?: number; onOpen: (id: string) => void }) {
   const title = convTitle(c)
   const preview = c.last?.preview ? `${c.last.mine ? 'You: ' : ''}${c.last.preview}` : c.status === 'request' ? 'Wants to message you' : 'Say hi 👋'
   return (
-    <li>
+    <li {...(i == null ? {} : hopIn(i))}>
       <button type="button" onClick={() => onOpen(c.id)}
         aria-label={`${title}${c.unread ? ', unread' : ''}. ${preview}`}
         className="flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-(--bg-inset)">
@@ -73,13 +74,13 @@ export function DmList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew:
           {data.requests.length > 0 && (
             <section aria-label="Message requests">
               <h3 className="section-label px-4 pb-1 pt-3">Requests · {data.requests.length}</h3>
-              <ul className="divide-y divide-(--border)">{data.requests.map((c) => <ConvRow key={c.id} c={c} onOpen={onOpen} />)}</ul>
+              <ul className="divide-y divide-(--border)">{data.requests.map((c, i) => <ConvRow key={c.id} c={c} i={i} onOpen={onOpen} />)}</ul>
             </section>
           )}
           {data.convs.length > 0 ? (
             <section aria-label="Conversations">
               {data.requests.length > 0 && <h3 className="section-label px-4 pb-1 pt-3">Chats</h3>}
-              <ul className="divide-y divide-(--border)">{data.convs.map((c) => <ConvRow key={c.id} c={c} onOpen={onOpen} />)}</ul>
+              <ul className="divide-y divide-(--border)">{data.convs.map((c, i) => <ConvRow key={c.id} c={c} i={i} onOpen={onOpen} />)}</ul>
             </section>
           ) : data.requests.length === 0 && (
             <EmptyState compact title="No messages yet"

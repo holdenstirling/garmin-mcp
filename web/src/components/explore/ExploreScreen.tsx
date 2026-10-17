@@ -30,6 +30,7 @@ import type { LocationState } from '@/lib/explore2'
 import { LetRabbitExplore } from './RabbitExplore'
 import { SponsoredCard } from '@/components/community/Partners'
 import type { RaceX } from '@/lib/explore2'
+import { HopIn } from '@/components/anim'
 
 type Mode = 'foryou' | 'search'
 const MODE_KEY = 'rabbit.explore.mode'
@@ -241,7 +242,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             {groups.map((g) => (
               <section key={g.month} className="flex flex-col gap-2">
                 <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{g.month}</h2>
-                {g.races.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}
+                {g.races.map((r, i) => <HopIn key={r.id} index={i}><RaceCard r={r} onClick={() => setDetail(r)} /></HopIn>)}
               </section>
             ))}
             {hasMore && (

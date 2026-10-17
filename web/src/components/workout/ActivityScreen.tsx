@@ -6,7 +6,7 @@ import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
 import { openBody } from '@/lib/body'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Bike, CalendarDays, ExternalLink, Footprints, HeartPulse, MessageCircle, Mountain, Sparkles, Waves } from 'lucide-react'
+import { CalendarDays, ExternalLink, HeartPulse, MessageCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils'
 import { openPlanDay } from '@/lib/plancal'
 import { Related } from '@/components/nav/Related'
 import { WhoElse } from '@/components/people/WhoElse'
+import { sportIcon } from '@/lib/sportIcon'
 
-const ICON: Record<string, typeof Bike> = { run: Footprints, walk: Footprints, hike: Mountain, bike: Bike, swim: Waves }
 const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch' }
 const LOADING = ['Pulling up your workout…', 'Counting the laps…', 'Reading your heart rate…']
 
@@ -126,7 +126,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
 
   return (
     <>
-      <Hero icon={ICON[v.sport] ?? Activity} title={v.name} meta={metaBits.filter(Boolean).join(' · ')}
+      <Hero icon={sportIcon(v.sport)} title={v.name} meta={metaBits.filter(Boolean).join(' · ')}
         line={v.planned ? `Counted for your planned ${v.planned.title}.` : n.te_label ? `Garmin training effect: ${n.te_label.charAt(0) + n.te_label.slice(1).toLowerCase().replace(/_/g, ' ')}.` : ''}
         chip={{ label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' }} />
 

@@ -3,7 +3,7 @@
 // or where they trained), clubs, public races; Message, Follow, Train together, Block / Report.
 // Opened from any name or avatar (lib/people openPerson), on the page stack (back returns).
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Bike, Ban, Flag, Footprints, MessageCircle, Ellipsis, UserCheck, UserPlus, Users, Waves } from 'lucide-react'
+import { Ban, Flag, Footprints, MessageCircle, Ellipsis, UserCheck, UserPlus, Users } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -16,8 +16,8 @@ import { fmtDist, fmtDuration } from '@/lib/format'
 import { messagePeople } from '@/lib/dm'
 import { openActivity } from '@/lib/activitynav'
 import { blockPerson, followPerson, getProfile, openTarget, personPhoto, reportPerson, sportWord, type Profile } from '@/lib/people'
+import { sportIcon } from '@/lib/sportIcon'
 
-const ICON: Record<string, typeof Bike> = { Run: Footprints, Ride: Bike, Swim: Waves, Walk: Footprints, Hike: Footprints }
 
 export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial: boolean; onClose: () => void }) {
   const [p, setP] = useState<Profile | null>(null)
@@ -109,7 +109,7 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
               <ul className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
                 {p.workouts.map((w) => {
                   const sw = sportWord(w.sport)
-                  const I = ICON[sw] ?? Activity
+                  const I = sportIcon(sw)
                   const line = [w.km != null ? fmtDist(w.km, imperial, w.sport.includes('swim') ? 'swim' : 'run') : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(' · ')
                   const inner = (
                     <>

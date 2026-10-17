@@ -11,14 +11,14 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Avatar } from '@/components/Avatar'
 import { PartnerRow, PartnerSheet, SponsoredCard } from '@/components/community/Partners'
 import type { Partner } from '@/lib/clubdir'
-import { SPORT_ICON, fmtDay } from '@/components/plan/PlanParts'
-import type { Sport } from '@/lib/api'
+import { fmtDay } from '@/components/plan/PlanParts'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { photoUrl } from '@/lib/photo'
 import {
   MIN_QUERY, clearSearches, openSearchResult, recentSearches, rememberSearch, search,
   type SearchPick, type SearchResults,
 } from '@/lib/search'
+import { sportIcon } from '@/lib/sportIcon'
 
 export function SearchButton({ imperial }: { imperial: boolean }) {
   const [open, setOpen] = useState(false)
@@ -33,7 +33,6 @@ export function SearchButton({ imperial }: { imperial: boolean }) {
   )
 }
 
-const sportIcon = (s: string) => SPORT_ICON[(s in SPORT_ICON ? s : 'other') as Sport]
 
 export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose: () => void }) {
   const [q, setQ] = useState('')
@@ -109,7 +108,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
         ) : error ? (
           <p role="alert" className="px-4 py-6 text-center text-[0.7647rem] text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
         ) : res && total === 0 && !busy ? (
-          <EmptyState compact title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”." />
+          <EmptyState compact mode="think" title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”." />
         ) : res ? (
           <div className={busy ? 'opacity-60' : undefined}>
             {(res.partners?.length ?? 0) > 0 && (

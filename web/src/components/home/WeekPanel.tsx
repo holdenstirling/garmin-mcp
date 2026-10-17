@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
 import { PlanDaySheet } from '@/components/week/PlanDaySheet'
+import { RabbitNap } from '@/components/anim'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
 
@@ -159,8 +160,10 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
         <span className="block font-mono text-[0.9412rem] font-semibold tabular-nums text-(--text)">{head}</span>
         <span className="block text-[0.6471rem] text-(--text-muted)">{unit}</span>
         {trend && (
-          <span className={cn('mt-1 block text-[0.7059rem] font-medium leading-snug',
-            tone === 'behind' ? 'text-(--warning-text)' : tone === 'ahead' ? 'text-(--accent)' : 'text-(--text-secondary)')}>{trend}</span>
+          <span className={cn('mt-1 flex items-center gap-1 text-[0.7059rem] font-medium leading-snug',
+            tone === 'behind' ? 'text-(--warning-text)' : tone === 'ahead' ? 'text-(--accent)' : 'text-(--text-secondary)')}>
+            {allDone && <RabbitNap size={18} mode="cheer" className="shrink-0" />}{trend}
+          </span>
         )}
       </span>
       <span className="flex h-12 shrink-0 items-end gap-1" aria-hidden>
