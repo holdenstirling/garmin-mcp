@@ -254,7 +254,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
         <div className={cn('week-drawer', open && 'week-drawer--open')} aria-hidden={!open} inert={!open}>
           <div className="min-h-0 overflow-hidden">
           <div className="overflow-y-auto overscroll-contain border-t border-(--border) pb-1"
-            style={{ maxHeight: room ? `calc(${room}px - env(safe-area-inset-bottom))` : '52vh' }}>
+            style={{ maxHeight: room ? `calc(${room}px - env(safe-area-inset-bottom))` : '52dvh' }}>
             <button onClick={() => { setOpen(false); onOpenPlan() }}
               className="flex w-full items-center gap-3 border-b border-(--border) px-3 py-2.5 text-left active:bg-(--bg-inset)">
               <span className="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)">

@@ -155,3 +155,6 @@ export const MessageMenu = split(() => import('@/components/chat/MessageMenu').t
 export const ThreadPeek = split(() => import('@/components/chat/ThreadPeek').then((m) => m.ThreadPeek), 'popup')
 export const ReactionCard = split(() => import('@/components/workout/ReactionCard').then((m) => m.ReactionCard), 'popup')
 export const FindFriendsScreen = split(() => import('@/components/friends/FindFriends').then((m) => m.FindFriends))
+// Heavier pieces that only show on demand: the voice/typed check-in sheet and chat charts.
+export const VoiceCheckIn = split(() => import('@/components/checkin/VoiceCheckIn').then((m) => m.VoiceCheckIn), 'popup')
+export const Chart = split(() => import('@/components/chat/Chart').then((m) => m.Chart), 'popup')

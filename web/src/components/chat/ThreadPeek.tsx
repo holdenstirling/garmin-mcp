@@ -47,7 +47,7 @@ export function ThreadPeek({ thread, onOpen, onDelete, onClose }: {
             <span className="min-w-0 flex-1 truncate text-[0.8235rem] font-medium text-foreground">{thread.title || 'New chat'}</span>
             <span className="shrink-0 text-[0.6471rem] text-muted-foreground">{started}</span>
           </span>
-          <span className="chat-text block max-h-[46vh] space-y-2.5 overflow-hidden px-3.5 py-3 text-left">
+          <span className="chat-text block max-h-[46dvh] space-y-2.5 overflow-hidden px-3.5 py-3 text-left">
             {!turns && !failed && <span className="thinking-dots flex gap-[3px]" role="status" aria-label="Loading chat"><span /><span /><span /></span>}
             {failed && <span className="text-[0.7647rem] text-muted-foreground">Couldn't load this chat.</span>}
             {seedText && (

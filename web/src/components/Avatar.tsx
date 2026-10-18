@@ -8,7 +8,7 @@ export function Avatar({ name, picture, photo, size = 28 }: { name: string; pict
   const src = [photo, picture].find((u): u is string => !!u && !broken.includes(u))
   if (src) {
     return (
-      <img key={src} src={src} alt={name} width={size} height={size} referrerPolicy="no-referrer"
+      <img key={src} src={src} alt={name} width={size} height={size} referrerPolicy="no-referrer" loading="lazy" decoding="async"
         onError={() => setBroken((b) => [...b, src])} className="rounded-full border border-(--border) object-cover"
         style={{ width: size, height: size }} />
     )

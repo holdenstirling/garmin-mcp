@@ -113,10 +113,10 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
           <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Up next</span>
           {s?.id && up.kind === 'session' ? (
             <button type="button" onClick={() => openWorkout(s.id!, isoToday())} aria-label={`${headline}. Open the workout`}
-              className="block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+              className="hit-44 block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
           ) : logged != null ? (
             <button type="button" onClick={() => openActivity(logged)} aria-label={`${headline}. Open your workout`}
-              className="block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+              className="hit-44 block max-w-full truncate text-left text-[0.9412rem] font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
           ) : (
             <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{headline}</span>
           )}

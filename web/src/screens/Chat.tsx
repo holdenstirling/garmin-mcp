@@ -44,7 +44,6 @@ import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
 import { useTopInsight } from '@/lib/insights'
-import { VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { localDay, shiftWeek, syncNow, type Today, type TodayActionKind } from '@/lib/live'
 import { markReactionShown, reactionShown } from '@/lib/workout'
 import { MonthRecapSheet, NotificationsSheet, PartnersScreen, PersonScreen, RewardSheet, UsageScreen } from '@/screens/lazyScreens'
@@ -85,7 +84,7 @@ import { useCoach, type QueuedSend, type ChartItem, type Approval, type ChatItem
 import { MomentCard } from '@/components/chat/MomentCard'
 import { ReplyChips, replyChips, useRotatingPrompt } from '@/components/chat/ReplyChips'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
-import { Chart } from '@/components/chat/Chart'
+import { Chart, VoiceCheckIn } from '@/screens/lazyScreens'
 import type { MenuTarget } from '@/components/chat/MessageMenu'
 import { MessageMenu, ReactionCard, ThreadPeek } from '@/screens/lazyScreens'
 import { EmptyHero } from '@/components/chat/EmptyHero'
@@ -991,7 +990,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
   // Header icons are 44px buttons side by side: no enlarged tap areas reaching into a neighbour
   // (the bell's and chat's used to overlap, so a tap near the bell could open Chats).
-  const meButton = (<>
+  const meButton = (<div className="-mr-1 flex shrink-0 items-center">
     <SearchButton imperial={me.athlete.units !== 'metric'} />
     {me.role === 'athlete' && (
       <button type="button" className={HEADER_ICON}
@@ -1013,7 +1012,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
       {me.coach_unread > 0 && <span className="absolute right-1 top-1 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
-  </>)
+  </div>)
 
   function renderHeader(isLog: boolean, under = false) {
     return (
@@ -1601,7 +1600,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             } catch (e) { showToast((e as Error).message) }
           }} />
       )}
-      <VoiceCheckIn open={!!voice} sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />
+      {voice && <VoiceCheckIn open sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />}
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />

@@ -484,6 +484,12 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
   const reactBtns = useRef<Partial<Record<ReactionKind, HTMLButtonElement | null>>>({})
   const mention = useMentionField<HTMLInputElement>({ value: comment, setValue: setComment, where: { pid: p.id } })
   const input = mention.ref
+  // Async replies (comment sent, reaction saved) apply to the post as it is when they land, not
+  // as it was when the request went out: a stale copy would drop a comment added meanwhile.
+  const latest = useRef(p)
+  latest.current = p
+  const typed = useRef(comment)
+  typed.current = comment
   const name = p.mine ? 'You' : p.user?.name ?? 'Someone'
   const photos = postPhotoUrls(p)
 
@@ -495,7 +501,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     if (was !== kind) { counts[kind] += 1; burst(reactBtns.current[kind], 'kudos') }
     const total = Object.values(counts).reduce((a, b) => a + b, 0)
     onChange({ ...p, reactions: counts, my_reaction: was === kind ? null : kind, reaction_total: total })
-    try { const r = was === kind ? await unreact(p.id) : await react(p.id, kind); onChange({ ...r.post, comments: p.comments }) }
+    try { const r = was === kind ? await unreact(p.id) : await react(p.id, kind); onChange({ ...r.post, comments: latest.current.comments }) }
     catch (e) { onChange(prev); setErr((e as Error).message) }
   }
   async function openComments() {
@@ -509,7 +515,9 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     setReplyTo(c); setShowComments(true); window.setTimeout(() => input.current?.focus(), 0)
   }
   async function send() {
-    const t = mention.encode(comment).trim()
+    if (busy) return  // one comment at a time; a second Enter while sending does nothing
+    const sent = comment
+    const t = mention.encode(sent).trim()
     if (!t) return
     setBusy(true); setErr(null); setCommentQueued(false)
     try {
@@ -517,15 +525,21 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
       const r = await saveDurably<{ comment: PostComment }>({ method: 'POST', label: 'comment',
         path: `/api/community/posts/${encodeURIComponent(p.id)}/comments`, body: { text: t, reply_to: replyTo?.id ?? null } },
       () => setCommentQueued(true))
-      onChange({ ...p, comments: [...p.comments, r.comment], comment_count: p.comment_count + 1 })
-      setComment(''); commentDraft.clear(); setReplyTo(null); mention.reset()
+      const now = latest.current
+      if (!now.comments.some((c) => c.id === r.comment.id)) {
+        onChange({ ...now, comments: [...now.comments, r.comment], comment_count: now.comment_count + 1 })
+      }
+      // Clear the box only if it still holds what was sent (not something typed since).
+      if (typed.current === sent) { setComment(''); commentDraft.clear(); mention.reset() }
+      setReplyTo(null)
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setCommentQueued(false) }
   }
   async function removeComment(cid: string) {
     try {
       await deleteComment(p.id, cid)
-      const gone = p.comments.filter((c) => c.id === cid || c.parent === cid).length
-      onChange({ ...p, comments: p.comments.filter((c) => c.id !== cid && c.parent !== cid), comment_count: Math.max(0, p.comment_count - gone) })
+      const now = latest.current
+      const gone = now.comments.filter((c) => c.id === cid || c.parent === cid).length
+      onChange({ ...now, comments: now.comments.filter((c) => c.id !== cid && c.parent !== cid), comment_count: Math.max(0, now.comment_count - gone) })
     } catch (e) { setErr((e as Error).message) }
   }
   async function remove() {
@@ -669,7 +683,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
             <input ref={input} aria-label={replyTo ? 'Reply' : 'Comment'} className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={COMMENT_LEN}
               placeholder={replyTo ? 'Write a reply…' : 'Say something… @ to tag'} enterKeyHint="send"
               value={comment} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
-              onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter') void send() }} />
+              onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }} />
             <Button variant="primary" className="h-11 w-11 shrink-0 p-0" aria-label="Send comment" loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
               <Send className="size-4" />
             </Button>
@@ -916,7 +930,7 @@ function PhotoViewer({ urls, start, who, onClose }: { urls: string[]; start: num
         if (x0.current != null && Math.abs(dx) > 50) { e.preventDefault(); go(dx < 0 ? 1 : -1) }
         x0.current = null
       }}>
-      <img key={urls[i]} src={urls[i]} alt={`Photo ${i + 1} of ${n} in ${who} post`} className="rb-pop max-h-[86vh] max-w-full object-contain"
+      <img key={urls[i]} src={urls[i]} alt={`Photo ${i + 1} of ${n} in ${who} post`} className="rb-pop max-h-[86dvh] max-w-full object-contain"
         onClick={(e) => e.stopPropagation()} />
       {n > 1 && (
         <>

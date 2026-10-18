@@ -22,10 +22,36 @@ export function trackKeyboard(): void {
       root.style.setProperty('--vv-h', `${vv.height}px`)
       root.style.setProperty('--vv-top', `${vv.offsetTop}px`)
       root.classList.toggle('kb-open', keyboard)
+      if (keyboard) revealFocused()
     })
   }
+  // A field focused while the keyboard is already up (moving between fields).
+  document.addEventListener('focusin', () => { if (root.classList.contains('kb-open')) window.setTimeout(revealFocused, 60) })
   vv.addEventListener('resize', update)
   vv.addEventListener('scroll', update)
   window.addEventListener('orientationchange', () => { full = 0; update() })
   update()
+}
+
+const editable = (el: Element | null): el is HTMLElement =>
+  !!el && (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['checkbox', 'radio', 'range', 'button', 'submit', 'file'].includes(el.type))
+    || (el as HTMLElement).isContentEditable)
+
+/** Keep the focused text field above the keyboard: scroll its own scrolling container (never the
+ *  page, which iOS manages) just enough that the field, and a send button beside it, show. */
+function revealFocused(): void {
+  const el = document.activeElement
+  if (!editable(el)) return
+  const vv = window.visualViewport
+  const bottomLimit = (vv ? vv.height : window.innerHeight) - 12
+  const box = (el.closest('.relative.flex, form, [data-keep-visible]') ?? el).getBoundingClientRect()
+  for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+    const st = getComputedStyle(a)
+    if (!/(auto|scroll)/.test(st.overflowY) || a.scrollHeight <= a.clientHeight) continue
+    const over = box.bottom - Math.min(bottomLimit, a.getBoundingClientRect().bottom - 8)
+    const under = a.getBoundingClientRect().top + 8 - box.top
+    if (over > 0) a.scrollTop += over
+    else if (under > 0) a.scrollTop -= under
+    return
+  }
 }

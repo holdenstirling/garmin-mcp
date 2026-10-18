@@ -451,7 +451,7 @@
   width: 100%;
   /* Fit the visual viewport (lib/viewport.ts sets --vv-h) so the iOS keyboard can't push
      the sheet's top off-screen. */
-  max-height: min(85vh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
+  max-height: min(85dvh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);

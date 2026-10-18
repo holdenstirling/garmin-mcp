@@ -240,7 +240,7 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
   return (
     <div className="modal-overlay" onClick={finish}>
       <div ref={card} role="dialog" aria-modal="true" aria-label="Achievement"
-        className="celebrate relative mx-auto mt-[20vh] flex w-[min(92vw,360px)] flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center shadow-xl"
+        className="celebrate relative mx-auto mt-[20dvh] flex w-[min(92vw,360px)] flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center shadow-xl"
         onClick={(e) => e.stopPropagation()}>
         <button type="button" autoFocus className="hit-44 absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-4" /></button>
         <span className="fx-leap-lane" aria-hidden="true"><span className="fx-leap"><RabbitLogo size={34} /></span></span>

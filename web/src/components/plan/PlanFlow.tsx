@@ -324,8 +324,8 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
         className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-left active:bg-(--bg-inset)">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-4" aria-hidden /></span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.8824rem] font-semibold text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
-          {sub && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{sub}</span>}
+          <span className="line-clamp-2 text-[0.8824rem] font-semibold leading-snug text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
+          {sub && <span className="line-clamp-2 text-[0.7059rem] leading-snug text-(--text-muted)">{sub}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-1 text-[0.7059rem] text-(--accent)">Change race <ChevronDown className="size-4" aria-hidden /></span>
       </button>

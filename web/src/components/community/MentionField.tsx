@@ -86,6 +86,8 @@ export function useMentionField<T extends Field>({ value, setValue, where, initi
   }
 
   function onKeyDown(e: KeyboardEvent<T>): boolean {
+    // Still loading who can be mentioned: Enter waits instead of sending "@Jes" as plain text.
+    if (q !== null && people === null && (e.key === 'Enter' || e.key === 'Tab')) { e.preventDefault(); return true }
     if (q === null || !matches.length) return false
     if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % matches.length); return true }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i - 1 + matches.length) % matches.length); return true }

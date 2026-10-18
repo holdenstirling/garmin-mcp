@@ -74,6 +74,14 @@ html, body { overscroll-behavior: none; }
 .modal-overlay { touch-action: none; }
 .modal { touch-action: none; }
 .modal-body { touch-action: pan-y; overscroll-behavior: contain; }
+/* Phones: text fields are at least 16px so iOS doesn't zoom the page when one is focused
+   (smaller designs scale back visually only on devices with a mouse). */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+  textarea, select { font-size: max(16px, 1em) !important; }
+}
+/* Horizontal chip/photo rows scroll sideways inside sheets and pages. */
+.overflow-x-auto { touch-action: pan-x pan-y; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .sheet-handle {
   width: 40px; height: 5px; border-radius: 999px; background: var(--border-strong);
   margin: 8px auto 0; flex-shrink: 0;
@@ -443,8 +451,8 @@ html.kb-open .tab-bar { display: none; }
    nearly full height so every section is reachable by scrolling the body, with the footer
    (Save / Cancel) pinned and the keyboard accounted for (--vv-h, lib/viewport.ts). */
 .modal.modal--tall {
-  height: min(92vh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
-  max-height: min(92vh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
+  height: min(92dvh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
+  max-height: min(92dvh, calc(var(--vv-h, 100dvh) - env(safe-area-inset-top) - 8px));
 }
 .modal-body { -webkit-overflow-scrolling: touch; }
 
