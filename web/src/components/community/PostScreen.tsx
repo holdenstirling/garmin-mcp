@@ -25,7 +25,7 @@ export function PostScreen({ id, comment, imperial, onClose }: { id: string; com
   const who = post?.mine ? 'Your post' : post?.user?.name ? `${post.user.name.split(' ')[0]}'s post` : 'Post'
   return (
     <Screen title={who} onClose={close} closing={closing}>
-      <div className="flex flex-col gap-3 p-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+      <div className="flex flex-col gap-3 pb-[max(24px,env(safe-area-inset-bottom))]">
         {error ? <ErrorState message={error} onRetry={/not available/.test(error) ? undefined : load} />
           : !post ? <RabbitLoader className="py-16" label="Loading the post" />
           : <PostCard post={post} imperial={imperial} expanded focusComment={comment}

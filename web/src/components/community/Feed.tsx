@@ -662,7 +662,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
           <div className="relative flex items-center gap-2">
             {mention.list}
             <input ref={input} aria-label={replyTo ? 'Reply' : 'Comment'} className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={COMMENT_LEN}
-              placeholder={replyTo ? 'Write a reply…' : 'Say something kind… @ to mention'} enterKeyHint="send"
+              placeholder={replyTo ? 'Write a reply…' : 'Say something… @ to tag'} enterKeyHint="send"
               value={comment} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
               onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter') void send() }} />
             <Button variant="primary" className="h-11 w-11 shrink-0 p-0" aria-label="Send comment" loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
