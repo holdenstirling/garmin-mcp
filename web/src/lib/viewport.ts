@@ -22,7 +22,7 @@ export function trackKeyboard(): void {
       root.style.setProperty('--vv-h', `${vv.height}px`)
       root.style.setProperty('--vv-top', `${vv.offsetTop}px`)
       root.classList.toggle('kb-open', keyboard)
-      if (keyboard) revealFocused()
+      if (keyboard) requestAnimationFrame(revealFocused)  // after the tab bar steps aside
       else if (padded.size) unpad()
     })
   }

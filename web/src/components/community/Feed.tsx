@@ -773,11 +773,11 @@ function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>;
       </div>
       {headline && <p className="mt-1.5 text-[0.7647rem] font-medium text-(--accent)">{headline}</p>}
       {stats.length > 0 && (
-        <dl className="mt-2 grid grid-cols-3 gap-x-3 gap-y-1.5">
+        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 min-[400px]:grid-cols-3">
           {stats.map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="font-mono text-[0.6471rem] uppercase tracking-wider text-(--text-muted)">{k}</dt>
-              <dd className="truncate font-mono text-[1rem] font-semibold tabular-nums text-(--text)">{v}</dd>
+              <dd className="font-mono text-[clamp(0.9rem,4.4vw,1rem)] font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]">{v}</dd>
             </div>
           ))}
         </dl>

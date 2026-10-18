@@ -113,11 +113,11 @@ export function WorkoutSummary({ t, dist, imperial }: { t: Targets; dist: string
   ] as const).filter(([, v]) => !!v)
   return (
     <div className="mx-3.5 mt-3 flex flex-col gap-2 rounded-lg bg-(--bg-inset) px-3 py-2">
-      <dl className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+      <dl className="grid grid-cols-2 gap-x-3 min-[400px]:grid-cols-3 gap-y-1.5">
         {cells.map(([k, v]) => (
           <div key={k} className="min-w-0">
             <dt className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">{k}</dt>
-            <dd className="truncate font-mono text-[0.8235rem] font-semibold tabular-nums text-(--text)">{v}</dd>
+            <dd className="font-mono text-[0.8235rem] font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]">{v}</dd>
           </div>
         ))}
       </dl>
