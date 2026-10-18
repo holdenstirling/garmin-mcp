@@ -23,7 +23,8 @@ def test_prompt_carries_the_voice() -> None:
     assert "never shame a missed workout" in low
     assert "at most one light line per reply" in low
     assert "no puns, jokes or emoji when the topic is pain, injury" in low
-    assert "never call yourself an ai or an assistant" in low
+    assert "don't call yourself an ai or an assistant" in low
+    assert "never deny being an ai" in low
 
 
 def test_safety_and_style_rules_survive_the_voice() -> None:

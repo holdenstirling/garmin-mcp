@@ -4,7 +4,7 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Sparkles, Utensils, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Utensils, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitNote } from '@/components/ui/brand'
 import { RabbitNap } from '@/components/anim'
@@ -22,6 +22,7 @@ import { SPORT_ICON, SPORT_LABEL, fmtDay, sessionMinutes, weekPhaseLabel } from 
 import { StepItem } from './SessionSheet'
 import { addDays, mondayOf } from './MoveSheet'
 import { paceText } from './PlanCalendar'
+import { RabbitLogo } from '@/components/RabbitLogo'
 
 export type DayActions = {
   onEdit: (s: PlanSession) => void
@@ -169,7 +170,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       )}
       {c?.adjusted && (
         <p className="mx-3.5 mt-2 flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
-          <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden /><span><span className="font-semibold">Rabbit adjusted this:</span> {c.adjusted}</span>
+          <RabbitLogo size={14} current className="mt-0.5 shrink-0" /><span><span className="font-semibold">Rabbit adjusted this:</span> {c.adjusted}</span>
         </p>
       )}
       {status === 'done' && c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport === 'brick' ? 'run' : s.sport} />}

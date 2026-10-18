@@ -37,7 +37,7 @@ def test_facts_match_the_privacy_policy() -> None:
     assert "they don't count toward streaks, stats or plan matching, which use Garmin workouts only" in page
     assert "deleted when you disconnect Oura" in page
     assert "Google Calendar</b> (when you connect it, read-only)" in page
-    assert any("never goes to Rabbit's AI" in s for s in conn.APPS["oura"]["never"])
+    assert any("never used in Rabbit's coaching chat" in s for s in conn.APPS["oura"]["never"])
     assert any("never counts twice" in s for s in conn.APPS["oura"]["never"])
     assert any("read-only" in s for s in conn.APPS["calendar"]["reads"])
     assert all(conn.APPS[a]["reads"] and conn.APPS[a]["never"] for a in conn.ORDER)

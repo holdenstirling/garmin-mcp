@@ -66,7 +66,7 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
         </div>
       )}
       <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-        Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. Rabbit's AI never sees Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
+        Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. Rabbit's coaching never uses Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
       </p>
     </div>
   )

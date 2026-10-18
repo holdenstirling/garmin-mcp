@@ -6,7 +6,8 @@ import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
 import { openBody } from '@/lib/body'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ExternalLink, HeartPulse, MessageCircle, Sparkles } from 'lucide-react'
+import { CalendarDays, ExternalLink, HeartPulse, MessageCircle } from 'lucide-react'
+import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -168,7 +169,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       )}
       {!v.ai && (
         <p className="px-1 text-[0.7059rem] text-(--text-muted)">
-          Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; Rabbit's AI doesn't use it.
+          Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; Rabbit's coaching doesn't use it.
         </p>
       )}
     </>
@@ -295,7 +296,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
       )}
       {fb && (
         <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><Sparkles className="size-4 text-(--accent)" aria-hidden /> {fb.headline}</p>
+          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><RabbitLogo size={16} current className="shrink-0 text-(--accent)" /> {fb.headline}</p>
           <div className="flex flex-col gap-1">
             {fb.lines.map((l) => <p key={l} className="m-0 text-[0.8235rem] leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
           </div>
