@@ -153,3 +153,4 @@ export const PartnersScreen = split(() => import('@/components/settings/Partners
 export const MessageMenu = split(() => import('@/components/chat/MessageMenu').then((m) => m.MessageMenu), 'popup')
 export const ThreadPeek = split(() => import('@/components/chat/ThreadPeek').then((m) => m.ThreadPeek), 'popup')
 export const ReactionCard = split(() => import('@/components/workout/ReactionCard').then((m) => m.ReactionCard), 'popup')
+export const FindFriendsScreen = split(() => import('@/components/friends/FindFriends').then((m) => m.FindFriends))

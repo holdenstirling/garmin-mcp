@@ -95,6 +95,8 @@ import { WelcomeGate } from '@/components/onboarding/WelcomeFlow'
 import { IntentStrip, stripFirst } from '@/components/onboarding/IntentHome'
 import { composerPrompts, intentSuggestions, intentsOf, wantsPlan } from '@/lib/intent'
 import { BlockScreen } from '@/screens/lazyScreens'
+import { FindFriendsScreen } from '@/screens/lazyScreens'
+import { OPEN_FRIENDS_EVENT, type FriendsOpen } from '@/lib/friends'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { OPEN_BLOCK_EVENT, blockMomentAction } from '@/lib/blocks'
 import { PaceHost } from '@/components/paces/PaceSheet'
@@ -155,8 +157,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'legal'; doc?: LegalSlug } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
-  | { k: 'person'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
+  | { k: 'person'; id: string } | { k: 'friends'; section?: 'me'; add?: string; q?: string }
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'friends' ? `friends:${p.add ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -575,6 +577,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (me.role !== 'athlete') return
     const onPerson = (e: Event) => openPersonPage(String((e as CustomEvent<string>).detail ?? ''))
     const onTarget = (e: Event) => { const t = (e as CustomEvent<NotifOpen>).detail; if (t?.k) openTargetNow(t) }
+    const onFriends = (e: Event) => { const d = (e as CustomEvent<FriendsOpen>).detail ?? {}; pushPage({ k: 'friends', section: d.section, add: d.add, q: d.q }) }
+    window.addEventListener(OPEN_FRIENDS_EVENT, onFriends)
+    // A friend's QR code or follow link (/app/?add=CODE): open Find friends with them on top.
+    try {
+      const add = new URL(window.location.href).searchParams.get('add') ?? ''
+      if (/^[A-Z2-9]{8}$/.test(add)) { window.history.replaceState(null, '', '/app/'); window.setTimeout(() => pushPage({ k: 'friends', add }), 0) }
+    } catch { /* no URL support */ }
     window.addEventListener(OPEN_PERSON_EVENT, onPerson)
     window.addEventListener(OPEN_TARGET_EVENT, onTarget)
     // On load: ?open=<kind>&id=..; then the address is cleaned so a reload doesn't reopen it.
@@ -600,6 +609,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     document.addEventListener('click', onClick)
     return () => {
       window.removeEventListener(OPEN_PERSON_EVENT, onPerson)
+      window.removeEventListener(OPEN_FRIENDS_EVENT, onFriends)
       window.removeEventListener(OPEN_TARGET_EVENT, onTarget)
       navigator.serviceWorker?.removeEventListener('message', onSw)
       document.removeEventListener('click', onClick)
@@ -732,7 +742,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (q === 'coach') { showScreen('coaches'); return }
     if (q === 'coach_status') { setCoachAsk(true); return }
     if (q === 'gear') { showScreen('gear'); return }
-    if (q === 'friend') { openCommunity('people'); return }
+    if (q === 'friend') { pushPage({ k: 'friends' }); return }
     if (q === 'interests') { openDiscover(); return }
     if (q === 'sync' && builtPlan) { openPlan(); return }
     showScreen('setup')
@@ -1332,6 +1342,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'access': return <AccessScreen onClose={closePages} />
       case 'usage': return <UsageScreen onClose={closePages} />
       case 'partners': return <PartnersScreen onClose={closePages} />
+      case 'friends': return <FindFriendsScreen section={pg.section} add={pg.add} q={pg.q} onClose={pages.length > 1 ? popPage : closePages} />
       case 'block': return <BlockScreen id={pg.id} imperial={imperial} onClose={closePages} />
       case 'fit': return <RaceFitScreen eventId={pg.id} onClose={closePages} />
       case 'raceweek': return <RaceWeekScreen eventId={pg.id} section={pg.section} onClose={closePages} onAsk={tellRabbit} />

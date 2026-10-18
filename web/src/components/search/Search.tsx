@@ -3,7 +3,7 @@
 // every tab); it owns the sheet. Picking a result fires lib/search openSearchResult, which
 // screens/Chat.tsx routes to the right tab or page.
 import { useEffect, useRef, useState } from 'react'
-import { Clock, Flag, Search as SearchIcon, Users, X } from 'lucide-react'
+import { Clock, Flag, Search as SearchIcon, UserPlus, Users, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
 import { SPORT_ICON as EVENT_SPORT_ICON, isSport } from '@/lib/sports'
@@ -19,6 +19,7 @@ import {
   type SearchPick, type SearchResults,
 } from '@/lib/search'
 import { sportIcon } from '@/lib/sportIcon'
+import { openFindFriends } from '@/lib/friends'
 
 export function SearchButton({ imperial }: { imperial: boolean }) {
   const [open, setOpen] = useState(false)
@@ -108,7 +109,8 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
         ) : error ? (
           <p role="alert" className="px-4 py-6 text-center text-[0.7647rem] text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
         ) : res && total === 0 && !busy ? (
-          <EmptyState compact mode="think" title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”." />
+          <EmptyState compact mode="think" title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”."
+            action="Search people on Rabbit" onAction={() => { onClose(); openFindFriends({ q: q.trim() }) }} />
         ) : res ? (
           <div className={busy ? 'opacity-60' : undefined}>
             {(res.partners?.length ?? 0) > 0 && (
@@ -126,6 +128,12 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
                   title={p.name} sub={p.relation === 'following' ? 'You follow' : 'Follows you'} />
               ))}
             </Group>
+            <div className="px-4 pt-1">
+              <button type="button" onClick={() => { onClose(); openFindFriends({ q: q.trim() }) }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[0.8235rem] font-medium text-(--accent) active:bg-(--bg-inset)">
+                <UserPlus className="size-4 shrink-0" aria-hidden /> Find &ldquo;{q.trim()}&rdquo; on Rabbit
+              </button>
+            </div>
             <Group title="Clubs & groups" n={res.clubs.length}>
               {res.clubs.map((c) => (
                 <Row key={`${c.source}:${c.id}`} onClick={() => pick({ kind: 'club', id: c.id, source: c.source })}

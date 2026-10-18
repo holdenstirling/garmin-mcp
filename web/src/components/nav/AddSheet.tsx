@@ -4,9 +4,10 @@
 //   Travel / days away -> travel mode (lib/plantools openTravel);
 //   I'm sick -> sick mode (lib/sick openSick);
 //   A plan -> build one in Rabbit, or import a plan you already have.
-import { CalendarPlus, ChevronRight, Dumbbell, FileUp, Plane, Thermometer } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Dumbbell, FileUp, Plane, Thermometer, UserPlus } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { openFindFriends } from '@/lib/friends'
 
 function Option({ icon, title, sub, onClick }: { icon: React.ReactNode; title: string; sub: string; onClick: () => void }) {
   return (
@@ -37,7 +38,7 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
 }) {
   const pick = (f: () => void) => () => { onClose(); f() }
   return (
-    <Sheet title="Add to your schedule" onClose={onClose}
+    <Sheet title="Add" onClose={onClose}
       bodyClassName="settings flex flex-col gap-2.5 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {hasPlan ? (
         <Option icon={<Dumbbell className="size-5" />} title="A workout"
@@ -56,6 +57,9 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
         <Option icon={<Thermometer className="size-5" />} title="I'm sick"
           sub="Rest or short easy days until you're better, then an easy return" onClick={pick(onSick)} />
       )}
+      <p className="mt-2 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">People</p>
+      <Option icon={<UserPlus className="size-5" />} title="Friends"
+        sub="Search, check your contacts, invite by text or share your QR code" onClick={pick(() => openFindFriends())} />
       <p className="mt-2 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">A plan</p>
       <Option icon={<RabbitLogo size={20} current />} title={hasPlan ? 'Rebuild my plan' : 'Build my plan'}
         sub={hasPlan ? 'New race or new answers; your events stay' : 'Race, goals, your week: about 3 minutes'} onClick={pick(onBuildPlan)} />

@@ -23,6 +23,7 @@ import {
   type FeedItem, type FriendCard as FriendCardData, type People, type PersonEdge, type SocialSettings, type SocialUser,
 } from '@/lib/social'
 import { sportIcon } from '@/lib/sportIcon'
+import { openFindFriends } from '@/lib/friends'
 
 const LOADING = ['Finding your crew…', 'Lacing up…', 'Checking who trained today…']
 const SEEN_EVENT = 'rabbit:social-seen'
@@ -75,7 +76,7 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
       {tab === 'feed' ? (
         feed == null ? (error ? null : <RabbitLoader className="py-10" label="Loading your friends' workouts" cycle={LOADING} />) : (
           <FeedList items={feed} following={following} imperial={imperial} onOpen={openPerson}
-            onInvite={() => setTab('people')} onChange={setFeed} />
+            onInvite={() => openFindFriends()} onChange={setFeed} />
         )
       ) : (
         people == null ? (error ? null : <RabbitLoader className="py-10" label="Loading people" cycle={LOADING} />) : (
