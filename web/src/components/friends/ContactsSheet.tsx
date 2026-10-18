@@ -90,7 +90,7 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
                       <PersonAvatar p={f.user} size={44} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[0.9412rem] font-medium text-(--text)">{f.user.name}</span>
-                        <span className="block truncate text-[0.7059rem] text-(--text-muted)">{f.contact.name || (f.user.handle ? `@${f.user.handle}` : 'In your contacts')}</span>
+                        <span className="block truncate text-[0.7059rem] text-(--text-muted)">{[f.user.handle ? `@${f.user.handle}` : '', f.contact.name && !f.contact.name.toLowerCase().startsWith(f.user.name.toLowerCase()) ? `In your contacts as ${f.contact.name}` : 'In your contacts'].filter(Boolean).join(' · ')}</span>
                       </span>
                       <FollowButton key={f.status} uid={f.user.id} status={f.status} followsYou={f.follows_you} onError={setErr} />
                     </li>

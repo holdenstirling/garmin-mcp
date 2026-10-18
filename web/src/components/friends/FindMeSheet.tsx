@@ -71,7 +71,7 @@ export function FindMeSheet({ onClose, onSaved }: { onClose: () => void; onSaved
                 <span className="block text-[0.9412rem] text-(--text)">{title}</span>
                 <span className="block text-[0.7059rem] text-(--text-muted)">{sub}</span>
               </span>
-              <Switch checked={me.find[k]} label={title} disabled={k === 'phone' && !me.phone} onChange={(v) => toggle(k, v)} />
+              <Switch checked={k === 'phone' && !me.phone ? false : me.find[k]} label={title} disabled={k === 'phone' && !me.phone} onChange={(v) => toggle(k, v)} />
             </div>
           ))}
           <p className="pt-1 text-[0.7059rem] leading-snug text-(--text-muted)">People you already follow, or who follow you, can always find you. Blocked people never can.</p>
