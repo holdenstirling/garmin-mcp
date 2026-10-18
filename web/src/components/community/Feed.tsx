@@ -118,6 +118,11 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           <SquarePen className="size-[18px] text-(--accent)" aria-hidden />
           {clubName ? `Share with ${clubName}…` : groupName ? `Share with ${groupName}…` : 'Share something'}
         </button>
+        {main && onInvite && (
+          <Button variant="ghost" className="hit-44 h-11 w-11 shrink-0 p-0" aria-label="Find friends" onClick={onInvite}>
+            <UserPlus className="size-[18px]" />
+          </Button>
+        )}
         {onSettings && (
           <Button variant="ghost" className="hit-44 h-11 w-11 shrink-0 p-0" aria-label="Sharing settings" onClick={onSettings}>
             <SlidersHorizontal className="size-[18px]" />

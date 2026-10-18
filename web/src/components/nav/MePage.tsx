@@ -15,6 +15,7 @@ import { goalCountdown, type Goal, type Me } from '@/lib/api'
 import type { Progress } from '@/lib/progress'
 import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
 import type { LegalSlug } from '@/lib/legal'
+import { openFindFriends } from '@/lib/friends'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
   | 'connections' | 'access' | 'usage' | 'partners' | 'legal'
@@ -64,7 +65,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
         <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; Rabbit eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
-        <Row icon={<Icon><Users /></Icon>} title="Friends" subtitle="Find and follow friends" onClick={() => onOpen('friends')} />
+        <Row icon={<Icon><Users /></Icon>} title="Find friends" subtitle="Search, contacts, invite by text, QR code" onClick={() => openFindFriends()} />
         {me.role === 'athlete' && <ShareWorkoutsRow />}
       </Group>
 

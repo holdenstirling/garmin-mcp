@@ -13,7 +13,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Group, Row } from '@/components/settings/Grouped'
 import { Field, Screen, inputCls } from '@/components/plan/ui'
 import type { SocialUser } from '@/lib/social'
-import { TAB_SHOWN_EVENT, openPlace } from '@/lib/nav'
+import { TAB_SHOWN_EVENT } from '@/lib/nav'
 import {
   addToGroup, deleteGroup, getGroup, groupFriends, leaveGroup, removeFromGroup,
   type FeedGroup,
@@ -28,6 +28,7 @@ import { useDraft } from '@/lib/drafts'
 import { saveDurably } from '@/lib/outbox'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
+import { openFindFriends } from '@/lib/friends'
 
 const EMOJIS = ['👟', '🏃', '🌅', '🚴', '🏊', '⛰️', '🔥', '☕', '🍻', '🐇', '💪', '🏁']
 
@@ -115,7 +116,7 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
     return (
       <div className="flex flex-col items-start gap-2">
         <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Follow each other first, then come back to pick them.</p>
-        <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={() => openPlace('people')}>
+        <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={() => openFindFriends()}>
           <UserPlus className="size-4" aria-hidden /> Find friends
         </Button>
       </div>

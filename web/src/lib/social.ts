@@ -3,7 +3,7 @@ import { getJSON, postJSON, sendJSON } from '@/lib/api'
 import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
 import { counted } from '@/lib/usage'
 
-export type SocialUser = { id: string; name: string; photo: number | null; picture: string }
+export type SocialUser = { id: string; name: string; photo: number | null; picture: string; handle?: string }
 export type FeedUser = SocialUser & { level: number | null; streak: number | null }
 export type SocialSettings = {
   workouts: boolean; distance: boolean; times: boolean; streak: boolean; races: boolean; auto_accept: boolean

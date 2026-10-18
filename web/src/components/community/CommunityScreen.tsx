@@ -23,6 +23,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { getCommunityHome, listGroups, type Featured, type FeedGroup } from '@/lib/community2'
 import { FeaturedStrip } from './Featured'
 import { GroupPage, GroupSheet } from './Groups'
+import { openFindFriends } from '@/lib/friends'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -54,7 +55,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {view === 'clubs' && featured && featured.length > 0 && (
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
-      {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => onView('people')} onSettings={() => setSettings(true)} onOpenClub={openClub}
+      {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => openFindFriends()} onSettings={() => setSettings(true)} onOpenClub={openClub}
         onOpenGroup={setGroup} onNewGroup={() => setNewGroup(true)} groupsKey={groupsKey} />}
       {view === 'clubs' && <ClubsTab imperial={imperial} openId={club} onOpen={onClub} />}
       {newGroup && <GroupSheet onClose={() => setNewGroup(false)}

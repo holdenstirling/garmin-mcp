@@ -24,6 +24,8 @@ export type NotifOpen =
 export type Notif = {
   key: string; kind: string; title: string; body: string; ts: number; unread: boolean
   person: PersonRef | null; open: NotifOpen
+  /** follower: I don't follow them yet. follow_request: the request to answer inline. */
+  follow_back?: boolean; edge_id?: string
 }
 export type FriendsToday = {
   today: string

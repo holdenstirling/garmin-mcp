@@ -2,7 +2,7 @@
 // and see where each privacy control lives. Server: legal.py (documents), account.py (export /
 // delete), consent.py (what you agreed to and when).
 import { useEffect, useState } from 'react'
-import { BookOpen, Download, FileText, HeartHandshake, Mail, Plug, Settings, ShieldCheck, Trash2 } from 'lucide-react'
+import { AtSign, BookOpen, Download, FileText, HeartHandshake, Mail, Plug, Settings, ShieldCheck, Trash2 } from 'lucide-react'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import {
   type LegalDoc, type LegalSlug,
 } from '@/lib/legal'
 import type { Me } from '@/lib/api'
+import { openFindFriends } from '@/lib/friends'
 
 const ICONS: Record<LegalSlug, React.ReactNode> = {
   privacy: <ShieldCheck />, terms: <FileText />, security: <BookOpen />, guidelines: <HeartHandshake />,
@@ -130,6 +131,8 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
           subtitle="What friends see, your area, Don't count my usage" onClick={onOpenSettings} />
         <Row icon={<Icon tone="muted"><Plug /></Icon>} title="Connected apps"
           subtitle="What each app shares; disconnect any time" onClick={onOpenConnections} />
+        <Row icon={<Icon tone="muted"><AtSign /></Icon>} title="How friends find you"
+          subtitle="Your @handle; find me by name, email or phone" onClick={() => openFindFriends({ section: 'me' })} />
         </>)}
         <Row icon={<Icon tone="muted"><Mail /></Icon>} title="Contact about privacy" subtitle={PRIVACY_CONTACT}
           onClick={() => { window.location.href = `mailto:${PRIVACY_CONTACT}?subject=${encodeURIComponent('Rabbit privacy request')}` }} />

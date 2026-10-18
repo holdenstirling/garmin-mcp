@@ -220,12 +220,14 @@ class People:
             for e in ppl["pending_in"]:
                 items.append({"key": f"follow:{e['edge_id']}", "kind": "follow_request",
                               "title": f"{self._name(e['user_id'])} wants to follow your training",
-                              "body": "Accept or decline in People.", "ts": e.get("ts") or 0,
+                              "body": "", "ts": e.get("ts") or 0, "edge_id": e["edge_id"],
                               "person": self._person(e["user_id"]), "open": {"k": "people"}})
+            mine = {x["user_id"] for x in ppl["following"]} | {x.get("user_id") for x in ppl["pending_out"]}
             for e in ppl["followers"][:20]:
                 items.append({"key": f"follower:{e['edge_id']}", "kind": "follower",
                               "title": f"{self._name(e['user_id'])} started following you", "body": "",
                               "ts": e.get("since") or 0, "person": self._person(e["user_id"]),
+                              "follow_back": e["user_id"] not in mine,
                               "open": {"k": "person", "id": e["user_id"]}})
         except Exception:
             pass

@@ -2686,11 +2686,23 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     soc_feed = (_social.SocialFeed(soc, activities=lambda uid: chat.agent.stats.activities(uid), meta=_soc_meta)
                 if soc is not None and chat is not None else None)
 
+    _ff_box: dict[str, Any] = {}  # Find friends (set up with Community below): @handles
+
+    def _soc_handle(uid: str) -> str:
+        ff = _ff_box.get("ff")
+        if ff is None:
+            return ""
+        try:
+            return str(ff.handle_of(uid))
+        except Exception:  # a handle never breaks a person card
+            return ""
+
     def _soc_person(uid: str | None) -> dict[str, Any] | None:
         if not uid:
             return None
         p = auth.profile(uid)
-        return {"id": uid, "name": _soc_name(uid), "photo": _photo_version(uid), "picture": p.get("picture") or ""}
+        return {"id": uid, "name": _soc_name(uid), "photo": _photo_version(uid), "picture": p.get("picture") or "",
+                "handle": _soc_handle(uid)}
 
     def _social_api(handler: Handler, *, mutating: bool) -> Callable[[Request], Awaitable[Response]]:
         async def inner(request: Request, user_id: str) -> Response:
@@ -3907,6 +3919,38 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             events=lambda u: _ag.events.list(u), post_unread=lambda u: (cm._mine(u).load().get("unread") or {}))
         community_routes += _pplw.make_routes(people=people_svc, wrap=_cd_wrap, read_json=read_json,
                                               club_chat=_ppl_club_chat, on_follow=_ppl_on_follow)
+
+        # Find friends (friendfind.py, routes in friendfind_web.py): @handles, people search by
+        # handle/name/exact email or phone (each route can be turned off), contact matching
+        # (compared and thrown away, never stored), People you may know, QR/invite link.
+        from . import friendfind as _ff, friendfind_web as _ffw
+
+        def _ff_races(uid: str) -> list[str]:
+            today = _ag._now(uid).date().isoformat()
+            evs = (store.user_doc(uid, "events").load().get("events") or {}).values()
+            return [f"{' '.join(str(e.get('name') or '').lower().split())}|{e.get('date')}" for e in evs
+                    if isinstance(e, dict) and str(e.get("date") or "") >= today and e.get("name")]
+
+        def _ff_metro(uid: str) -> str:
+            h = _cm_home(uid)
+            return ", ".join(x for x in (h.get("city"), h.get("state")) if x) if h.get("city") else ""
+
+        def _ff_buddies(uid: str) -> list[str]:
+            try:
+                return [str((m.get("person") or {}).get("id") or "") for m in buddies.matches(uid)["matches"]]
+            except Exception:
+                return []
+        ff = _ff.FriendFinder(store, soc=soc, emails=auth.athlete_emails,
+                              name=lambda u: auth.profile(u).get("name") or _soc_name(u),
+                              base_suggestions=lambda u: cm.suggestions(u, limit=100),
+                              races=_ff_races, metro=_ff_metro, buddies=_ff_buddies)
+        _ff_box["ff"] = ff
+        acct.on_delete("find friends", ff.forget_user)
+        acct.add_extra("find_friends", ff.export_user)
+        community_routes += _ffw.make_routes(
+            finder=ff, wrap=_cd_wrap, read_json=read_json, person=_soc_person,
+            invite_link=lambda u: f"{settings.public_base_url.rstrip('/')}/app/?add={soc.invite_code(u)}",
+            on_follow=lambda u, o, r: _ppl_on_follow(u, o, r))
 
     # ------------------------------------------------- shared training blocks --
     # blocks.py (routes in blocks_web.py): friends or a club start the same N-week block. Each

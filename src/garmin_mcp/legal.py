@@ -84,6 +84,7 @@ PRIVACY = """
 <li><b>What you enter</b>: your profile and training answers, goals, races, gear, photo, plan files you upload, chats and coach messages.</li>
 <li><b>Health-related entries</b>: workout feedback (effort, how it felt), niggles and pain notes, and fueling logs. Rabbit treats these, and your heart rate, sleep and recovery data, as sensitive health information.</li>
 <li><b>Social content</b>: posts, comments, cheers, direct messages, clubs, groups and events, your training-buddy profile (if you turn it on) and links you share.</li>
+<li><b>Finding friends</b>: your @handle, and a phone number if you choose to add one (it isn't verified, is never shown to anyone and is only used so people who have it can find you). When you check your contacts, the emails and phone numbers you pick are compared with people on Rabbit and then thrown away: Rabbit doesn't store or log them, and never contacts anyone in them. In Me &rarr; Privacy &amp; legal &rarr; How friends find you, you choose whether people can find you by name, email or phone.</li>
 <li><b>Location</b>: the home city or zip you give and, only if you tap "Use my location", a position rounded to about 1 km. Exact locations and routes are never stored or shared.</li>
 <li><b>Notifications</b>: if you allow them, your browser's push subscription for each device.</li>
 <li><b>Usage counts</b> (below) and basic server logs needed to run and secure the app.</li>
