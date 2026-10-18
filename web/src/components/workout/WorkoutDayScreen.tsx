@@ -92,12 +92,12 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
       footer={s ? (
         <>
           {s.id && ahead && status !== 'done' && (
-            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setMoving(s.id)}>
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" onClick={() => setMoving(s.id)}>
               <CalendarClock className="size-4" aria-hidden /> Move
             </Button>
           )}
           {s.id && (
-            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={edit} aria-label="Edit this workout in your schedule">
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" onClick={edit} aria-label="Edit this workout in your schedule">
               <Pencil className="size-4" aria-hidden /> Edit
             </Button>
           )}
@@ -106,14 +106,14 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
               onSendInRabbit={() => shareToFriends({ type: 'workout', ref: { kind: 'session', id: s.id!, date: data.date }, label: s.title })} />
           )}
           {s.id && status === 'done' ? (
-            <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]"
+            <Button variant="primary" className="h-11 min-w-0 flex-1 px-2 text-[0.8235rem]"
               onClick={() => feedbackRef.current?.scrollIntoView({ behavior: smooth(), block: 'start' })}>
               How did it go?
             </Button>
           ) : onAsk && (
-            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]"
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" aria-label="Ask Rabbit"
               onClick={() => onAsk(`About my ${s.title} on ${when}: `)}>
-              <MessageCircle className="size-4" aria-hidden /> Ask Rabbit
+              <MessageCircle className="size-4 shrink-0" aria-hidden /><span className="max-[359px]:hidden">Ask Rabbit</span><span className="min-[360px]:hidden">Ask</span>
             </Button>
           )}
         </>

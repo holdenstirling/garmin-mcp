@@ -48,12 +48,17 @@ function revealFocused(): void {
   if (!editable(el)) return
   const vv = window.visualViewport
   const bottomLimit = (vv ? vv.height : window.innerHeight) - 12
-  const box = (el.closest('.relative.flex, form, [data-keep-visible]') ?? el).getBoundingClientRect()
+  // The field, or its row when the row is just the field plus a send button beside it.
+  const own = el.getBoundingClientRect()
+  const row = el.parentElement?.getBoundingClientRect()
+  const box = row && row.height <= own.height + 16 ? row : own
   for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
     const st = getComputedStyle(a)
     if (!/(auto|scroll)/.test(st.overflowY) || a.scrollHeight <= a.clientHeight) continue
-    const over = box.bottom - Math.min(bottomLimit, a.getBoundingClientRect().bottom - 8)
-    const under = a.getBoundingClientRect().top + 8 - box.top
+    const top = a.getBoundingClientRect().top + 8
+    // A tall field (a post's text box) keeps its top in view rather than its bottom.
+    const over = Math.min(box.bottom - Math.min(bottomLimit, a.getBoundingClientRect().bottom - 8), box.top - top)
+    const under = top - box.top
     if (over > 0) {
       // Near the end of a short list there may be nothing left to scroll: add room below
       // until the keyboard closes.
