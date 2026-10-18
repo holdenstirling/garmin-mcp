@@ -23,6 +23,7 @@ export function trackKeyboard(): void {
       root.style.setProperty('--vv-top', `${vv.offsetTop}px`)
       root.classList.toggle('kb-open', keyboard)
       if (keyboard) revealFocused()
+      else if (padded.size) unpad()
     })
   }
   // A field focused while the keyboard is already up (moving between fields).
@@ -32,6 +33,9 @@ export function trackKeyboard(): void {
   window.addEventListener('orientationchange', () => { full = 0; update() })
   update()
 }
+
+const padded = new Set<HTMLElement>()
+function unpad(): void { for (const a of padded) a.style.paddingBottom = ''; padded.clear() }
 
 const editable = (el: Element | null): el is HTMLElement =>
   !!el && (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['checkbox', 'radio', 'range', 'button', 'submit', 'file'].includes(el.type))
@@ -50,8 +54,13 @@ function revealFocused(): void {
     if (!/(auto|scroll)/.test(st.overflowY) || a.scrollHeight <= a.clientHeight) continue
     const over = box.bottom - Math.min(bottomLimit, a.getBoundingClientRect().bottom - 8)
     const under = a.getBoundingClientRect().top + 8 - box.top
-    if (over > 0) a.scrollTop += over
-    else if (under > 0) a.scrollTop -= under
+    if (over > 0) {
+      // Near the end of a short list there may be nothing left to scroll: add room below
+      // until the keyboard closes.
+      const room = a.scrollHeight - a.clientHeight - a.scrollTop
+      if (room < over) { a.style.paddingBottom = `${parseFloat(getComputedStyle(a).paddingBottom) + over - room}px`; padded.add(a) }
+      a.scrollTop += over
+    } else if (under > 0) a.scrollTop -= under
     return
   }
 }
