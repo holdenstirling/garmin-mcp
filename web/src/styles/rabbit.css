@@ -389,8 +389,15 @@ html.kb-open .tab-bar { display: none; }
   85% { transform: translateY(2px) scale(1.06, 0.92); } 100% { transform: none; }
 }
 
+/* A comment opened from a "mentioned you" notification: a soft glow that fades. */
+.comment-focus { animation: rb-comment-focus 2.6s ease-out; }
+@keyframes rb-comment-focus {
+  0%, 45% { background: var(--accent-subtle); box-shadow: 0 0 0 4px var(--accent-subtle); }
+  100% { background: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rb-hop-in, .rb-pop, .rb-bump, .rb-shake, .rb-rabbit-hop__bunny.is-hopping, .rb-nap__body, .rb-nap--peek .rb-nap__body,
+  .comment-focus, .rb-hop-in, .rb-pop, .rb-bump, .rb-shake, .rb-rabbit-hop__bunny.is-hopping, .rb-nap__body, .rb-nap--peek .rb-nap__body,
   .rb-flame-idle, .rb-twitch, .rb-jump { animation: none; }
   .rb-rabbit-hop__track, .rb-rabbit-hop__seat { transition: none; }
   .rb-nap__z { animation: none; opacity: 0.8; }

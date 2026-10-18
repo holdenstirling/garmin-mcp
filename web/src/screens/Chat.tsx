@@ -69,7 +69,7 @@ import { PullToRefresh, celebrate, reducedMotion, signalReplyDone } from '@/comp
 import { Segmented } from '@/components/nav/Segmented'
 import type { MeRow } from '@/components/nav/MePage'
 import type { LegalSlug } from '@/lib/legal'
-import { DocScreen, PrivacyLegalScreen } from '@/screens/lazyScreens'
+import { DocScreen, PostScreen, PrivacyLegalScreen } from '@/screens/lazyScreens'
 import { StatusBanner, type Banner } from '@/components/nav/StatusBanner'
 import { CoachHeader, DiscussButton, ThreadLinkCard } from '@/components/chat/CoachCards'
 import { ATTACH_INPUT_ID, Composer } from '@/components/chat/Composer'
@@ -155,8 +155,8 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
 type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'legal'; doc?: LegalSlug } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
-  | { k: 'person'; id: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
+  | { k: 'person'; id: string } | { k: 'post'; id: string; comment?: string }
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'post' ? `post:${p.id}:${p.comment ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -546,6 +546,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'person': openPersonPage(t.id); break
       case 'activity': setRevealed(false); setPages((st) => st.length ? [...st, { k: 'activity', id: t.id }] : [{ k: 'activity', id: t.id }]); break
       case 'checklist': pushPage({ k: 'checklist', id: t.id }); break
+      case 'post': setRevealed(false); setPages((st) => st.length ? [...st, { k: 'post', id: t.id, comment: t.comment }] : [{ k: 'post', id: t.id, comment: t.comment }]); break
       case 'people': closePages(); openCommunity('people'); break
       case 'feed': closePages(); openCommunity('feed'); break
       case 'club': closePages(); openCommunity('clubs', t.id); break
@@ -558,8 +559,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (kind === 'event') { if (id) { dropSheet(); closePages(); openEvent(id) } }
     else if (kind === 'activity' || kind === 'person' || kind === 'checklist') { if (id) openTargetNow({ k: kind, id }) }
     else if (kind === 'club') { if (id) openTargetNow({ k: 'club', id }) }
+    // A post (an @mention push): the third value is the comment to jump to.
+    else if (kind === 'post') { if (id) openTargetNow({ k: 'post', id, comment: date ?? undefined }) }
   }
-  const DEEP = useRef<ReadonlySet<string>>(new Set(['workout', 'activity', 'event', 'club', 'person', 'checklist'])).current
+  const DEEP = useRef<ReadonlySet<string>>(new Set(['workout', 'activity', 'event', 'club', 'person', 'checklist', 'post'])).current
   const deepFrom = (url: string): [DeepKind, string, string | null] | null => {
     try {
       const u = new URL(url, window.location.origin)
@@ -567,6 +570,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       const k = u.searchParams.get('open') ?? ''
       if (!DEEP.has(k)) return null
       const id = (u.searchParams.get('id') ?? '').slice(0, 120)
+      if (k === 'post') { const c = u.searchParams.get('c'); return ['post', id, c && /^c[0-9a-f]{6,24}$/.test(c) ? c : null] }
       const date = u.searchParams.get('date')
       return [k as DeepKind, id, date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null]
     } catch { return null }
@@ -1339,6 +1343,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         return <ConversationScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'checklist':
         return <RaceChecklistScreen eventId={pg.id} onClose={pages.length > 1 ? popPage : closePages} />
+      case 'post':
+        return <PostScreen key={`${pg.id}:${pg.comment ?? ''}`} id={pg.id} comment={pg.comment} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'person':
         return <PersonScreen key={pg.id} uid={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'activity':

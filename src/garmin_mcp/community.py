@@ -61,6 +61,7 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from . import mentions as _mn
 from .appstore import AppStore
 from .explore import parse_distance_km
 from .logs import log_event
@@ -84,6 +85,7 @@ MAX_REPORTS = 500
 FEED_FOLLOWEES = 500
 PREVIEW_COMMENTS = 2
 PUSH_EVERY_S = 3600
+MAX_MENTION_ITEMS = 50   # newest @mentions kept per person for the bell
 POSTS_PER_DAY = 20
 COMMENTS_PER_DAY = 100
 PHOTO_MAX = 800 * 1024
@@ -152,6 +154,14 @@ class CommunityError(ValueError):
         super().__init__(message)
         self.message = message
         self.status = status
+
+
+def _mtext(v: Any, limit: int, *, what: str = "Text") -> str:
+    """``_text`` for text that may hold @mention tokens: the limit applies to what people read."""
+    s = _text(v, limit + _mn.TOKEN_ROOM, what=what)
+    if len(_mn.display(s)) > limit:
+        raise CommunityError(f"Keep it under {limit} characters.")
+    return s
 
 
 def _text(v: Any, limit: int, *, what: str = "Text") -> str:
@@ -427,6 +437,9 @@ class Community:
         # Set by webapp: ``workouts_of(uid) -> (garmin_acts, external_workouts)`` for the
         # one-time backfill when "Share my workouts with friends" turns on.
         self.workouts_of: Callable[[str], tuple[list[dict[str, Any]], list[dict[str, Any]]]] | None = None
+        # Set by webapp: a push that opens a given app link (``(to, title, body, url)``), for
+        # @mentions that open the exact post. Falls back to ``push``.
+        self.push_link: Callable[[str, str, str, str], None] | None = None
         self._pushed: dict[tuple[str, str], float] = {}
         self._reminded: dict[str, float] = {}
 
@@ -663,6 +676,7 @@ class Community:
         v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
         out = {k: post.get(k) for k in ("id", "author", "kind", "category", "text", "feeling", "event", "workout",
                                          "milestone", "created", "edited")}
+        out["text"], out["mentions"] = self._shown_mentions(viewer, post)
         photos = post.get("photos") or ([post["photo"]] if post.get("photo") else [])
         out.update({
             "audience": v, "club": None, "mine": mine,
@@ -672,7 +686,8 @@ class Community:
             **({"photo_ids": [p["id"] for p in photos if p.get("id")]} if mine else {}),
             "reactions": counts, "reaction_total": sum(counts.values()), "my_reaction": reactions.get(viewer),
             "comment_count": len(comments),
-            "comments": [{"id": c["id"], "by": c["by"], "text": c["text"], "ts": c["ts"], "parent": c.get("parent"),
+            "comments": [{"id": c["id"], "by": c["by"], "ts": c["ts"], "parent": c.get("parent"),
+                          **dict(zip(("text", "mentions"), self._shown_mentions(viewer, c), strict=True)),
                           "mine": c["by"] == viewer, "can_delete": c["by"] == viewer or mine} for c in shown],
         })
         if v.startswith("club:"):
@@ -694,7 +709,7 @@ class Community:
     def _fields(self, uid: str, body: dict[str, Any], *, partial: bool) -> dict[str, Any]:
         out: dict[str, Any] = {}
         if not partial or "text" in body:
-            out["text"] = _text(body.get("text"), TEXT_LEN)
+            out["text"] = _mtext(body.get("text"), TEXT_LEN)
         if not partial or "category" in body:
             c = body.get("category") or "other"
             if c not in CATEGORIES:
@@ -765,6 +780,7 @@ class Community:
         if not isinstance(body, dict):
             raise CommunityError("bad request")
         f = self._fields(uid, body, partial=False)
+        f["text"], mids = self._mentions(uid, f["text"], {"author": uid, "audience": f["audience"], "comments": []})
         photo_ids = self._photo_ids(body) or []
         if not f["text"] and not photo_ids and workout is None and milestone is None:
             raise CommunityError("Write something or add a photo.")
@@ -773,7 +789,7 @@ class Community:
         pid = "p" + secrets.token_hex(8)
         post: dict[str, Any] = {"id": pid, "author": uid, "kind": "workout" if workout else "milestone" if milestone else "moment",
                                 **f, "photos": [], "created": int(self._clock()), "edited": None,
-                                "reactions": {}, "comments": []}
+                                "reactions": {}, "comments": [], "mentions": mids}
         if workout is not None:
             post["workout"] = {k: workout.get(k) for k in WORKOUT_FIELDS
                                if k in WORKOUT_FIELDS[:8] or workout.get(k) not in (None, "", [], False)}
@@ -782,6 +798,7 @@ class Community:
         post["photos"] = self._attach_photos(uid, photo_ids, pid)
         self._store_post(uid, post)
         log_event(logger, logging.INFO, "community_post", user_id=uid, kind=post["kind"], audience=post["audience"].split(":")[0])
+        self._tell_mentioned(uid, post, None, mids, skip=set())
         return self.view(uid, post)
 
     def update(self, uid: str, pid: Any, body: Any) -> dict[str, Any]:
@@ -796,6 +813,9 @@ class Community:
         cur = (self._posts(uid).load().get("posts") or {}).get(pid)
         if cur is None:
             raise CommunityError("post not found", 404)
+        before = set(cur.get("mentions") or [])
+        if "text" in f:
+            f["text"], f["mentions"] = self._mentions(uid, f["text"], {**cur, **f})
         old = {p["id"]: p for p in cur.get("photos") or []}
         new_photos: list[dict[str, Any]] | None = None
         if ids is not None:
@@ -819,6 +839,8 @@ class Community:
         post, gone = self._posts(uid).update(apply)
         self._drop_photos(uid, {"photos": gone})
         self._g.update(lambda g: self._index_public(g, post))
+        if "mentions" in f:  # only people newly mentioned by this edit hear about it
+            self._tell_mentioned(uid, post, None, [m for m in f["mentions"] if m not in before], skip=set())
         return self.view(uid, post)
 
     def delete(self, uid: str, pid: Any) -> None:
@@ -964,7 +986,7 @@ class Community:
             self._bump_unread(owner, pid)
             what = workout_label(post.get("workout")) if post.get("workout") else "post"
             self._notify(owner, pid, f"{self._name(viewer)} cheered your {what}",
-                         post.get("text") or ("Tap to see who's cheering." if post.get("workout") else "Your post"))
+                         _mn.display(post.get("text") or "") or ("Tap to see who's cheering." if post.get("workout") else "Your post"))
         return self.view(viewer, post)
 
     def unreact(self, viewer: str, pid: Any) -> dict[str, Any]:
@@ -980,14 +1002,16 @@ class Community:
     def comment(self, viewer: str, pid: Any, text: Any, reply_to: Any = None) -> dict[str, Any]:
         """A comment, or a reply (one level: a reply to a reply joins the same thread)."""
         self.require(viewer)
-        body = _text(text, COMMENT_LEN, what="Comment")
+        body = _mtext(text, COMMENT_LEN, what="Comment")
         if not body:
             raise CommunityError("Write a comment first.")
-        owner, _ = self._load(viewer, pid)
+        owner, post = self._load(viewer, pid)
+        body, mids = self._mentions(viewer, body, post)
         if reply_to is not None and not isinstance(reply_to, str):
             raise CommunityError("comment not found", 404)
         self._take(viewer, "comments", COMMENTS_PER_DAY)
-        c = {"id": "c" + secrets.token_hex(6), "by": viewer, "text": body, "ts": int(self._clock()), "parent": None}
+        c = {"id": "c" + secrets.token_hex(6), "by": viewer, "text": body, "ts": int(self._clock()), "parent": None,
+             "mentions": mids}
 
         def fn(p: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
             cs = p.setdefault("comments", [])
@@ -1002,14 +1026,18 @@ class Community:
                 to = target["by"]
             cs.append(c)
             return p, to
-        _, to = self._touch(owner, pid, fn)
+        post, to = self._touch(owner, pid, fn)
+        said = _mn.display(body)
         if owner != viewer:
             self._bump_unread(owner, pid)
-            self._notify(owner, pid, f"{self._name(viewer)} commented", body)
+            self._notify(owner, pid, f"{self._name(viewer)} commented", said)
         if to and to not in (viewer, owner):
             self._bump_unread(to, pid)
-            self._notify(to, pid, f"{self._name(viewer)} replied", body)
-        return {**c, "mine": True, "can_delete": True}
+            self._notify(to, pid, f"{self._name(viewer)} replied", said)
+        # The owner and the person replied to already got a push for this comment.
+        self._tell_mentioned(viewer, post, c["id"], mids, skip={owner, to or ""})
+        text, shown = self._shown_mentions(viewer, c)
+        return {**c, "text": text, "mentions": shown, "mine": True, "can_delete": True}
 
     def delete_comment(self, viewer: str, pid: Any, cid: Any) -> None:
         """The comment's author, or the post's author. Replies go with their comment."""
@@ -1199,8 +1227,9 @@ class Community:
         return out
 
     # ------------------------------------------------------------- push --
-    def _notify(self, to: str, pid: str, title: str, body: str) -> None:
-        """At most one push per post per hour per person; none in their quiet hours."""
+    def _notify(self, to: str, pid: str, title: str, body: str, url: str | None = None) -> None:
+        """At most one push per post per hour per person; none in their quiet hours.
+        ``url``: the app link it opens (``push_link``), else the feed."""
         if self.push is None:
             return
         try:
@@ -1217,9 +1246,140 @@ class Community:
             if len(self._pushed) > 5000:
                 self._pushed.pop(next(iter(self._pushed)))
         try:
-            self.push(to, title[:60], _clip(body, 140))
+            if url and self.push_link is not None:
+                self.push_link(to, title[:60], _clip(body, 140), url)
+            else:
+                self.push(to, title[:60], _clip(body, 140))
         except Exception as e:
             log_event(logger, logging.WARNING, "community_push_failed", error=type(e).__name__)
+
+    # --------------------------------------------------------- mentions --
+    def _may_mention(self, author: str, uid: str, post: dict[str, Any]) -> bool:
+        """People ``author`` may @mention here: athletes they follow or who follow them, the
+        post's author and commenters, and members of the club or group the post is in.
+        Never a coach account, never across a block."""
+        if uid == author or uid.startswith("coach_") or not self.social.is_athlete(uid):
+            return False
+        if self.social.blocked_between(author, uid):
+            return False
+        if self.social.follows(author, uid) or self.social.follows(uid, author):
+            return True
+        if uid == post.get("author") or any(c.get("by") == uid for c in post.get("comments") or []):
+            return True
+        aud = norm_audience(post.get("audience") or "friends")
+        if aud.startswith("club:"):
+            return bool(self.clubs.is_member(aud[5:], uid))
+        if aud.startswith("grp:") and self.groups is not None:
+            return any(self.groups.is_member(g, uid) for g in self.group_ids(aud))
+        return False
+
+    def _mentions(self, author: str, text: str, post: dict[str, Any]) -> tuple[str, list[str]]:
+        """Check the @mentions in ``text`` for ``post``: tokens for people the author may
+        mention stay (as links); any other token becomes plain ``@Name``. Someone who can't
+        see the post can't be mentioned in it (a clear error rather than a silent link)."""
+        names: dict[str, str] = {}
+        for m in _mn.TOKEN.finditer(text or ""):
+            names.setdefault(m.group(2), m.group(1).strip())
+        ok: list[str] = []
+        for uid in names:
+            if not self._may_mention(author, uid, post):
+                continue
+            if not self.can_see(uid, post):
+                raise CommunityError(f"{self._name(uid)} can't see this post. Change who can see it or remove the mention.")
+            ok.append(uid)
+        if len(ok) > _mn.MAX_MENTIONS:
+            raise CommunityError(f"Mention up to {_mn.MAX_MENTIONS} people at a time.")
+        return _mn.keep(text, ok), ok
+
+    def _shown_mentions(self, viewer: str, item: dict[str, Any]) -> tuple[str, list[dict[str, str]]]:
+        """``(text, [{id, name}])`` for a post or comment as ``viewer`` sees it: links only for
+        its own validated mentions, never to someone blocked with the viewer; current names."""
+        vis = [u for u in item.get("mentions") or []
+               if u == viewer or not self.social.blocked_between(viewer, u)]
+        return _mn.keep(str(item.get("text") or ""), vis), [{"id": u, "name": self._name(u)} for u in vis]
+
+    def _tell_mentioned(self, author: str, post: dict[str, Any], cid: str | None, uids: list[str],
+                        *, skip: set[str]) -> None:
+        """A bell item for each newly mentioned person, and a push (unless they're in ``skip``,
+        already told about this comment by another push)."""
+        if not uids:
+            return
+        now = int(self._clock())
+        pid = post["id"]
+        where = "a comment" if cid else "a post"
+        said = _mn.display(next((c["text"] for c in post.get("comments") or [] if c["id"] == cid), "")
+                           if cid else str(post.get("text") or ""))
+        url = f"/app/?open=post&id={pid}" + (f"&c={cid}" if cid else "")
+        for to in uids:
+            if to == author:
+                continue
+            item = {"pid": pid, "cid": cid, "by": author, "ts": now}
+
+            def apply(d: dict[str, Any], item: dict[str, Any] = item) -> None:
+                ms = [x for x in d.get("mentions") or [] if not (x.get("pid") == item["pid"] and x.get("cid") == item["cid"])]
+                ms.append(item)
+                d["mentions"] = ms[-MAX_MENTION_ITEMS:]
+            try:
+                self._mine(to).update(apply)
+            except Exception as e:  # the comment is saved; the bell item is best effort
+                log_event(logger, logging.WARNING, "community_mention_failed", error=type(e).__name__)
+                continue
+            if to not in skip:
+                self._notify(to, f"m:{pid}", f"{self._name(author)} mentioned you in {where}", said, url=url)
+
+    def mentions_for(self, uid: str) -> list[dict[str, Any]]:
+        """The bell's "mentioned you" items still worth showing: the post is there, ``uid``
+        can still see it, the comment wasn't deleted and nobody is blocked."""
+        out: list[dict[str, Any]] = []
+        for m in reversed(self._mine(uid).load().get("mentions") or []):
+            pid, cid, by = m.get("pid"), m.get("cid"), m.get("by")
+            if not isinstance(pid, str) or not isinstance(by, str) or self.social.blocked_between(uid, by):
+                continue
+            try:
+                _, post = self._load(uid, pid)
+            except CommunityError:
+                continue
+            if cid:
+                c = next((x for x in post.get("comments") or [] if x["id"] == cid), None)
+                if c is None or uid not in (c.get("mentions") or []):
+                    continue
+                text = c["text"]
+            else:
+                if uid not in (post.get("mentions") or []):
+                    continue
+                text = str(post.get("text") or "")
+            out.append({"pid": pid, "cid": cid, "by": by, "ts": int(m.get("ts") or 0),
+                        "where": "comment" if cid else "post", "text": _clip(_mn.display(text), 140)})
+        return out
+
+    def mentionable(self, viewer: str, pid: Any = None, audience: Any = None) -> list[dict[str, Any]]:
+        """Who ``viewer`` can @mention: ``[{id, can_see}]``. On a post (``pid``) the post's
+        author, commenters and its club/group members come first; ``can_see`` is False for
+        someone the post (or the chosen ``audience`` of a new post) doesn't reach."""
+        self.require(viewer)
+        if pid:
+            _, post = self._load(viewer, pid)
+        else:
+            aud = audience if isinstance(audience, str) and audience else "friends"
+            post = {"author": viewer, "audience": aud, "comments": []}
+        ids: list[str] = []
+        if pid:
+            ids.append(str(post["author"]))
+            ids += [str(c["by"]) for c in post.get("comments") or []]
+        aud = norm_audience(post.get("audience") or "friends")
+        if aud.startswith("club:"):
+            ids += list(self.clubs.member_ids(aud[5:], viewer))
+        if aud.startswith("grp:") and self.groups is not None:
+            for g in self.group_ids(aud):
+                ids += list(self.groups.member_ids(g, viewer))
+        ids += self.social.following_ids(viewer) + self.social.follower_ids(viewer)
+        out: list[dict[str, Any]] = []
+        for u in dict.fromkeys(i for i in ids if i):
+            if self._may_mention(viewer, u, post):
+                out.append({"id": u, "can_see": bool(self.can_see(u, post))})
+            if len(out) >= 300:
+                break
+        return out
 
     # ----------------------------------------------------------- photos --
     def save_photo(self, uid: str, data: bytes) -> dict[str, Any]:

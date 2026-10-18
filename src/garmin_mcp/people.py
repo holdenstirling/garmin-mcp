@@ -50,6 +50,7 @@ class People:
                  today: Callable[[str], date], public_events: Callable[[], dict[str, dict[str, Any]]] | None = None,
                  events: Callable[[str], list[dict[str, Any]]] | None = None,
                  post_unread: Callable[[str], dict[str, int]] | None = None,
+                 mentions: Callable[[str], list[dict[str, Any]]] | None = None,
                  clock: Callable[[], float] = time.time) -> None:
         self._s = store
         self.soc = soc
@@ -64,6 +65,7 @@ class People:
         self._pub = public_events or (lambda: {})
         self._events = events or (lambda uid: [])
         self._post_unread = post_unread or (lambda uid: {})
+        self._mentions = mentions or (lambda uid: [])
         self._clock = clock
 
     # ------------------------------------------------------------ access --
@@ -250,6 +252,14 @@ class People:
                     items.append({"key": f"post:{pid}:{n}", "kind": "post",
                                   "title": f"{n} new reaction{'s' if n != 1 else ''} or comment{'s' if n != 1 else ''} on your post",
                                   "body": "", "ts": self._clock(), "person": None, "open": {"k": "feed"}})
+        except Exception:
+            pass
+        try:
+            for m in self._mentions(uid) or []:
+                items.append({"key": f"mention:{m['pid']}:{m.get('cid') or ''}", "kind": "mention",
+                              "title": f"{self._name(m['by'])} mentioned you in a {m['where']}",
+                              "body": m.get("text") or "", "ts": m.get("ts") or 0, "person": self._person(m["by"]),
+                              "open": {"k": "post", "id": m["pid"], **({"comment": m["cid"]} if m.get("cid") else {})}})
         except Exception:
             pass
         if self.clubs is not None:

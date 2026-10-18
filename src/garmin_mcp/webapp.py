@@ -3525,6 +3525,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         cm = _cmm.Community(store, social=soc, clubs=clb, now=_ag._now, moment=_ag.moments.post, name=_soc_name,
                             quiet=lambda u: _ag.moments.quiet(_ag._now(u)),
                             push=(lambda to, t, b: push.send(to, t, b, url="/app/?open=community")) if push else None)
+        if push:  # @mentions open the exact post
+            cm.push_link = lambda to, t, b, url: push.send(to, t, b, url=url)
         _ext_feed["share"] = cm.auto_share_external
 
         def _cm_workouts(uid: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -3904,7 +3906,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             store, soc=soc, feed=soc_feed, clubs=clb, dms=dms, related=cm.related, person=_soc_person,
             name=_soc_name, home=_cm_home, today=lambda u: _ag._now(u).date(),
             public_events=lambda: (_pubev._doc.load().get("items") or {}),
-            events=lambda u: _ag.events.list(u), post_unread=lambda u: (cm._mine(u).load().get("unread") or {}))
+            events=lambda u: _ag.events.list(u), post_unread=lambda u: (cm._mine(u).load().get("unread") or {}),
+            mentions=cm.mentions_for)
         community_routes += _pplw.make_routes(people=people_svc, wrap=_cd_wrap, read_json=read_json,
                                               club_chat=_ppl_club_chat, on_follow=_ppl_on_follow)
 

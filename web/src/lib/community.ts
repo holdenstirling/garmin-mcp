@@ -66,6 +66,8 @@ export type PostWorkout = {
 }
 export type PostComment = {
   id: string; by: { id: string; name: string }; text: string; ts: number; parent: string | null; mine: boolean; can_delete: boolean
+  /** people @mentioned (links in the text, current names) */
+  mentions?: { id: string; name: string }[]
 }
 export type Post = {
   id: string; author: string; user: SocialUser | null; kind: 'moment' | 'milestone' | 'workout'
@@ -79,6 +81,8 @@ export type Post = {
   prompt?: string | null; pinned_until?: number
   reactions: Record<ReactionKind, number>; reaction_total: number; my_reaction: ReactionKind | null
   comment_count: number; comments: PostComment[]
+  /** people @mentioned in the text */
+  mentions?: { id: string; name: string }[]
 }
 export type Draft = {
   id: string; type: MilestoneType; key: string; text: string; category: Category; event: PostEvent | null

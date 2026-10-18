@@ -15,6 +15,7 @@ import { giveKudos, takeKudos } from '@/lib/social'
 import { getFriendsToday, openPerson, sportWord, type FriendsToday } from '@/lib/people'
 import { PersonAvatar as TapAvatar } from '@/components/people/PersonLink'
 import { daysUntil } from '@/lib/events'
+import { displayText } from '@/lib/mentions'
 
 function line(p: Post, imperial: boolean): string {
   const w = p.workout
@@ -22,7 +23,7 @@ function line(p: Post, imperial: boolean): string {
     const bits = [w.km ? fmtDist(w.km, imperial, w.sport) : null, w.minutes ? fmtDuration(w.minutes) : null].filter(Boolean)
     return [w.title, ...bits].join(' · ') + (w.headline ? ` · ${w.headline}` : '')
   }
-  return p.text || (p.photos.length ? 'Shared a photo' : 'Shared a post')
+  return displayText(p.text) || (p.photos.length ? 'Shared a photo' : 'Shared a post')
 }
 
 export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {

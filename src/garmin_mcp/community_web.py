@@ -12,7 +12,8 @@ with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, c
     GET    /app/api/community/posts/{pid}/photos/{n}
     POST   /app/api/community/posts/{pid}/reactions  {kind: party|strong|heart|rabbit}
     DELETE /app/api/community/posts/{pid}/reactions
-    POST   /app/api/community/posts/{pid}/comments   {text, reply_to?}
+    POST   /app/api/community/posts/{pid}/comments   {text, reply_to?} (text may hold @[Name](uid) mentions)
+    GET    /app/api/community/mentionable?pid=|audience=  people the viewer can @mention there
     DELETE /app/api/community/posts/{pid}/comments/{cid}
     POST   /app/api/community/posts/{pid}/hide
     POST   /app/api/community/posts/{pid}/report     {reason?}
@@ -201,6 +202,19 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         b = await body_of(request)
         c = await run(lambda: cm.comment(user_id, pid, b.get("text"), b.get("reply_to")))
         return JSONResponse({"comment": {**c, "by": {"id": user_id, "name": first_name(user_id)}}}, status_code=201)
+
+    async def mentionable(request: Request, user_id: str) -> Response:
+        """People the viewer can @mention on a post (``pid``) or in a new post (``audience``)."""
+        raw = request.query_params.get("pid") or None
+        pid = valid_pid(raw) if raw else None
+        aud = (request.query_params.get("audience") or "")[:80] or None
+        rows = await run(lambda: cm.mentionable(user_id, pid, aud))
+        out = []
+        for r in rows:
+            u = person(r["id"])
+            if u:
+                out.append({**u, "can_see": r["can_see"]})
+        return JSONResponse({"people": out})
 
     async def comment_delete(request: Request, user_id: str) -> Response:
         pid = pid_of(request)
@@ -482,6 +496,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         Route(f"{P}/posts/{{post_id}}/photos/{{n}}", photo_cache(wrap(post_photo, mutating=False)), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}/reactions", wrap(reactions, mutating=True), methods=["POST", "DELETE"]),
         Route(f"{P}/posts/{{post_id}}/comments", wrap(comment_add, mutating=True), methods=["POST"]),
+        Route(f"{P}/mentionable", wrap(mentionable, mutating=False), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}/comments/{{comment_id}}", wrap(comment_delete, mutating=True), methods=["DELETE"]),
         Route(f"{P}/posts/{{post_id}}/hide", wrap(hide, mutating=True), methods=["POST"]),
         Route(f"{P}/posts/{{post_id}}/report", wrap(report, mutating=True), methods=["POST"]),
