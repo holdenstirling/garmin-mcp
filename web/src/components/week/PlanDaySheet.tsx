@@ -1,7 +1,7 @@
 // One day of the plan, everything about it: each session's full description, length and status,
 // the Garmin workout you did (tap: its full page), Ask Rabbit, and, for a plan that comes from a
 // file (no session ids), "Get full workouts" to turn the whole plan into Rabbit workouts.
-import { Check, ChevronRight, MessageCircle, Sparkles } from 'lucide-react'
+import { BookOpen, Check, ChevronRight, MessageCircle } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { SPORT_ICON, fmtDay } from '@/components/plan/PlanParts'
@@ -86,7 +86,7 @@ export function PlanDaySheet({ day, imperial, onClose, onAsk }: {
       )}
       {fromFile && (
         <section className="flex flex-col gap-2 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4">
-          <p className="m-0 flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--accent)"><Sparkles className="size-4" aria-hidden /> Want the full workout?</p>
+          <p className="m-0 flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--accent)"><BookOpen className="size-4" aria-hidden /> Want the full workout?</p>
           <p className="m-0 text-[0.7647rem] leading-snug text-(--text-secondary)">
             This day comes from your plan file, so Rabbit only has its description. Turn the plan into full workouts to get heart-rate zones, pace, cadence and steps for every day, plus moving days and sending to your watch.
           </p>

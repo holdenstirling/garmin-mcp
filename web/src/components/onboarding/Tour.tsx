@@ -11,7 +11,7 @@ import { TOUR_EVENT, markTourDone, tourDone } from '@/lib/tour'
 
 type Step = { target: string; title: string; body: string }
 const STEPS: Step[] = [
-  { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask Rabbit, your AI coach, anything." },
+  { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask Rabbit, your coach, anything." },
   { target: 'tab-plan', title: 'Schedule', body: 'Your plan and your events in one place. Tap a day for the full workout; move it if life gets in the way. + Add puts in a workout, event or plan.' },
   { target: 'tab-feed', title: 'Feed', body: "What your friends and groups are up to. Make a group feed with just a few people." },
   { target: 'tab-clubs', title: 'Local', body: 'Clubs, leagues and meetups near you, from run clubs to volleyball, plus people to follow.' },

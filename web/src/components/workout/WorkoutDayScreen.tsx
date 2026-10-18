@@ -9,7 +9,7 @@
 import { smooth } from '@/lib/scrollMotion'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, Sparkles, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
+import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -40,6 +40,7 @@ import { Related } from '@/components/nav/Related'
 import { CalendarDays } from 'lucide-react'
 import { sportIcon } from '@/lib/sportIcon'
 import { FuelSection } from './FuelSection'
+import { RabbitLogo } from '@/components/RabbitLogo'
 
 const LOADING = ['Lacing up…', 'Loading your targets…', 'Checking the sky…', 'Stretching the hamstrings…']
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -288,7 +289,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       )}
       {c?.adjusted && (
         <p className="flex items-start gap-2 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-3 py-2 text-[0.7647rem] leading-snug text-(--accent)">
-          <Sparkles className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {c.adjusted}
+          <RabbitLogo size={14} current className="mt-0.5 shrink-0" /> {c.adjusted}
         </p>
       )}
       {isToday && d.readiness && (

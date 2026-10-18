@@ -5,7 +5,7 @@
 // and the one-tap "new paces" nudge.
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useEffect, useState } from 'react'
-import { ChevronDown, Gauge, HeartPulse, Footprints, RotateCw, Sparkles, Timer, Zap } from 'lucide-react'
+import { Check, ChevronDown, Gauge, HeartPulse, Footprints, RotateCw, Timer, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { fmtDist, fmtDuration } from '@/lib/format'
@@ -195,7 +195,7 @@ export function PaceNudge({ sports }: { sports: string[] }) {
     getPaces().then((v) => { if (live) setSug(v.pending.find((p) => key.split(',').includes(p.sport)) ?? null) }, () => {})
     return () => { live = false }
   }, [key])
-  if (done) return <p className="flex items-center gap-1.5 px-2 text-[0.7647rem] text-(--accent)" role="status"><Sparkles className="size-3.5" aria-hidden />{done}</p>
+  if (done) return <p className="flex items-center gap-1.5 px-2 text-[0.7647rem] text-(--accent)" role="status"><Check className="size-3.5" aria-hidden />{done}</p>
   if (!sug) return null
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3" role="status">
