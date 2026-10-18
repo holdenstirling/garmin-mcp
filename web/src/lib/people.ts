@@ -21,6 +21,7 @@ export type Profile = {
 export type NotifOpen =
   | { k: 'dm'; id: string } | { k: 'people' } | { k: 'person'; id: string } | { k: 'activity'; id: string }
   | { k: 'feed' } | { k: 'club'; id: string } | { k: 'checklist'; id: string }
+  | { k: 'post'; id: string; comment?: string }
 export type Notif = {
   key: string; kind: string; title: string; body: string; ts: number; unread: boolean
   person: PersonRef | null; open: NotifOpen
@@ -74,7 +75,7 @@ export const notifsChanged = () => fire(NOTIFS_CHANGED_EVENT)
 // ---------------------------------------------------------------- deep links --
 // In-app links any screen can copy or share: /app/?open=<kind>&id=<id>[&date=]. Chat.tsx reads
 // them on load (also from push taps) and opens the page.
-export type DeepKind = 'workout' | 'activity' | 'event' | 'club' | 'person' | 'checklist'
+export type DeepKind = 'workout' | 'activity' | 'event' | 'club' | 'person' | 'checklist' | 'post'
 export function deepLink(kind: DeepKind, id: string, date?: string): string {
   const p = new URLSearchParams({ open: kind, id })
   if (date) p.set('date', date)

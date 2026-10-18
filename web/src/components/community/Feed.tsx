@@ -40,6 +40,9 @@ import { SaveStatus } from '@/components/ui/SaveStatus'
 import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { FeedHint } from '@/components/community/FeedHint'
 import { PhotoPicker, existingPhotos, usePhotoPicker } from '@/components/community/PhotoPicker'
+import { useMentionField } from './MentionField'
+import { MentionText } from './MentionText'
+import { displayText, tokensIn } from '@/lib/mentions'
 
 
 export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
@@ -269,6 +272,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
   const setEventId = (eventId: string) => setD((x) => ({ ...x, eventId }))
   const setAudience = (audience: Audience) => setD((x) => ({ ...x, audience }))
   const photos = usePhotoPicker()
+  const mention = useMentionField<HTMLTextAreaElement>({ value: text, setValue: setText, where: { audience } })
   const [queued, setQueued] = useState(false)
   const guard = useUnsavedGuard(!!text.trim() || photos.items.length > 0, draft.discard)
   const close = guard.wrap(onClose)
@@ -291,7 +295,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
       // Durable + idempotent (lib/outbox): offline / 5xx keeps the text here and retries; a
       // retry can never post twice. Photos are already uploaded, so their ids go along.
       const r = await counted(saveDurably<{ post: Post }>({ method: 'POST', path: '/api/community/posts', label: 'post',
-        body: { text: text.trim(), category, feeling, audience, photo_ids: photos.ids, event_id: eventId || null } },
+        body: { text: mention.encode(text).trim(), category, feeling, audience, photo_ids: photos.ids, event_id: eventId || null } },
       () => setQueued(true)), 'share', { what: 'post' })
       draft.clear()
       burst(el, 'kudos'); onPosted(r.post)
@@ -310,8 +314,10 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
         </div>
         <div className="modal-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          <div>
-            <textarea aria-label="Post text" className={cn(areaCls, 'min-h-[96px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text} onChange={(e) => setText(e.target.value)}
+          <div className="relative">
+            {mention.list}
+            <textarea ref={mention.ref} aria-label="Post text" className={cn(areaCls, 'min-h-[96px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text}
+              onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { mention.onKeyDown(e) }} onSelect={mention.onSelect}
               placeholder={category === 'race' ? 'How did it go?' : category === 'gratitude' ? 'Who are you thankful for?' : 'What happened?'} />
             {text.length > TEXT_LEN * 0.8 && <p className="mt-0.5 text-right text-[0.6471rem] text-(--text-muted)">{text.length}/{TEXT_LEN}</p>}
           </div>
@@ -456,8 +462,12 @@ function EventChip({ e }: { e: { name: string; date: string } }) {
 }
 
 // ------------------------------------------------------------------ post ---
-export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
+export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, expanded, focusComment }: {
   post: Post; imperial: boolean; onChange: (p: Post) => void; onDelete: () => void; onBlocked?: () => void
+  /** comments open (the single-post page) */
+  expanded?: boolean
+  /** a comment to scroll to and highlight (a mention notification) */
+  focusComment?: string
 }) {
   const [menu, setMenu] = useState(false)
   const [details, setDetails] = useState(false)  // a friend's workout, read-only
@@ -465,14 +475,15 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
   const [editing, setEditing] = useState<null | 'edit' | 'photos'>(null)
   // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
   const [comment, setComment, commentDraft] = useDraft<string>(`comment.${p.id}`, '', { label: 'comment', isEmpty: (v) => !v.trim() })
-  const [showComments, setShowComments] = useState(() => readDraft<string>(`comment.${p.id}`) != null)
+  const [showComments, setShowComments] = useState(() => !!expanded || readDraft<string>(`comment.${p.id}`) != null)
   const [commentQueued, setCommentQueued] = useState(false)
   const [replyTo, setReplyTo] = useState<PostComment | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const reactBtns = useRef<Partial<Record<ReactionKind, HTMLButtonElement | null>>>({})
-  const input = useRef<HTMLInputElement>(null)
+  const mention = useMentionField<HTMLInputElement>({ value: comment, setValue: setComment, where: { pid: p.id } })
+  const input = mention.ref
   const name = p.mine ? 'You' : p.user?.name ?? 'Someone'
   const photos = postPhotoUrls(p)
 
@@ -498,7 +509,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
     setReplyTo(c); setShowComments(true); window.setTimeout(() => input.current?.focus(), 0)
   }
   async function send() {
-    const t = comment.trim()
+    const t = mention.encode(comment).trim()
     if (!t) return
     setBusy(true); setErr(null); setCommentQueued(false)
     try {
@@ -507,7 +518,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
         path: `/api/community/posts/${encodeURIComponent(p.id)}/comments`, body: { text: t, reply_to: replyTo?.id ?? null } },
       () => setCommentQueued(true))
       onChange({ ...p, comments: [...p.comments, r.comment], comment_count: p.comment_count + 1 })
-      setComment(''); commentDraft.clear(); setReplyTo(null)
+      setComment(''); commentDraft.clear(); setReplyTo(null); mention.reset()
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setCommentQueued(false) }
   }
   async function removeComment(cid: string) {
@@ -586,7 +597,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
       </header>
 
       {p.text ? (
-        <p className="mt-2.5 whitespace-pre-wrap break-words text-[0.9412rem] leading-snug text-(--text)">{p.text}</p>
+        <p className="mt-2.5 whitespace-pre-wrap break-words text-[0.9412rem] leading-snug text-(--text)"><MentionText text={p.text} mentions={p.mentions} /></p>
       ) : null}
       {photos.length > 0 && <PhotoGrid urls={photos} who={p.mine ? 'your' : `${p.user?.name ?? 'their'}'s`} />}
       {editing && (
@@ -632,12 +643,12 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
       {(showComments || (p.comments.length > 0 && p.comment_count <= 2)) && p.comments.length > 0 && (
         <ul className="mt-1.5 flex flex-col gap-1.5 border-t border-(--border) pt-2">
           {tops.map((c) => (
-            <li key={c.id} className="flex flex-col gap-1">
+            <li key={c.id} id={`comment-${c.id}`} className={cn('flex scroll-mt-24 flex-col gap-1 rounded-lg', focusComment === c.id && 'comment-focus')}>
               <CommentLine c={c} onReply={() => startReply(c)} onDelete={() => void removeComment(c.id)} />
               {replies(c.id).length > 0 && (
                 <ul className="ml-4 flex flex-col gap-1 border-l border-(--border) pl-2.5">
                   {replies(c.id).map((r) => (
-                    <li key={r.id}><CommentLine c={r} onReply={() => startReply(c)} onDelete={() => void removeComment(r.id)} /></li>
+                    <li key={r.id} id={`comment-${r.id}`} className={cn('scroll-mt-24 rounded-lg', focusComment === r.id && 'comment-focus')}><CommentLine c={r} onReply={() => startReply(c)} onDelete={() => void removeComment(r.id)} /></li>
                   ))}
                 </ul>
               )}
@@ -653,10 +664,12 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked }: {
               <button type="button" className="hit-44 ml-1 underline" onClick={() => setReplyTo(null)}>cancel</button>
             </span>
           )}
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
+            {mention.list}
             <input ref={input} aria-label={replyTo ? 'Reply' : 'Comment'} className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={COMMENT_LEN}
-              placeholder={replyTo ? 'Write a reply…' : 'Say something kind…'}
-              value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send() }} />
+              placeholder={replyTo ? 'Write a reply…' : 'Say something… @ to tag'} enterKeyHint="send"
+              value={comment} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
+              onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter') void send() }} />
             <Button variant="primary" className="h-11 w-11 shrink-0 p-0" aria-label="Send comment" loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
               <Send className="size-4" />
             </Button>
@@ -683,7 +696,7 @@ function CommentLine({ c, onReply, onDelete }: { c: PostComment; onReply: () => 
     <div className="flex items-start gap-1.5 text-[0.7647rem] leading-snug">
       <span className="min-w-0 flex-1 break-words">
         {c.mine ? <span className="font-medium text-(--text)">You</span> : <PersonLink id={c.by.id} name={c.by.name} className="font-medium text-(--text)" />}{' '}
-        <span className="text-(--text-secondary)">{c.text}</span>{' '}
+        <MentionText className="text-(--text-secondary)" text={c.text} mentions={c.mentions} />{' '}
         <span className="whitespace-nowrap text-[0.6471rem] text-(--text-muted)">{ago(c.ts)}</span>
       </span>
       <button type="button" aria-label="Reply" onClick={onReply} className="hit-44 shrink-0 p-0.5 text-(--text-muted)"><Reply className="size-3.5" /></button>
@@ -845,7 +858,9 @@ function SplitBars({ splits, sport }: { splits: { km: number; s: number }[]; spo
 function CaptionSheet({ post, title = 'Add photos or a caption', onClose, onSaved }: {
   post: Post; title?: string; onClose: () => void; onSaved: (p: Post) => void
 }) {
-  const [text, setText] = useState(post.text)
+  // Shown as "@Name" while editing; the saved mentions stay picked (lib/mentions).
+  const [text, setText] = useState(() => displayText(post.text))
+  const mention = useMentionField<HTMLTextAreaElement>({ value: text, setValue: setText, where: { pid: post.id }, initial: tokensIn(post.text) })
   const photos = usePhotoPicker(existingPhotos(post.photo_ids, postPhotoUrls(post)))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -853,19 +868,23 @@ function CaptionSheet({ post, title = 'Add photos or a caption', onClose, onSave
   async function save(el: HTMLElement) {
     setBusy(true); setErr(null)
     try {
-      const r = await updatePost(post.id, { text: text.trim(), ...(changedPhotos ? { photo_ids: photos.ids } : {}) })
+      const r = await updatePost(post.id, { text: mention.encode(text).trim(), ...(changedPhotos ? { photo_ids: photos.ids } : {}) })
       burst(el, 'kudos'); onSaved({ ...r.post, comments: post.comments })
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
     <Sheet title={title} onClose={onClose}
       bodyClassName="flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <textarea aria-label="Caption" className={cn(areaCls, 'min-h-[90px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text}
-        placeholder="How did it feel?" onChange={(e) => setText(e.target.value)} />
+      <div className="relative">
+        {mention.list}
+        <textarea ref={mention.ref} aria-label="Caption" className={cn(areaCls, 'min-h-[90px] text-[0.9412rem]')} autoFocus maxLength={TEXT_LEN} value={text}
+          placeholder="How did it feel?" onChange={(e) => setText(e.target.value)} onSelect={mention.onSelect}
+          onKeyDown={(e) => { mention.onKeyDown(e) }} />
+      </div>
       <PhotoPicker picker={photos} />
       {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
       <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy}
-        disabled={photos.busy || (!changedPhotos && text.trim() === post.text.trim())
+        disabled={photos.busy || (!changedPhotos && mention.encode(text).trim() === post.text.trim())
           || (!text.trim() && !photos.ids.length && !post.workout && !post.milestone)}
         onClick={(e) => void save(e.currentTarget)}>{photos.busy ? 'Uploading…' : 'Save'}</Button>
     </Sheet>

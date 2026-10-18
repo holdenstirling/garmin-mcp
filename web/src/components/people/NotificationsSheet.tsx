@@ -2,7 +2,7 @@
 // Each row opens its exact item (Chat.tsx handles lib/people openTarget); opening one marks it
 // read; "Mark all read" clears the dot.
 import { useEffect, useState } from 'react'
-import { Bell, CalendarCheck, Heart, MessageCircle, UserPlus, Users, X } from 'lucide-react'
+import { AtSign, Bell, CalendarCheck, Heart, MessageCircle, UserPlus, Users, X } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/Avatar'
@@ -14,7 +14,7 @@ import { FollowButton } from '@/components/friends/PersonRows'
 
 const KIND_ICON: Record<string, typeof Bell> = {
   dm: MessageCircle, dm_request: MessageCircle, follow_request: UserPlus, follower: UserPlus,
-  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck,
+  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck, mention: AtSign,
 }
 
 export function NotificationsSheet({ onClose }: { onClose: () => void }) {
