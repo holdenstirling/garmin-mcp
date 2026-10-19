@@ -1316,9 +1316,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <Segmented label="Schedule" value={schedView} onChange={setSchedView}
           options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
       </div>
-      <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body" aria-haspopup="dialog"
+      <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body max-[359px]:w-11 max-[359px]:px-0" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
-        <Plus className="size-5" aria-hidden />Add
+        <Plus className="size-5" aria-hidden /><span className="max-[359px]:sr-only">Add</span>
       </Button>
     </div>
   )
