@@ -74,7 +74,7 @@ export function SoonSheet({ app, onClose, onChanged }: {
           </p>
         ) : null}
         {cur.wanted_by != null && (
-          <p className="text-center text-meta text-(--text-muted)">
+          <p className="text-center text-small text-(--text-secondary)">
             {cur.wanted_by === 1 ? '1 person wants this' : `${cur.wanted_by} people want this`} (only you see this count)
           </p>
         )}

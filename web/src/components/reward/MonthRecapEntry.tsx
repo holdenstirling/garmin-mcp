@@ -14,7 +14,7 @@ export function MonthRecapEntry({ onOpen }: { onOpen: (month: string) => void })
       <CalendarHeart className="size-5 shrink-0 text-(--accent)" aria-hidden="true" />
       <span className="min-w-0 flex-1">
         <span className="block text-body font-semibold text-(--text)">Your {label}</span>
-        <span className="block text-meta text-(--text-muted)">{fresh ? 'Your month card is ready to share' : 'Month in review · share card'}</span>
+        <span className="block text-small text-(--text-secondary)">{fresh ? 'Your month card is ready to share' : 'Month in review · share card'}</span>
       </span>
       <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden="true" />
     </button>

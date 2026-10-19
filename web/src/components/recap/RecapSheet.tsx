@@ -44,12 +44,12 @@ export function RecapSheet({ week: initialWeek, onClose, onAsk }: {
       headerExtra={
         <div className="mx-auto mt-1.5 flex max-w-xl items-center justify-between">
           <button type="button" disabled={!canPrev} onClick={() => prev && setWeek(prev)} aria-label="Previous week"
-            className="hit-44 inline-flex items-center gap-0.5 text-caption text-(--text-muted) disabled:opacity-30">
+            className="hit-44 inline-flex items-center gap-0.5 text-meta text-(--text-secondary) disabled:opacity-30">
             <ChevronLeft className="size-4" /> Earlier
           </button>
-          <span className="text-caption text-(--text-muted)">{r?.current ? 'This week' : r ? 'Week in review' : ''}</span>
+          <span className="text-meta text-(--text-secondary)">{r?.current ? 'This week' : r ? 'Week in review' : ''}</span>
           <button type="button" disabled={!canNext} onClick={() => next && setWeek(next)} aria-label="Next week"
-            className="hit-44 inline-flex items-center gap-0.5 text-caption text-(--text-muted) disabled:opacity-30">
+            className="hit-44 inline-flex items-center gap-0.5 text-meta text-(--text-secondary) disabled:opacity-30">
             Later <ChevronRight className="size-4" />
           </button>
         </div>
@@ -133,7 +133,7 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
             <span className="min-w-0 flex-1">
               <Label>Best workout</Label>
               <span className="block truncate text-body font-medium text-(--text)">{r.best.name}</span>
-              <span className="block text-caption text-(--text-muted)">
+              <span className="block text-meta text-(--text-secondary)">
                 {fmtDay(r.best.date, { weekday: 'long' })} · {fmtDuration(r.best.minutes)}{r.best.km ? ` · ${fmtDist(r.best.km, imperial, r.best.sport)}` : ''}
               </span>
             </span>
@@ -152,9 +152,9 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
             <ul className="flex flex-col divide-y divide-(--border)">
               {nw.sessions.map((s) => (
                 <li key={`${s.date}-${s.title}`} className="flex items-baseline gap-2 py-1.5 text-small">
-                  <span className="w-9 shrink-0 font-mono text-caption uppercase text-(--text-muted)">{fmtDay(s.date, { weekday: 'short' })}</span>
+                  <span className="w-9 shrink-0 font-mono text-meta uppercase text-(--text-secondary)">{fmtDay(s.date, { weekday: 'short' })}</span>
                   <span className="min-w-0 flex-1 truncate text-(--text)">{s.title}</span>
-                  {s.minutes ? <span className="shrink-0 text-meta text-(--text-muted)">{fmtDuration(s.minutes)}</span> : null}
+                  {s.minutes ? <span className="shrink-0 text-small text-(--text-secondary)">{fmtDuration(s.minutes)}</span> : null}
                 </li>
               ))}
             </ul>
@@ -176,12 +176,12 @@ function Tile({ label, value, icon, tip, children }: {
     <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
       {icon}
       <span className="font-display text-title leading-none text-(--text)">{value}</span>
-      <span className="text-caption leading-tight text-(--text-muted)">{label}{tip && <> {tip}</>}</span>
+      <span className="text-meta leading-tight text-(--text-secondary)">{label}{tip && <> {tip}</>}</span>
       {children}
     </div>
   )
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <span className="block text-caption font-semibold text-(--text-muted)">{children}</span>
+  return <span className="block text-meta font-semibold text-(--text-secondary)">{children}</span>
 }

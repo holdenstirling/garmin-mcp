@@ -99,7 +99,7 @@ export function GearScreen({ onClose, imperial, onAsk }: {
               if (!list.length) return null
               return (
                 <section key={k} className="flex flex-col gap-2">
-                  <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{KIND_GROUP[k]}</h2>
+                  <h2 className="section-title m-0 px-1">{KIND_GROUP[k]}</h2>
                   {list.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}
                 </section>
               )
@@ -107,14 +107,14 @@ export function GearScreen({ onClose, imperial, onAsk }: {
             {retired.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowRetired((v) => !v)} aria-expanded={showRetired}
-                  className="hit-44 flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
+                  className="hit-44 flex items-center gap-1 px-1 text-meta font-semibold text-(--text-secondary)">
                   Retired ({retired.length}) <ChevronRight className={cn('size-4 transition-transform', showRetired && 'rotate-90')} />
                 </button>
                 {showRetired && retired.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}
               </section>
             )}
             {!statsOk && active.length > 0 && (
-              <p className="px-1 text-meta leading-snug text-(--text-muted)">
+              <p className="px-1 text-small leading-snug text-(--text-secondary)">
                 Workouts couldn't be read from Garmin just now, so distances may be behind.
               </p>
             )}
@@ -150,7 +150,7 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
             {gearName(g)}
             {g.nickname && gearName(g) !== g.nickname && <span className="font-normal text-(--text-muted)"> ({g.nickname})</span>}
           </span>
-          {meta && <span className="block truncate text-meta text-(--text-muted)">{meta}</span>}
+          {meta && <span className="block truncate text-small text-(--text-secondary)">{meta}</span>}
         </span>
         {warn ? (
           <span className="shrink-0 rounded-full bg-(--warning-subtle) px-2 py-0.5 text-caption font-semibold text-(--warning-text)">
@@ -167,7 +167,7 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
               style={{ width: `${Math.max(2, Math.min(100, pct))}%` }} />
           </span>
         )}
-        <span className="flex justify-between gap-2 text-caption text-(--text-muted)">
+        <span className="flex justify-between gap-2 text-meta text-(--text-secondary)">
           <span>
             <b className="font-semibold text-(--text-secondary)">{fmtDist(g.total_km, imperial)}</b>
             {g.alert_km != null ? ` of ${fmtDist(g.alert_km, imperial)}` : ''}
@@ -324,7 +324,7 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
           </Field>
         </div>
         {f.kind === 'shoes' && (
-          <p className="px-4 pb-3.5 text-meta leading-snug text-(--text-muted)">
+          <p className="px-4 pb-3.5 text-small leading-snug text-(--text-secondary)">
             Most running shoes last {imperial ? '300 to 500 mi' : '500 to 800 km'}. You'll get a heads-up at 80%.
           </p>
         )}
@@ -336,7 +336,7 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
         </Field>
       </Card>
       {item && (
-        <p className="px-1 text-meta text-(--text-muted)">
+        <p className="px-1 text-small text-(--text-secondary)">
           {fmtDist(item.total_km, imperial)} over {item.activities} workout{item.activities === 1 ? '' : 's'}
           {item.source === 'garmin' ? ' (from Garmin Connect)' : ''} · added {new Date(`${item.added}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>

@@ -27,7 +27,7 @@ export function ShareRow() {
         <Button variant="default" className="h-8 px-3 text-meta" loading={busy} onClick={() => void run(createShare, 'New link made; the old one stopped working.')}>New link</Button>
         <Button variant="ghost" className="h-8 px-3 text-meta text-(--danger)" disabled={busy} onClick={() => void run(stopShare, 'Sharing is off.')}>Turn off</Button>
       </div>
-      {msg && <p className="text-meta text-(--text-muted)">{msg}</p>}
+      {msg && <p className="text-small text-(--text-secondary)">{msg}</p>}
     </div>
   ) : (
     <Row icon={<Icon><Link2 /></Icon>} title="Share my plan" subtitle="A read-only link: next two weeks and your events. No chats or health data."

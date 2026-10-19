@@ -29,7 +29,7 @@ export function UnitsGroup({ me, onChange }: { me: Me; onChange: () => void }) {
             className={cn('flex min-h-11 flex-col items-center justify-center rounded-lg px-2 py-1 transition-colors',
               units === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary)')}>
             <span className="text-body font-medium">{name}</span>
-            <span className="text-caption text-(--text-muted)">{hint}</span>
+            <span className="text-meta text-(--text-secondary)">{hint}</span>
           </button>
         ))}
       </div>

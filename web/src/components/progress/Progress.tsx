@@ -5,6 +5,7 @@ import { Award, Check, ChevronRight, ListChecks, PartyPopper, Star, X } from 'lu
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Screen } from '@/components/plan/ui'
+import { Section } from '@/components/ui/section'
 import { useDialog } from '@/hooks/useDialog'
 import { cn } from '@/lib/utils'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -70,29 +71,29 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
     <>
       <WeekRing done={p.week.done} target={p.week.target} />
       <span className="min-w-0">
-        <span className="block text-caption leading-tight text-(--text-muted)">This week</span>
-        <span className="block text-body font-medium leading-tight text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
-        {planTime && <span className="block text-caption leading-tight text-(--text-muted)">{planTime} planned</span>}
-        {onOpenPlan && <span className="block text-caption font-medium leading-tight text-(--accent)">Open plan</span>}
+        <span className="block text-meta leading-snug text-(--text-secondary)">This week</span>
+        <span className="block text-body-lg font-semibold leading-snug text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
+        {planTime && <span className="block text-meta leading-snug text-(--text-secondary)">{planTime} planned</span>}
+        {onOpenPlan && <span className="mt-0.5 block text-meta font-semibold leading-snug text-(--accent)">Open plan</span>}
       </span>
     </>
   )
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-5 rounded-2xl border border-(--border) bg-(--bg-surface) p-5">
+      <div className="flex items-center gap-4">
         <LevelBadge level={p.level} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="font-display text-title-md leading-tight text-(--brand)">{p.name}</p>
-          <p className="text-caption text-(--text-muted)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
+          <p className="text-small text-(--text-secondary)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
           <XpBar p={p} className="mt-3" rabbit />
-          <p className="mt-1 text-caption text-(--text-muted)">
+          <p className="mt-1.5 text-meta text-(--text-secondary)">
             {p.to_next.toLocaleString()} XP to level {p.level + 1}{p.next_name ? ` (${p.next_name})` : ''}
           </p>
         </div>
       </div>
       {/* Two tiles side by side; one per row on narrow screens or with larger text. */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2">
-        <div className="relative flex items-center gap-2.5 rounded-xl bg-(--bg-inset) py-2.5 pl-3 pr-8">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
+        <div className="relative flex items-center gap-3 rounded-xl bg-(--bg-inset) py-3 pl-3.5 pr-9">
           <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
             s.at_risk ? 'bg-(--warning) text-black' : s.current ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
             <StreakFlame streak={s.current} atRisk={s.at_risk} className="size-5" />
@@ -100,30 +101,30 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
           <span className="min-w-0">
             <span className="flex items-baseline gap-1">
               <CountUp value={s.current} storeKey="streak" className="font-display text-title-md leading-none text-(--text)" />
-              <span className="text-meta text-(--text-secondary)">day streak</span>
+              <span className="text-small text-(--text-secondary)">day streak</span>
             </span>
-            <span className="block text-caption text-(--text-muted)">Best {s.best}</span>
-            {s.at_risk && <span className="block text-caption font-medium text-(--warning-text)">At risk today</span>}
+            <span className="block text-meta text-(--text-secondary)">Best {s.best}</span>
+            {s.at_risk && <span className="block text-meta font-semibold text-(--warning-text)">At risk today</span>}
           </span>
           <span className="absolute right-1 top-1"><InfoTip term="streak" align="end" /></span>
         </div>
         {onOpenPlan ? (
           <button type="button" onClick={onOpenPlan}
-            className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5 text-left active:opacity-80">{week}</button>
+            className="flex items-center gap-3 rounded-xl bg-(--bg-inset) px-3.5 py-3 text-left active:opacity-80">{week}</button>
         ) : (
-          <div className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5">{week}</div>
+          <div className="flex items-center gap-3 rounded-xl bg-(--bg-inset) px-3.5 py-3">{week}</div>
         )}
       </div>
-      <p className="text-body leading-snug text-(--text)">{headline}</p>
-      {!s.grace_left && <p className="-mt-2 text-caption text-(--text-muted)">This week's free rest day is used.</p>}
+      <p className="text-body-lg leading-snug text-(--text)">{headline}</p>
+      {!s.grace_left && <p className="-mt-3 text-small text-(--text-secondary)">This week's free rest day is used.</p>}
       {q && onOpenSetup && (
         <button type="button" onClick={onOpenSetup}
-          className="-mt-1 flex min-h-11 items-center gap-2 border-t border-(--border) pt-3 text-left active:opacity-80">
-          <ListChecks className="size-5 shrink-0 text-(--accent)" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-meta text-(--text-secondary)">
-            <span className="font-semibold text-(--accent)">Setup {p.setup.done}/{p.setup.total}</span> · Next: {q.title}
+          className="-mt-1 flex min-h-14 items-center gap-3 border-t border-(--border) pt-4 text-left active:opacity-80">
+          <ListChecks className="size-6 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body font-semibold text-(--accent)">Setup: {p.setup.done} of {p.setup.total} done</span>
+            <span className="block text-small leading-snug text-(--text-secondary)">Next: {q.title}, +{q.xp} XP</span>
           </span>
-          <span className="shrink-0 text-caption font-semibold text-(--accent)">+{q.xp} XP</span>
           <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
         </button>
       )}
@@ -143,11 +144,11 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
   const core = p.quests.filter((q) => !q.optional), extra = p.quests.filter((q) => q.optional)
   const pct = Math.round((100 * p.setup.done) / Math.max(1, p.setup.total))
   return (
-    <Screen title="Get set up" subtitle={`${p.setup.done} of ${p.setup.total} done · earn XP for each step`} closing={closing} onClose={close}>
-      <div className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-        <div className="mb-1 flex items-center justify-between text-meta">
-          <span className="font-medium text-(--text)">{pct === 100 ? 'All set. Nice work!' : 'Your setup'}</span>
-          <span className="text-(--text-muted)">{pct}%</span>
+    <Screen title="Get set up" subtitle={`${p.setup.done} of ${p.setup.total} done. Each step earns XP.`} closing={closing} onClose={close}>
+      <div className="flex flex-col gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) p-5">
+        <div className="mb-1 flex items-center justify-between text-body">
+          <span className="font-semibold text-(--text)">{pct === 100 ? 'All set. Nice work!' : 'Your setup'}</span>
+          <span className="text-(--text-secondary)">{pct}%</span>
         </div>
         <span className="fx-bar">
           <span className="block h-2 overflow-hidden rounded-full bg-(--bg-elevated)">
@@ -157,11 +158,14 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
           <RabbitHop pct={Math.max(3, pct)} value={p.setup.done} storeKey="setup" />
         </span>
       </div>
-      <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
-      {extra.length > 0 && <>
-        <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Bonus</h2>
-        <QuestList quests={extra} onAction={(q) => { onAction(q); onClose() }} />
-      </>}
+      <Section title="The basics">
+        <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
+      </Section>
+      {extra.length > 0 && (
+        <Section title="Bonus" description="Optional extras, more XP.">
+          <QuestList quests={extra} onAction={(q) => { onAction(q); onClose() }} />
+        </Section>
+      )}
     </Screen>
   )
 }
@@ -199,7 +203,7 @@ function QuestList({ quests, onAction }: { quests: Quest[]; onAction: (q: QuestI
   return (
     <div className="divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {quests.map((q) => (
-        <div key={q.id} className="flex items-center gap-3 px-4 py-3">
+        <div key={q.id} className="flex min-h-16 items-center gap-3.5 px-4 py-3.5">
           <span ref={q.id === firstFresh ? first : undefined}
             className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border',
               q.done ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong) text-transparent',
@@ -207,11 +211,12 @@ function QuestList({ quests, onAction }: { quests: Quest[]; onAction: (q: QuestI
             <Check className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className={cn('block text-body', q.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{q.title}</span>
-            <span className="block text-caption text-(--text-muted)">{q.hint} · +{q.xp} XP</span>
+            <span className={cn('block text-body-lg font-medium leading-snug', q.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{q.title}</span>
+            <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{q.hint}</span>
+            <span className="block text-meta font-medium text-(--accent)">+{q.xp} XP</span>
           </span>
           {!q.done && (
-            <Button variant="default" className="h-8 shrink-0 px-3 text-meta" onClick={() => onAction(q.id)}>{ACTION_LABEL[q.id]}</Button>
+            <Button variant="default" size="sm" className="shrink-0" onClick={() => onAction(q.id)}>{ACTION_LABEL[q.id]}</Button>
           )}
         </div>
       ))}
@@ -262,13 +267,13 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
                   style={{ animationDelay: `${250 + i * 120}ms` }}><Award className="size-5" /></span>
                 <span className="min-w-0">
                   <span className="block text-body font-medium text-(--accent)">{b.title}</span>
-                  <span className="block text-caption text-(--text-muted)">{b.description} · +100 XP</span>
+                  <span className="block text-meta text-(--text-secondary)">{b.description} +100 XP</span>
                 </span>
               </div>
             ))}
           </div>
         )}
-        <Button variant="primary" className="mt-1 h-10 w-full" onClick={finish}>Keep going</Button>
+        <Button variant="primary" className="mt-1 w-full" onClick={finish}>Keep going</Button>
       </div>
     </div>
   )

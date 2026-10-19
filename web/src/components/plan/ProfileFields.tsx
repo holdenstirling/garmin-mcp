@@ -229,14 +229,14 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
       <Field label="Past races" hint="Up to 10. Races without a name aren't saved.">
         <div className="flex flex-col gap-3">
           {races.map((r, i) => (
-            <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-(--bg-inset) p-2.5">
+            <div key={i} className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3">
               <div className="flex gap-2">
                 <input className={inputCls} value={r.name} maxLength={60} placeholder="Race name" aria-label="Race name"
                   onChange={(e) => set(i, { name: e.target.value })} />
                 <button type="button" aria-label="Remove race" className="hit-44 shrink-0 rounded p-2 text-(--danger)"
                   onClick={() => onChange(races.filter((_, j) => j !== i))}><Trash2 className="size-5" /></button>
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
                 <input className={inputCls} value={r.date} maxLength={10} placeholder="2024-06" aria-label="When"
                   onChange={(e) => set(i, { date: e.target.value.trim() })} />
                 <input className={inputCls} value={r.distance} maxLength={20} placeholder="Distance" aria-label="Distance"
@@ -247,7 +247,7 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
             </div>
           ))}
           {races.length < MAX_RACES && (
-            <Button variant="default" className="h-9 w-fit gap-1 px-3 text-small"
+            <Button variant="default" size="sm" className="w-fit gap-1.5"
               onClick={() => onChange([...races, { name: '', date: '', distance: '', result: '' }])}>
               <Plus className="size-5" /> Add a race
             </Button>
@@ -264,16 +264,16 @@ export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
   const labelId = useId()  // the toggle can show twice on one page (unique ids)
   return (
     <div className="flex items-center justify-between gap-3 px-1">
-      <span id={labelId} className="text-small text-(--text-secondary)">Units</span>
+      <span id={labelId} className="text-body font-medium text-(--text)">Units</span>
       <div role="radiogroup" aria-labelledby={labelId} className="flex rounded-full border border-(--border) p-0.5">
         {([['imperial', 'Miles', 'mi · lb · ft'], ['metric', 'Kilometers', 'km · kg · m']] as const).map(([v, name, hint]) => {
           const on = (a.units ?? guessUnits()) === v
           return (
             <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setA({ units: v })}
-              className={cn('hit-44 flex min-h-9 flex-col items-center rounded-full px-3.5 py-1 leading-tight',
+              className={cn('flex min-h-11 flex-col items-center justify-center rounded-full px-4 py-1 leading-tight',
                 on ? 'bg-(--accent) text-(--on-fill)' : 'text-(--text-secondary)')}>
-              <span className="text-small font-semibold">{name}</span>
-              <span className={cn('text-caption', on ? 'opacity-90' : 'text-(--text-muted)')}>{hint}</span>
+              <span className="text-body font-semibold">{name}</span>
+              <span className={cn('text-meta', on ? 'opacity-90' : 'text-(--text-secondary)')}>{hint}</span>
             </button>
           )
         })}

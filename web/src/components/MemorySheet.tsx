@@ -76,7 +76,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
 
   return (
     <Sheet title="What rabbt knows" onClose={onClose} closing={closing} onDismissed={onDismissed}>
-          <p className="text-meta text-(--text-muted)">
+          <p className="text-small text-(--text-secondary)">
             rabbt fills this in as you chat. Tell it about changes anytime, or fix anything here.
           </p>
 

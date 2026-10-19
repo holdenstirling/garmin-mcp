@@ -3,7 +3,7 @@ import { UnitsGroup } from '@/components/settings/UnitsRow'
 import { Bell, Compass, LogOut, Plug } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { Group, Icon, Row, Switch } from '@/components/settings/Grouped'
+import { Group, Icon, LargeGroups, Row, Switch } from '@/components/settings/Grouped'
 import { ShareRow } from '@/components/settings/ShareRow'
 import { SharedLinks } from '@/components/settings/SharedLinks'
 import { LocationRow } from '@/components/settings/LocationRow'
@@ -81,14 +81,15 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
   const canToggle = me.push.available && pushSupported() && here !== null
 
   return (
-    <div className="settings flex flex-col gap-6">
-      <Group label="Connected apps" footer="Connect, sync or disconnect your watch, ring and calendar.">
+    <LargeGroups.Provider value>
+    <div className="settings flex flex-col gap-7">
+      <Group label="Apps" description="Connect, sync or disconnect your watch, ring and calendar.">
         <Row icon={<Icon><Plug /></Icon>} title="Connected apps"
           subtitle={connectedLine(me)} onClick={onOpenConnections} />
       </Group>
 
       {me.role === 'athlete' && (
-        <Group label="rabbt" footer="What you came for shows up first on rabbt's home.">
+        <Group label="Your home screen" description="What you came for shows up first on rabbt's home.">
           <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         </Group>
       )}
@@ -99,14 +100,14 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
         <CoachingSettings me={me} onChange={onChange} onDevDone={onDevDone} />
       )}
 
-      <Group label="Shared links" footer="Links you've texted to people. Anyone with a link can open it; turn one off and it stops working at once.">
+      <Group label="Shared links" description="Links you've texted to people." footer="Anyone with a link can open it. Turn one off and it stops working at once.">
         <SharedLinks />
       </Group>
-      <Group label="Share your plan" footer="Coaches see your plan, events and stats; your rabbt chats stay private. Manage coaches under Me.">
+      <Group label="Share your plan" description="Coaches see your plan, events and stats. Your rabbt chats stay private." footer="Manage coaches under Me.">
         <ShareRow />
       </Group>
 
-      <Group label="Location" footer="Used by Explore to find races and local activities near you."><LocationRow /></Group>
+      <Group label="Location" description="Used to find races and local activities near you."><LocationRow /></Group>
 
       <Group label="Notifications" footer={pushMsg ?? undefined}>
         <Row icon={<Icon><Bell /></Icon>} title="Notifications" subtitle={pushStatus}
@@ -125,9 +126,10 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       <Group label="Account">
         <Row icon={<Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />}
           title={me.profile.name || me.user_id} subtitle="Signed in with Google" />
-        <Row title={<span className="inline-flex items-center gap-1.5"><LogOut className="size-5" /> Sign out</span>}
+        <Row title={<span className="inline-flex items-center gap-2"><LogOut className="size-5" aria-hidden /> Sign out</span>}
           danger center onClick={() => void signOut().finally(onChange)} />
       </Group>
     </div>
+    </LargeGroups.Provider>
   )
 }

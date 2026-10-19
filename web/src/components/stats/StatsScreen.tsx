@@ -9,6 +9,7 @@ import { Award, CalendarCheck, ChevronDown, Flame, Lock, Mountain, RefreshCw, Ti
 import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Card, Screen } from '@/components/plan/ui'
+import { Section, SeeAll } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
 import { getOura, type OuraRecovery } from '@/lib/oura'
 import { LoadCard } from './LoadChart'
@@ -63,19 +64,19 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
   const imperial = s?.units !== 'metric'
 
   return (
-    <Screen title="Progress" subtitle={s ? `Updated from Garmin · ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : undefined}
+    <Screen title="Progress" subtitle={s ? `How your training is going. Updated ${new Date(`${s.today}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}.` : 'How your training is going.'}
       closing={closing} onClose={close}
       headerExtra={s ? (
         <div className="mx-auto mt-1 flex max-w-xl justify-end gap-3">
           {onOpenRecap && (
             <button type="button" onClick={onOpenRecap}
-              className="hit-44 inline-flex items-center gap-1 text-caption font-medium text-(--accent)">
-              <CalendarCheck className="size-3.5" /> Weekly recap
+              className="hit-44 inline-flex items-center gap-1.5 text-body font-medium text-(--accent)">
+              <CalendarCheck className="size-5" aria-hidden /> Weekly recap
             </button>
           )}
           <button type="button" onClick={() => void refresh()} disabled={busy} aria-label="Refresh"
-            className="hit-44 inline-flex items-center gap-1 text-caption text-(--text-muted) disabled:opacity-50">
-            <RefreshCw className={cn('size-3.5', busy && 'animate-spin motion-reduce:animate-none')} /> Refresh
+            className="hit-44 inline-flex items-center gap-1.5 text-body font-medium text-(--text-secondary) disabled:opacity-50">
+            <RefreshCw className={cn('size-5', busy && 'animate-spin motion-reduce:animate-none')} aria-hidden /> Refresh
           </button>
         </div>) : undefined}>
       <group.Provider value={group.track}>
@@ -91,9 +92,10 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
             action={onOpenPlan ? "See what's next" : undefined} onAction={onOpenPlan} />
         )}
         {s && <StatsBody s={s} progress={p} onOpenPlan={onOpenPlan} onOpenSetup={onOpenSetup} loadBase="/api" loadKey={loadKey}
-          race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} />}
+          race={<MainRaceGrade onOpen={setFitId} loadKey={loadKey} title="Your race" />}
           insights={<InsightsCard refresh={loadKey} max={2} onOpenPlan={onOpenPlan} onOpenSession={onOpenSession} onOpenGear={onOpenGear} onAsk={onAsk} />}
-          trends={<><TrendsCard loadKey={loadKey} /><BodyLinks /></>}
+          trends={<TrendsCard loadKey={loadKey} />}
+          body={<BodyLinks />}
           recovery={<Recovery loadKey={loadKey} />}
           challenges={<ChallengesCard imperial={imperial} loadKey={loadKey} collapsible />}
           more={<CheckinsCard />} />}
@@ -107,10 +109,12 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
  *  1 hero (level/XP, streak, week; setup as one line) 2 main race grade 3 insights (2 + Show all)
  *  3b trends (distance, easy pace, sleep) 4 recovery (one row) 5 challenges (one row) 6 fitness & form 7 "More stats" (weekly bars,
  *  badges, totals, calendar, sports, bests, check-ins). */
-export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, loadKey, race, recovery, challenges, insights, trends, more: moreExtra }: {
+export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, loadKey, race, recovery, challenges, insights, trends, body, more: moreExtra }: {
   s: Stats; progress?: Progress | null; onOpenPlan?: () => void; onOpenSetup?: () => void
   loadBase?: string; loadKey?: number
   race?: React.ReactNode; recovery?: React.ReactNode; challenges?: React.ReactNode
+  /** the body logs (fueling, niggles): one card of rows */
+  body?: React.ReactNode
   /** "What your data says" */
   insights?: React.ReactNode
   /** trend charts (distance vs goal, easy pace, sleep vs load) */
@@ -128,11 +132,12 @@ export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, load
       {insights}
       {trends}
       {recovery}
+      {body && <Section title="Body and fueling" description="What fuel works for you, and any aches to work around.">{body}</Section>}
       {challenges}
       {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
       <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
-        className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-small font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-        {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-5 transition-transform', more && 'rotate-180')} />
+        className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-body font-semibold text-(--text) active:bg-(--bg-inset)">
+        {more ? 'Show fewer stats' : 'More stats: totals, badges, bests'} <ChevronDown className={cn('size-5 shrink-0 transition-transform', more && 'rotate-180')} aria-hidden />
       </button>
       {more && <>
         <WeeklyBars s={s} />
@@ -153,10 +158,6 @@ function planTime(s: Stats): string | undefined {
   return w && w.planned > 0 && w.minutes_planned > 0 ? `${fmtDuration(w.minutes_done)} of ${fmtDuration(w.minutes_planned)}` : undefined
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
-}
-
 function StreakHero({ s }: { s: Stats }) {
   const st = s.streak
   return (
@@ -167,18 +168,18 @@ function StreakHero({ s }: { s: Stats }) {
             <Flame className="size-8" />
           </span>
           <span className="mt-2 font-display text-display-xl leading-none text-(--brand)">{st.current}</span>
-          <span className="text-meta text-(--text-muted)">day streak</span>
+          <span className="text-body text-(--text-secondary)">day streak</span>
         </div>
         <div className="flex flex-col items-center pb-1">
           <span className="font-display text-display leading-none text-(--text)">{st.weeks_current}</span>
-          <span className="max-w-[90px] text-caption leading-tight text-(--text-muted)">active weeks in a row ({st.active_week}+ workouts)</span>
+          <span className="max-w-[120px] text-meta leading-snug text-(--text-secondary)">active weeks in a row ({st.active_week}+ workouts)</span>
         </div>
       </div>
       <p className="max-w-sm text-body-lg leading-snug text-(--text)">{s.headline}</p>
-      <p className="text-caption text-(--text-muted)">Best: {st.best} days · {st.weeks_best} weeks</p>
+      <p className="text-small text-(--text-secondary)">Best streak: {st.best} days, and {st.weeks_best} active weeks in a row</p>
       {s.plan?.week && s.plan.week.planned > 0 && (
-        <p className="text-small text-(--text-secondary)">
-          This week: {s.plan.week.done} of {s.plan.week.planned} sessions{planTime(s) ? ` · ${planTime(s)}` : ''}
+        <p className="text-body text-(--text-secondary)">
+          This week: {s.plan.week.done} of {s.plan.week.planned} sessions{planTime(s) ? <span className="block">{planTime(s)} planned</span> : null}
         </p>
       )}
       <WeekDots s={s} />
@@ -219,30 +220,27 @@ function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPer
     [Mountain, 'Climbing', climb(t.climb_m, s.units)],
   ]
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <SectionLabel>Totals</SectionLabel>
-        <div className="flex gap-1 rounded-lg bg-(--bg-elevated) p-0.5">
-          {([['week', 'Week'], ['month', 'Month'], ['year', '12 mo']] as [Period, string][]).map(([p, l]) => (
-            <button key={p} type="button" onClick={() => setPeriod(p)} aria-pressed={period === p}
-              className={cn('hit-44 h-7 rounded-md px-2.5 text-caption font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
-          ))}
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {tiles.map(([I, label, v]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
-            <span className="flex items-center gap-1.5 text-caption text-(--text-muted)"><I className="size-4" />{label}</span>
-            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
-          </div>
+    <Section title="Totals">
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-(--bg-inset) p-1" role="group" aria-label="Period">
+        {([['week', 'This week'], ['month', 'Month'], ['year', '12 months']] as [Period, string][]).map(([p, l]) => (
+          <button key={p} type="button" onClick={() => setPeriod(p)} aria-pressed={period === p}
+            className={cn('min-h-11 rounded-lg px-2 text-small font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary)')}>{l}</button>
         ))}
       </div>
+      <Card className="grid grid-cols-1 divide-y divide-(--border) min-[400px]:grid-cols-3 min-[400px]:divide-x min-[400px]:divide-y-0">
+        {tiles.map(([I, label, v]) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3 min-[400px]:flex-col min-[400px]:items-start min-[400px]:gap-1">
+            <span className="flex flex-1 items-center gap-2 text-small text-(--text-secondary)"><I className="size-5 text-(--accent)" aria-hidden />{label}</span>
+            <span className="font-display text-title leading-tight text-(--text)">{v}</span>
+          </div>
+        ))}
+      </Card>
       {period === 'week' && t.vs_last_week_hours != null && (
-        <p className="px-1 text-meta text-(--text-muted)">
+        <p className="px-1 text-small text-(--text-secondary)">
           {t.vs_last_week_hours === 0 ? 'Same as this point last week.' : `${t.vs_last_week_hours > 0 ? '+' : '−'}${hours(Math.abs(t.vs_last_week_hours))} vs this point last week.`}
         </p>
       )}
-    </section>
+    </Section>
   )
 }
 
@@ -254,8 +252,7 @@ function WeeklyBars({ s }: { s: Stats }) {
     return [...set]
   }, [s.weekly])
   return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>Weekly training time · 12 weeks</SectionLabel>
+    <Section title="Weekly training time" description="The last 12 weeks, by sport.">
       <Card className="p-4">
         <div className="flex h-28 items-end gap-1.5">
           {s.weekly.map((w) => (
@@ -279,11 +276,11 @@ function WeeklyBars({ s }: { s: Stats }) {
           })}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {sports.map((sp) => <span key={sp} className="flex items-center gap-1 text-caption text-(--text-muted)"><span className="size-2 rounded-full" style={{ background: SPORT_COLOR[sp] }} />{SPORT_NAME[sp]}</span>)}
-          <span className="ml-auto text-caption text-(--text-muted)">avg {hours(s.weekly.reduce((a, w) => a + w.hours, 0) / s.weekly.length)}/wk</span>
+          {sports.map((sp) => <span key={sp} className="flex items-center gap-1.5 text-meta text-(--text-secondary)"><span className="size-2.5 rounded-full" style={{ background: SPORT_COLOR[sp] }} />{SPORT_NAME[sp]}</span>)}
+          <span className="ml-auto text-meta text-(--text-secondary)">Average {hours(s.weekly.reduce((a, w) => a + w.hours, 0) / s.weekly.length)} a week</span>
         </div>
       </Card>
-    </section>
+    </Section>
   )
 }
 
@@ -298,8 +295,7 @@ function CalendarHeat({ s }: { s: Stats }) {
   const level = (m: number) => m <= 0 ? 0 : m < 30 ? 1 : m < 60 ? 2 : m < 120 ? 3 : 4
   const active = Object.values(s.calendar.days).filter((m) => m > 0).length
   return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>Training calendar · 6 months</SectionLabel>
+    <Section title="Training calendar" description="The last 6 months. Darker means a longer day.">
       <Card className="p-4">
         <div className="flex gap-[3px] overflow-hidden" role="img" aria-label={`${active} active days in the last 6 months`}>
           {weeks.map((wk, i) => (
@@ -312,33 +308,31 @@ function CalendarHeat({ s }: { s: Stats }) {
             </div>
           ))}
         </div>
-        <p className="mt-2 text-caption text-(--text-muted)">{active} active days · darker = longer</p>
+        <p className="mt-3 text-small text-(--text-secondary)">{active} active days</p>
       </Card>
-    </section>
+    </Section>
   )
 }
 
 function SportsCard({ s }: { s: Stats }) {
   return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>By sport · 12 months</SectionLabel>
+    <Section title="By sport" description="The last 12 months.">
       <Card>
         <div className="divide-y divide-(--border)">
           {s.by_sport.map((x) => (
             <div key={x.sport} className="flex items-center gap-3 px-4 py-3">
               <span className="size-3 shrink-0 rounded-full" style={{ background: SPORT_COLOR[x.sport] }} />
               <span className="min-w-0 flex-1">
-                <span className="block text-body-lg text-(--text)">{SPORT_NAME[x.sport]}{x.favorite && <span className="ml-1.5 text-caption text-(--accent)">favorite</span>}</span>
-                <span className="block text-caption text-(--text-muted)">
-                  {x.workouts} workouts{x.km > 0 ? ` · ${dist(x.km, s.units, x.sport)}` : ''}{x.climb_m > 0 ? ` · ${climb(x.climb_m, s.units)} up` : ''}
-                </span>
+                <span className="block text-body-lg font-medium text-(--text)">{SPORT_NAME[x.sport]}{x.favorite && <span className="ml-2 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-meta font-medium text-(--accent)">Favorite</span>}</span>
+                <span className="block text-small text-(--text-secondary)">{x.workouts} workouts{x.km > 0 ? `, ${dist(x.km, s.units, x.sport)}` : ''}</span>
+                {x.climb_m > 0 && <span className="block text-small text-(--text-secondary)">{climb(x.climb_m, s.units)} climbed</span>}
               </span>
-              <span className="text-body font-medium text-(--text-secondary)">{hours(x.hours)}</span>
+              <span className="shrink-0 text-body-lg font-semibold text-(--text)">{hours(x.hours)}</span>
             </div>
           ))}
         </div>
       </Card>
-    </section>
+    </Section>
   )
 }
 
@@ -352,18 +346,17 @@ function BestsCard({ s }: { s: Stats }) {
     ['Biggest climb', b.biggest_climb_m ? climb(b.biggest_climb_m.value, s.units) : null, b.biggest_climb_m?.date],
   ]
   return (
-    <section className="flex flex-col gap-2">
-      <SectionLabel>Your bests · 12 months</SectionLabel>
-      <div className="grid grid-cols-2 gap-2">
+    <Section title="Your bests" description="The last 12 months.">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
         {rows.filter(([, v]) => v).map(([label, v, d]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-            <span className="flex items-center gap-1.5 text-caption text-(--text-muted)"><Trophy className="size-4" />{label}</span>
-            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
-            {d && <span className="text-caption text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5">
+            <span className="flex items-center gap-2 text-small text-(--text-secondary)"><Trophy className="size-5 shrink-0 text-(--accent)" aria-hidden />{label}</span>
+            <span className="mt-1.5 block font-display text-title leading-tight text-(--text)">{v}</span>
+            {d && <span className="mt-0.5 block text-small text-(--text-secondary)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
           </div>
         ))}
       </div>
-    </section>
+    </Section>
   )
 }
 
@@ -373,34 +366,31 @@ function BadgesCard({ s }: { s: Stats }) {
   const next = s.badges.filter((b) => !b.earned).sort((a, b) => b.progress - a.progress)
   const shown = all ? [...next, ...earned] : next.slice(0, 3)
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <SectionLabel>{all ? 'All badges' : 'Next badges'} · {earned.length} of {s.badges.length} earned</SectionLabel>
-        <button type="button" onClick={() => setAll((a) => !a)} className="hit-44 text-caption font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
-      </div>
-      {shown.length === 0 && <p className="px-1 text-small text-(--text-muted)">Every badge earned. Legendary.</p>}
-      <div className="grid grid-cols-3 gap-2">
+    <Section title={all ? 'All badges' : 'Next badges'} description={`${earned.length} of ${s.badges.length} earned.`}
+      action={<SeeAll onClick={() => setAll((a) => !a)} label={all ? 'Show less' : 'See all'} />}>
+      {shown.length === 0 && <p className="px-1 text-body text-(--text-secondary)">Every badge earned. Legendary.</p>}
+      <div className="grid grid-cols-2 gap-3 min-[400px]:grid-cols-3">
         {shown.map((b, i) => (
           <div key={b.id} title={b.description}
-            {...hopIn(i, cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
+            {...hopIn(i, cn('flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3.5 text-center',
               b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)'))}>
             <span className={cn('flex size-9 items-center justify-center rounded-full', b.earned ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
               {b.earned ? <Award className="size-6" /> : <Lock className="size-5" />}
             </span>
-            <span className={cn('text-meta font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
-            <span className="text-caption leading-tight text-(--text-muted)">{b.description}</span>
+            <span className={cn('text-body font-semibold leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
+            <span className="text-meta leading-snug text-(--text-secondary)">{b.description}</span>
             {!b.earned && (
               <>
-                <span className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
+                <span className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
                   <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.round(b.progress * 100)}%` }} />
                 </span>
-                <span className="text-meta text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
+                <span className="text-meta text-(--text-secondary)">{Math.round(b.progress * 100)}% there, +100 XP</span>
               </>
             )}
           </div>
         ))}
       </div>
-    </section>
+    </Section>
   )
 }
 
@@ -446,25 +436,25 @@ function OuraRecovery({ loadKey = 0 }: { loadKey?: number }) {
     ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–', delta(last.sleep_hours, b?.sleep_hours, ' h', true)],
   ]
   const when = new Date(`${last.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
-  const summary = [last.readiness != null ? `Readiness ${last.readiness}` : null,
-    last.sleep_hours != null ? `Sleep ${last.sleep_hours} h` : null, last.hrv != null ? `HRV ${last.hrv} ms` : null].filter(Boolean).join(' · ')
+  const stats: [string, string][] = [
+    ['Readiness', last.readiness != null ? String(last.readiness) : '–'],
+    ['Sleep', last.sleep_hours != null ? `${last.sleep_hours} h` : '–'],
+    ['HRV', last.hrv != null ? `${last.hrv} ms` : '–'],
+  ]
   return (
-    <section className="flex flex-col gap-2">
-      <RecoveryRow source={`Oura · ${when}`} summary={summary || 'Tap for details'} open={open} onToggle={() => setOpen((o) => !o)} />
-      {open && <>
-      <div className="grid grid-cols-2 gap-1.5">
+    <RecoveryRow source={`From Oura, ${when}`} stats={stats} open={open} onToggle={() => setOpen((o) => !o)}>
+      <div className="grid grid-cols-2 gap-3">
         {tiles.map(([label, v, d]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
-            <span className="flex items-center justify-center gap-1 text-caption text-(--text-muted)">
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3 text-center">
+            <span className="flex items-center justify-center gap-1 text-meta text-(--text-secondary)">
               {label}{label === 'Oura readiness' && <InfoTip term="oura_readiness" />}
             </span>
-            <span className="mt-0.5 block font-display text-title-sm leading-tight text-(--text)">{v}</span>
-            {d && <span className="block text-meta leading-tight">{d}</span>}
+            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
+            {d && <span className="mt-0.5 block text-meta leading-tight">{d}</span>}
           </div>
         ))}
       </div>
-      <p className="px-1 text-caption text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to rabbt.</p>
-      </>}
-    </section>
+      <p className="px-1 text-small text-(--text-secondary)">Compared with your usual. Shown here only; Oura data is never sent to rabbt.</p>
+    </RecoveryRow>
   )
 }

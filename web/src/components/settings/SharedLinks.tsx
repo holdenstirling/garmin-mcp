@@ -31,7 +31,7 @@ export function SharedLinks() {
           <Icon><Link2 /></Icon>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body-lg text-(--text)">{l.title || SHARE_KIND_LABEL[l.kind]}</span>
-            <span className="block text-meta text-(--text-muted)">
+            <span className="block text-small text-(--text-secondary)">
               {SHARE_KIND_LABEL[l.kind]} · {new Date(l.created * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })} · opened {l.views} {l.views === 1 ? 'time' : 'times'}
             </span>
           </span>

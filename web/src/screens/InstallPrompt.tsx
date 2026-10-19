@@ -23,10 +23,10 @@ export function InstallPrompt({ onSkip }: { onSkip: () => void }) {
           <span>Open <b>rabbt</b> from your Home Screen and sign in there.</span>
         </li>
       </ol>
-      <p className="max-w-sm text-meta text-(--text-muted)">
+      <p className="max-w-sm text-small text-(--text-secondary)">
         Notifications only work from the Home Screen app, so sign in from there rather than in Safari.
       </p>
-      <button className="hit-44 text-meta text-(--text-muted) underline" onClick={onSkip}>Continue in the browser anyway</button>
+      <button className="hit-44 text-small text-(--text-secondary) underline" onClick={onSkip}>Continue in the browser anyway</button>
     </div>
   )
 }

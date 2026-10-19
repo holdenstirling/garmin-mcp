@@ -36,7 +36,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
     <div className="flex flex-col gap-3.5">
       <div>
         <Progress step={step} total={STEPS.length} />
-        <p className="mt-2 text-center text-meta text-(--text-muted)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
+        <p className="mt-2 text-center text-small text-(--text-secondary)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
       </div>
 
       {step === 0 && (
@@ -114,7 +114,7 @@ export function TPSourcePref({ source, onSaved, onToast }: {
   }
   return (
     <fieldset role="radiogroup" aria-label="Source of truth" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <legend className="px-1 text-caption font-semibold text-(--text-muted)">Source of truth</legend>
+      <legend className="px-1 text-meta font-semibold text-(--text-secondary)">Source of truth</legend>
       {(['trainingpeaks', 'rabbit'] as const).map((s) => (
         <button key={s} type="button" role="radio" aria-checked={source === s} disabled={!!busy} onClick={() => void pick(s)}
           className={cn('flex min-h-11 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left',
@@ -122,7 +122,7 @@ export function TPSourcePref({ source, onSaved, onToast }: {
           <span className={cn('text-body', source === s ? 'text-(--accent)' : 'text-(--text)')}>
             {TP_SOURCE_LABEL[s]}{busy === s ? '…' : ''}
           </span>
-          <span className="text-meta leading-snug text-(--text-muted)">{TP_SOURCE_HINT[s]}</span>
+          <span className="text-small leading-snug text-(--text-secondary)">{TP_SOURCE_HINT[s]}</span>
         </button>
       ))}
     </fieldset>

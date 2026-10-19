@@ -331,24 +331,24 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         {loadErr && <p role="alert" className="text-small text-(--danger)">{loadErr}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="conn-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="conn-reads" className="text-small font-semibold text-(--text)">rabbt will be able to see</h3>
+            <h3 id="conn-reads" className="text-body-lg font-semibold text-(--text)">rabbt will be able to see</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
         {never.length > 0 && (
           <section aria-labelledby="conn-never" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="conn-never" className="flex items-center gap-1.5 text-small font-semibold text-(--text)">
+            <h3 id="conn-never" className="flex items-center gap-2 text-body-lg font-semibold text-(--text)">
               <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
-            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
               <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{t.kept}
             </p>
           </section>
         )}
         {available ? (
           <div className="flex flex-col gap-2">
-            <p className="flex items-start gap-2 text-meta leading-snug text-(--text-muted)">
+            <p className="flex items-start gap-2 text-small leading-snug text-(--text-secondary)">
               <How className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />{t.how}
             </p>
             <Button variant="primary" className="h-12 w-full text-body-lg" onClick={cont}>{t.cta}</Button>
@@ -368,13 +368,13 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         <Link app="garmin" busy={gStep === 'connecting'} />
         <div>
           <Progress step={Math.max(0, gIndex)} total={GARMIN_STEPS.length} />
-          <p className="mt-2 text-center text-meta text-(--text-muted)">
+          <p className="mt-2 text-center text-small text-(--text-secondary)">
             Step {Math.max(0, gIndex) + 1} of {GARMIN_STEPS.length} · {GARMIN_STEPS[Math.max(0, gIndex)]!.label}
           </p>
         </div>
         <ConnectGarmin cooldownUntil={me.garmin.cooldown_until} onConnected={onGarminConnected} onStep={setGStep} />
         {me.garmin.fake && (
-          <p className="text-caption text-(--text-muted)">Fake Garmin (dev): try mfa@, wrong@, 429@ or cf@ emails; code 123456.</p>
+          <p className="text-meta text-(--text-secondary)">Fake Garmin (dev): try mfa@, wrong@, 429@ or cf@ emails; code 123456.</p>
         )}
       </>
     )
@@ -411,7 +411,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
           <p className="text-small text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to rabbt.`}</p>
         </div>
         <section aria-labelledby="conn-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-          <h3 id="conn-next" className="text-small font-semibold text-(--text)">What happens now</h3>
+          <h3 id="conn-next" className="text-body-lg font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT[app]} tone="yes" />
         </section>
         {app !== 'calendar' && app !== 'trainingpeaks' && <ShareChoice />}
@@ -445,7 +445,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
           <AppTile app={app} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-lead text-(--text)">{NAME[app]}</span>
-            <span className="block text-meta text-(--text-muted)">{syncedAgo(conn?.last_sync ?? null)}</span>
+            <span className="block text-small text-(--text-secondary)">{syncedAgo(conn?.last_sync ?? null)}</span>
           </span>
           <StateChip state={state} />
         </div>
@@ -492,7 +492,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
               <Bullets items={never} tone="no" />
-              <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+              <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{TRUST[app].kept}
               </p>
             </div>

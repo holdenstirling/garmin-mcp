@@ -1,13 +1,13 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Connected apps and Settings. Friends
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
-import { Bandage, ChartColumn, ClipboardList, Compass, Handshake, KeyRound, Mail, Plug, Search, Settings, ShieldCheck, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { Bandage, ChartColumn, ChevronRight, ClipboardList, Compass, Handshake, KeyRound, Mail, Plug, Search, Settings, ShieldCheck, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
-import { Group, Icon, Row } from '@/components/settings/Grouped'
+import { Group, Icon, LargeGroups, Row } from '@/components/settings/Grouped'
 import { LevelBadge } from '@/components/progress/Progress'
 import { photoUrl } from '@/lib/photo'
 import { openBody } from '@/lib/body'
@@ -34,25 +34,30 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
   const countdown = goalCountdown(goal)
   const coachStatus = me.athlete.coach_status ?? null
   return (
-    <Screen title="Me" onClose={onClose}>
+    <Screen title="Me" subtitle="Your profile, coaching, connected apps and settings." onClose={onClose}>
+      <LargeGroups.Provider value>
       <button type="button" onClick={() => onOpen('profile')}
-        className="flex items-center gap-3.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
-        <Avatar name={name} picture={me.profile.picture} photo={photoUrl(me.photo)} size={56} />
+        className="flex items-center gap-4 rounded-2xl border border-(--border) bg-(--bg-surface) p-5 text-left active:bg-(--bg-inset)">
+        <Avatar name={name} picture={me.profile.picture} photo={photoUrl(me.photo)} size={60} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-title-md leading-tight text-(--brand)">{name}</span>
-          <span className="block truncate text-small text-(--text-muted)">
-            {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set yet'}
-          </span>
+          <span className="block break-words font-display text-title-md leading-tight text-(--brand)">{name}</span>
+          {goal ? (
+            <>
+              <span className="mt-1 block text-body font-medium leading-snug text-(--text)">{goal.title}</span>
+              {countdown && <span className="block text-small leading-snug text-(--text-secondary)">{countdown}</span>}
+            </>
+          ) : <span className="mt-1 block text-body text-(--text-secondary)">No goal set yet</span>}
+          {progress && (
+            <span className="mt-2 flex items-center gap-2">
+              <LevelBadge level={progress.level} size="sm" />
+              <span className="text-small font-medium text-(--text-secondary)">{progress.name}</span>
+            </span>
+          )}
         </span>
-        {progress && (
-          <span className="flex shrink-0 flex-col items-center gap-0.5">
-            <LevelBadge level={progress.level} size="md" />
-            <span className="max-w-20 truncate text-caption text-(--text-muted)">{progress.name}</span>
-          </span>
-        )}
+        <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
 
-      <Group>
+      <Group label="Your account">
         {me.role === 'athlete' && (
           <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         )}
@@ -101,7 +106,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
 
       <AppearanceGroup />
 
-      <Group>
+      <Group label="Apps and settings">
         <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Garmin, Oura, Apple Watch, WHOOP, Calendar"
           onClick={() => onOpen('connections')} />
         <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Notifications, privacy, account"
@@ -112,7 +117,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
       </Group>
 
-      <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-1 pb-2 text-small text-(--text-muted)">
+      <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-2 pb-2 text-body text-(--text-secondary)">
         {([['privacy', 'Privacy'], ['terms', 'Terms'], ['security', 'Data & security']] as const).map(([slug, label], i) => (
           <span key={slug} className="flex items-center gap-1">
             {i > 0 && <span aria-hidden>·</span>}
@@ -120,6 +125,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
           </span>
         ))}
       </nav>
+      </LargeGroups.Provider>
     </Screen>
   )
 }

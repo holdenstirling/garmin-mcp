@@ -79,7 +79,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
             <div className="flex flex-col gap-2 px-4 py-3">
               <p className="text-body font-medium text-(--text)">Your new invite link</p>
               <p className="break-all rounded-lg bg-(--bg-inset) px-3 py-2 font-mono text-meta text-(--text)">{newLink}</p>
-              <p className="text-meta text-(--text-muted)">Share it now: for safety rabbt keeps only a fingerprint of it and can't show it again.</p>
+              <p className="text-small text-(--text-secondary)">Share it now: for safety rabbt keeps only a fingerprint of it and can't show it again.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'}
                   onClick={() => void shareLink(newLink).then(setCopied)}><Share2 className="size-5" aria-hidden />Share</button>
@@ -90,21 +90,21 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                 </button>
                 <button type="button" className={btn + ' text-(--text-muted)'} onClick={() => { setNewLink(null); setCopied(null) }}>Done</button>
               </div>
-              <p aria-live="polite" className="text-meta text-(--text-muted)">
+              <p aria-live="polite" className="text-small text-(--text-secondary)">
                 {copied === 'failed' ? "Couldn't copy. Press and hold the link to copy it." : copied === 'shared' ? 'Shared.' : ''}
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3 px-4 py-3">
               <div className="flex gap-3">
-                <label htmlFor={usesId} className="flex flex-1 flex-col gap-1 text-meta text-(--text-muted)">
+                <label htmlFor={usesId} className="flex flex-1 flex-col gap-1 text-small text-(--text-secondary)">
                   People who can join
                   <select id={usesId} value={uses} onChange={(e) => setUses(Number(e.target.value))}
                     className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">
                     {[1, 5, 10, 25].map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </label>
-                <label htmlFor={daysId} className="flex flex-1 flex-col gap-1 text-meta text-(--text-muted)">
+                <label htmlFor={daysId} className="flex flex-1 flex-col gap-1 text-small text-(--text-secondary)">
                   Open for
                   <select id={daysId} value={days} onChange={(e) => setDays(Number(e.target.value))}
                     className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">

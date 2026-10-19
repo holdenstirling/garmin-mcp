@@ -110,7 +110,7 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
         <ul className="m-0 grid list-none gap-2 p-0" style={{ gridTemplateColumns: `repeat(${r.chips.length}, minmax(0, 1fr))` }}>
           {r.chips.map((c) => (
             <li key={c.label} className="flex flex-col items-center rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2">
-              <span className="text-caption font-semibold text-(--text-muted)">{c.label}</span>
+              <span className="text-meta font-semibold text-(--text-secondary)">{c.label}</span>
               <span className="font-mono text-lead font-medium tabular-nums text-(--text)">{c.value}</span>
             </li>
           ))}
@@ -127,7 +127,7 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
           )}
         </div>
         <LevelBar before={r.level.before} after={r.level.after} levelUp={r.level.level_up} />
-        {r.xp.plan > 0 && <p className="m-0 text-meta text-(--text-muted)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
+        {r.xp.plan > 0 && <p className="m-0 text-small text-(--text-secondary)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
       </div>
 
       <Feel r={r} onCheckIn={onCheckIn} onFeel={onFeel} />
@@ -166,7 +166,7 @@ function LevelBar({ before, after, levelUp }: { before: LevelView; after: LevelV
         <span className={cn('font-semibold text-(--text)', stage === 'end' && levelUp && 'rb-pop')}>
           {stage === 'end' && levelUp ? `Level up! ${after.level} · ${after.name}` : `Level ${shown.level} · ${shown.name}`}
         </span>
-        <span className="font-mono text-meta tabular-nums text-(--text-muted)">{after.to_next} XP to {after.level + 1}</span>
+        <span className="font-mono text-small tabular-nums text-(--text-secondary)">{after.to_next} XP to {after.level + 1}</span>
       </div>
       <span className="block h-2 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
         aria-valuemin={0} aria-valuemax={after.level_span} aria-valuenow={after.level_xp} aria-label="XP to next level">
@@ -205,7 +205,7 @@ function Feel({ r, onCheckIn, onFeel }: { r: Reward; onCheckIn?: () => void; onF
             className={cn('flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border py-1.5 transition-colors disabled:opacity-40',
               picked === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg)')}>
             <span className="text-title-md leading-none" aria-hidden="true">{face}</span>
-            <span className="text-caption text-(--text-muted)">{label}</span>
+            <span className="text-meta text-(--text-secondary)">{label}</span>
           </button>
         ))}
       </div>

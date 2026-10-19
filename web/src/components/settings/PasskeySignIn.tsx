@@ -26,7 +26,7 @@ export function PasskeySignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) 
         {busy ? 'Checking your passkey…' : 'Sign in with a passkey'}
       </Button>
       {error && <p role="alert" className="max-w-sm text-small text-(--danger)">{error}</p>}
-      <p className="max-w-xs text-meta leading-snug text-(--text-muted)">
+      <p className="max-w-xs text-small leading-snug text-(--text-secondary)">
         Got an invite link? Open it to join. rabbt doesn't need Google.
       </p>
     </div>

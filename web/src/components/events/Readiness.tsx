@@ -1,11 +1,12 @@
 // Race readiness UI: grade badge, status chip, the "How you're tracking" section for the race
 // screen, and MainRaceGrade (one tappable line for the main race, used on Progress).
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, ListChecks } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Card, Field } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { Section } from '@/components/ui/section'
 import { useTrackRefresh } from '@/components/stats/refresh'
 import { STATUS_LABEL, listReadiness, mainRace, type RaceGrade, type Readiness, type ReadinessComponent, type ReadinessStatus } from '@/lib/readiness'
 
@@ -146,10 +147,12 @@ export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () 
  * Progress tab: the main race's grade in one tappable line. Loads its own data; renders
  * nothing when there's no upcoming race (or it can't load). ``onOpen`` gets the event id.
  */
-export function MainRaceGrade({ onOpen, className, loadKey = 0 }: {
+export function MainRaceGrade({ onOpen, className, loadKey = 0, title }: {
   onOpen: (eventId: string) => void; className?: string
   /** bump to re-read (Progress refresh) */
   loadKey?: number
+  /** a section heading above the row (Progress); only shown when there's a race */
+  title?: string
 }) {
   const [g, setG] = useState<RaceGrade | null>(null)
   const [error, setError] = useState(false)
@@ -161,20 +164,21 @@ export function MainRaceGrade({ onOpen, className, loadKey = 0 }: {
   useEffect(() => { load() }, [load, loadKey])
   if (error && !g) return <ErrorState compact message="Couldn't load your race grade." onRetry={load} className={className} />
   if (!g) return null
-  return (
+  const row = (
     <button type="button" onClick={() => onOpen(g.event_id)} data-usage-card="race_grade"
-      className={cn('flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)', className)}>
+      className={cn('flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)', className)}>
       <GradeBadge grade={g.grade} size="md" />
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-body-lg font-medium text-(--text)">{g.name}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-body-lg font-semibold leading-snug text-(--text)">{g.name}</span>
           <StatusChip status={g.status} />
         </span>
-        <span className="mt-0.5 block truncate text-meta text-(--text-muted)">{headlineRest(g.headline)}</span>
+        <span className="mt-1 block text-small leading-snug text-(--text-secondary)">{headlineRest(g.headline)}</span>
       </span>
-      <ListChecks className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
+  return title ? <Section title={title} description="How ready you are, and what to do next.">{row}</Section> : row
 }
 
 /** Coach overview: the athlete's main race grade (not tappable). */

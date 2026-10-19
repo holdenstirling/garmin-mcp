@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { Card } from '@/components/plan/ui'
+import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
 import { decideAdjust } from '@/lib/adjust'
 import type { Term } from '@/lib/glossary'
@@ -54,12 +55,10 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
   if (!items || items.length === 0) return null
   const shown = all ? items : items.slice(0, max)
   return (
-    <section className="flex flex-col gap-2" aria-label="What your data says">
-      <h2 className="font-sans flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
-        What your data says
+    <Section title={<span className="inline-flex items-center gap-1.5">What your data says
         <InfoTip label="these insights" align="start"
-          text="Patterns rabbt spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." />
-      </h2>
+          text="Patterns rabbt spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." /></span>}
+      description="Tap one for the numbers and what to do.">
       <Card>
         <ul className="divide-y divide-(--border)">
           {shown.map((i) => (
@@ -71,11 +70,11 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
       </Card>
       {items.length > max && (
         <button type="button" onClick={() => setAll((a) => !a)} aria-expanded={all}
-          className="hit-44 self-center text-meta font-medium text-(--accent)">
+          className="hit-44 self-center text-body font-semibold text-(--accent)">
           {all ? 'Show fewer' : `Show all ${items.length}`}
         </button>
       )}
-    </section>
+    </Section>
   )
 }
 
@@ -114,44 +113,44 @@ function Row({ i, open, onToggle, onDismiss, onOpenPlan, onOpenSession, onOpenGe
   return (
     <li>
       <button type="button" onClick={onToggle} aria-expanded={open}
-        className="flex min-h-11 w-full items-start gap-2.5 px-3.5 py-3 text-left active:bg-(--bg-inset)">
-        <span className={cn('mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full', t.bg, t.color)}>
+        className="flex min-h-14 w-full items-start gap-3 px-4 py-3.5 text-left active:bg-(--bg-inset)">
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', t.bg, t.color)}>
           <Icon className="size-5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <span className="sr-only">{t.label}: </span>
-          <span className={cn('block text-body font-semibold leading-tight', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
-          {!open && <span className="mt-0.5 block truncate text-meta text-(--text-muted)">{i.explanation}</span>}
+          <span className={cn('block text-body-lg font-semibold leading-snug', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
+          {!open && <span className="mt-1 line-clamp-3 block text-small leading-snug text-(--text-secondary)">{i.explanation}</span>}
         </span>
-        <ChevronDown className={cn('mt-1 size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+        <ChevronDown className={cn('mt-2 size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 pl-[3.25rem]">
-          <p className="text-small leading-snug text-(--text)">
+        <div className="flex flex-col gap-3 px-4 pb-4 pl-4 min-[400px]:pl-16">
+          <p className="text-body leading-snug text-(--text)">
             {i.explanation}
             {TERM[i.id.split(':')[0]!] && <InfoTip term={TERM[i.id.split(':')[0]!]} className="ml-1" align="end" />}
           </p>
           {i.evidence && i.evidence.values.length > 0 && <Spark e={i.evidence} />}
-          <p className="text-meta leading-snug text-(--text-secondary)">
-            <span className="font-semibold">Why it matters: </span>{i.why}
+          <p className="text-small leading-snug text-(--text-secondary)">
+            <span className="font-semibold text-(--text)">Why it matters: </span>{i.why}
           </p>
           {(i.confidence === 'low' || i.uses_oura) && (
-            <p className="text-caption text-(--text-muted)">
+            <p className="text-meta text-(--text-secondary)">
               {i.confidence === 'low' ? 'Early pattern: based on only a few days. ' : ''}
               {i.uses_oura ? 'Uses your Oura data: shown here only, never sent to rabbt or your coach.' : ''}
             </p>
           )}
-          {note && <p role="status" className="text-meta text-(--accent)">{note}</p>}
-          <div className="flex flex-wrap items-center gap-3">
+          {note && <p role="status" className="text-small font-medium text-(--accent)">{note}</p>}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {run && !note && (
-              <Button variant="primary" className="hit-44 h-8 px-3 text-meta" disabled={busy} onClick={() => void run()}>
+              <Button variant="default" size="sm" disabled={busy} onClick={() => void run()}>
                 {confirm ? 'Tap again to apply' : a.label}
               </Button>
             )}
             {confirm && (
-              <button type="button" className="hit-44 text-meta text-(--text-muted)" onClick={() => setConfirm(false)}>Cancel</button>
+              <button type="button" className="hit-44 text-small font-medium text-(--text-secondary)" onClick={() => setConfirm(false)}>Cancel</button>
             )}
-            <button type="button" onClick={onDismiss} className="hit-44 text-meta text-(--text-muted) underline-offset-2 hover:underline">
+            <button type="button" onClick={onDismiss} className="hit-44 text-small font-medium text-(--text-secondary) underline-offset-2 hover:underline">
               Not now
             </button>
           </div>
@@ -173,7 +172,7 @@ function Spark({ e }: { e: Evidence }) {
         <span className="h-2 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)">
           <span className={cn('block h-full rounded-full', pct >= 80 ? 'bg-(--warning)' : 'bg-(--accent)')} style={{ width: `${pct}%` }} />
         </span>
-        <span className="text-meta text-(--text-muted)">{Math.round(pct)}%</span>
+        <span className="text-meta text-(--text-secondary)">{Math.round(pct)}%</span>
       </div>
     )
   }
@@ -203,7 +202,7 @@ function Spark({ e }: { e: Evidence }) {
             strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
         )}
       </svg>
-      <figcaption className="flex max-w-[240px] justify-between text-caption text-(--text-muted)">
+      <figcaption className="flex max-w-[240px] justify-between text-meta text-(--text-secondary)">
         <span>{e.labels[0]}</span>
         {e.target != null && <span>dashed: {e.kind === 'bars' && e.unit === '%' ? 'guideline' : 'target'} {fmt(e.target)}</span>}
         <span>{e.labels[n - 1]}</span>

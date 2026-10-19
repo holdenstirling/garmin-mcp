@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, HeartPulse } from 'lucide-react'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { Section } from '@/components/ui/section'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { cn } from '@/lib/utils'
 import { useTrackRefresh } from './refresh'
@@ -27,24 +28,40 @@ const latest = (r: RecoveryData | null | undefined): Day | null =>
 const day = (d: Day | null) => (d ? new Date(`${d.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '')
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
+  return <h3 className="section-title section-title--sm m-0 px-1">{children}</h3>
 }
 
-/** Progress: recovery as one tappable row ("Recovery · Garmin · readiness 72 · sleep 7.4 h")
- *  that expands to the full view. */
-export function RecoveryRow({ source, summary, open, onToggle }: {
-  source: string; summary: string; open: boolean; onToggle: () => void
+/** Progress: the Recovery section. Up to three labeled numbers (readiness, sleep, HRV) in one
+ *  card that expands to the full view (``children``). */
+export function RecoveryRow({ source, stats, open, onToggle, children }: {
+  /** where and when, e.g. "From Garmin, Oct 18" */
+  source: string
+  stats: [string, string][]
+  open: boolean; onToggle: () => void
+  children?: React.ReactNode
 }) {
   return (
-    <button type="button" onClick={onToggle} aria-expanded={open}
-      className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-      <HeartPulse className="size-5 shrink-0 text-(--accent)" aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className="block text-small font-medium text-(--text)">Recovery · {source}</span>
-        <span className="block truncate text-meta text-(--text-muted)">{summary}</span>
-      </span>
-      <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
-    </button>
+    <Section title="Recovery" description={source}>
+      <button type="button" onClick={onToggle} aria-expanded={open}
+        className="flex w-full flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)">
+        <span className="flex w-full items-start gap-3">
+          <HeartPulse className="mt-1 size-5 shrink-0 text-(--accent)" aria-hidden />
+          <span className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+            {stats.map(([label, v]) => (
+              <span key={label} className="min-w-0">
+                <span className="block text-meta text-(--text-secondary)">{label}</span>
+                <span className="block text-title-sm font-semibold leading-tight text-(--text)">{v}</span>
+              </span>
+            ))}
+          </span>
+        </span>
+        <span className="flex items-center gap-1 self-end text-small font-medium text-(--accent)">
+          {open ? 'Hide details' : 'Details'}
+          <ChevronDown className={cn('size-5 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
+        </span>
+      </button>
+      {open && children}
+    </Section>
   )
 }
 
@@ -70,8 +87,8 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
   const pick = (s: DataSource) => latest(s === 'oura' ? r.oura : r.garmin)
   const usesOura = r.oura_connected && (r.sources.show_both || r.sources.recovery === 'oura' || r.sources.sleep === 'oura')
   const foot = (
-    <p className="px-1 text-caption text-(--text-muted)">
-      Stats and your plan count Garmin workouts; a workout two apps recorded counts once.{usesOura ? ' Oura data is shown here only and never sent to rabbt.' : ''} Change in Settings → Data sources.
+    <p className="px-1 text-small leading-snug text-(--text-secondary)">
+      Stats and your plan count Garmin workouts; a workout two apps recorded counts once.{usesOura ? ' Oura data is shown here only and never sent to rabbt.' : ''} Change this in Settings, Data sources.
     </p>
   )
 
@@ -80,14 +97,10 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
   const a = pick(rec), s = pick(slp)
   const wrap = (full: React.ReactNode) => {
     if (!compact) return full
-    const bits = [a?.readiness != null ? `Readiness ${a.readiness}` : null, s?.sleep_hours != null ? `Sleep ${s.sleep_hours} h` : null,
-      a?.hrv != null ? `HRV ${a.hrv} ms` : null].filter(Boolean)
+    const stats: [string, string][] = [['Readiness', fmt.readiness(a)], ['Sleep', fmt.sleep_hours(s)], ['HRV', fmt.hrv(a)]]
     return (
-      <section className="flex flex-col gap-2">
-        <RecoveryRow source={`${SOURCE_NAME[rec]}${a ? ` · ${day(a)}` : ''}`} summary={bits.join(' · ') || 'Tap for details'}
-          open={open} onToggle={() => setOpen((o) => !o)} />
-        {open && full}
-      </section>
+      <RecoveryRow source={`From ${SOURCE_NAME[rec]}${a ? `, ${day(a)}` : ''}`} stats={stats}
+        open={open} onToggle={() => setOpen((o) => !o)}>{full}</RecoveryRow>
     )
   }
 
@@ -96,28 +109,28 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
     if (!g && !o) return null
     return wrap(
       <section className="flex flex-col gap-2" aria-label="Recovery, Garmin and Oura">
-        <Label>Recovery · Garmin vs Oura</Label>
+        <Label>Garmin and Oura side by side</Label>
         <div className="overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
-          <table className="w-full text-left text-small">
+          <table className="w-full text-left text-body">
             <thead>
-              <tr className="text-caption text-(--text-muted)">
-                <th scope="col" className="px-3 py-2 font-medium"><span className="sr-only">Measure</span></th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">Garmin{g ? ` · ${day(g)}` : ''}</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">Oura{o ? ` · ${day(o)}` : ''}</th>
+              <tr className="text-meta text-(--text-secondary)">
+                <th scope="col" className="px-3 py-2.5 font-medium"><span className="sr-only">Measure</span></th>
+                <th scope="col" className="px-3 py-2.5 text-right font-medium">Garmin{g ? <span className="block font-normal">{day(g)}</span> : null}</th>
+                <th scope="col" className="px-3 py-2.5 text-right font-medium">Oura{o ? <span className="block font-normal">{day(o)}</span> : null}</th>
               </tr>
             </thead>
             <tbody>
               {ROWS.map(([k, label]) => (
                 <tr key={k} className="border-t border-(--border)">
-                  <th scope="row" className="px-3 py-2 font-normal text-(--text-muted)">{label}</th>
-                  <td className="px-3 py-2 text-right tabular-nums text-(--text)">{fmt[k](g)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-(--text)">{fmt[k](o)}</td>
+                  <th scope="row" className="px-3 py-2.5 font-normal text-(--text-secondary)">{label}</th>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-(--text)">{fmt[k](g)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-(--text)">{fmt[k](o)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="px-1 text-caption text-(--text-muted)">Each device scores differently, so expect gaps. rabbt plans from {SOURCE_NAME[r.sources.recovery]}.</p>
+        <p className="px-1 text-small text-(--text-secondary)">Each device scores differently, so expect gaps. rabbt plans from {SOURCE_NAME[r.sources.recovery]}.</p>
         {foot}
       </section>
     )
@@ -128,18 +141,18 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
     [`${SOURCE_NAME[rec]} readiness`, fmt.readiness(a), rec === 'oura' ? 'oura_readiness' : 'garmin_readiness'],
     ['HRV', fmt.hrv(a), null],
     ['Resting HR', fmt.resting_hr(a), null],
-    [slp === rec ? 'Sleep' : `Sleep · ${SOURCE_NAME[slp]}`, fmt.sleep_hours(s), null],
+    [slp === rec ? 'Sleep' : `Sleep (${SOURCE_NAME[slp]})`, fmt.sleep_hours(s), null],
   ]
   return wrap(
     <section className="flex flex-col gap-2">
-      {!compact && <Label>Recovery · {SOURCE_NAME[rec]}{a ? ` · ${day(a)}` : ''}</Label>}
-      <div className="grid grid-cols-2 gap-1.5">
+      {!compact && <Label>Recovery from {SOURCE_NAME[rec]}{a ? `, ${day(a)}` : ''}</Label>}
+      <div className="grid grid-cols-2 gap-3">
         {tiles.map(([label, v, term]) => (
-          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
-            <span className="flex items-center justify-center gap-1 text-caption text-(--text-muted)">
+          <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3 text-center">
+            <span className="flex items-center justify-center gap-1 text-meta text-(--text-secondary)">
               {label}{term && <InfoTip term={term as 'oura_readiness' | 'garmin_readiness'} />}
             </span>
-            <span className="mt-0.5 block font-display text-title-sm leading-tight text-(--text)">{v}</span>
+            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
           </div>
         ))}
       </div>

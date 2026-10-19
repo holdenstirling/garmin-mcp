@@ -99,7 +99,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
                 {DISTANCES_MI.map((mi) => <Chip key={mi} selected={within === mi} onClick={() => setWithin(mi)}>{mi} mi</Chip>)}
               </div>
             ) : data && (
-              <p className="flex items-start gap-1.5 px-1 text-meta text-(--text-muted)">
+              <p className="flex items-start gap-1.5 px-1 text-small text-(--text-secondary)">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
                 {data.area ? `Showing coaches in ${data.area.split(', ').pop()}. ` : ''}Save your location in Explore to see distances.
               </p>
@@ -126,13 +126,13 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
               <Globe className="size-5" /> Find coaches near me on the web
             </Button>
           )}
-          {!web && !webBusy && <p className="px-1 text-caption text-(--text-muted)">Searches by your sport and city only. Uses 1 of your daily web searches.</p>}
+          {!web && !webBusy && <p className="px-1 text-meta text-(--text-secondary)">Searches by your sport and city only. Uses 1 of your daily web searches.</p>}
           {webBusy && <RabbitLoader className="py-6" label="Searching the web" cycle={['Searching the web…', 'Checking coaching sites…', 'Keeping only real links…']} />}
           {webError && <ErrorState compact message={webError} onRetry={() => void searchWeb()} />}
           {web && web.state !== 'ok' && <p className="px-1 text-small text-(--text-muted)">{WEB_STATE[web.state]}</p>}
           {web && web.state === 'ok' && (
             <>
-              <p className="flex items-center gap-1.5 px-1 text-caption font-semibold text-(--text-muted)">
+              <p className="flex items-center gap-1.5 px-1 text-meta font-semibold text-(--text-secondary)">
                 <Globe className="size-4" /> {web.label}
               </p>
               {web.coaches.length === 0 && <p className="px-1 text-small text-(--text-muted)">Nothing with a website turned up around {web.area}.</p>}
@@ -141,7 +141,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
                   className="flex min-h-11 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 active:bg-(--bg-inset)">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-body font-medium text-(--text)">{w.name}</span>
-                    <span className="block truncate text-meta text-(--text-muted)">{[w.specialty, w.area || web.area].filter(Boolean).join(' · ')}</span>
+                    <span className="block truncate text-small text-(--text-secondary)">{[w.specialty, w.area || web.area].filter(Boolean).join(' · ')}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-meta text-(--accent)">{hostOf(w.url)} <ExternalLink className="size-3.5" /></span>
                 </a>
@@ -200,7 +200,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
 }
 
 const H = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="font-sans text-caption font-semibold text-(--text-muted)">{children}</h2>
+  <h2 className="section-title m-0 px-1">{children}</h2>
 )
 
 function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
@@ -250,7 +250,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
               </Button>
             )}
           </div>
-          <p className="-mt-2 text-caption text-(--text-muted)">
+          <p className="-mt-2 text-meta text-(--text-secondary)">
             Email opens a draft{race?.name ? ` mentioning ${race.name}` : ''} for you to edit and send yourself.
           </p>
 
@@ -269,7 +269,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
               <Quote className="mt-0.5 size-5 shrink-0 text-(--accent)" />
               <div>
                 <blockquote className="text-body italic leading-snug text-(--text)">{c.testimonial.quote}</blockquote>
-                <figcaption className="mt-1 text-caption text-(--text-muted)">{c.testimonial.by}</figcaption>
+                <figcaption className="mt-1 text-meta text-(--text-secondary)">{c.testimonial.by}</figcaption>
               </div>
             </figure>
           )}
@@ -290,7 +290,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
               {c.can_invite && confirm && (
                 <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3">
                   <p className="text-small font-medium text-(--text)">What can {first} do?</p>
-                  <p className="text-meta text-(--text-muted)">{first} can always see your plan, races and workouts. Turn on more only if you want to.</p>
+                  <p className="text-small text-(--text-secondary)">{first} can always see your plan, races and workouts. Turn on more only if you want to.</p>
                   <div className="flex min-h-11 items-center justify-between gap-3">
                     <span className="text-small text-(--text)">Edit my plan</span>
                     <Switch label="Coach can edit my plan" checked={canEdit} disabled={busy} onChange={setCanEdit} />
@@ -305,7 +305,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
                       <UserPlus className="size-5" /> Send invite
                     </Button>
                   </div>
-                  <p className="text-caption text-(--text-muted)">You can change these any time in Me → Coaches.</p>
+                  <p className="text-meta text-(--text-secondary)">You can change these any time in Me → Coaches.</p>
                 </div>
               )}
               {onAsk && (
