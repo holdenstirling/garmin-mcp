@@ -110,7 +110,7 @@ def test_auto_share_external_card(fx) -> None:  # noqa: F811
     cm, today = fx.cm, fx.clock.at.date()
     w = {**wo.from_oura(O_RUN), "start": f"{today.isoformat()}T07:04:00"}
     assert cm.auto_share_external("ann", [w], today) == []  # sharing not on
-    cm.put_settings("ann", {"share_prompted": True})
+    cm.put_settings("ann", {"share_workouts": True})
     posted = cm.auto_share_external("ann", [w], today)
     assert len(posted) == 1 and cm.auto_share_external("ann", [w], today) == []  # once
     card = cm.feed("bob")["items"][0]["workout"]

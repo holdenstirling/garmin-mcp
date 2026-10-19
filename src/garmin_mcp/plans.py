@@ -1071,7 +1071,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
         weeks.append({k: w[k] for k in ("index", "start", "phase", "recovery", "hours", "focus")}
                      | {"days": days})
     cur = week_for(plan, today)
-    return {k: plan.get(k) for k in ("start", "first_day", "race_date", "distance", "race_kind",
+    return {k: plan.get(k) for k in ("start", "first_day", "race_date", "distance", "race_kind", "no_race",
                                      "level", "peak_hours", "start_hours", "note", "created",
                                      "updated")} | {
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),

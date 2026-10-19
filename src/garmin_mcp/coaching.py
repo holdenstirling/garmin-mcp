@@ -391,6 +391,11 @@ class CoachStore:
                     raise CoachError("target time must look like 5:30:00 or 45:00")
                 else:
                     out[k] = v.strip()
+            elif k == "no_race":
+                # A training block with no race: ``date`` is the block's last day.
+                if not isinstance(v, bool):
+                    raise CoachError("no_race must be true or false")
+                out[k] = v
             elif k == "limiters":
                 if not isinstance(v, list) or any(x not in ("swim", "bike", "run") for x in v):
                     raise CoachError("limiters must be a list of swim, bike, run")
@@ -409,8 +414,8 @@ class CoachStore:
                 "distance": g.get("distance", ""), "target": g.get("target", ""),
                 "priorities": g.get("priorities", ""), "plan": g.get("plan", ""),
                 "plan_files": []}
-        for k in ("goal_type", "priority", "target_time", "limiters", "course"):
-            if g.get(k) not in (None, "", []):
+        for k in ("goal_type", "priority", "target_time", "limiters", "course", "no_race"):
+            if g.get(k) not in (None, "", [], False):
                 goal[k] = g[k]
 
         def add(d: dict[str, Any]) -> bool:

@@ -142,7 +142,7 @@ def test_disconnect_revokes_and_deletes_tokens_and_workouts(env) -> None:
 def test_feed_card_has_no_strain_or_heart_rate(fx) -> None:  # noqa: F811
     cm, today = fx.cm, fx.clock.at.date()
     w = {**wo.from_whoop(W_RUN), "start": f"{today.isoformat()}T07:03:00"}
-    cm.put_settings("ann", {"share_prompted": True})
+    cm.put_settings("ann", {"share_workouts": True})
     assert len(cm.auto_share_external("ann", [w], today)) == 1
     card = cm.feed("bob")["items"][0]["workout"]
     assert card["source"] == "whoop" and card["title"] == "Run" and card["km"] == 7.95 and card["minutes"] == 44

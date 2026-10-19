@@ -3523,6 +3523,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     from . import workouts as _workouts
     _ext_w = _workouts.ExternalWorkouts(store) if store is not None else None  # Oura etc. (display-only)
     _ext_feed: dict[str, Any] = {}  # workouts.py imports -> community auto-share (set below)
+    _share_consent: dict[str, Any] = {}  # consent screen's sharing choice -> community setting (set below)
     from . import applehealth as _ah
     # Apple Watch: the athlete's iPhone Shortcut posts workouts with a personal import key.
     _ah_keys = _ah.ImportKeys(store) if store is not None else None
@@ -3540,6 +3541,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if push:  # @mentions open the exact post
             cm.push_link = lambda to, t, b, url: push.send(to, t, b, url=url)
         _ext_feed["share"] = cm.auto_share_external
+        _share_consent["set"] = lambda uid, on: cm.put_settings(uid, {"share_workouts": on, "share_prompted": True})
 
         def _cm_workouts(uid: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
             """Garmin activities and other sources' workouts, for the share-on backfill."""
@@ -5119,6 +5121,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except _consent.ConsentError as e:
             return _err(400, str(e))
         log_event(logger, logging.INFO, "terms_accepted", user_id=user_id, version=legal.VERSION)
+        share = body.get("share") if isinstance(body, dict) else None
+        if isinstance(share, bool) and "set" in _share_consent:
+            try:  # coaches and others outside the feed simply have nothing to set
+                await anyio.to_thread.run_sync(lambda: _share_consent["set"](user_id, share))
+            except Exception as e:
+                log_event(logger, logging.INFO, "share_consent_skipped", user_id=user_id, error=type(e).__name__)
         return JSONResponse(v)
 
     async def account_export(request: Request, user_id: str) -> Response:
@@ -5348,6 +5356,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *tp_routes,
         *friends_routes,
         Route("/app/privacy", legal_page, methods=["GET"]),
+        Route("/app/health-data", legal_page, methods=["GET"]),
         Route("/app/about", legal_page, methods=["GET"]),
         Route("/app/terms", legal_page, methods=["GET"]),
         Route("/app/api/plan/adjust", _plan_api(adjust_post, mutating=True), methods=["POST"]),

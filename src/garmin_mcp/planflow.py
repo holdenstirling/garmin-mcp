@@ -70,7 +70,32 @@ def plan_summary(plan: dict[str, Any], today: date) -> dict[str, Any]:
         ms = [_minutes(s) for ss in w["days"].values() for s in ss if s.get("kind") in LONG_KINDS]
         long.append(max(ms) if ms else 0)
     first = next((x for x in first_two if x["sessions"]), None)
-    return {"weeks": len(weeks), "race_date": plan.get("race_date"), "start": plan.get("first_day") or plan.get("start"),
+    # Per phase: the kinds of workout that define it (most frequent hard/long kinds) and its
+    # longest session, so the review can explain each phase when it's tapped.
+    for ph in phases:
+        counts: dict[str, int] = {}
+        longest = 0
+        for w in weeks:
+            if not (ph["from"] <= w["start"] <= ph["to"]):
+                continue
+            for ss in w["days"].values():
+                for s in _work(ss):
+                    k = s.get("kind") or ""
+                    longest = max(longest, _minutes(s) if k in LONG_KINDS else 0)
+                    if k and k not in ("easy", "recovery", "rest", "shakeout"):
+                        counts[k] = counts.get(k, 0) + 1
+        ph["key_kinds"] = [k for k, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:4]]
+        ph["longest_minutes"] = longest
+    # The whole plan as a calendar (compact): week rows of days with their sessions.
+    calendar = [{"start": w["start"], "phase": w["phase"], "hours": w.get("hours") or week_hours(w),
+                 "recovery": bool(w.get("recovery")),
+                 "days": [{"date": d, "sessions": [{"sport": s["sport"], "kind": s.get("kind"),
+                                                     "title": s.get("title"), "minutes": _minutes(s)}
+                                                    for s in _work(w["days"][d])]}
+                          for d in sorted(w["days"])]}
+                for w in weeks]
+    return {"weeks": len(weeks), "race_date": plan.get("race_date"), "no_race": bool(plan.get("no_race")),
+            "calendar": calendar, "start": plan.get("first_day") or plan.get("start"),
             "start_hours": plan.get("start_hours"), "peak_hours": plan.get("peak_hours"), "level": plan.get("level"),
             "start_from": plan.get("start_from"), "note": plan.get("note"),
             "phases": phases, "hours": [w.get("hours") or week_hours(w) for w in weeks],
