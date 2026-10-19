@@ -7,7 +7,7 @@
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, CalendarDays, Check, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
+import { Ban, CalendarDays, Check, ChevronDown, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -745,16 +745,19 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
             </button>
           )
         })}
-        <span className="flex-1" />
-        <button type="button" onClick={() => void toggleComments()} aria-expanded={expanded ? undefined : showComments}
-          aria-controls={`comments-${p.id}`}
-          className={cn('inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-small font-semibold active:bg-(--bg-inset)',
-            showComments && !expanded ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary)')}>
-          <MessageCircle className="size-5" aria-hidden />
-          {showComments && !expanded ? 'Hide comments'
-            : p.comment_count > 0 ? `${p.comment_count} ${p.comment_count === 1 ? 'comment' : 'comments'}` : 'Comment'}
-        </button>
       </div>
+      {/* Comments stay folded on the feed: one clear row opens (and hides) the thread right here. */}
+      <button type="button" onClick={() => void toggleComments()} aria-expanded={expanded ? undefined : showComments}
+        aria-controls={`comments-${p.id}`}
+        className={cn('-mx-1 -mt-2 flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-small font-semibold active:bg-(--bg-inset)',
+          showComments && !expanded ? 'text-(--accent)' : 'text-(--text-secondary)')}>
+        <MessageCircle className="size-5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">
+          {showComments && !expanded ? 'Hide comments'
+            : p.comment_count > 0 ? `${p.comment_count} ${p.comment_count === 1 ? 'comment' : 'comments'}` : 'Write a comment'}
+        </span>
+        {!expanded && <ChevronDown className={cn('size-5 shrink-0 transition-transform', showComments && 'rotate-180')} aria-hidden />}
+      </button>
 
       {showComments && (
       <div id={`comments-${p.id}`} className={cn('flex flex-col gap-4', !expanded && 'comments-open')}>
@@ -893,7 +896,9 @@ function WorkoutCard({ w, imperial, onOpen }: { w: CardWorkout; imperial: boolea
         <SportTile sport={w.sport} family={fam} size={44} />
         <span className="min-w-0 flex-1">
           <span className="block text-lead font-semibold leading-snug text-(--text)">{w.title}</span>
-          <span className="block text-caption text-(--text-muted)">{FAMILY_NAME[fam]}, {w.auto ? 'synced' : 'shared'} via {via}</span>
+          <span className="block text-caption text-(--text-muted)">
+            {w.title.trim().toLowerCase() === FAMILY_NAME[fam].toLowerCase() ? (w.auto ? 'Synced' : 'Shared') : `${FAMILY_NAME[fam]}, ${w.auto ? 'synced' : 'shared'}`} via {via}
+          </span>
         </span>
       </div>
       {headline && <p className="m-0 text-small font-medium text-(--accent)">{headline}</p>}
