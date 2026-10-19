@@ -5,7 +5,7 @@
 //   * UpcomingDates: a repeating event's next dates, skip one or bring it back;
 //   * CalendarSync (Events screen): the private calendar link Google / Apple subscribe to.
 import { useEffect, useState } from 'react'
-import { CalendarCheck, CalendarDays, CalendarPlus, Check, Copy, Download, ExternalLink, Link2, Ellipsis, RotateCcw, Undo2, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronDown, Copy, Download, ExternalLink, Link2, Ellipsis, RotateCcw, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/plan/ui'
 import { openPlanDay } from '@/lib/plancal'
@@ -72,13 +72,16 @@ export function AddToCalendar({ event }: { event: RaceEvent }) {
   return (
     <Card>
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-body font-medium text-(--text) active:bg-(--bg-inset)">
-        <CalendarPlus className="size-5 text-(--accent)" aria-hidden />
-        <span className="flex-1">Add to calendar{event.recurring ? ' (every date)' : ''}</span>
-        <span className="text-meta text-(--text-muted)">{open ? 'Hide' : 'Google, Apple, Outlook'}</span>
+        className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
+        <CalendarPlus className="size-5 shrink-0 text-(--accent)" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-medium text-(--text)">Add to calendar{event.recurring ? ' (every date)' : ''}</span>
+          <span className="block text-small text-(--text-muted)">Google, Apple or Outlook</span>
+        </span>
+        <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2 border-t border-(--border) p-3">
+        <div className="flex flex-col gap-2 border-t border-(--border) p-4">
           {event.google_url && (
             <a href={event.google_url} target="_blank" rel="noopener noreferrer"
               className="flex min-h-11 items-center gap-2 rounded-lg border border-(--border) px-3 text-small font-medium text-(--text) active:bg-(--bg-inset)">

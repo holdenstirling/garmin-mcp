@@ -115,7 +115,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
         {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}{d.time ? ` at ${d.time}` : ''}
         {session?.synced && ' · on your Garmin calendar'}
       </p>
-      {meta && <p className="-mt-2 px-1 text-body tabular-nums text-(--text-secondary)">{meta}</p>}
+      {meta && <p className="-mt-2 whitespace-pre-line px-1 text-body tabular-nums text-(--text-secondary)">{meta}</p>}
 
       {locked ? (
         <p className="px-1 text-small text-(--text-muted)">

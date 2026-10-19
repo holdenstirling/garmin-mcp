@@ -523,7 +523,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)}
       className={cn('flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-body font-medium',
         editing ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
-      {editing ? <><Check className="size-5" aria-hidden />Done</> : <><Pencil className="size-5" aria-hidden />Edit week</>}
+      {editing ? <><Check className="size-5" aria-hidden />Done</> : <><Pencil className="size-5" aria-hidden />Edit<span className="max-[379px]:hidden">&nbsp;week</span></>}
     </button>
   )
 

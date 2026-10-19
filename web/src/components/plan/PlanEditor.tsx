@@ -255,7 +255,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
     const dist = c ? Object.entries(c.km).filter(([, v]) => (v ?? 0) > 0).map(([sp, v]) => fmtDist(v!, imperial, sp)).join(' + ') : ''
     const mins = sessionMinutes(s)
     const pace = c?.pace ? `${paceText(c.pace.fast, imperial)}–${paceText(c.pace.slow, imperial)}/${imperial ? 'mi' : 'km'}` : ''
-    return [dist, mins ? fmtDuration(mins) : '', pace].filter(Boolean).join(' · ')
+    const size = [dist, mins ? fmtDuration(mins) : ''].filter(Boolean).join(' · ')
+    return [size, pace ? `Pace ${pace}` : ''].filter(Boolean).join('\n')
   }
   const canMove = (s: PlanSession, date: string) => {
     const st = planCal?.sessions[s.id]?.status

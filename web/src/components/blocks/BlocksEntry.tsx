@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, Users } from 'lucide-react'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
+import { Section } from '@/components/ui/section'
 import { WeekRing } from '@/components/progress/Progress'
 import { getBlocks, openBlock, weekLine, type BlockSummary, type BlocksOverview } from '@/lib/blocks'
 
@@ -21,8 +22,9 @@ export function BlocksEntry({ compact = false }: {
   const waiting = [...(o?.invites ?? []), ...(o?.clubs ?? [])]
   const full = !!o && o.active >= o.max_active
   return (
-    <Group label="Train together"
-      footer={!compact && live.length === 0 ? 'Same weeks, your own plan. Check in on Sundays and cheer each other on.' : undefined}>
+    <Section title="Train together"
+      description={!compact && live.length === 0 ? 'Same weeks, your own plan. Check in on Sundays and cheer each other on.' : 'Training blocks you share with friends.'}>
+    <Group>
       {live.map((b) => <BlockRow key={b.id} b={b} />)}
       {waiting.map((b) => (
         <Row key={b.id} icon={<Icon><Users /></Icon>}
@@ -34,6 +36,7 @@ export function BlocksEntry({ compact = false }: {
         subtitle={full ? `You're in ${o?.max_active} blocks. Finish or leave one first.` : 'Pick a block, a start Monday and your crew'}
         disabled={full} onClick={() => openBlock('new')} />
     </Group>
+    </Section>
   )
 }
 
@@ -44,7 +47,7 @@ function BlockRow({ b }: { b: BlockSummary }) {
       {b.me ? <WeekRing done={b.me.done} target={b.me.target} size={36} />
         : <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Users className="size-5" /></span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-lead leading-snug text-(--text)">{b.name}</span>
+        <span className="block text-lead leading-snug text-(--text)">{b.name}</span>
         <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">
           {weekLine(b.week)} · {b.members} {b.members === 1 ? 'person' : 'people'}
           {b.week.state === 'active' && b.members > 1 ? ` · ${b.closed} closed` : ''}
