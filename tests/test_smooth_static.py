@@ -62,7 +62,7 @@ def test_tab_bar_children_never_take_the_tap() -> None:
 
 def test_design_tokens_launch_screen_and_rabbit_voice() -> None:
     css = (SRC / "styles" / "globals.css").read_text()
-    for t in ("caption", "small", "meta", "body", "lead", "title", "heading", "page", "display"):
+    for t in ("caption", "meta", "small", "body", "body-lg", "lead", "title-sm", "title", "display"):
         assert f"--text-{t}:" in css
     html = (SRC.parent / "index.html").read_text()
     assert 'id="splash"' in html and "<script>" not in html  # CSP: the launch screen needs no inline JS

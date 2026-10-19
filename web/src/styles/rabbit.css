@@ -245,23 +245,29 @@ html.kb-open .empty-hero { transform: none; }
 }
 .tab-bar__item {
   position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-weight: 500;
-  /* Labels grow with larger text only up to 14px, like iOS tab bars, so five still fit side by side. */
-  font-size: min(var(--text-caption), 14px);
+  gap: 3px; min-height: 60px; min-width: 44px; padding: 6px 0 4px; color: var(--text-secondary); font-weight: 600;
+  /* Labels grow with larger text only up to 15px, like iOS tab bars, so five still fit side by side. */
+  font-size: min(var(--text-caption), 15px); line-height: 1.2;
   transition: color 0.15s ease;
 }
+/* The icon sits in a pill that fills in for the current tab, so where you are is obvious at a glance. */
+.tab-bar__icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 32px;
+  border-radius: 999px; transition: background-color 0.18s ease; }
 .tab-bar__item[aria-current="page"] { color: var(--accent); }
+.tab-bar__item[aria-current="page"] .tab-bar__icon { background: var(--accent-subtle); }
+@media (prefers-color-scheme: dark) { :root:not(.light) .tab-bar__item[aria-current="page"] .tab-bar__icon { background: rgba(168, 213, 181, 0.16); } }
+:root.dark .tab-bar__item[aria-current="page"] .tab-bar__icon { background: rgba(168, 213, 181, 0.16); }
 .tab-bar__item:active { opacity: 0.7; }
-.tab-bar__dot { position: absolute; top: 7px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 999px;
+.tab-bar__dot { position: absolute; top: 7px; left: calc(50% + 12px); width: 8px; height: 8px; border-radius: 999px;
   background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
 html.kb-open .tab-bar { display: none; }
 .with-tabbar .composer-bar { padding-bottom: 8px; }
 .tab-page { animation: modal-fade-in 0.16s ease-out backwards; }
 @media (prefers-reduced-motion: reduce) { .tab-page, .tab-bar__item { animation: none; transition: none; } }
 .plan-chip {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 16px;
   border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-surface);
-  color: var(--text-secondary); font-size: var(--text-body); line-height: 1.2; cursor: pointer;
+  color: var(--text); font-size: var(--text-small); font-weight: 500; line-height: 1.2; cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
 }
 .plan-chip { position: relative; flex-shrink: 0; white-space: nowrap; } /* chip rows that scroll sideways keep chips one line high */
@@ -534,9 +540,9 @@ html.kb-open .tab-bar { display: none; }
 
 /* Segmented control: one pill slides between options (Segmented.tsx sets --seg-i / --seg-n). */
 .seg { position: relative; isolation: isolate; }
-.seg__pill { position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; border-radius: 999px;
-  width: calc((100% - 4px) / var(--seg-n)); transform: translateX(calc(100% * var(--seg-i)));
-  background: var(--bg-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); transition: transform 240ms cubic-bezier(0.3, 0.9, 0.3, 1.05); }
+.seg__pill { position: absolute; z-index: -1; top: 4px; bottom: 4px; left: 4px; border-radius: 999px;
+  width: calc((100% - 8px) / var(--seg-n)); transform: translateX(calc(100% * var(--seg-i)));
+  background: var(--bg-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.14), 0 0 0 1px var(--border); transition: transform 240ms cubic-bezier(0.3, 0.9, 0.3, 1.05); }
 
 /* Done ticks (week rows, checklist, done chips): the check draws itself once. */
 .rb-tick path, .rb-tick polyline { stroke-dasharray: 24; stroke-dashoffset: 0; animation: rb-draw-in 340ms ease-out both; }
@@ -549,3 +555,14 @@ html.kb-open .tab-bar { display: none; }
   .rb-ring, .seg__pill, .btn-press, .tap-card { transition: none; }
   .btn-press:active:not(:disabled), .tap-card:active { transform: none; }
 }
+
+/* ---------------------------------------------------------------- tab top bar (redesign) ---
+   Every tab: a calm 56px bar with the rabbt mark on the left and the header icons on the right.
+   The page's big title scrolls with the content; when it's gone, the bar shows the page name. */
+.tab-topbar { border-bottom: 1px solid transparent; transition: border-color 0.2s ease; }
+.tab-topbar--scrolled { border-bottom-color: var(--border); }
+.tab-topbar__slot { position: absolute; inset: 0; display: flex; align-items: center; transition: opacity 0.18s ease, transform 0.18s ease; }
+.tab-topbar__slot.is-off { opacity: 0; transform: translateY(4px); pointer-events: none; }
+.tab-topbar__name { display: block; line-height: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font); font-size: var(--text-lead); font-weight: 650; color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .tab-topbar__slot { transition: none; } }

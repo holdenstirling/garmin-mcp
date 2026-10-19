@@ -49,10 +49,13 @@
   --color-card: var(--bg-surface);
   --color-card-foreground: var(--text);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Radii: chips and pills are rounded-full; inner tiles and inputs rounded-lg (14px); cards
+     rounded-xl (20px); sheets and hero cards rounded-2xl (24px). */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
 
   /* Type scale. The root is 17px on iPhone (Dynamic Type: -apple-system-body, rabbit.css) and
      17px elsewhere, and every size here is in rem, so it all follows the phone's Text Size.
@@ -163,9 +166,9 @@
     --border-strong: rgba(10, 15, 12, 0.22);
 
     /* Radii */
-    --radius: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius: 12px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
 
     /* Typography */
     --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -481,8 +484,8 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-top-left-radius: var(--radius-xl);
-  border-top-right-radius: var(--radius-xl);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
   box-shadow: var(--shadow-lg);
   /* backwards, not forwards: a transform left on the panel would make it the containing block
      of every position:fixed overlay opened inside it (nested sheets, confirms, photo viewer),
@@ -503,14 +506,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 14px 16px 14px 20px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .modal-title {
   font-family: var(--font-display);
-  font-size: var(--text-title-sm);
+  font-size: var(--text-title);
   font-weight: 400;
   color: var(--text);
   margin: 0;
@@ -522,22 +526,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
-  background: transparent;
-  color: var(--text-muted);
+  /* A soft disc so the close / back button reads as a button, not a stray glyph. */
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
 }
 
-/* 44px hit area around the 32px visual. */
+/* 44px hit area around the 36px visual. */
 .modal-close::after {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -4px;
 }
 
 .modal-close:hover {

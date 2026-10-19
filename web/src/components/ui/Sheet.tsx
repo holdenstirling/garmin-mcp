@@ -91,7 +91,7 @@ export function Sheet({
         onClick={(e) => e.stopPropagation()} {...(dismissible ? touch : {})}>
         <div className="sheet-handle" aria-hidden="true" />
         <div className="modal-header">
-          {header ?? <h2 className="modal-title min-w-0 truncate">{title}</h2>}
+          {header ?? <h2 className="modal-title line-clamp-2 min-w-0 break-words">{title}</h2>}
           <div className="sheet-actions">
             {actions}
             <button type="button" className="modal-close" aria-label={closeLabel} onClick={requestClose} disabled={!dismissible}>
@@ -100,10 +100,10 @@ export function Sheet({
           </div>
         </div>
         {below}
-        <div className={cn('modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]', bodyClassName)}>
+        <div className={cn('modal-body flex flex-col gap-5 overflow-y-auto px-5 pt-5 pb-[max(24px,env(safe-area-inset-bottom))]', bodyClassName)}>
           {children}
         </div>
-        {footer && <div className="shrink-0 border-t border-(--border) px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">{footer}</div>}
+        {footer && <div className="shrink-0 border-t border-(--border) px-5 pb-[max(14px,env(safe-area-inset-bottom))] pt-3.5">{footer}</div>}
         {extra}
       </div>
     </div>

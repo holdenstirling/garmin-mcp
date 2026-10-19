@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, u
 import { ChevronDown, ChevronLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDialog } from '@/hooks/useDialog'
+import { RabbitLogo } from '@/components/RabbitLogo'
 
 // Tab pages (components/nav): a TabScreen hosts one embedded page. The page is the first
 // Screen that *commits* inside it (claimed in a layout effect, never during render: a render
@@ -69,45 +70,70 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
   // Escape and the phone's Back go one level back (child screen) or close (root screen).
   useDialog(embedded ? none : ref, onBack ?? onClose)
   const name = embedded && embed.title ? embed.title : title
+  // Tab page: a compact top bar (rabbt mark, the header icons) stays put; the big title and its
+  // one-line purpose scroll with the page. Once the big title has scrolled away, the bar shows
+  // the page name instead of the mark, so you always know where you are.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const [scrolled, setScrolled] = useState(false)
+  const tabPage = embedded && !onBack
+  useEffect(() => {
+    if (!tabPage) return
+    const el = titleRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setScrolled(!e!.isIntersecting), { root: scrollRef.current, threshold: 0 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [tabPage])
+  const extras = (embedded && embed.top) || headerExtra
+    ? <>{embedded && embed.top}{headerExtra}</> : null
   const body = (
     <>
-      <header className="shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
-        {embedded && !onBack ? (
-          <div className="mx-auto flex max-w-xl items-center gap-2 px-1">
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate font-display text-[clamp(1.15rem,6.2vw,1.4118rem)] leading-tight text-(--brand)">{name}</h1>
-              {subtitle && <p className="truncate text-caption text-(--text-muted)">{subtitle}</p>}
+      {tabPage ? (
+        <header className={cn('tab-topbar shrink-0 bg-(--bg) pt-[env(safe-area-inset-top)]', scrolled && 'tab-topbar--scrolled')}>
+          <div className="mx-auto flex h-14 max-w-xl items-center gap-2 pl-5 pr-2">
+            <div className="relative h-full min-w-0 flex-1">
+              <span className={cn('tab-topbar__slot', scrolled && 'is-off')} aria-hidden={scrolled || undefined}><BrandMark /></span>
+              <span className={cn('tab-topbar__slot tab-topbar__name', !scrolled && 'is-off')} aria-hidden>{name}</span>
             </div>
             {embed.action}
           </div>
-        ) : (
+        </header>
+      ) : (
+        <header className="shrink-0 border-b border-(--border) bg-(--bg) px-3 pb-3 pt-[max(10px,env(safe-area-inset-top))]">
           <div className="flex items-center gap-2">
             {onBack ? (
               <button type="button" className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-6" /></button>
             ) : <span className="modal-close invisible" aria-hidden />}
             <div className="min-w-0 flex-1 text-center">
-              <h2 className="truncate font-display text-title-sm leading-tight text-(--brand)">{name}</h2>
-              {subtitle && <p className="truncate text-caption text-(--text-muted)">{subtitle}</p>}
+              <h2 className="line-clamp-2 break-words font-display text-title leading-tight text-(--brand)">{name}</h2>
+              {subtitle && <p className="mt-0.5 line-clamp-2 text-meta leading-snug text-(--text-muted)">{subtitle}</p>}
             </div>
             {/* X: a root screen, or a step/child screen whose close leaves entirely (a wizard step,
                 a thread inside the inbox), so there is always one tap all the way out. */}
             {embedded || !onClose || onClose === onBack ? <span className="modal-close invisible" aria-hidden />
               : <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-5" /></button>}
           </div>
+          {extras && <div className="mx-auto mt-3 max-w-xl">{extras}</div>}
+        </header>
+      )}
+      <div ref={scrollRef} className="settings min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {tabPage && (
+          <div className="mx-auto w-full max-w-xl px-5 pb-1 pt-2">
+            <h1 ref={titleRef} className="m-0 font-display text-display text-(--brand)">{name}</h1>
+            {subtitle && <p className="m-0 mt-1 text-small leading-snug text-(--text-secondary)">{subtitle}</p>}
+            {extras && <div className="mt-4">{extras}</div>}
+          </div>
         )}
-        {embedded && embed.top}
-        {headerExtra}
-      </header>
-      <div className="settings min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-5">
+        <div className={cn('mx-auto flex w-full max-w-xl flex-col gap-7 px-5 pb-12', tabPage ? 'pt-6' : 'pt-5')}>
           {embedded && embed.lead}
           {children}
         </div>
       </div>
       {footer && (
-        <footer className={cn('shrink-0 border-t border-(--border) bg-(--bg) px-4 pt-3',
-          embedded ? 'pb-3' : 'pb-[max(12px,env(safe-area-inset-bottom))]')}>
-          <div className="mx-auto flex w-full max-w-xl gap-2">{footer}</div>
+        <footer className={cn('shrink-0 border-t border-(--border) bg-(--bg) px-5 pt-3.5',
+          embedded ? 'pb-3.5' : 'pb-[max(14px,env(safe-area-inset-bottom))]')}>
+          <div className="mx-auto flex w-full max-w-xl gap-3">{footer}</div>
         </footer>
       )}
     </>
@@ -128,6 +154,18 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
   )
 }
 
+/** The rabbt mark and wordmark: the app's name in the top bar of every tab. */
+export function BrandMark({ className }: { className?: string }) {
+  return (
+    <span className={cn('flex items-center gap-2.5', className)}>
+      <span className="logo-tile flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-(--brand)">
+        <RabbitLogo size={26} />
+      </span>
+      <span className="font-display text-title-md leading-none text-(--brand)">rabbt</span>
+    </span>
+  )
+}
+
 export function Progress({ step, total }: { step: number; total: number }) {
   return (
     <div className="mx-auto mt-2.5 flex max-w-xl gap-1 px-1" aria-label={`Step ${step + 1} of ${total}`}>
@@ -143,9 +181,9 @@ export function Progress({ step, total }: { step: number; total: number }) {
 export function StepIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
   return (
     <div className="px-1">
-      <p className="text-caption font-semibold text-(--accent)">{eyebrow}</p>
-      <h3 className="mt-1 font-display text-title-lg leading-tight text-(--brand)">{title}</h3>
-      {children && <p className="mt-1.5 text-body leading-snug text-(--text-secondary)">{children}</p>}
+      <p className="m-0 text-meta font-semibold text-(--accent)">{eyebrow}</p>
+      <h3 className="mt-1.5 font-display text-display-sm leading-tight text-(--brand)">{title}</h3>
+      {children && <p className="mt-2 text-body-lg leading-snug text-(--text-secondary)">{children}</p>}
     </div>
   )
 }
@@ -167,8 +205,8 @@ export function Field({ label, hint, children, className }: {
     })
   })
   return (
-    <div ref={box} role="group" aria-labelledby={id} className={cn('flex flex-col gap-2 px-4 py-3.5', className)}>
-      <span id={id} className="text-caption font-semibold text-(--text-muted)">{label}</span>
+    <div ref={box} role="group" aria-labelledby={id} className={cn('flex flex-col gap-2.5 px-5 py-4', className)}>
+      <span id={id} className="text-meta font-semibold text-(--text-secondary)">{label}</span>
       {children}
       {hint && <span id={`${id}-hint`} className="text-meta leading-snug text-(--text-muted)">{hint}</span>}
     </div>
@@ -176,7 +214,7 @@ export function Field({ label, hint, children, className }: {
 }
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)', className)}>{children}</div>
+  return <div className={cn('settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]', className)}>{children}</div>
 }
 
 export function Chip({ selected, onClick, children, disabled, title }: {
@@ -228,7 +266,7 @@ export function OptionCard({ selected, title, description, onClick }: {
 }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={selected}
-      className={cn('flex w-full flex-col items-start gap-0.5 rounded-xl border px-3.5 py-3 text-left transition-colors',
+      className={cn('flex w-full flex-col items-start gap-1 rounded-xl border px-4 py-3.5 text-left transition-colors',
         selected ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface) active:bg-(--bg-inset)')}>
       <span className={cn('text-lead font-medium', selected ? 'text-(--accent)' : 'text-(--text)')}>{title}</span>
       <span className="text-small leading-snug text-(--text-muted)">{description}</span>
@@ -274,5 +312,5 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
   )
 }
 
-export const inputCls = 'h-11 w-full rounded-md border border-input bg-transparent px-3 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-export const areaCls = 'min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+export const inputCls = 'h-12 w-full rounded-lg border border-input bg-(--bg-surface) px-3.5 text-body-lg text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+export const areaCls = 'min-h-[96px] w-full rounded-lg border border-input bg-(--bg-surface) px-3.5 py-3 text-body-lg text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'

@@ -5,17 +5,20 @@ import type { ReactNode } from 'react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { cn } from '@/lib/utils'
 
+/** A heading over a group on a screen ("Your bests", "Recent workouts"): sentence case, 20px
+ *  semibold (h2) or 17px inside sheets (h3/p). For a heading with a "See all" or a one-line
+ *  description, use <Section> (components/ui/section.tsx). */
 export function SectionLabel({ children, className, as: Tag = 'h2' }: { children: ReactNode; className?: string; as?: 'h2' | 'h3' | 'p' }) {
-  return <Tag className={cn('section-label m-0 px-1', className)}>{children}</Tag>
+  return <Tag className={cn('section-title m-0 px-1', Tag !== 'h2' && 'section-title--sm', className)}>{children}</Tag>
 }
 
-/** A 36px rounded square holding a row's icon (accent tint by default). */
-export function IconTile({ children, tone = 'accent', size = 36, className }: {
+/** A 40px rounded square holding a row's icon (accent tint by default). */
+export function IconTile({ children, tone = 'accent', size = 40, className }: {
   children: ReactNode; tone?: 'accent' | 'neutral' | 'brand'; size?: number; className?: string
 }) {
   return (
     <span aria-hidden style={{ width: size, height: size }}
-      className={cn('flex shrink-0 items-center justify-center rounded-lg',
+      className={cn('flex shrink-0 items-center justify-center rounded-[12px]',
         tone === 'accent' && 'bg-(--accent-subtle) text-(--accent)',
         tone === 'neutral' && 'bg-(--bg-inset) text-(--text-secondary)',
         tone === 'brand' && 'logo-tile bg-(--brand) text-(--bg)', className)}>
@@ -40,11 +43,11 @@ export function RabbitNote({ title = 'rabbt', children, className, compact }: {
   title?: string; children: ReactNode; className?: string; compact?: boolean
 }) {
   return (
-    <div className={cn('rabbit-voice flex gap-2.5', compact ? 'px-3 py-2.5' : 'px-3.5 py-3', className)}>
-      <span className="logo-tile mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-(--brand)" aria-hidden>
-        <RabbitLogo size={18} />
+    <div className={cn('rabbit-voice flex gap-3', compact ? 'px-4 py-3' : 'px-4 py-4', className)}>
+      <span className="logo-tile mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--brand)" aria-hidden>
+        <RabbitLogo size={20} />
       </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-1 text-meta leading-snug">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-body leading-snug">
         <p className="rabbit-voice__label m-0">{title}</p>
         {children}
       </div>

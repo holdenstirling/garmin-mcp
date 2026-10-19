@@ -72,15 +72,17 @@ export function TabBar({ tab, onSelect, dots }: {
             aria-label={dot ? `${label}, ${dot}` : label}
             onPointerDown={id === 'rabbit' ? () => setTwitch((n) => n + 1) : undefined}
             onClick={() => { if (id !== tab) setHop((h) => ({ id, n: (h?.n ?? 0) + 1 })); onSelect(id) }}>
-            {id === 'rabbit' && wiggle > 0 ? (
-              <span key={`w${wiggle}`} className="fx-tab-wiggle" aria-hidden><RabbitLogo size={22} /></span>
-            ) : (
-              <span key={hop?.id === id ? `h${hop.n}` : 'still'} className={hop?.id === id ? 'fx-tab-hop' : 'inline-flex'} aria-hidden>
-                {id === 'rabbit'
-                  ? <span key={`t${twitch}`} className={twitch ? 'rb-twitch rb-tab-rabbit' : 'rb-tab-rabbit inline-flex'}><RabbitLogo size={22} /></span>
-                  : <Icon className="size-[22px]" strokeWidth={tab === id ? 2.25 : 1.75} aria-hidden />}
-              </span>
-            )}
+            <span className="tab-bar__icon" aria-hidden>
+              {id === 'rabbit' && wiggle > 0 ? (
+                <span key={`w${wiggle}`} className="fx-tab-wiggle"><RabbitLogo size={24} /></span>
+              ) : (
+                <span key={hop?.id === id ? `h${hop.n}` : 'still'} className={hop?.id === id ? 'fx-tab-hop' : 'inline-flex'}>
+                  {id === 'rabbit'
+                    ? <span key={`t${twitch}`} className={twitch ? 'rb-twitch rb-tab-rabbit' : 'rb-tab-rabbit inline-flex'}><RabbitLogo size={24} /></span>
+                    : <Icon className="size-6" strokeWidth={tab === id ? 2.25 : 1.9} aria-hidden />}
+                </span>
+              )}
+            </span>
             <span aria-hidden>{label}</span>
             {dot && <span className="tab-bar__dot" aria-hidden />}
           </button>

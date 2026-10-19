@@ -103,6 +103,7 @@ import { dismissPace, openPaceSuggestion } from '@/lib/paces'
 import { SearchButton } from '@/components/search/Search'
 import { Tour } from '@/components/onboarding/Tour'
 import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
+import { cn } from '@/lib/utils'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -1016,24 +1017,25 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   function renderHeader(isLog: boolean, under = false) {
     return (
-      <header className="flex shrink-0 items-center gap-2 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
+      <header className={cn('flex min-h-14 shrink-0 items-center gap-2 pl-4 pr-2 pt-[max(6px,env(safe-area-inset-top))]',
+        isLog ? 'pb-1' : 'border-b border-(--border) pb-2')}>
         {!isLog && (
-          <Button variant="ghost" size="icon" className="-mr-1" aria-label="Back to rabbt" onClick={slideBack}>
+          <Button variant="ghost" size="icon" className="-ml-1" aria-label="Back to rabbt" onClick={slideBack}>
             <ChevronLeft className="size-6" />
           </Button>
         )}
         <h1 className="sr-only">{isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
         <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
           aria-label={isLog ? 'rabbt' : 'Back to rabbt'} onClick={isLog ? goBack : slideBack}>
-          {/* App-icon tile, like the Home Screen icon (hops while Rabbit is replying) */}
-          <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm">
-            <RabbitLogo size={32} thinking={!under && status === 'streaming'} />
+          {/* App-icon tile, like the Home Screen icon (hops while rabbt is replying) */}
+          <span className="logo-tile flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm">
+            <RabbitLogo size={30} thinking={!under && status === 'streaming'} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-display text-title-sm leading-tight text-(--brand)">
+            <span className={cn('block truncate font-display leading-tight text-(--brand)', isLog ? 'text-title-md' : 'text-title-sm')}>
               {isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}
             </span>
-            <span className="block truncate text-caption leading-tight text-muted-foreground">
+            <span className="block truncate text-meta leading-tight text-(--text-muted) max-[359px]:hidden">
               {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set'}
             </span>
           </span>
@@ -1314,7 +1316,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <Segmented label="Schedule" value={schedView} onChange={setSchedView}
           options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
       </div>
-      <Button variant="primary" className="mt-2 h-11 shrink-0 gap-1 px-3.5 text-small" aria-haspopup="dialog"
+      <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
         <Plus className="size-5" aria-hidden />Add
       </Button>
@@ -1406,7 +1408,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
       {atLog && !typing && (
-        <div className="shrink-0 px-4 pb-1">
+        <div className="shrink-0 px-5 pb-2 pt-1">
           <Segmented label="rabbt" value={homeView} onChange={setHomeView}
             options={[['home', 'Home'], ['chat', logNew > 0 && !readingLog ? `Chat · ${logNew} new` : 'Chat']] as const} />
         </div>
