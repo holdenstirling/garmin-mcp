@@ -5,7 +5,7 @@
 //   * UpcomingDates: a repeating event's next dates, skip one or bring it back;
 //   * CalendarSync (Events screen): the private calendar link Google / Apple subscribe to.
 import { useEffect, useState } from 'react'
-import { CalendarCheck, CalendarDays, CalendarPlus, Check, Copy, Download, ExternalLink, Link2, Ellipsis, RotateCcw, Undo2, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, CalendarPlus, Check, ChevronDown, Copy, Download, ExternalLink, Link2, Ellipsis, RotateCcw, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/plan/ui'
 import { openPlanDay } from '@/lib/plancal'
@@ -72,25 +72,28 @@ export function AddToCalendar({ event }: { event: RaceEvent }) {
   return (
     <Card>
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-body font-medium text-(--text) active:bg-(--bg-inset)">
-        <CalendarPlus className="size-5 text-(--accent)" aria-hidden />
-        <span className="flex-1">Add to calendar{event.recurring ? ' (every date)' : ''}</span>
-        <span className="text-meta text-(--text-muted)">{open ? 'Hide' : 'Google, Apple, Outlook'}</span>
+        className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
+        <CalendarPlus className="size-5 shrink-0 text-(--accent)" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-medium text-(--text)">Add to calendar{event.recurring ? ' (every date)' : ''}</span>
+          <span className="block text-small text-(--text-muted)">Google, Apple or Outlook</span>
+        </span>
+        <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2 border-t border-(--border) p-3">
+        <div className="flex flex-col gap-2 border-t border-(--border) p-4">
           {event.google_url && (
             <a href={event.google_url} target="_blank" rel="noopener noreferrer"
               className="flex min-h-11 items-center gap-2 rounded-lg border border-(--border) px-3 text-small font-medium text-(--text) active:bg-(--bg-inset)">
               <ExternalLink className="size-5" aria-hidden /> Google Calendar
-              <span className="ml-auto text-caption text-(--text-muted)">opens Google’s add page</span>
+              <span className="ml-auto text-small text-(--text-muted)">opens Google’s add page</span>
             </a>
           )}
           <a href={eventIcsUrl(event.id)} download="rabbt-event.ics"
             className="flex min-h-11 items-center gap-2 rounded-lg border border-(--border) px-3 text-small font-medium text-(--text) active:bg-(--bg-inset)">
             <Download className="size-5" aria-hidden /> Apple Calendar or Outlook (.ics)
           </a>
-          <p className="text-caption leading-snug text-(--text-muted)">
+          <p className="text-small leading-snug text-(--text-muted)">
             Changed it later? Add it again and your calendar replaces the old copy. To stay in sync on its own, use “Keep your calendar in sync” on Events.
           </p>
         </div>
@@ -193,30 +196,30 @@ export function CalendarSync() {
         <>
           <div className="flex items-center gap-2">
             <input readOnly value={feed.url} aria-label="Your private calendar link" onFocus={(e) => e.currentTarget.select()}
-              className="h-11 min-w-0 flex-1 rounded-lg border border-(--border) bg-(--bg-inset) px-3 font-mono text-caption text-(--text-secondary)" />
-            <Button variant="default" className="h-11 w-11 shrink-0 p-0" aria-label={copied ? 'Copied' : 'Copy link'} onClick={() => void copy(feed.url!)}>
+              className="h-12 min-w-0 flex-1 rounded-lg border border-(--border) bg-(--bg-inset) px-3 text-body text-(--text-secondary)" />
+            <Button variant="default" className="h-12 w-12 shrink-0 p-0" aria-label={copied ? 'Copied' : 'Copy link'} onClick={() => void copy(feed.url!)}>
               {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <a href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feed.webcal ?? feed.url)}`} target="_blank" rel="noopener noreferrer"
-              className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-small font-medium text-(--text) active:bg-(--bg-inset)">
+              className="flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-body font-medium text-(--text) active:bg-(--bg-inset)">
               <ExternalLink className="size-5 shrink-0" aria-hidden /> Google
             </a>
             {feed.webcal && (
-              <a href={feed.webcal} className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-small font-medium text-(--text) active:bg-(--bg-inset)">
+              <a href={feed.webcal} className="flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-body font-medium text-(--text) active:bg-(--bg-inset)">
                 <CalendarPlus className="size-5 shrink-0" aria-hidden /> Apple
               </a>
             )}
           </div>
-          <p className="text-caption leading-snug text-(--text-muted)">
+          <p className="text-small leading-snug text-(--text-muted)">
             Anyone with this link can see these dates, so keep it to yourself. Calendars check it every few hours.
           </p>
         </>
       ) : feed.on ? (
-        <p className="text-meta text-(--text-secondary)">Your link is on. rabbt can’t show it again; use ··· to make a new one (the old one stops working).</p>
+        <p className="text-small leading-snug text-(--text-secondary)">Your link is on. rabbt can’t show it again; use ··· to make a new one (the old one stops working).</p>
       ) : (
-        <Button variant="primary" className="h-11 w-full text-body" loading={busy === 'make'} onClick={() => void make()}>
+        <Button variant="default" className="h-12 w-full text-body font-semibold text-(--accent)" loading={busy === 'make'} onClick={() => void make()}>
           Get my calendar link
         </Button>
       )}

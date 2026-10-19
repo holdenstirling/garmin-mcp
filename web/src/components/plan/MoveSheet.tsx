@@ -4,7 +4,7 @@
 // don't usually train. The server (plancal.py) re-balances the week and returns a summary
 // that can be undone.
 import { useEffect, useMemo, useState } from 'react'
-import { TriangleAlert, ArrowLeftRight, Check, Undo2 } from 'lucide-react'
+import { TriangleAlert, Check, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -14,6 +14,7 @@ import { getPlan, type BuiltPlan, type PlanSession } from '@/lib/plan'
 import { getCalendar, moveSession, swapDays, undoChange, type CalChange, type CalResult, type CalView } from '@/lib/plancal'
 import { Card, Chip, ChipRow } from './ui'
 import { SPORT_ICON, fmtDay } from './PlanParts'
+import { Segmented } from '@/components/nav/Segmented'
 
 export const addDays = (d: string, n: number) => {
   const x = new Date(`${d}T12:00:00`)
@@ -114,7 +115,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
         </div>
         {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
         <div className="flex gap-2">
-          <Button variant="primary" className="h-11 flex-1 text-body" onClick={onClose}>Done</Button>
+          <Button variant="primary" className="h-12 flex-1 text-body" onClick={onClose}>Done</Button>
           {!undone && done.change.id && (
             <Button variant="default" className="h-11 gap-1.5 px-4 text-body" loading={busy === 'undo'} onClick={() => void undo()}>
               <Undo2 className="size-5" aria-hidden /> Undo
@@ -132,21 +133,21 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       <li key={d.date}>
         <button type="button" aria-pressed={on} onClick={() => setPick(d.date)}
           aria-label={`${verb} ${dayLabel(d.date)}: ${d.sessions.length ? d.sessions.map((s) => s.title).join(', ') : 'rest day'}${d.clash ? `. ${d.clash}` : ''}${d.off ? '. Not one of your usual training days' : ''}`}
-          className={cn('flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)', on && 'bg-(--accent-subtle)')}>
-          <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-            {on && <Check className="size-3.5" aria-hidden />}
+          className={cn('flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left active:bg-(--bg-inset)', on && 'bg-(--accent-subtle)')}>
+          <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border-2', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
+            {on && <Check className="size-4" aria-hidden />}
           </span>
           <span className="min-w-0 flex-1">
             <span className={cn('block text-body font-medium', d.off ? 'text-(--text-secondary)' : 'text-(--text)')}>
               {dayLabel(d.date)}{best?.date === d.date && best.date !== tomorrow && <span className="ml-1.5 text-meta font-semibold text-(--accent)">Best fit</span>}
             </span>
-            <span className="block truncate text-meta text-(--text-muted)">
-              {d.sessions.length ? d.sessions.map((s) => s.title).join(' · ') : 'Rest day, nothing planned'}
-              {d.off && ' · not a usual training day'}
+            <span className="block text-small text-(--text-muted)">
+              {d.sessions.length ? d.sessions.map((s) => s.title).join(', ') : 'Rest day, nothing planned'}
+              {d.off && <span className="block">Not one of your usual training days</span>}
             </span>
           </span>
           {d.clash && (
-            <span className="flex shrink-0 items-center gap-1 text-caption font-medium text-(--warning-text)">
+            <span className="flex max-w-[45%] shrink-0 items-center gap-1 text-meta font-medium leading-snug text-(--warning-text)">
               <TriangleAlert className="size-3.5" aria-hidden />{d.clash}
             </span>
           )}
@@ -156,7 +157,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
   }
   const group = (label: string, days: DayInfo[]) => days.length > 0 && (
     <Card className="shrink-0">
-      <p className="border-b border-(--border) px-3.5 py-2 text-caption font-semibold text-(--text-muted)">{label}</p>
+      <p className="border-b border-(--border) px-4 py-2.5 text-meta font-semibold text-(--text-secondary)">{label}</p>
       <ul className="divide-y divide-(--border)">{days.map(dayRow)}</ul>
     </Card>
   )
@@ -164,22 +165,18 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
   return (
     <Sheet title={`Move ${session.title}`} onClose={onClose} bodyClassName={body}
       footer={
-        <div className="flex gap-2 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-          <Button variant="primary" className="h-11 flex-1 text-body" disabled={!pick} loading={busy === 'go'} onClick={() => void go()}>
-            {pick ? `${verb} ${dayLabel(pick).split(',')[0]}` : mode === 'move' ? 'Pick a day' : 'Pick a day to swap with'}
-          </Button>
-        </div>
+        <Button variant="primary" className="h-12 w-full text-body" disabled={!pick} loading={busy === 'go'} onClick={() => void go()}>
+          {pick ? `${verb} ${dayLabel(pick).split(',')[0]}` : mode === 'move' ? 'Pick a day' : 'Pick a day to swap with'}
+        </Button>
       }>
       <div className="flex items-center gap-3 px-1">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" aria-hidden /></span>
-        <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" aria-hidden /></span>
+        <p className="min-w-0 flex-1 text-body leading-snug text-(--text-secondary)">
           Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. rabbt keeps hard days apart and your weekly miles on track.
         </p>
       </div>
-      <ChipRow>
-        <Chip selected={mode === 'move'} onClick={() => setMode('move')}>Move this workout</Chip>
-        <Chip selected={mode === 'swap'} onClick={() => setMode('swap')}><ArrowLeftRight className="mr-1 inline size-4" aria-hidden />Swap whole days</Chip>
-      </ChipRow>
+      <div className="w-full"><Segmented label="Move this workout or swap whole days" value={mode} onChange={setMode}
+        options={[['move', 'Move it'], ['swap', 'Swap days']] as const} /></div>
       {mode === 'move' && (tomorrowOk || best) && (
         <ChipRow>
           {tomorrowOk && <Chip selected={pick === tomorrow} onClick={() => setPick(tomorrow)}>Tomorrow</Chip>}
@@ -192,7 +189,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       {group('Next week', nextWeek)}
       {!thisWeek.length && !nextWeek.length && <p className="px-1 text-body text-(--text-secondary)">There's no free day left before race day to move this to.</p>}
       {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
-      {!inline && <p className="px-1 text-meta text-(--text-muted)">Tip: on the week calendar you can also press and hold a workout, then drag it to a day.</p>}
+      {!inline && <p className="px-1 text-small leading-snug text-(--text-muted)">Tip: on the week calendar you can also press and hold a workout, then drag it to a day.</p>}
     </Sheet>
   )
 }

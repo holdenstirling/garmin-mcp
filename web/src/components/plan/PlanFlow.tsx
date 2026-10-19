@@ -56,7 +56,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {s.phases.filter((p, i, a) => a.findIndex((x) => x.phase === p.phase) === i).map((p) => (
-            <span key={p.phase} className="flex items-center gap-1.5 text-caption text-(--text-muted)">
+            <span key={p.phase} className="flex items-center gap-1.5 text-meta text-(--text-secondary)">
               <span className={cn('size-2 rounded-full', `phase-${p.phase}`)} />{PHASE_LABEL[p.phase]}
             </span>
           ))}
@@ -97,8 +97,8 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
                       return (
                         <span key={i} className="flex items-center gap-1.5 text-small text-(--text)">
                           {I && <I className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
-                          <span className="truncate">{x.title}</span>
-                          <span className="ml-auto shrink-0 font-mono tabular-nums text-(--text-muted)">{fmtMin(x.minutes)}</span>
+                          <span className="min-w-0">{x.title}</span>
+                          <span className="ml-auto shrink-0 tabular-nums text-(--text-muted)">{fmtMin(x.minutes)}</span>
                         </span>
                       )
                     })}
@@ -155,7 +155,7 @@ export function LeverFields({ v, set, start, setStart, minStart, maxStart }: {
                 className={cn('flex min-h-16 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left',
                   on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                 <span className={cn('text-small font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{l}</span>
-                <span className="text-caption leading-tight text-(--text-muted)">{hint}</span>
+                <span className="text-meta leading-snug text-(--text-muted)">{hint}</span>
               </button>
             )
           })}
@@ -210,7 +210,7 @@ function DiffView({ d }: { d: PlanDiff }) {
           ))}
         </ul>
         {weeks.length > 0 && (
-          <p className="mt-2 font-mono text-meta tabular-nums text-(--text-muted)">
+          <p className="mt-2 text-small tabular-nums text-(--text-muted)">
             Weekly hours: {weeks.map((w) => `${fmtDay(w.start, { month: 'short', day: 'numeric' })} ${w.before ?? '–'}→${w.after ?? '–'}`).join(' · ')}
           </p>
         )}
@@ -251,10 +251,10 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
     <Sheet title="Adjust my plan" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-body" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
+          <Button variant="default" className="h-12 shrink-0 px-5 text-body" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" className="h-12 min-w-0 flex-1 whitespace-normal text-body leading-tight" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
             onClick={() => void apply()}>
-            {tooFew ? 'Pick at least 2 days' : !changed ? 'Change something above' : 'Update my plan'}
+            {tooFew ? 'Pick at least 2 days' : !changed ? 'Make a change first' : 'Update my plan'}
           </Button>
         </div>
       }>
@@ -300,7 +300,7 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
     <div role="status" className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2">
       <Check className="size-5 shrink-0 text-(--accent)" aria-hidden />
       <p className="min-w-0 flex-1 text-small text-(--accent)">{err ?? 'Plan updated from today.'}</p>
-      <Button variant="default" className="h-9 gap-1 px-3 text-small" loading={busy}
+      <Button variant="default" className="h-11 gap-1.5 px-4 text-body" loading={busy}
         onClick={() => { setBusy(true); undoLevers(id).then((r) => { announcePlanReload(); onUndone(r.plan) }, (e) => setErr((e as Error).message)).finally(() => setBusy(false)) }}>
         <Undo2 className="size-4" aria-hidden /> Undo
       </Button>
@@ -309,8 +309,12 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
 }
 
 // ------------------------------------------------------- race switcher --
-export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild }: {
-  title: string; date: string | null; sub?: string
+export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild, onAdjust }: {
+  title: string; date: string | null
+  /** "Adjust plan" next to "Change race" (the levers sheet) */
+  onAdjust?: () => void
+  /** short facts under the race ("231 days to go", "Week 1 of 34"); a " · " string is split */
+  sub?: string | string[]
   /** the plan for the newly picked race (null: it has no plan yet) */
   onSwitched: (plan: BuiltPlan | null) => void
   onAddRace: () => void
@@ -318,17 +322,36 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
   onBuild: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const facts = (Array.isArray(sub) ? sub : (sub ?? '').split(' · ')).map((x) => x.trim()).filter(Boolean)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-        className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-left active:bg-(--bg-inset)">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-body-lg font-semibold leading-snug text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
-          {sub && <span className="line-clamp-2 text-meta leading-snug text-(--text-muted)">{sub}</span>}
+      <div className="flex w-full flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
+        <span className="flex items-start gap-3.5 px-4 pb-3.5 pt-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lead font-semibold leading-snug text-(--text)">{title}</span>
+            {date && <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+            {facts.length > 0 && (
+              <span className="mt-2 flex flex-wrap gap-2">
+                {facts.map((f) => <span key={f} className="rounded-full bg-(--bg-inset) px-3 py-1 text-meta font-medium text-(--text-secondary)">{f}</span>)}
+              </span>
+            )}
+          </span>
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-meta text-(--accent)">Change race <ChevronDown className="size-5" aria-hidden /></span>
-      </button>
+        <span className={cn('grid border-t border-(--border)', onAdjust && 'grid-cols-2 divide-x divide-(--border)')}>
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
+            aria-label={`Change race. Now training for ${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`}
+            className={cn('flex min-h-12 items-center gap-1.5 whitespace-nowrap text-body font-semibold text-(--accent) active:bg-(--bg-inset)', onAdjust ? 'justify-center rounded-bl-xl px-2' : 'justify-between rounded-b-xl px-4')}>
+            Change race {!onAdjust && <ChevronDown className="size-5 shrink-0" aria-hidden />}
+          </button>
+          {onAdjust && (
+            <button type="button" onClick={onAdjust}
+              className="flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-br-xl px-2 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
+              <SlidersHorizontal className="size-5 shrink-0" aria-hidden /> Adjust plan
+            </button>
+          )}
+        </span>
+      </div>
       {open && <RaceSheet onClose={() => setOpen(false)} onSwitched={(p) => { setOpen(false); onSwitched(p) }}
         onAddRace={() => { setOpen(false); onAddRace() }} onBuild={() => { setOpen(false); onBuild() }} />}
     </>
@@ -453,13 +476,13 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
   const changes = prop?.changes ?? []
-  const label = useMemo(() => !answered ? 'Answer one question to start' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
+  const label = useMemo(() => !answered ? 'Pick an answer' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
   return (
     <Sheet title="How was this week?" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-4 text-body" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
-          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
+          <Button variant="default" className="h-12 shrink-0 px-5 text-body" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
+          <Button variant="primary" className="h-12 min-w-0 flex-1 whitespace-normal text-body leading-tight" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
             onClick={() => void go(!prop ? 'preview' : prop.status === 'suggest' ? 'apply' : 'skip')}>{label}</Button>
         </div>
       }>

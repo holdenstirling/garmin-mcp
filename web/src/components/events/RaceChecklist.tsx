@@ -36,7 +36,7 @@ export function ProgressRing({ done, total, size = 64 }: { done: number; total: 
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={6} strokeLinecap="round"
           className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="absolute font-mono text-small font-semibold tabular-nums text-(--text)" aria-hidden>
+      <span className="absolute text-small font-semibold tabular-nums text-(--text)" aria-hidden>
         {done}/{total}
       </span>
     </span>
@@ -195,7 +195,7 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="text-body-lg font-semibold text-(--text)">{b.label}</span>
-            {b.current && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-caption font-semibold text-(--on-fill)">Up now</span>}
+            {b.current && <span className="rounded-full bg-(--accent) px-2.5 py-0.5 text-meta font-semibold text-(--on-fill)">Up now</span>}
           </span>
           <span className="block text-meta text-(--text-muted)">
             {all ? 'All done' : `${b.done} of ${b.total} done`}{!b.past && !all ? ` · ${dueLabel(b.due)}` : ''}

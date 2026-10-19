@@ -77,14 +77,16 @@ export function InterestsStrip({ interests, onEdit }: { interests: Interests | n
   const chips = interestsSummary(interests)
   return (
     <button type="button" onClick={onEdit}
-      className="mx-auto mt-2 flex min-h-11 w-full max-w-xl items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-1.5 text-left active:bg-(--bg-inset)">
-      <span className="shrink-0 text-caption font-semibold text-(--text-muted)">Your interests</span>
-      <span className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto">
-        {chips.length ? chips.map((c) => (
-          <span key={c} className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-medium text-(--accent)">{c}</span>
-        )) : <span className="text-meta text-(--text-secondary)">Tell rabbt what you're into</span>}
+      className="mx-auto mt-3 flex min-h-12 w-full max-w-xl items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+      <span className="min-w-0 flex-1">
+        <span className="block text-meta font-semibold text-(--text-secondary)">Your interests</span>
+        <span className="mt-1.5 flex flex-wrap gap-1.5">
+          {chips.length ? chips.map((c) => (
+            <span key={c} className="rounded-full bg-(--accent-subtle) px-2.5 py-0.5 text-meta font-medium text-(--accent)">{c}</span>
+          )) : <span className="text-small text-(--text-secondary)">Tell rabbt what you're into</span>}
+        </span>
       </span>
-      <Pencil className="size-4 shrink-0 text-(--text-muted)" aria-label="Edit" />
+      <Pencil className="size-5 shrink-0 text-(--text-muted)" aria-label="Edit" />
     </button>
   )
 }
@@ -144,11 +146,11 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
       {feed.sections.slice(1).map((s) => <Section key={s.id} s={s} onOpen={onOpen} />)}
       {feed.bucket.due && !bucketBusy && (
         <button type="button" onClick={findBucket}
-          className="flex min-h-11 items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <span className="flex shrink-0 text-(--accent)"><RabbitLogo size={16} current /></span>
+          className="flex min-h-12 items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+          <span className="flex shrink-0 text-(--accent)"><RabbitLogo size={20} current /></span>
           <span className="min-w-0 flex-1">
-            <span className="block text-small font-medium text-(--accent)">Find bucket-list races</span>
-            <span className="block text-caption text-(--text-muted)">rabbt searches the web · uses 1 of 5 daily searches</span>
+            <span className="block text-body font-semibold text-(--accent)">Find bucket-list races</span>
+            <span className="block text-small text-(--text-muted)">rabbt searches the web. Uses 1 of your 5 searches today.</span>
           </span>
         </button>
       )}
@@ -161,7 +163,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
           </div>
         </section>
       )}
-      {bucketError && <p className="px-1 text-meta text-(--text-muted)">Bucket list: {bucketError}</p>}
+      {bucketError && <p className="px-1 text-small text-(--text-muted)">Bucket list: {bucketError}</p>}
       {empty && !bucketBusy && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <p className="text-lead font-medium text-(--text)">No picks yet</p>
@@ -169,8 +171,8 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
             Try more race types, a longer trip, or browse everything in Search.
           </p>
           <div className="flex gap-2">
-            <Button variant="default" className="h-10 text-small" onClick={onEdit}>Edit interests</Button>
-            <Button variant="default" className="h-10 text-small" onClick={onSearch}>Search races</Button>
+            <Button variant="default" className="h-11 text-body" onClick={onEdit}>Edit interests</Button>
+            <Button variant="default" className="h-11 text-body" onClick={onSearch}>Search races</Button>
           </div>
         </div>
       )}
@@ -179,11 +181,10 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
 }
 
 function SectionTitle({ s }: { s: ForYouSection }) {
-  const icon = s.id === 'friends' ? <Users className="size-4" /> : s.id === 'picks' ? <Carrot className="size-4" />
-    : s.id === 'bucket' || s.id === 'popular' ? <MountainSnow className="size-4" /> : null
+  const icon = s.id === 'friends' ? <Users className="size-5" /> : s.id === 'picks' ? <Carrot className="size-5" />
+    : s.id === 'bucket' || s.id === 'popular' ? <MountainSnow className="size-5" /> : null
   return (
-    <h2 className={cn('font-sans flex items-center gap-1.5 px-1 text-caption font-semibold',
-      s.id === 'picks' ? 'text-(--accent)' : 'text-(--text-muted)')}>
+    <h2 className="section-title m-0 flex items-center gap-2 px-1">
       {icon}{s.title}
     </h2>
   )
@@ -191,14 +192,14 @@ function SectionTitle({ s }: { s: ForYouSection }) {
 
 function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => void }) {
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-3">
       <SectionTitle s={s} />
-      {s.note && <p className={cn('px-1 text-meta leading-snug', s.id === 'nationwide' ? 'text-(--text-muted)' : 'text-(--warning-text)')}>{s.note}</p>}
-      <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">
+      {s.note && <p className={cn('-mt-1 px-1 text-small leading-snug', s.id === 'nationwide' ? 'text-(--text-muted)' : 'text-(--warning-text)')}>{s.note}</p>}
+      <div className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-5 px-5 pb-1">
         {s.races.map((r) => <PickCard key={r.id} r={r} onClick={() => onOpen(r)} />)}
       </div>
-      {s.source === 'web' && <p className="px-1 text-caption text-(--text-muted)">Found online by rabbt. Check dates on the official site.</p>}
-      {s.source === 'curated' && <p className="px-1 text-caption text-(--text-muted)">Famous races everyone talks about. Dates move each year, so check the official site.</p>}
+      {s.source === 'web' && <p className="px-1 text-small text-(--text-muted)">Found online by rabbt. Check dates on the official site.</p>}
+      {s.source === 'curated' && <p className="px-1 text-small text-(--text-muted)">Famous races everyone talks about. Dates move each year, so check the official site.</p>}
     </section>
   )
 }
@@ -207,7 +208,7 @@ function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => v
  *  race whose date isn't confirmed. */
 export function whenText(r: RaceX): string {
   if (r.check_dates || !r.date) return r.usual_month ? `Usually in ${MONTH_LONG[r.usual_month - 1]}` : 'Date to be announced'
-  if (r.ongoing) return r.end_date ? `Ongoing · through ${raceDate(r.end_date)}` : 'Ongoing'
+  if (r.ongoing) return r.end_date ? `Ongoing, through ${raceDate(r.end_date)}` : 'Ongoing'
   return raceDate(r.date)
 }
 
@@ -220,8 +221,8 @@ export function PickCard({ r, onClick, className, style }: {
   const place = placeOf(r)
   return (
     <button type="button" onClick={onClick} style={style}
-      className={cn('flex w-[78%] max-w-[300px] shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5 text-left active:bg-(--bg-inset)', className)}>
-      <span className="flex items-start gap-2.5">
+      className={cn('flex w-[82%] max-w-[300px] shrink-0 snap-start flex-col gap-2.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)', className)}>
+      <span className="flex items-start gap-3">
         {r.logo && logoOk ? (
           <img src={r.logo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoOk(false)}
             className="size-10 shrink-0 rounded-xl border border-(--border) bg-white object-contain p-0.5" />
@@ -231,21 +232,22 @@ export function PickCard({ r, onClick, className, style }: {
           </span>
         )}
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="line-clamp-2 text-body-lg font-medium leading-snug text-(--text)">{r.name}</span>
-          <span className="truncate text-meta text-(--text-muted)">{whenText(r)}{place ? ` · ${place}` : ''}</span>
+          <span className="text-body-lg font-semibold leading-snug text-(--text)">{r.name}</span>
+          <span className="mt-0.5 text-small leading-snug text-(--text-secondary)">{whenText(r)}</span>
+          {place && <span className="text-small leading-snug text-(--text-muted)">{place}</span>}
         </span>
       </span>
       {dists.length > 0 && (
-        <span className="flex flex-wrap gap-1">
-          {dists.map((d) => <span key={d} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">{d}</span>)}
+        <span className="flex flex-wrap gap-1.5">
+          {dists.map((d) => <span key={d} className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-meta text-(--text-secondary)">{d}</span>)}
         </span>
       )}
-      {r.why && <span className="line-clamp-2 text-small font-medium leading-snug text-(--text)">{r.why}</span>}
+      {r.why && <span className="text-small font-medium leading-snug text-(--text)">{r.why}</span>}
       {r.estimate && <EstimateLine e={r.estimate} />}
-      <span className="mt-auto flex flex-wrap items-center gap-1.5 text-caption">
-        {'fit' in r && r.fit && <span className={cn('rounded-full px-2 py-0.5 font-medium', HINT_CLS[r.fit.tone])}>{r.fit.label}</span>}
+      <span className="mt-auto flex flex-wrap items-center gap-1.5 text-meta">
+        {'fit' in r && r.fit && <span className={cn('rounded-full px-2.5 py-0.5 font-medium', HINT_CLS[r.fit.tone])}>{r.fit.label}</span>}
         {r.registration_open && <span className="font-semibold text-(--accent)">Open</span>}
-        {r.check_dates && <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 font-medium text-(--warning-text)">Check dates</span>}
+        {r.check_dates && <span className="rounded-full bg-(--warning-subtle) px-2.5 py-0.5 font-medium text-(--warning-text)">Check dates</span>}
         {r.source === 'web' && <span className="text-(--text-muted)">Found online</span>}
       </span>
     </button>

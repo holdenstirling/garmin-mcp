@@ -56,7 +56,7 @@ function PacingCard({ p, onSave }: { p: RaceWeekPage; onSave: (s: number | null)
           : <p className="text-body text-(--text-secondary)">Add a goal time to this race (or connect Garmin for an estimate) to see splits.</p>}
         {pc.mode === 'tri' && (
           <table className="mt-2 w-full text-small">
-            <thead><tr className="text-left text-caption text-(--text-muted) font-semibold">
+            <thead><tr className="text-left text-meta text-(--text-muted) font-semibold">
               <th className="py-1 font-semibold">Leg</th><th className="font-semibold">Time</th><th className="font-semibold">Pace</th><th className="text-right font-semibold">Clock</th></tr></thead>
             <tbody>
               {pc.legs.map((l) => (
@@ -77,7 +77,7 @@ function PacingCard({ p, onSave }: { p: RaceWeekPage; onSave: (s: number | null)
                 : <>Average <b className="font-mono tabular-nums">{pc.splits.speed}</b></>}
             </p>
             <table className="mt-1 w-full text-small">
-              <thead><tr className="text-left text-caption text-(--text-muted) font-semibold">
+              <thead><tr className="text-left text-meta text-(--text-muted) font-semibold">
                 <th className="py-1 font-semibold">At</th><th className="font-semibold">{pc.mode === 'speed' ? 'Speed' : 'Pace'}</th><th className="text-right font-semibold">Clock</th></tr></thead>
               <tbody>
                 {pc.splits.rows.map((r) => (
@@ -125,7 +125,7 @@ function PackingCard({ eventId, packing, onChange }: { eventId: string; packing:
       <Field label={`Packing list · ${packing.done}/${packing.total}`} hint="Saved for this race on every device.">
         {groups.map((g) => (
           <div key={g} className="flex flex-col">
-            <p className="mt-1 text-caption font-semibold text-(--text-muted)">{g}</p>
+            <p className="mt-2 text-meta font-semibold text-(--text-secondary)">{g}</p>
             {packing.items.filter((i) => i.group === g).map((i) => (
               <div key={i.id} className="flex items-center">
                 <button type="button" role="checkbox" aria-checked={i.done} onClick={() => void act({ toggle: i.id })}
@@ -185,7 +185,7 @@ function LogisticsCard({ p, onStart, onReminders }: {
             Race website <ExternalLink className="size-3.5" aria-hidden />
           </a>
         )}
-        <p className="mt-1 text-caption font-semibold text-(--text-muted)">Your reminders</p>
+        <p className="mt-2 text-meta font-semibold text-(--text-secondary)">Your reminders</p>
         {lg.reminders.length === 0 && <p className="text-small text-(--text-muted)">Travel, bib pick-up, bike check-in: add what you need to remember.</p>}
         {lg.reminders.map((r) => (
           <div key={r.id} className="flex items-center">
@@ -193,7 +193,7 @@ function LogisticsCard({ p, onStart, onReminders }: {
               className="flex min-h-11 flex-1 items-center gap-2.5 py-1 text-left text-body">
               {r.done ? <CheckSquare className="size-5 shrink-0 text-(--accent)" aria-hidden /> : <Square className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
               <span className={r.done ? 'text-(--text-muted) line-through' : 'text-(--text)'}>{r.text}</span>
-              {r.when && <span className="ml-auto shrink-0 font-mono text-meta text-(--text-muted)">
+              {r.when && <span className="ml-auto shrink-0 text-meta tabular-nums text-(--text-muted)">
                 {new Date(`${r.when.slice(0, 10)}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}{r.when.length > 10 ? ` ${r.when.slice(11)}` : ''}</span>}
             </button>
             <button type="button" className="hit-44 p-1 text-(--text-muted)" aria-label={`Remove ${r.text}`} onClick={() => void rem({ remove: r.id })}>
@@ -338,7 +338,7 @@ export function RaceWeekScreen({ eventId, section, onClose, onAsk }: {
             onReminders={(r) => setP((x) => x ? { ...x, logistics: { ...x.logistics, reminders: r } } : x)} />
           {p.days > 0 && <TrackCard p={p} onPatch={patch} />}
           <section aria-label="Friends racing">
-            <p className="mb-2 px-1 text-caption font-semibold text-(--text-muted)">Friends racing</p>
+            <p className="mb-2 px-1 text-body font-semibold text-(--text)">Friends racing</p>
             <RacePeopleSection eventId={p.event.id} eventName={p.event.name} />
           </section>
         </>

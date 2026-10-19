@@ -530,7 +530,7 @@ function runwayHint(weeks: number): string {
 function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
   return (
     <button type="button" onClick={onEdit} className="flex w-full items-start gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
-      <span className="w-[72px] shrink-0 pt-0.5 text-caption font-semibold text-(--text-muted)">{label}</span>
+      <span className="w-[84px] shrink-0 pt-0.5 text-meta font-semibold text-(--text-muted)">{label}</span>
       <span className="min-w-0 flex-1 text-body leading-snug text-(--text)">{value}</span>
       <span className="text-meta text-(--accent)">Edit</span>
     </button>

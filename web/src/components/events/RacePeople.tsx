@@ -48,11 +48,11 @@ export function PeopleRow({ s, onOpen, className }: { s?: PeopleSummary; onOpen:
     : `${s.racing ? `${s.racing} racing with you` : `${n} ${n === 1 ? 'person' : 'people'}`}${s.pending ? ` · ${s.pending} invited` : ''}`
   return (
     <button type="button" onClick={onOpen}
-      className={cn('flex min-h-11 w-full items-center gap-2 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium active:bg-(--bg-inset)', className)}>
-      {s && s.people.length > 0 ? <AvatarStack people={s.people} /> : <Users className="size-4 text-(--accent)" />}
-      <span className="min-w-0 flex-1 truncate text-(--text-secondary)">{text}</span>
-      <span className="flex items-center gap-1 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-caption font-semibold text-(--accent)">
-        <UserPlus className="size-3.5" /> Invite
+      className={cn('flex min-h-12 w-full items-center gap-2.5 border-t border-(--border) px-4 py-2.5 text-left text-body font-medium active:bg-(--bg-inset)', className)}>
+      {s && s.people.length > 0 ? <AvatarStack people={s.people} /> : <Users className="size-5 shrink-0 text-(--accent)" />}
+      <span className="min-w-0 flex-1 text-(--text-secondary)">{text}</span>
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent-subtle) px-3 py-1.5 text-meta font-semibold text-(--accent)">
+        <UserPlus className="size-4" /> Invite
       </span>
     </button>
   )

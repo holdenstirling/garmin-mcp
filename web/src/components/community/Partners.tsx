@@ -198,11 +198,9 @@ export function SponsoredCard({ placement, zip, card: given, className }: {
         className="flex w-full items-center gap-3 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5 text-left active:opacity-80">
         <Monogram p={card} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate text-body-lg font-semibold text-(--text)">{card.name}</span>
-            <span className="inline-flex items-center rounded-full bg-(--bg-surface) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">Sponsored</span>
-          </span>
-          <span className="block truncate text-meta text-(--text-secondary)">
+          <span className="mb-1 inline-flex items-center rounded-full bg-(--bg-surface) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">Sponsored</span>
+          <span className="block text-body-lg font-semibold leading-snug text-(--text)">{card.name}</span>
+          <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">
             <KindIcon p={card} />{[card.kind_label, card.tagline].filter(Boolean).join(' · ')}
           </span>
         </span>

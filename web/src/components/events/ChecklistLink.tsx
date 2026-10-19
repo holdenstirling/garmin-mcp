@@ -31,7 +31,7 @@ export function useChecklistCount(eventId: string | null | undefined): { done: n
   return c
 }
 
-const label = (c: { done: number; total: number } | null) => `Race checklist${c ? ` · ${c.done}/${c.total}` : ''}`
+const label = (c: { done: number; total: number } | null) => `Race checklist${c ? `, ${c.done} of ${c.total} done` : ''}`
 
 /** A full-width row under a race card. */
 export function ChecklistRow({ eventId }: { eventId: string }) {
@@ -39,9 +39,9 @@ export function ChecklistRow({ eventId }: { eventId: string }) {
   if (!c) return null
   return (
     <button type="button" onClick={() => openChecklist(eventId)}
-      className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
-      <ListChecks className="size-4" aria-hidden /> {label(c)}
-      <ChevronRight className="ml-auto size-4 text-(--text-muted)" aria-hidden />
+      className="flex min-h-12 w-full items-center gap-2.5 border-t border-(--border) px-4 py-2.5 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+      <ListChecks className="size-5 shrink-0" aria-hidden /> <span className="min-w-0 flex-1">{label(c)}</span>
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }

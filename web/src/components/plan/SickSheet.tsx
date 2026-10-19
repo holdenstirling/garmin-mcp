@@ -161,7 +161,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
             {pv?.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-small leading-snug text-(--warning-text)">{pv.race_note}</p>}
           </>
         )}
-        <p className="px-1 text-caption leading-snug text-(--text-muted)">{view?.safety}</p>
+        <p className="px-1 text-small leading-snug text-(--text-muted)">{view?.safety}</p>
         <Button variant="primary" className="h-12 text-body-lg" disabled={!sev} loading={busy === 'start'}
           onClick={() => body && void run('start', () => startSick(body), view?.active ? 'Sick mode updated.' : 'Rest up. rabbt cleared the way.')}>
           {view?.active ? 'Save changes' : 'Turn on sick mode'}

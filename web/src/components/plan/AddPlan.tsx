@@ -196,7 +196,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
             </div>
             <input ref={input} type="file" multiple className="hidden" accept={ACCEPT}
               onChange={(e) => { if (e.target.files?.length) void sendFiles(e.target.files) }} />
-            <p className="flex flex-wrap items-center gap-x-1 px-1 text-caption leading-snug text-(--text-muted)">
+            <p className="flex flex-wrap items-center gap-x-1 px-1 text-small leading-snug text-(--text-muted)">
               <span className="hidden sm:inline">Drag files anywhere here, or press Ctrl/⌘+V to paste a screenshot or copied cells. </span>
               <span>Several photos of one plan? Pick them all at once.</span>
               <InfoTip label="What works" text="CSV, TSV, Excel and OpenDocument sheets (any columns: rabbt maps them, or asks; workbooks with several sheets too), week grids (weeks down, Mon–Sun across), TrainingPeaks workout CSV and calendar .ics, Zwift .zwo and .erg/.mrc workouts, Word .docx, PDFs and photos of printed plans, pasted text or email, and Google Sheets/Docs links that are published or shared with anyone. Garmin .fit files: export as .zwo instead." />
@@ -227,7 +227,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
             <Button variant="primary" className="h-11 gap-1.5 text-body" disabled={!text.trim() || !!linkTyped} onClick={() => sendText(text)}>
               {googleTyped ? <><Link2 className="size-5" /> Open the link</> : <><ScanText className="size-5" aria-hidden /> Read it</>}
             </Button>
-            {status.ai_per_day > 0 && !googleTyped && <p className="text-caption text-(--text-muted)">rabbt reads text, PDFs and photos: {status.ai_left} of {status.ai_per_day} reads left today. Spreadsheets and workout files don't count.</p>}
+            {status.ai_per_day > 0 && !googleTyped && <p className="text-small text-(--text-muted)">rabbt reads text, PDFs and photos: {status.ai_left} of {status.ai_per_day} reads left today. Spreadsheets and workout files don't count.</p>}
           </Card>
         )}
 
@@ -285,7 +285,7 @@ function WayIn({ icon, title, text, onClick, selected }: { icon: React.ReactNode
         selected ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
       <span className="flex size-11 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent) [&>svg]:size-5">{icon}</span>
       <span className="text-body font-semibold leading-tight text-(--text)">{title}</span>
-      <span className="text-caption leading-snug text-(--text-muted)">{text}</span>
+      <span className="text-small leading-snug text-(--text-muted)">{text}</span>
     </button>
   )
 }
@@ -310,20 +310,20 @@ function Templates({ tpl, busy, who, api, onPick, onMine }: {
     <button key={t.id} type="button" disabled={busy} onClick={() => onPick(t, raceable ? { level, end: race } : {})}
       className="flex min-h-16 flex-col items-start justify-center rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-left active:bg-(--bg-inset) disabled:opacity-50">
       <span className="text-body font-medium text-(--text)">{t.label}</span>
-      <span className="text-caption leading-snug text-(--text-muted)">{raceable && race ? `Ends ${fmtDay(tpl.race_date!, { month: 'short', day: 'numeric' })}` : `${t.weeks} weeks`} · {t.blurb}</span>
+      <span className="text-small leading-snug text-(--text-muted)">{raceable && race ? `Ends ${fmtDay(tpl.race_date!, { month: 'short', day: 'numeric' })}` : `${t.weeks} weeks`} · {t.blurb}</span>
     </button>
   )
   return (
     <section className="flex flex-col gap-2.5">
-      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Start from a template</h2>
+      <h2 className="section-title m-0 px-1">Start from a template</h2>
       {tpl.mine && tpl.mine.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <p className="px-1 text-meta font-medium text-(--text-secondary)">My templates</p>
           {tpl.mine.map((t) => (
             <div key={t.id} className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) pr-1">
               <button type="button" disabled={busy} onClick={() => onPick(t, {})} className="flex min-h-14 min-w-0 flex-1 flex-col justify-center px-3 py-2 text-left disabled:opacity-50">
-                <span className="truncate text-body font-medium text-(--text)">{t.label}</span>
-                <span className="text-caption text-(--text-muted)">{t.blurb} · starts the week you pick</span>
+                <span className="text-body-lg font-medium text-(--text)">{t.label}</span>
+                <span className="text-small text-(--text-muted)">{t.blurb}. Starts the week you pick.</span>
               </button>
               <button type="button" aria-label={`Delete ${t.label}`} className="hit-44 rounded p-2 text-(--text-muted)"
                 onClick={() => { setError(null); api.deleteMine(t.id).then((r) => onMine(r.mine), (e) => setError((e as Error).message)) }}><Trash2 className="size-5" /></button>
@@ -354,7 +354,7 @@ function Templates({ tpl, busy, who, api, onPick, onMine }: {
           {more && <div className="grid grid-cols-2 gap-2">{rest.map((t) => tile(t, t.group !== 'general'))}</div>}
         </>
       )}
-      <p className="px-1 text-caption leading-snug text-(--text-muted)">Built by rabbt's plan builder for the weekly hours and training days in the profile. Tap one to preview it.</p>
+      <p className="px-1 text-small leading-snug text-(--text-muted)">Built by rabbt's plan builder for the weekly hours and training days in the profile. Tap one to preview it.</p>
     </section>
   )
 }
@@ -405,7 +405,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
     <Screen title="Match the columns" subtitle={info.name} onBack={onBack} onClose={onBack} footer={footer}>
       <p className="px-1 text-small leading-snug text-(--text-muted)">rabbt wasn't sure about this sheet, so it guessed what each column means. Fix anything that's off: it needs a date (or week + day) and what the workout is.</p>
       <Card>
-        <p className="border-b border-(--border) px-4 py-2 text-caption font-semibold text-(--text-muted)">Your sheet: first 3 rows</p>
+        <p className="border-b border-(--border) px-4 py-2.5 text-meta font-semibold text-(--text-secondary)">Your sheet: first 3 rows</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-max text-left text-meta">
             <thead>
@@ -434,7 +434,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
             <label key={f} className="flex min-h-14 items-center gap-3 px-4 py-2">
               <span className="w-32 shrink-0">
                 <span className="block text-small font-medium text-(--text)">{FIELD_LABEL[f]}</span>
-                {FIELD_HINT[f] && <span className="block text-caption text-(--text-muted)">{FIELD_HINT[f]}</span>}
+                {FIELD_HINT[f] && <span className="block text-small text-(--text-muted)">{FIELD_HINT[f]}</span>}
               </span>
               <span className="min-w-0 flex-1">
                 <select className={cn(inputCls, 'h-11')} value={cols[f] ?? ''} aria-label={FIELD_LABEL[f]}
@@ -442,7 +442,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
                   <option value="">Not in this sheet</option>
                   {Array.from({ length: info.columns }, (_, j) => <option key={j} value={j}>{name(j)}</option>)}
                 </select>
-                {cols[f] != null && sample(cols[f]) && <span className="mt-0.5 block truncate text-caption text-(--text-muted)">e.g. {sample(cols[f])}</span>}
+                {cols[f] != null && sample(cols[f]) && <span className="mt-0.5 block text-small text-(--text-muted) [overflow-wrap:anywhere]">e.g. {sample(cols[f])}</span>}
               </span>
             </label>
           ))}

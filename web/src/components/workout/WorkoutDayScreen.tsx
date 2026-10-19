@@ -93,12 +93,12 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
         <>
           {s.id && ahead && status !== 'done' && (
             <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={() => setMoving(s.id)}>
-              <CalendarClock className="size-5" aria-hidden /> Move
+              <CalendarClock className="size-5 shrink-0" aria-hidden /> Move
             </Button>
           )}
           {s.id && (
             <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={edit} aria-label="Edit this workout in your schedule">
-              <Pencil className="size-5" aria-hidden /> Edit
+              <Pencil className="size-5 shrink-0" aria-hidden /> Edit
             </Button>
           )}
           {s.id && data && (
@@ -192,33 +192,43 @@ function WorkoutSkeleton() {
   )
 }
 
-export function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bike; title: string; meta: string; line: string; chip?: { label: string; cls: string } }) {
+export function Hero({ icon: Icon, title, meta, line, chip }: {
+  icon: typeof Bike; title: string
+  /** short facts ("1h 45m", "28.6 mi", "Long"); a " · " string is split into separate facts */
+  meta: string | string[]
+  line: string; chip?: { label: string; cls: string }
+}) {
+  const facts = (Array.isArray(meta) ? meta : meta.split(' · ')).map((x) => x.trim()).filter(Boolean)
   return (
-    <div className="celebrate flex flex-col gap-3 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-4">
+    <div className="celebrate flex flex-col gap-3.5 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-5 py-5">
       <div className="flex items-center gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)">
           <Icon className="size-6" />
         </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-title-lg leading-tight text-(--brand)">{title}</h3>
-          <p className="text-caption font-semibold text-(--accent)">{meta}</p>
-        </div>
         {chip && (
-          <span className={cn('flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-caption font-semibold', chip.cls)}>
+          <span className={cn('ml-auto flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-meta font-semibold', chip.cls)}>
             {chip.label === 'Done' && <Check className="size-4" strokeWidth={3} />}{chip.label}
           </span>
         )}
       </div>
-      {line && <p className="text-body-lg leading-snug text-(--text)">{line}</p>}
+      <div className="flex flex-col gap-2">
+        <h3 className="font-display text-display-sm leading-tight text-(--brand)">{title}</h3>
+        {facts.length > 0 && (
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-body font-semibold text-(--accent)">
+            {facts.map((f) => <span key={f}>{f}</span>)}
+          </p>
+        )}
+      </div>
+      {line && <p className="text-body-lg leading-relaxed text-(--text)">{line}</p>}
     </div>
   )
 }
 
 export function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
   return (
-    <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
-      <h4 className="font-sans flex items-center gap-1.5 px-3.5 pt-3 text-caption font-semibold text-(--text-muted)">
-        {Icon && <Icon className="size-4" aria-hidden />}{title}
+    <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-4">
+      <h4 className="font-sans flex items-center gap-2 px-4 pt-4 text-lead font-semibold text-(--text)">
+        {Icon && <Icon className="size-5 text-(--accent)" aria-hidden />}{title}
       </h4>
       {children}
     </section>
@@ -240,14 +250,14 @@ function LearnMore({ s }: { s: WorkoutSession }) {
   return (
     <div className="rounded-xl border border-(--border) bg-(--bg-surface)">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-12 w-full items-center gap-2 px-3.5 text-left text-small font-medium text-(--accent)">
+        className="flex min-h-12 w-full items-center gap-2.5 px-4 text-left text-body font-medium text-(--accent)">
         <BookOpen className="size-5" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
         <ChevronDown className={cn('size-5 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 text-small leading-snug">
+        <div className="flex flex-col gap-3 px-4 pb-4 text-body leading-relaxed">
           {k && (
-            <dl className="flex flex-col gap-1.5">
+            <dl className="flex flex-col gap-2.5">
               <div><dt className="font-semibold text-(--text)">What it is</dt><dd className="text-(--text-secondary)">{k.what}</dd></div>
               <div><dt className="font-semibold text-(--text)">Why it's in your plan</dt><dd className="text-(--text-secondary)">{k.why}</dd></div>
               <div><dt className="font-semibold text-(--text)">How it should feel</dt><dd className="text-(--text-secondary)">{k.feel}</dd></div>
@@ -275,25 +285,25 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
   const ahead = d.date >= d.today
   const [wxShown, setWxShown] = useState(false)  // the full Weather section replaces the small chip
   const dist = distText(c, imperial) || (s.meters ? (s.sport === 'swim' ? fmtMeters(s.meters, imperial) : fmtDist(s.meters / 1000, imperial)) : '')
-  const meta = [s.minutes ? fmtDuration(s.minutes) : null, dist || null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null].filter(Boolean).join(' · ')
+  const meta = [s.minutes ? fmtDuration(s.minutes) : null, dist || null, s.kind ? KIND_LABEL[s.kind] ?? s.kind : null].filter((x): x is string => !!x)
   const t = c?.targets
   const note = c?.note
   return (
     <>
-      <Hero icon={sportIcon(s.sport)} title={s.title} meta={meta || 'Workout'} line={note?.why || s.purpose}
+      <Hero icon={sportIcon(s.sport)} title={s.title} meta={meta.length ? meta : ['Workout']} line={note?.why || s.purpose}
         chip={STATUS[status] ?? STATUS.planned} />
       {s.time && (
-        <p className="-mt-1 flex items-center gap-1.5 px-1 text-small text-(--text-secondary)">
-          <Clock className="size-4" aria-hidden /> Starts at {fmtTime(s.time)}
+        <p className="-mt-2 flex items-center gap-2 px-1 text-body text-(--text-secondary)">
+          <Clock className="size-5" aria-hidden /> Starts at {fmtTime(s.time)}
         </p>
       )}
       {c?.adjusted && (
-        <p className="flex items-start gap-2 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-3 py-2 text-small leading-snug text-(--accent)">
-          <RabbitLogo size={14} current className="mt-0.5 shrink-0" /> {c.adjusted}
+        <p className="flex items-start gap-2.5 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-3 text-body leading-snug text-(--accent)">
+          <RabbitLogo size={18} current className="mt-0.5 shrink-0" /> {c.adjusted}
         </p>
       )}
       {isToday && d.readiness && (
-        <p className={cn('rounded-xl border px-3 py-2 text-small leading-snug',
+        <p className={cn('rounded-xl border px-4 py-3 text-body leading-snug',
           d.readiness.tone === 'easy' || d.readiness.tone === 'rest'
             ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)'
             : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)')}>
@@ -301,7 +311,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         </p>
       )}
       {status === 'missed' && (
-        <div className="flex flex-col gap-2 rounded-xl border border-(--danger)/25 bg-(--danger)/5 px-3.5 py-3">
+        <div className="flex flex-col gap-2.5 rounded-xl border border-(--danger)/25 bg-(--danger)/5 px-4 py-4">
           <p className="flex items-center gap-1.5 text-body font-semibold text-(--danger)"><TriangleAlert className="size-5" aria-hidden /> Missed</p>
           {c?.missed?.why && <p className="text-small leading-snug text-(--text-secondary)">{c.missed.why}</p>}
           {s.id && c?.missed?.this_week && (
@@ -322,7 +332,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         <>
           <SectionCard title="Key numbers"><WorkoutSummary t={t} dist={dist} imperial={imperial} /></SectionCard>
           {/* WorkoutSteps brings its own "The workout" heading */}
-          <section aria-label="The workout" className="rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
+          <section aria-label="The workout" className="rounded-xl border border-(--border) bg-(--bg-surface) pb-4">
             <WorkoutSteps t={t} imperial={imperial} />
           </section>
         </>
@@ -346,7 +356,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       )}
       {note && (note.how || note.cues) ? (note.source === 'coach' ? (
         <SectionCard title="From your coach" icon={Lightbulb}>
-          <div className="flex flex-col gap-1.5 px-3.5 pt-2 text-body leading-snug">
+          <div className="flex flex-col gap-2 px-4 pt-2 text-body leading-relaxed">
             {note.how && <p className="text-(--text)">{note.how}</p>}
             {note.cues && <p className="text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
           </div>
@@ -362,12 +372,12 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       {(s.gear.length > 0 || (isToday && d.weather && !wxShown)) && (
         <div className="flex flex-col gap-2">
           {s.gear.map((g) => (
-            <div key={g.id} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5',
+            <div key={g.id} className={cn('flex items-center gap-3 rounded-xl border px-4 py-3',
               g.warning ? 'border-(--warning)/30 bg-(--warning-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
               {g.kind === 'bike' ? <Bike className="size-5 shrink-0 text-(--accent)" /> : <Footprints className="size-5 shrink-0 text-(--accent)" />}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium text-(--text)">{g.name}</span>
-                <span className={cn('block text-caption', g.warning ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
+                <span className="block text-body font-medium text-(--text)">{g.name}</span>
+                <span className={cn('block text-small', g.warning ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
                   {g.warning ?? `${g.total_label} so far`}
                 </span>
               </span>
@@ -381,7 +391,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         : <WatchRow s={s} onSynced={onSynced} />)}
       <LearnMore s={s} />
       {cal?.pace_source === 'default' && s.sport === 'run' && ahead && (
-        <p className="px-1 text-meta leading-snug text-(--text-muted)">
+        <p className="px-1 text-small leading-snug text-(--text-muted)">
           Paces start from a typical runner. Add your threshold pace in Me › Training profile, or keep training and rabbt will learn it from your runs.
         </p>
       )}
@@ -456,14 +466,14 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
   const fb = got?.feedback
   const form = editing || (got !== null && !ck)
   return (
-    <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="font-sans text-caption font-semibold text-(--text-muted)">How did it go?</h4>
+    <section aria-label="How did it go" className="flex flex-col gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+      <h4 className="font-sans text-lead font-semibold text-(--text)">How did it go?</h4>
       {got === null && <div className="skeleton h-[120px] rounded-lg" aria-hidden />}
       {ck && !editing && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {checkinChips(ck).map((x) => (
-              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-meta font-medium',
+              <span key={x.label} className={cn('rounded-full border px-3 py-1 text-meta font-medium',
                 x.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--border) text-(--text)')}>{x.label}</span>
             ))}
           </div>
@@ -476,7 +486,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
           <label className="flex flex-col gap-1.5">
             <span className="flex items-baseline justify-between text-small text-(--text)">
               <span>Effort (RPE)</span>
-              <span className="font-mono font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe}/10 · {RPE_WORD[rpe]}</span>
+              <span className="font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe} of 10, {RPE_WORD[rpe]!.toLowerCase()}</span>
             </span>
             <input type="range" min={1} max={10} step={1} value={rpe} onChange={(e) => setRpe(Number(e.target.value))}
               aria-valuetext={`${rpe} out of 10, ${RPE_WORD[rpe]}`} className="h-11 w-full accent-(--accent)" />
@@ -520,7 +530,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
 function TargetChips({ targets, label }: { targets: Target[]; label?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && <span className="px-1 text-caption font-semibold text-(--text-muted)">{label}</span>}
+      {label && <span className="px-1 text-meta font-semibold text-(--text-secondary)">{label}</span>}
       <div className="flex flex-wrap gap-2">
         {targets.map((t) => <BigChip key={t.kind + t.label} t={t} />)}
       </div>
@@ -550,8 +560,8 @@ function Timeline({ sections }: { sections: WSection[] }) {
           </span>
           <div className="min-w-0 flex-1 pb-1">
             <p className="flex items-baseline justify-between gap-2">
-              <span className="text-caption font-semibold text-(--accent)">{sec.name}</span>
-              <span className="text-meta text-(--text-muted)">{Number.isInteger(sec.minutes) ? fmtDuration(sec.minutes) : fmtMin(sec.minutes)}</span>
+              <span className="text-body font-semibold text-(--accent)">{sec.name}</span>
+              <span className="text-small text-(--text-muted)">{Number.isInteger(sec.minutes) ? fmtDuration(sec.minutes) : fmtMin(sec.minutes)}</span>
             </p>
             <div className="mt-1.5 flex flex-col gap-2">{sec.steps.map((st, j) => <StepRow key={j} s={st} />)}</div>
           </div>
@@ -564,9 +574,9 @@ function Timeline({ sections }: { sections: WSection[] }) {
 function StepRow({ s }: { s: WStep }) {
   if (s.type === 'repeat') {
     return (
-      <div className="rounded-xl border border-(--accent)/30 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-caption font-semibold text-(--accent)">
-          <Repeat className="size-4" /> {s.reps} times
+      <div className="rounded-xl border border-(--accent)/30 px-4 py-3">
+        <span className="flex items-center gap-1.5 text-meta font-semibold text-(--accent)">
+          <Repeat className="size-5" /> Repeat {s.reps} times
         </span>
         <div className="mt-2 flex flex-col gap-2">{s.steps.map((x, i) => <StepRow key={i} s={x} />)}</div>
       </div>
@@ -574,12 +584,12 @@ function StepRow({ s }: { s: WStep }) {
   }
   const hard = s.type === 'work'
   return (
-    <div className={cn('flex flex-col gap-1.5 rounded-xl border px-3 py-2.5',
+    <div className={cn('flex flex-col gap-2 rounded-xl border px-4 py-3',
       hard ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-      <p className="flex items-baseline gap-2">
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className="font-display text-title leading-none text-(--text)">{s.amount}</span>
-        <span className="text-small text-(--text-secondary)">{s.label}</span>
-        <span className="ml-auto text-caption text-(--text-muted)">Z{s.zone} {s.zone_name}</span>
+        <span className="text-body text-(--text-secondary)">{s.label}</span>
+        <span className="ml-auto rounded-full bg-(--bg-inset) px-2 text-caption font-semibold text-(--text-secondary)">Zone {s.zone}, {s.zone_name}</span>
       </p>
       <div className="flex flex-wrap gap-1.5">{s.targets.map((t) => <BigChip key={t.kind + t.label} t={t} small />)}</div>
     </div>
@@ -588,7 +598,7 @@ function StepRow({ s }: { s: WStep }) {
 
 function CueCard({ cue }: { cue: string }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-(--brand)/20 bg-(--bg-surface) px-3 py-2.5">
+    <div className="flex items-start gap-3 rounded-xl border border-(--brand)/20 bg-(--bg-surface) px-4 py-3.5">
       <Lightbulb className="mt-0.5 size-5 shrink-0 text-(--brand)" />
       <p className="text-body leading-snug text-(--text)"><b className="font-semibold">Key cue:</b> {cue}</p>
     </div>
@@ -598,16 +608,16 @@ function CueCard({ cue }: { cue: string }) {
 function FuelCard({ s }: { s: WorkoutSession }) {
   if (s.sport === 'rest' || s.sport === 'strength') return null
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
+    <div className="flex items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5">
       <Utensils className="mt-0.5 size-5 shrink-0 text-(--accent)" />
       {s.fuel ? (
         <div className="min-w-0 flex-1">
           <p className="text-body text-(--text)">
             <b className="font-display text-title-sm">{s.fuel.carbs_g_per_h} g</b> carbs/h
-            {s.fuel.total_carbs_g != null && <span className="text-(--text-muted)"> · ≈{s.fuel.total_carbs_g} g total</span>}
-            {s.fuel.fluid_ml_per_h && <span className="text-(--text-muted)"> · {s.fuel.fluid_ml_per_h} ml/h</span>}
+            {s.fuel.total_carbs_g != null && <span className="block text-small text-(--text-muted)">About {s.fuel.total_carbs_g} g in all</span>}
+            {s.fuel.fluid_ml_per_h && <span className="block text-small text-(--text-muted)">Drink {s.fuel.fluid_ml_per_h} ml an hour</span>}
           </p>
-          <p className="text-meta leading-snug text-(--text-muted)">{s.fuel.note}</p>
+          <p className="mt-1 text-small leading-snug text-(--text-muted)">{s.fuel.note}</p>
         </div>
       ) : (
         <p className="text-body text-(--text-secondary)">Water is enough for this one. Eat normally beforehand.</p>
@@ -619,19 +629,19 @@ function FuelCard({ s }: { s: WorkoutSession }) {
 function WeatherChip({ w, imperial }: { w: Weather; imperial: boolean }) {
   const wind = w.wind_kmh != null ? fmtSpeed(w.wind_kmh, imperial) : null
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3">
       <CloudSun className="size-5 shrink-0 text-(--accent)" />
       <span className="min-w-0 flex-1">
         <span className="block text-body text-(--text)">
           <b className="font-semibold">{fmtTemp(w.temp_c, imperial)}</b> {w.summary}
           {w.feels_c != null && w.temp_c != null && Math.abs(w.feels_c - w.temp_c) >= 3 && <span className="text-(--text-muted)"> · feels {fmtTemp(w.feels_c, imperial)}</span>}
         </span>
-        <span className="block truncate text-caption text-(--text-muted)">
+        <span className="block text-small text-(--text-muted)">
           {w.place}{w.rain_pct != null && w.rain_pct >= 20 ? ` · ${w.rain_pct}% rain next 3 h` : ''}
           {w.next.length > 0 && ` · ${w.next.map((h) => `${h.time} ${fmtTemp(h.temp_c, imperial)}`).join(', ')}`}
         </span>
       </span>
-      {wind && <span className="flex shrink-0 items-center gap-1 text-caption text-(--text-muted)"><Wind className="size-4" />{wind}</span>}
+      {wind && <span className="flex shrink-0 items-center gap-1 text-small text-(--text-muted)"><Wind className="size-5" />{wind}</span>}
     </div>
   )
 }
@@ -641,7 +651,7 @@ function WatchRow({ s, onSynced }: { s: WorkoutSession; onSynced: () => void }) 
   const [err, setErr] = useState<string | null>(null)
   if (s.garmin.on_watch) {
     return (
-      <p className="flex items-center gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2.5 text-body font-medium text-(--accent)">
+      <p className="flex items-center gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-4 py-3 text-body font-medium text-(--accent)">
         <Watch className="size-5" /> On your watch <Check className="size-5" strokeWidth={3} />
       </p>
     )
@@ -652,10 +662,10 @@ function WatchRow({ s, onSynced }: { s: WorkoutSession; onSynced: () => void }) 
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <Button variant="primary" className="h-11 gap-1.5 text-body" loading={busy} onClick={() => void send()}>
+      <Button variant="default" className="h-12 gap-1.5 text-body font-semibold text-(--accent)" loading={busy} onClick={() => void send()}>
         <Watch className="size-5" /> Send to watch
       </Button>
-      <p className="px-1 text-caption text-(--text-muted)">{err ?? 'Sends this week\'s plan to Garmin. Sync your watch to pick it up.'}</p>
+      <p className="px-1 text-small text-(--text-muted)">{err ?? 'Sends this week\'s plan to Garmin. Sync your watch to pick it up.'}</p>
     </div>
   )
 }
@@ -679,8 +689,8 @@ function Checklist({ day, sport }: { day: string; sport: string }) {
             return (
               <li key={t}>
                 <button type="button" onClick={() => toggle(i)} aria-pressed={on}
-                  className="flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left active:opacity-70">
-                  <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors',
+                  className="flex min-h-11 w-full items-center gap-3 rounded-lg py-1.5 text-left active:opacity-70">
+                  <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors',
                     on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border)')}>
                     {on && <Check className="size-4" strokeWidth={3} />}
                   </span>

@@ -166,18 +166,18 @@ function useCardDrag(enabled: boolean, canDrop: (day: string) => boolean, onDrop
 function MileBar({ m, sport, imperial, label }: { m: Mileage; sport: DistSport; imperial: boolean; label?: string }) {
   const pct = m.goal > 0 ? Math.min(100, (m.done / m.goal) * 100) : 0
   const u = unitWord(imperial, sport)
+  const done = toUnit(m.done, imperial, sport).toLocaleString()
+  const goal = toUnit(m.goal, imperial, sport).toLocaleString()
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
-      <div className="flex items-baseline gap-1.5">
-        {label && <span className="text-caption text-(--text-muted) font-semibold">{label}</span>}
-        <span className="font-mono text-body font-semibold tabular-nums text-(--text)">
-          {toUnit(m.done, imperial, sport).toLocaleString()} of {toUnit(m.goal, imperial, sport).toLocaleString()} {u}
-        </span>
-        {m.custom && <span className="text-caption text-(--text-muted)">your goal</span>}
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      {label && <span className="text-meta font-semibold text-(--text-secondary)">{label}</span>}
+      <div className="flex flex-wrap items-baseline gap-x-1.5">
+        <span className="text-title font-semibold tabular-nums text-(--text)">{done} {u}</span>
+        <span className="text-small text-(--text-muted)">of {goal} {u} {m.custom ? 'goal' : 'planned'}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar" aria-valuemin={0}
+      <div className="h-2 overflow-hidden rounded-full bg-(--bg-inset)" role="progressbar" aria-valuemin={0}
         aria-valuemax={Math.round(toUnit(m.goal, imperial, sport))} aria-valuenow={Math.round(toUnit(m.done, imperial, sport))}
-        aria-label={`${SPORT_DIST_LABEL[sport]} this week`}>
+        aria-label={`${SPORT_DIST_LABEL[sport]} this week: ${done} of ${goal} ${u}`}>
         <div className={cn('h-full rounded-full', pct >= 100 ? 'bg-(--success)' : 'bg-(--accent)')} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -201,15 +201,15 @@ function WeekMiles({ week, miles, imperial, editable, onGoal }: {
     try { await onGoal(edit, km); setEdit(null) } finally { setBusy(false) }
   }
   return (
-    <div className="flex flex-col gap-2 border-b border-(--border) px-4 py-2.5">
+    <div className="flex flex-col gap-4 border-b border-(--border) px-4 py-4">
       {entries.map(([sp, m]) => (
-        <div key={sp} className="flex items-center gap-2">
-          <MileBar m={m} sport={sp} imperial={imperial} label={multi ? SPORT_DIST_LABEL[sp] : 'This week'} />
+        <div key={sp} className="flex items-start gap-2">
+          <MileBar m={m} sport={sp} imperial={imperial} label={multi ? `${SPORT_DIST_LABEL[sp]} this week` : 'This week'} />
           {editable && sp !== 'swim' && (
-            <button type="button" className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"
+            <button type="button" className="flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"
               aria-label={`Change the ${SPORT_DIST_LABEL[sp].toLowerCase()} goal for this week`}
               onClick={() => { setEdit(sp); setVal(String(toUnit(m.goal, imperial, sp))) }}>
-              <Pencil className="size-4" />
+              <Pencil className="size-5" />
             </button>
           )}
         </div>
@@ -256,7 +256,8 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
   const mins = sessionMinutes(s)
   const dist = distText(c, s, imperial)
   const pace = c?.pace ? `${paceText(c.pace.fast, imperial)}–${paceText(c.pace.slow, imperial)}/${imperial ? 'mi' : 'km'}` : ''
-  const meta = [dist, mins ? fmtDuration(mins) : '', pace].filter(Boolean).join(' · ')
+  const size = [dist, mins ? fmtDuration(mins) : ''].filter(Boolean).join(' · ')
+  const meta = [size, pace].filter(Boolean).join(', ')
   const dim = c?.status === 'skipped'
   return (
     <div className={cn('rounded-xl border bg-(--bg-surface) transition-opacity', dragging ? 'opacity-40' : '',
@@ -264,30 +265,35 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
       <div className="flex items-stretch">
       <button type="button" onClick={onOpen} disabled={!onOpen} {...dragProps} data-session-id={s.id}
         aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${s.time ? ` at ${fmtTime(s.time)}` : ''}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}. Open the full workout`}
-        className={cn('flex min-w-0 flex-1 items-start gap-2.5 py-2 pl-3 text-left disabled:cursor-default', !onEdit && 'pr-3', grab && 'touch-manipulation select-none')}>
-        <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
+        className={cn('flex min-w-0 flex-1 items-start gap-3 py-3 pl-3.5 text-left disabled:cursor-default', !onEdit && 'pr-3.5', grab && 'touch-manipulation select-none')}>
+        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg',
           s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : c?.status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
           <Icon className="size-5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            {s.time && <span className="shrink-0 font-mono text-meta font-semibold tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}
-            <span className={cn('min-w-0 flex-1 truncate text-body font-medium text-(--text)', dim && 'line-through')}>{s.title}</span>
-            {unread && <span className="size-2 shrink-0 rounded-full bg-(--accent)" aria-label="New coach message" />}
-            <StatusChip c={c} />
-            {s.synced && !c?.status.match(/done|missed/) && <span className="shrink-0 text-caption text-(--accent) font-semibold">Garmin</span>}
+          <span className={cn('block text-body-lg font-semibold leading-snug text-(--text)', dim && 'line-through')}>
+            {s.time && <span className="mr-1.5 font-medium tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}
+            {s.title}
+            {unread && <span className="ml-1.5 inline-block size-2 rounded-full bg-(--accent) align-middle" aria-label="New coach message" />}
           </span>
-          {meta && <span className="block truncate font-mono text-meta tabular-nums text-(--text-secondary)">{meta}</span>}
-          {!meta && s.kind !== 'race' && <span className="block truncate text-meta text-(--text-muted)">{KIND_LABEL[s.kind] ?? s.kind}</span>}
-          {c?.note && c.status !== 'missed' && <span className="block truncate text-meta text-(--text-muted)">{c.note.source === 'coach' ? 'Coach: ' : ''}{c.note.line}</span>}
-          {c?.missed && <span className="block text-meta leading-snug text-(--text-secondary)">{c.missed.why}</span>}
+          {size && <span className="mt-0.5 block text-small tabular-nums text-(--text-secondary)">{size}</span>}
+          {pace && <span className="block text-small tabular-nums text-(--text-muted)">Pace <span className="whitespace-nowrap">{pace}</span></span>}
+          {!size && !pace && s.kind !== 'race' && <span className="mt-0.5 block text-small text-(--text-muted)">{KIND_LABEL[s.kind] ?? s.kind}</span>}
+          {(c?.status === 'done' || c?.status === 'missed' || c?.status === 'skipped' || (s.synced && !c?.status.match(/done|missed/))) && (
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <StatusChip c={c} />
+              {s.synced && !c?.status.match(/done|missed/) && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-semibold text-(--accent)">On your Garmin</span>}
+            </span>
+          )}
+          {c?.note && c.status !== 'missed' && <span className="mt-1 block text-small leading-snug text-(--text-muted)">{c.note.source === 'coach' ? 'Coach: ' : ''}{c.note.line}</span>}
+          {c?.missed && <span className="mt-1 block text-small leading-snug text-(--text-secondary)">{c.missed.why}</span>}
         </span>
         {grab && editing && <GripVertical className="mt-2 size-5 shrink-0 text-(--text-muted)" aria-hidden />}
       </button>
       {onEdit && (
         <button type="button" onClick={onEdit} aria-label={`Edit ${s.title}`}
-          className="flex w-11 shrink-0 items-start justify-center pt-3 text-(--text-muted) active:text-(--text)">
-          <Pencil className="size-4" aria-hidden />
+          className="flex w-12 shrink-0 items-start justify-center pt-3.5 text-(--text-muted) active:text-(--text)">
+          <Pencil className="size-5" aria-hidden />
         </button>
       )}
       </div>
@@ -515,9 +521,9 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   }
   const editToggle = editable && cal && (
     <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)}
-      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-small font-medium',
-        editing ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
-      {editing ? <><Check className="size-4" aria-hidden />Done</> : <><Pencil className="size-4" aria-hidden />Edit</>}
+      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-body font-medium',
+        editing ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
+      {editing ? <><Check className="size-5" aria-hidden />Done</> : <><Pencil className="size-5" aria-hidden />Edit<span className="max-[379px]:hidden">&nbsp;week</span></>}
     </button>
   )
 
@@ -531,23 +537,35 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     const over = drag?.over === d.date && drag.from !== d.date
     const canAdd = !!onAdd && !past && d.date <= plan.race_date && work.length < 4
     const quiet = compact && !work.length && !extra && !done.length && !over && !editing
+    const busy = busyLabel(d.date)
+    const away = plan.trips.some((x) => x.start <= d.date && d.date <= x.end)
     return (
       <div key={d.date} data-cal-day={d.date}
-        className={cn('flex gap-3 px-3 transition-colors', quiet ? 'py-0.5' : 'py-2', isToday && 'bg-(--accent-subtle)',
+        className={cn('flex flex-col px-4 transition-colors', quiet ? 'py-1' : 'gap-2.5 py-3.5', isToday && 'bg-(--accent-subtle)',
           over && 'bg-(--accent)/15 outline-2 -outline-offset-2 outline-dashed outline-(--accent)',
           drag && !canDrop(d.date) && 'opacity-50')}>
-        <span className="w-11 shrink-0 text-center leading-tight">
+        <div className="flex min-h-11 items-center gap-2">
           <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}`}
-            className={cn('flex w-11 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)', quiet ? 'min-h-11 flex-row gap-1' : 'min-h-11 pt-1')}>
-            <span className={cn('block text-caption font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
-              {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
+            className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-1 text-left active:bg-(--bg-inset)">
+            <span className={cn('text-body font-semibold', isToday ? 'text-(--accent)' : 'text-(--text)')}>
+              {isToday ? 'Today' : fmtDay(d.date, { weekday: 'long' })}
             </span>
-            <span className={cn('block text-small', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{fmtDay(d.date, { day: 'numeric' })}</span>
+            <span className={cn('text-small', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>{fmtDay(d.date, { month: 'short', day: 'numeric' })}</span>
           </button>
-          {!quiet && busyLabel(d.date) && <span className="mt-0.5 block text-caption leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
-          {!quiet && plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3.5 text-(--accent)" aria-label="Travel day" />}
-        </span>
-        <div className={cn('flex min-w-0 flex-1 flex-col gap-1.5', quiet ? 'justify-center' : 'py-0.5')}>
+          {quiet && <span className="text-small text-(--text-muted)">Rest</span>}
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            {!quiet && busy && <span className="text-meta font-medium text-(--warning-text)">{busy}</span>}
+            {!quiet && away && <Plane className="size-5 text-(--accent)" aria-label="Travel day" />}
+            {canAdd && (editing || !compact) && (
+              <button type="button" aria-label={`Add a workout on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
+                className="flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)">
+                <span className="flex size-8 items-center justify-center rounded-full border border-dashed border-(--border-strong)"><Plus className="size-5" aria-hidden /></span>
+              </button>
+            )}
+          </span>
+        </div>
+        {!quiet && (
+        <div className="flex min-w-0 flex-col gap-2">
           {work.map((s) => {
             const c = cal?.sessions[s.id]
             const mv = movable(s, d.date)
@@ -566,19 +584,14 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           {done.map((a, i) => (
             <button key={`x${a.id ?? a.key ?? i}`} type="button" disabled={a.id == null && !a.key} onClick={() => openActivity(a.id ?? a.key!)}
               aria-label={`${a.name}, done. Open the workout`}
-              className="flex min-h-11 w-full items-center gap-1.5 rounded-lg text-left text-meta text-(--accent) active:bg-(--bg-inset) disabled:cursor-default">
-              <Check className="size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 flex-1 truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
-              {(a.id != null || a.key) && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+              className="flex min-h-11 w-full items-center gap-2 rounded-lg text-left text-small text-(--accent) active:bg-(--bg-inset) disabled:cursor-default">
+              <Check className="size-5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
+              {(a.id != null || a.key) && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
             </button>
           ))}
-          {!work.length && !extra && !done.length && <p className={cn('text-small text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
+          {!work.length && !extra && !done.length && <p className="text-small text-(--text-muted)">{over ? 'Drop here' : 'Rest day'}</p>}
         </div>
-        {canAdd && (editing || !compact) && (
-          <button type="button" aria-label={`Add a workout on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
-            className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
-            <Plus className="size-4" />
-          </button>
         )}
       </div>
     )
@@ -592,9 +605,9 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     const keys = keySessions(w)
     if (!w.focus && !keys.length) return null
     return (
-      <div className="flex flex-col gap-0.5 border-b border-(--border) px-4 py-2.5 text-small leading-snug">
+      <div className="flex flex-col gap-1.5 border-b border-(--border) px-4 py-3.5 text-body leading-snug">
         {w.focus && <p className="text-(--text-secondary)">{w.focus}</p>}
-        {keys.length > 0 && <p className="text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key workouts:</span> {keys.join(' · ')}</p>}
+        {keys.length > 0 && <p className="text-small text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key workouts:</span> {keys.join(', ')}</p>}
       </div>
     )
   }
@@ -604,12 +617,11 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
       <button type="button" className="modal-close" aria-label="Previous week" disabled={pos <= 0}
         onClick={() => onWeek(plan.weeks[pos - 1]!.index)}><ChevronLeft className="size-5" /></button>
       <div className="min-w-0 flex-1 text-center">
-        <p className="text-caption font-semibold text-(--text-muted)">
-          Week {week.index} of {plan.weeks.length} · {weekPhaseLabel(week)} · {week.hours}h
-        </p>
-        <p className="text-meta text-(--text-muted)">
-          {fmtDay(week.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(week.days[week.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
-          {week.index === plan.current_week ? ' · this week' : plan.current_week && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onWeek(plan.current_week!)}>back to this week</button></>}
+        <p className="text-body-lg font-semibold text-(--text)">Week {week.index} of {plan.weeks.length}</p>
+        <p className="text-small text-(--text-secondary)">{weekPhaseLabel(week)} · {week.hours}h planned</p>
+        <p className="text-small text-(--text-muted)">
+          {fmtDay(week.days[0]!.date, { month: 'short', day: 'numeric' })}{week.days.length > 1 ? ` – ${fmtDay(week.days[week.days.length - 1]!.date, { month: 'short', day: 'numeric' })}` : ''}
+          {week.index === plan.current_week ? ', this week' : plan.current_week && <>{' '}<button type="button" className="hit-44 font-semibold text-(--accent) underline-offset-2 hover:underline" onClick={() => onWeek(plan.current_week!)}>Back to this week</button></>}
         </p>
       </div>
       <button type="button" className="modal-close" aria-label="Next week" disabled={pos >= plan.weeks.length - 1}
@@ -618,20 +630,22 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   )
 
   return (
-    <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-1.5" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
+    <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-3" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
       <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Today'], ['week', 'Week'], ['list', 'List'], ['month', 'Month']] as const}
         onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : today) : setView(v)} /></div>
-      <div className="flex items-center gap-2 px-1">
-        <button type="button" onClick={() => setOverview(true)}
-          className="flex min-h-11 items-center gap-1.5 text-small font-medium text-(--accent)">
-          <MapIcon className="size-4" aria-hidden />Plan overview
-        </button>
+      <div className="flex flex-col gap-0.5 px-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setOverview(true)}
+            className="flex min-h-11 items-center gap-2 whitespace-nowrap text-body font-semibold text-(--accent)">
+            <MapIcon className="size-5" aria-hidden />Plan overview
+          </button>
+          <span className="ml-auto">{(view === 'week' || view === 'list') && editToggle}</span>
+        </div>
         {cal?.total.run && cal.total.run.planned > 0 && (
-          <span className="min-w-0 flex-1 truncate text-right font-mono text-meta tabular-nums text-(--text-muted)">
-            Run {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })}
-          </span>
+          <p className="text-small tabular-nums text-(--text-muted)">
+            Running so far: {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })} in the plan
+          </p>
         )}
-        {(view === 'week' || view === 'list') && editToggle}
       </div>
 
       {change && change.rebalanced.length > 0 && (
@@ -677,7 +691,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             {prescription(week)}
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
-          <p className="px-4 text-small leading-snug text-(--text-muted)">
+          <p className="px-1 text-small leading-snug text-(--text-muted)">
             {editable && cal ? (editing ? 'Press and hold a workout to drag it, or use Earlier / Later. rabbt re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
@@ -737,7 +751,7 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
   const sessionsOf = (w: PlanWeekBuilt) => w.days.flatMap((d) => d.sessions.filter((s) => s.sport !== 'rest' && s.kind !== 'race'))
   return (
     <div className="flex flex-col gap-3">
-      <p className="px-1 text-small text-(--text-muted)">
+      <p className="px-1 text-small leading-snug text-(--text-muted)">
         Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a workout to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
       </p>
       {from > 0 && (
@@ -751,16 +765,18 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
         return (
           <Card key={w.start}>
             <button type="button" onClick={() => onWeek(w.index)} aria-label={`Open week ${w.index} in the Week view`}
-              className="flex w-full items-center gap-2 border-b border-(--border) px-4 py-2.5 text-left active:bg-(--bg-inset)">
-              <span className={cn('size-2.5 shrink-0 rounded-full', `phase-${w.recovery && w.phase !== 'taper' && w.phase !== 'race' ? 'recovery' : w.phase}`)} aria-hidden />
+              className="flex w-full items-center gap-3 border-b border-(--border) px-4 py-3.5 text-left active:bg-(--bg-inset)">
+              <span className={cn('size-3 shrink-0 rounded-full', `phase-${w.recovery && w.phase !== 'taper' && w.phase !== 'race' ? 'recovery' : w.phase}`)} aria-hidden />
               <span className="min-w-0 flex-1">
-                <span className="block text-caption font-semibold text-(--text-muted)">
-                  Week {w.index} · {weekPhaseLabel(w)} · {w.hours}h{w.index === plan.current_week ? ' · this week' : ''}
+                <span className="block text-body-lg font-semibold text-(--text)">
+                  Week {w.index}{w.index === plan.current_week ? ', this week' : ''}
                 </span>
-                <span className="block text-meta text-(--text-secondary)">
-                  {fmtDay(w.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(w.days[w.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
-                  {goals.map(([sp, m]) => ` · ${SPORT_DIST_LABEL[sp]} ${fmtDist(m.goal, imperial, sp, { decimals: 0 })}`).join('')}
-                  {ss.length > 0 && (done > 0 || w.days[0]!.date <= today) ? ` · ${done}/${ss.length} done` : ''}
+                <span className="block text-small text-(--text-secondary)">
+                  {weekPhaseLabel(w)} · {fmtDay(w.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(w.days[w.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
+                </span>
+                <span className="block text-small tabular-nums text-(--text-muted)">
+                  {[`${w.hours}h planned`, ...goals.map(([sp, m]) => `${SPORT_DIST_LABEL[sp]} ${fmtDist(m.goal, imperial, sp, { decimals: 0 })}`),
+                    ss.length > 0 && (done > 0 || w.days[0]!.date <= today) ? `${done} of ${ss.length} done` : ''].filter(Boolean).join(', ')}
                 </span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
@@ -775,7 +791,7 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
           Show {Math.min(STEP, plan.weeks.length - to)} more week{plan.weeks.length - to === 1 ? '' : 's'}
         </Button>
       ) : (
-        <p className="px-4 text-center text-meta text-(--text-muted)">That's the whole plan, through race day.</p>
+        <p className="px-4 text-center text-small text-(--text-muted)">That's the whole plan, through race day.</p>
       )}
     </div>
   )
@@ -808,11 +824,11 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
       <div className="flex items-center gap-1 px-1">
         <button type="button" className="modal-close" aria-label="Previous month" disabled={month <= lo} onClick={() => shift(-1)}><ChevronLeft className="size-5" /></button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-caption font-semibold text-(--text-muted)">{label}</p>
+          <p className="text-body-lg font-semibold text-(--text)">{label}</p>
           {tot && (
-            <p className="truncate font-mono text-meta tabular-nums text-(--text-secondary)">
+            <p className="text-small tabular-nums text-(--text-secondary)">
               {(Object.entries(tot) as [DistSport, { done: number; planned: number }][]).filter(([, v]) => v.planned > 0 || v.done > 0)
-                .map(([sp, v]) => `${SPORT_DIST_LABEL[sp]} ${fmtDist(v.done, imperial, sp, { decimals: 0 })} of ${fmtDist(v.planned, imperial, sp, { decimals: 0 })}`).join(' · ')}
+                .map(([sp, v]) => `${SPORT_DIST_LABEL[sp]} ${fmtDist(v.done, imperial, sp, { decimals: 0 })} of ${fmtDist(v.planned, imperial, sp, { decimals: 0 })}`).join(', ')}
             </p>
           )}
         </div>
@@ -822,8 +838,8 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
         {/* Day buttons carry the full date in their names; the letters above are visual only. Tight
             gaps keep each day close to a 44px target on a 375px phone. */}
         <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_auto] gap-px" role="group" aria-label={label}>
-          {WD.map((w) => <span key={w} aria-hidden className="pb-1 text-center text-caption font-semibold uppercase text-(--text-muted)">{w.charAt(0)}</span>)}
-          <span aria-hidden className="pb-1 pr-1 text-right text-caption font-semibold uppercase text-(--text-muted)">{imperial ? 'mi' : 'km'}</span>
+          {WD.map((w) => <span key={w} aria-hidden className="pb-1 text-center text-caption font-semibold text-(--text-muted)">{w.charAt(0)}</span>)}
+          <span aria-hidden className="pb-1 pr-1 text-right text-caption font-semibold text-(--text-muted)">{imperial ? 'mi' : 'km'}</span>
           {cells.map((d, i) => {
             const ss = byDate.get(d) ?? []
             const inMonth = d.slice(0, 7) === month
@@ -846,13 +862,13 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
               </button>
             )
             return i % 7 === 6 ? [cell, (
-              <span key={`${d}-w`} className="flex min-h-11 items-center justify-end pl-1 font-mono text-caption tabular-nums text-(--text-muted)">
+              <span key={`${d}-w`} className="flex min-h-11 items-center justify-end pl-1 text-caption tabular-nums text-(--text-muted)">
                 {wk && wk.goal > 0 ? `${toUnit(wk.done, imperial, 'run')}/${toUnit(wk.goal, imperial, 'run')}` : ''}
               </span>)] : cell
           })}
         </div>
       </Card>
-      <p className="px-4 text-meta text-(--text-muted)">Tap a day to see it in full. Right column: done / goal per week.</p>
+      <p className="px-1 text-small text-(--text-muted)">Tap a day to see it in full. The right column shows running done and planned each week.</p>
     </>
   )
 }
