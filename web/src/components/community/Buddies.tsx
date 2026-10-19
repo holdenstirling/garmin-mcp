@@ -56,8 +56,8 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
   if (!state) return error ? <ErrorState compact message={error} onRetry={() => void load()} /> : <RabbitLoader className="py-6" label="Loading training buddies" cycle={LOADING} />
   const p = state.profile
   return (
-    <section aria-label="Training buddies" className="flex flex-col gap-1.5">
-      <h2 className="font-sans px-4 text-caption font-semibold text-(--text-muted)">Training buddies</h2>
+    <section aria-label="Training buddies" className="flex flex-col gap-3">
+      <h2 className="section-title m-0 px-1">Training buddies</h2>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!p ? (
         <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">

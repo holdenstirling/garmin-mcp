@@ -128,10 +128,10 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
   const shown = term ? list.filter((p) => p.name.toLowerCase().includes(term)) : list
   const chosen = list.filter((p) => picked.includes(p.id))
   return (
-    <section aria-label="People in the group" className="flex flex-col gap-2">
-      <p className="px-1 text-caption font-semibold text-(--text-muted)">
-        People {picked.length > 0 && `· ${picked.length} picked`}
-      </p>
+    <section aria-label="People in the group" className="flex flex-col gap-3">
+      <h3 className="section-title section-title--sm m-0 px-1">
+        People{picked.length > 0 && <span className="font-normal text-(--text-muted)"> ({picked.length} picked)</span>}
+      </h3>
       {chosen.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Picked">
           {chosen.map((p) => (

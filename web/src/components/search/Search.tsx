@@ -91,7 +91,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
           recent.length > 0 ? (
             <section className="px-1">
               <div className="flex items-center justify-between">
-                <h3 className="px-3 text-caption font-semibold text-(--text-muted)">Recent</h3>
+                <h3 className="section-title section-title--sm m-0 px-3">Recent</h3>
                 <button type="button" className="min-h-11 px-3 text-meta text-(--accent)"
                   onClick={() => { clearSearches(); setRecent([]) }}>Clear</button>
               </div>
@@ -182,7 +182,7 @@ function Group({ title, n, children }: { title: string; n: number; children: Rea
   if (!n) return null
   return (
     <section className="mt-2 px-1">
-      <h3 className="px-3 pb-1 text-caption font-semibold text-(--text-muted)">{title}</h3>
+      <h3 className="section-title section-title--sm m-0 px-3 pb-1">{title}</h3>
       <ul>{children}</ul>
     </section>
   )

@@ -29,8 +29,11 @@ export type CommentActions = {
   onEdit: (c: PostComment) => void
 }
 
-export function CommentThreads({ post, threads, focus, actions, className }: {
-  post: Post; threads: { top: PostComment; replies: PostComment[] }[]; focus?: string; actions: CommentActions; className?: string
+export function CommentThreads({ post, threads, focus, actions, onMore, className }: {
+  post: Post; threads: { top: PostComment; replies: PostComment[] }[]; focus?: string; actions: CommentActions
+  /** the feed preview: replies that aren't loaded open on the post's page */
+  onMore?: (top: PostComment) => void
+  className?: string
 }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(focus ? [focus] : []))
   return (
@@ -39,9 +42,16 @@ export function CommentThreads({ post, threads, focus, actions, className }: {
         const many = replies.length > 2
         const shown = many && !open.has(top.id) && !replies.some((r) => r.id === focus) ? replies.slice(-1) : replies
         const hidden = replies.length - shown.length
+        const elsewhere = onMore ? Math.max(0, (top.reply_count ?? 0) - replies.length) : 0
         return (
           <li key={top.id} className="flex flex-col gap-3">
             <CommentItem c={top} focused={focus === top.id} post={post} actions={actions} thread={top} />
+            {elsewhere > 0 && (
+              <button type="button" onClick={() => onMore?.(top)}
+                className="ml-[44px] min-h-11 self-start text-meta font-semibold text-(--accent)">
+                View {elsewhere} {elsewhere === 1 ? 'reply' : 'replies'}
+              </button>
+            )}
             {replies.length > 0 && (
               <ul className="ml-[18px] flex flex-col gap-3 border-l-2 border-(--border) pl-4" aria-label={`Replies to ${top.mine ? 'your comment' : top.by.name}`}>
                 {hidden > 0 && (

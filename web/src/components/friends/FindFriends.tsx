@@ -111,7 +111,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
 
             {requests.length > 0 && (
               <section aria-labelledby="ff-req" className="flex flex-col gap-2">
-                <h2 id="ff-req" className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Want to follow you</h2>
+                <h2 id="ff-req" className="section-title m-0 px-1">Want to follow you</h2>
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {requests.map((e) => e.user && (
                     <li key={e.edge_id} className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
@@ -128,7 +128,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
             )}
 
             <section aria-labelledby="ff-sug" className="flex flex-col gap-2">
-              <h2 id="ff-sug" className="font-sans px-1 text-caption font-semibold text-(--text-muted)">People you may know</h2>
+              <h2 id="ff-sug" className="section-title m-0 px-1">People you may know</h2>
               {sug === null ? <RabbitLoader className="py-8" label="Finding people you may know" cycle={['Finding your crew…', 'Lacing up…']} />
                 : sug.length ? (
                   <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">

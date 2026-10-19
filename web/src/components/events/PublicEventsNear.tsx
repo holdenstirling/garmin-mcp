@@ -32,28 +32,29 @@ export function PublicEventsNear({ refreshKey }: { refreshKey?: number }) {
 
   if (!rows || rows.length === 0) return null
   return (
-    <section aria-label="Meetups and games near you" className="flex flex-col gap-2">
-      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Meetups &amp; games near you</h2>
-      <ul className="flex flex-col gap-2">
+    <section aria-label="Meetups and games near you" className="flex flex-col gap-3">
+      <h2 className="section-title m-0 px-1">Meetups and games near you</h2>
+      <ul className="flex flex-col gap-3">
         {rows.map((e) => {
           const Icon = isSport(e.activity) ? SPORT_ICON[e.activity] : Users
-          const when = [fmtDay(e.next_date, { weekday: 'short', month: 'short', day: 'numeric' }), e.time ? fmtTime(e.time) : ''].filter(Boolean).join(' · ')
+          const when = [fmtDay(e.next_date, { weekday: 'short', month: 'short', day: 'numeric' }), e.time ? fmtTime(e.time) : ''].filter(Boolean).join(', ')
           return (
-            <li key={e.key} className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+            <li key={e.key} className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
               <div className="flex items-start gap-3">
                 <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-6" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="text-body-lg font-semibold leading-snug text-(--text)">{e.name}</p>
-                  <p className="text-meta text-(--text-secondary)">{[e.activity_label, when].filter(Boolean).join(' · ')}</p>
+                  {e.activity_label && <p className="text-meta font-medium text-(--text-secondary)">{e.activity_label}</p>}
+                  {when && <p className="text-meta text-(--text-secondary)">{when}</p>}
                   {e.repeat_text && <p className="text-meta text-(--text-muted)">{e.repeat_text}</p>}
                   {(e.neighborhood || e.location) && (
-                    <p className="mt-0.5 flex items-center gap-1 text-meta text-(--text-muted)"><MapPin className="size-3.5 shrink-0" aria-hidden />{e.neighborhood || e.location}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-meta text-(--text-muted)"><MapPin className="size-4 shrink-0" aria-hidden />{e.neighborhood || e.location}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <p className="min-w-0 flex-1 truncate text-meta text-(--text-muted)">
-                  {e.host}{e.going ? ` · ${e.going} going` : ''}
+                <p className="min-w-0 flex-1 text-meta leading-snug text-(--text-muted)">
+                  {e.host}{e.going ? <><br />{e.going} going</> : null}
                 </p>
                 {e.url && (
                   <a href={e.url} target="_blank" rel="noopener noreferrer" aria-label={`${e.name} website`}

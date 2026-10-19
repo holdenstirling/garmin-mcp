@@ -70,6 +70,8 @@ export type PostComment = {
   can_edit?: boolean; edited?: number | null
   /** likes, without anyone blocked either way */
   like_count?: number; liked?: boolean
+  /** the feed preview: how many replies this comment has (they show on the post's page) */
+  reply_count?: number
   /** people @mentioned (links in the text, current names) */
   mentions?: { id: string; name: string }[]
 }

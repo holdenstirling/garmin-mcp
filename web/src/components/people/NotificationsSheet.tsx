@@ -14,7 +14,7 @@ import { FollowButton } from '@/components/friends/PersonRows'
 
 const KIND_ICON: Record<string, typeof Bell> = {
   dm: MessageCircle, dm_request: MessageCircle, follow_request: UserPlus, follower: UserPlus,
-  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck, mention: AtSign,
+  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck, mention: AtSign, comment_like: Heart,
 }
 
 export function NotificationsSheet({ onClose }: { onClose: () => void }) {
@@ -34,7 +34,7 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title="Notifications" onClose={onClose}
-      actions={unread > 0 ? <Button variant="ghost" className="h-9 px-2.5 text-small" onClick={() => void readAll()}>Mark all read</Button> : undefined}>
+      actions={unread > 0 ? <Button variant="ghost" className="h-11 px-3 text-body font-semibold text-(--accent)" onClick={() => void readAll()}>Mark all read</Button> : undefined}>
       {!items && !error && <RabbitLoader className="py-10" label="Loading notifications" />}
       {error && <p className="px-4 py-10 text-center text-body text-(--text-muted)" role="alert">{error}</p>}
       {items && items.length === 0 && (
@@ -51,19 +51,19 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
             return (
               <li key={n.key} className={`flex items-center ${n.unread ? 'bg-(--accent-subtle)/40' : ''}`}>
                 <button type="button" onClick={() => open(n)}
-                  className="flex min-h-14 min-w-0 flex-1 items-start gap-3 py-2.5 pl-4 pr-2 text-left active:bg-(--bg-inset)">
+                  className="flex min-h-16 min-w-0 flex-1 items-start gap-3.5 py-3.5 pl-5 pr-2 text-left active:bg-(--bg-inset)">
                   <span className="relative shrink-0">
-                    {n.person ? <Avatar name={n.person.name} picture={n.person.picture ?? ''} photo={personPhoto(n.person)} size={36} />
-                      : <span className="flex size-9 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>}
-                    {n.person && <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-(--bg) text-(--accent) ring-1 ring-(--border)"><I className="size-2.5" aria-hidden /></span>}
+                    {n.person ? <Avatar name={n.person.name} picture={n.person.picture ?? ''} photo={personPhoto(n.person)} size={44} />
+                      : <span className="flex size-11 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>}
+                    {n.person && <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-(--bg) text-(--accent) ring-1 ring-(--border)"><I className="size-3" aria-hidden /></span>}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={`block text-body leading-snug ${n.unread ? 'font-semibold text-(--text)' : 'text-(--text-secondary)'}`}>{n.title}</span>
-                    {n.body && <span className="line-clamp-2 block text-meta text-(--text-muted)">{n.body}</span>}
+                    {n.body && <span className="mt-0.5 line-clamp-2 block text-small text-(--text-muted)">{n.body}</span>}
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
-                    <span className="text-caption text-(--text-muted)">{timeAgo(n.ts)}</span>
-                    {n.unread && <span className="size-2 rounded-full bg-(--accent)" aria-label="Unread" />}
+                    <span className="text-meta text-(--text-muted)">{timeAgo(n.ts)}</span>
+                    {n.unread && <span className="size-2.5 rounded-full bg-(--accent)" aria-label="Unread" />}
                   </span>
                 </button>
                 {n.kind === 'follower' && n.follow_back && n.person && (
@@ -91,9 +91,9 @@ function RequestButtons({ edge }: { edge: string }) {
   return (
     <span className="flex shrink-0 items-center gap-1 pr-3">
       <button type="button" disabled={busy} onClick={() => void go(true)}
-        className="h-9 rounded-full bg-(--accent) px-3 text-meta font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">Accept</button>
+        className="h-11 rounded-full bg-(--accent) px-4 text-body font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">Accept</button>
       <button type="button" disabled={busy} onClick={() => void go(false)} aria-label="Decline"
-        className="flex size-9 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
+        className="flex size-11 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
     </span>
   )
 }

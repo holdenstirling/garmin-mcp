@@ -62,12 +62,12 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
   const [open, setOpen] = useState<Partner | null>(null)
   if (!partners.length) return null
   return (
-    <section aria-label="Partners near you" className="flex flex-col gap-1.5">
-      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Partners near you</h2>
+    <section aria-label="Partners near you" className="flex flex-col gap-3">
+      <h2 className="section-title m-0 px-1">Partners near you</h2>
       {partners.map((p) => (
         <button key={p.id} type="button" onClick={() => setOpen(p)}
           aria-label={`Partner: ${p.name}${p.tagline ? `, ${p.tagline}` : ''}. Open details`}
-          className="flex w-full items-center gap-3 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5 text-left active:opacity-80">
+          className="flex w-full items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4 text-left active:opacity-80">
           <Monogram p={p} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">

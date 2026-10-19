@@ -278,7 +278,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
   const person = (e: PersonEdge, trailing: React.ReactNode, subtitle?: string) => {
     const u = e.user
     return (
-      <Row key={e.edge_id} icon={u ? <FriendAvatar u={u} size={30} /> : <span className="flex size-[30px] items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><UserPlus className="size-5" /></span>}
+      <Row key={e.edge_id} icon={u ? <FriendAvatar u={u} size={40} /> : <span className="flex size-10 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><UserPlus className="size-5" /></span>}
         title={u ? u.name : e.email ?? 'Someone'} subtitle={subtitle} trailing={trailing} />
     )
   }
@@ -286,26 +286,27 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
   return (
     <>
       <Card className="p-4">
-        <p className="text-caption font-semibold text-(--text-muted)">Your invite code</p>
+        <p className="m-0 text-body font-semibold text-(--text)">Your invite code</p>
+        <p className="m-0 mt-0.5 text-small text-(--text-muted)">Friends type it in to follow you.</p>
         <div className="mt-2 flex items-center gap-2">
           <code className="min-w-0 flex-1 rounded-lg bg-(--bg-inset) px-3 py-2 text-center font-mono text-title tracking-[0.25em] text-(--brand)">{code}</code>
-          <Button variant="default" className="h-10 w-10 p-0" aria-label="Copy code" onClick={() => void copy()}>
+          <Button variant="default" className="size-12 p-0" aria-label="Copy code" onClick={() => void copy()}>
             {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
           </Button>
           {canShare && (
-            <Button variant="default" className="h-10 w-10 p-0" aria-label="Share code" onClick={() => void share()}><Share2 className="size-5" /></Button>
+            <Button variant="default" className="size-12 p-0" aria-label="Share code" onClick={() => void share()}><Share2 className="size-5" /></Button>
           )}
         </div>
-        <button type="button" className="hit-44 mt-2 text-caption text-(--text-muted) underline-offset-2 hover:underline" disabled={busy === 'code'}
+        <button type="button" className="mt-1 min-h-11 text-meta font-medium text-(--text-secondary) underline-offset-2 hover:underline" disabled={busy === 'code'}
           onClick={() => void run('code', newInviteCode, 'New code made. The old one no longer works.')}>Make a new code</button>
       </Card>
 
       <Card>
         <Field label="Add by email or code" hint="Friends need a rabbt invite before they can join.">
           <div className="flex items-center gap-2">
-            <input className={inputCls} autoComplete="off" autoCapitalize="none" placeholder="friend@example.com or ABCD2345"
+            <input className={inputCls} autoComplete="off" autoCapitalize="none" placeholder="Email or invite code"
               value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void add() }} />
-            <Button variant="primary" className="h-10 shrink-0 gap-1.5 px-3 text-small" loading={busy === 'add'} disabled={!value.trim()} onClick={() => void add()}>
+            <Button variant="primary" className="h-12 shrink-0 gap-1.5 px-4 text-body" loading={busy === 'add'} disabled={!value.trim()} onClick={() => void add()}>
               <UserPlus className="size-5" /> Follow
             </Button>
           </div>
@@ -315,18 +316,27 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
 
       {people.pending_in.length > 0 && (
         <RowGroup title="Requests">
-          {people.pending_in.map((e) => person(e, (
-            <span className="flex shrink-0 gap-1.5">
-              <Button variant="default" className="h-8 px-2.5" aria-label="Decline" disabled={busy != null}
-                onClick={() => void run(e.edge_id, () => declineRequest(e.edge_id))}><X className="size-5" /></Button>
-              <Button variant="primary" className="h-8 gap-1 px-2.5" loading={busy === e.edge_id}
-                onClick={() => void run(e.edge_id, () => acceptRequest(e.edge_id), 'They can see your training now.')}><Check className="size-5" /> Accept</Button>
-            </span>
-          ), 'Wants to follow you'))}
+          {people.pending_in.map((e) => (
+            <div key={e.edge_id} className="settings-row flex flex-col gap-3 px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                {e.user ? <FriendAvatar u={e.user} size={40} /> : <span className="flex size-10 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><UserPlus className="size-5" /></span>}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-lead font-semibold leading-snug text-(--text)">{e.user ? e.user.name : e.email ?? 'Someone'}</span>
+                  <span className="block text-small text-(--text-muted)">Wants to follow you</span>
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" disabled={busy != null}
+                  onClick={() => void run(e.edge_id, () => declineRequest(e.edge_id))}><X className="size-5" /> Decline</Button>
+                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" loading={busy === e.edge_id}
+                  onClick={() => void run(e.edge_id, () => acceptRequest(e.edge_id), 'They can see your training now.')}><Check className="size-5" /> Accept</Button>
+              </div>
+            </div>
+          ))}
         </RowGroup>
       )}
 
-      <RowGroup title={`Following · ${people.following.length}`}
+      <RowGroup title={`Following (${people.following.length})`}
         footer={people.following.length === 0 ? 'Nobody yet. Add a friend above.' : undefined}>
         {people.following.map((e) => (
           <div key={e.edge_id} className="flex items-center">
@@ -348,7 +358,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
         ), 'Requested'))}
       </RowGroup>
 
-      <RowGroup title={`Followers · ${people.followers.length}`}>
+      <RowGroup title={`Followers (${people.followers.length})`}>
         {people.followers.length === 0 && <Row title="No followers yet" subtitle="Share your code so friends can follow you." />}
         {people.followers.map((e) => confirm === e.edge_id ? (
           <div key={e.edge_id} className="flex flex-wrap items-center gap-2 px-4 py-3">
@@ -380,7 +390,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
       {people.blocked.filter(Boolean).length > 0 && (
         <RowGroup title="Blocked">
           {people.blocked.filter((u): u is SocialUser => !!u).map((u) => (
-            <Row key={u.id} icon={<FriendAvatar u={u} size={30} />} title={u.name}
+            <Row key={u.id} icon={<FriendAvatar u={u} size={40} />} title={u.name}
               trailing={<Button variant="ghost" className="h-8 px-2 text-caption" onClick={() => void run(u.id, () => unblockUser(u.id))}>Unblock</Button>} />
           ))}
         </RowGroup>
@@ -435,7 +445,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
                 </div>
               )}
               <div className="flex flex-col gap-2">
-                <p className="text-caption font-semibold text-(--text-muted)">Recent workouts</p>
+                <h3 className="section-title section-title--sm m-0">Recent workouts</h3>
                 {card.recent.length === 0 && <p className="text-small text-(--text-muted)">Nothing shared in the last two weeks.</p>}
                 {card.recent.map((it) => (
                   <FeedCard key={it.id} it={it} imperial={imperial} compact

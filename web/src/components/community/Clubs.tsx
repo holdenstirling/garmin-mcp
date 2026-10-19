@@ -156,7 +156,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
           <Plus className="size-5" /> Start a club
         </Button>
         <div className="flex items-center gap-2">
-          <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code, like ABCD2345" value={code}
+          <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code" value={code}
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && code.trim()) void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!") }} />
           <Button variant="default" className="h-11 shrink-0 px-3 text-small" loading={busy === 'code'} disabled={!code.trim()}
@@ -228,7 +228,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         </div>
       </Field>
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
-        <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Who can find and join it</h2>
+        <h3 className="section-title section-title--sm m-0 px-1">Who can find and join it</h3>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
           description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"

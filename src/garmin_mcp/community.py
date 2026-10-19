@@ -674,7 +674,13 @@ class Community:
         comments = [c for c in post.get("comments") or [] if c["by"] == viewer or not self.social.blocked_between(viewer, c["by"])]
         top = {c["id"] for c in comments if not c.get("parent")}
         comments = [c for c in comments if not c.get("parent") or c["parent"] in top]
-        shown = comments if all_comments else comments[-PREVIEW_COMMENTS:]
+        # The feed shows the newest conversations (top-level comments, each with how many replies
+        # it has); the post's own page shows everything.
+        shown = comments if all_comments else [c for c in comments if not c.get("parent")][-PREVIEW_COMMENTS:]
+        replies: dict[str, int] = {}
+        for c in comments:
+            if c.get("parent"):
+                replies[c["parent"]] = replies.get(c["parent"], 0) + 1
         v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
         out = {k: post.get(k) for k in ("id", "author", "kind", "category", "text", "feeling", "event", "workout",
                                          "milestone", "created", "edited")}
@@ -688,7 +694,7 @@ class Community:
             **({"photo_ids": [p["id"] for p in photos if p.get("id")]} if mine else {}),
             "reactions": counts, "reaction_total": sum(counts.values()), "my_reaction": reactions.get(viewer),
             "comment_count": len(comments),
-            "comments": [self._comment_view(viewer, c, mine) for c in shown],
+            "comments": [{**self._comment_view(viewer, c, mine), "reply_count": replies.get(c["id"], 0)} for c in shown],
         })
         if v.startswith("club:"):
             out["club"] = {"id": v[5:], "name": self.clubs.name_of(v[5:], viewer) or "Club"}

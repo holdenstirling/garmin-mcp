@@ -675,6 +675,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
                 </>
               ) : (
                 <>
+                  {p.user && <MenuItem icon={<Send className="size-5" />} label={`Message ${p.user.name.split(' ')[0]}`} onClick={() => { setMenu(false); messagePeople([p.user!.id]) }} />}
                   <MenuItem icon={<EyeOff className="size-5" />} label="Hide post" onClick={() => void hide()} />
                   <MenuItem icon={<Flag className="size-5" />} label="Report" onClick={() => void report()} />
                   <MenuItem icon={<Ban className="size-5" />} label={`Block ${p.user?.name ?? ''}`.trim()} danger onClick={() => void block()} />
@@ -705,7 +706,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
       {p.event && <EventChip e={p.event} />}
       {notice && <p className="m-0 text-body text-(--accent)" role="status">{notice}</p>}
 
-      <div className="-mx-1 flex flex-wrap items-center gap-1 border-t border-(--border) pt-3">
+      <div className="-mx-1 flex items-center gap-0.5 border-t border-(--border) pt-3">
         {REACTIONS.map(([kind, emoji, label]) => {
           const n = p.reactions[kind]
           const on = p.my_reaction === kind
@@ -720,12 +721,6 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
           )
         })}
         <span className="flex-1" />
-        {!p.mine && p.user && (
-          <button type="button" onClick={() => messagePeople([p.user!.id])} aria-label={`Message ${p.user.name}`}
-            className="inline-flex size-11 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)">
-            <Send className="size-5" aria-hidden />
-          </button>
-        )}
         <button type="button" onClick={openComments} aria-label={p.comment_count ? `${p.comment_count} comments` : 'Comment'}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-body font-semibold text-(--text-secondary) active:bg-(--bg-inset)">
           <MessageCircle className="size-5" aria-hidden /> {p.comment_count > 0 ? p.comment_count : null}
@@ -733,7 +728,8 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
       </div>
 
       {shownThreads.length > 0 && (
-        <CommentThreads post={p} threads={shownThreads} focus={focusComment} actions={commentActions} />
+        <CommentThreads post={p} threads={shownThreads} focus={focusComment} actions={commentActions}
+          onMore={expanded ? undefined : (top) => openTarget({ k: 'post', id: p.id, comment: top.id })} />
       )}
       {!expanded && p.comment_count > shownCount && (
         <button type="button" onClick={() => openTarget({ k: 'post', id: p.id })}

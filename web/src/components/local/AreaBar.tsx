@@ -65,7 +65,7 @@ export function AreaBar({ imperial, what = 'clubs, leagues and meetups', classNa
               </>
             : <span className="block text-body font-semibold text-(--accent)">Set your area to see what's near you</span>}
         </span>
-        <span className="shrink-0 text-body font-semibold text-(--accent)" aria-hidden>{where ? 'Change' : 'Set'}</span>
+        <span className="hidden shrink-0 text-body font-semibold text-(--accent) min-[380px]:inline" aria-hidden>{where ? 'Change' : 'Set'}</span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       {open && <AreaSheet state={s} imperial={imperial} what={what} onClose={() => setOpen(false)}

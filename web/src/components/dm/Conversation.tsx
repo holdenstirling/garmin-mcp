@@ -120,15 +120,15 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 2000))} rows={1} enterKeyHint="send"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); void send() } }}
             placeholder={`Message ${group ? 'the group' : nameOf(conv.members[0]?.id ?? '')}`} aria-label="Message"
-            className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-body-lg text-(--text) outline-none focus:ring-1 focus:ring-(--accent)" />
-          <Button type="submit" variant="primary" size="icon" className="size-11 shrink-0 rounded-full" aria-label="Send"
+            className="max-h-32 min-h-12 flex-1 resize-none rounded-3xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-body-lg text-(--text) outline-none focus:ring-1 focus:ring-(--accent)" />
+          <Button type="submit" variant="primary" size="icon" className="size-12 shrink-0 rounded-full" aria-label="Send"
             disabled={!text.trim()} loading={sending}><Send className="size-5" /></Button>
         </form>
       )}>
       {!conv && !error && <RabbitLoader className="py-10" label="Loading messages" />}
       {error && !conv && <p role="alert" className="py-10 text-center text-small text-(--text-muted)">{error}</p>}
       {conv && (
-        <div className="flex flex-col gap-1.5 pb-2">
+        <div className="flex flex-col gap-2.5 pb-2">
           {request && (
             <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) p-3" role="status">
               <p className="text-body text-(--text)"><b className="font-semibold">{nameOf(msgs[0]?.by ?? conv.members[0]?.id ?? '')}</b> wants to message you. They won't see that you've read it unless you reply.</p>
@@ -157,7 +157,7 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
             return (
               <div key={m.id} className="flex flex-col">
                 {newDay && <p className="my-2 self-center text-caption font-semibold text-(--text-muted)">{dayLabel(m.ts)}</p>}
-                {showName && <p className="ml-1 text-caption text-(--text-muted)">{nameOf(m.by)}</p>}
+                {showName && <p className="mb-0.5 ml-1 text-meta font-semibold text-(--text-secondary)">{nameOf(m.by)}</p>}
                 <div className={cn('group flex max-w-[85%] items-end gap-1', m.mine ? 'self-end flex-row-reverse' : 'self-start')}>
                   <div className="flex min-w-0 flex-col gap-1"
                     onContextMenu={(e) => { e.preventDefault(); setReact(m) }}>
@@ -181,7 +181,7 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
                     {rx.map(([e, r]) => (
                       <button key={e} type="button" onClick={() => void pickReaction(m, e)} aria-pressed={r.mine}
                         aria-label={`${e} ${r.n}${r.mine ? ', yours' : ''}`}
-                        className={cn('inline-flex min-h-7 items-center gap-0.5 rounded-full border px-2 text-small',
+                        className={cn('hit-44 inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 text-small',
                           r.mine ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                         {e}<span className="tabular-nums text-(--text-secondary)">{r.n}</span>
                       </button>
