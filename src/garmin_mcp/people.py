@@ -51,6 +51,7 @@ class People:
                  events: Callable[[str], list[dict[str, Any]]] | None = None,
                  post_unread: Callable[[str], dict[str, int]] | None = None,
                  mentions: Callable[[str], list[dict[str, Any]]] | None = None,
+                 comment_likes: Callable[[str], list[dict[str, Any]]] | None = None,
                  clock: Callable[[], float] = time.time) -> None:
         self._s = store
         self.soc = soc
@@ -66,6 +67,7 @@ class People:
         self._events = events or (lambda uid: [])
         self._post_unread = post_unread or (lambda uid: {})
         self._mentions = mentions or (lambda uid: [])
+        self._comment_likes = comment_likes or (lambda uid: [])
         self._clock = clock
 
     # ------------------------------------------------------------ access --
@@ -262,6 +264,16 @@ class People:
                               "title": f"{self._name(m['by'])} mentioned you in a {m['where']}",
                               "body": m.get("text") or "", "ts": m.get("ts") or 0, "person": self._person(m["by"]),
                               "open": {"k": "post", "id": m["pid"], **({"comment": m["cid"]} if m.get("cid") else {})}})
+        except Exception:
+            pass
+        try:
+            for m in self._comment_likes(uid) or []:
+                n = int(m.get("others") or 0)
+                who = self._name(m["by"]) + (f" and {n} other{'s' if n != 1 else ''}" if n else "")
+                items.append({"key": f"clike:{m['pid']}:{m['cid']}:{n}", "kind": "comment_like",
+                              "title": f"{who} liked your comment", "body": m.get("text") or "",
+                              "ts": m.get("ts") or 0, "person": self._person(m["by"]),
+                              "open": {"k": "post", "id": m["pid"], "comment": m["cid"]}})
         except Exception:
             pass
         if self.clubs is not None:
