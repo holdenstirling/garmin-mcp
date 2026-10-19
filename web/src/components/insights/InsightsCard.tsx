@@ -120,7 +120,7 @@ function Row({ i, open, onToggle, onDismiss, onOpenPlan, onOpenSession, onOpenGe
         <span className="min-w-0 flex-1">
           <span className="sr-only">{t.label}: </span>
           <span className={cn('block text-body-lg font-semibold leading-snug', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
-          {!open && <span className="mt-1 line-clamp-3 block text-small leading-snug text-(--text-secondary)">{i.explanation}</span>}
+          {!open && <span className="mt-1 line-clamp-3 text-small leading-snug text-(--text-secondary)">{i.explanation}</span>}
         </span>
         <ChevronDown className={cn('mt-2 size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>

@@ -279,7 +279,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <p className="text-small leading-snug text-(--text-secondary)">
             Tap your Shortcut to run it and allow Health access when your iPhone asks. Then come back here.
           </p>
-          <Button variant="primary" className="h-11 w-full text-body" loading={checking} onClick={() => void check()}>
+          <Button variant="primary" className="w-full" loading={checking} onClick={() => void check()}>
             <RefreshCw className="mr-1.5 size-4" aria-hidden />Check for workouts
           </Button>
           {checking && <p role="status" className="text-center text-small text-(--text-secondary)">Waiting for your Shortcut…</p>}
@@ -303,17 +303,17 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <h3 id="ah-next" className="text-body-lg font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT} tone="yes" />
         </section>
-        <Button variant="primary" className="h-11 w-full text-body" onClick={onClose}>Done</Button>
+        <Button variant="primary" className="w-full" onClick={onClose}>Done</Button>
       </>
     )
   } else {
     const waiting = !h?.last_import
     body = (
       <>
-        <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
           <AppTile app="apple" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-lead text-(--text)">Apple Watch</span>
+            <span className="block text-lead font-semibold leading-snug text-(--text)">Apple Watch</span>
             <span className="block text-small text-(--text-secondary)">{h ? importLine(h) : ''}</span>
           </span>
           <StateChip state={waiting ? 'attention' : 'connected'} />

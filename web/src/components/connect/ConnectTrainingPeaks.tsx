@@ -48,7 +48,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
             className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) text-body text-(--accent) active:bg-(--bg-inset)">
             Open TrainingPeaks <ExternalLink className="size-4" aria-hidden />
           </a>
-          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(1)}>I’m signed in</Button>
+          <Button variant="primary" className="w-full" onClick={() => setStep(1)}>I’m signed in</Button>
         </>
       )}
 
@@ -59,7 +59,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
             <li>Go to <b>Application</b> (Chrome, Edge) or <b>Storage</b> (Firefox, Safari), then <b>Cookies</b> → app.trainingpeaks.com.</li>
             <li>Find <b>Production_tpAuth</b> and copy its whole <b>Value</b> (a long line of letters and numbers).</li>
           </ol>
-          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(2)}>I copied it</Button>
+          <Button variant="primary" className="w-full" onClick={() => setStep(2)}>I copied it</Button>
           <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(0)}>Back</button>
         </>
       )}
@@ -74,7 +74,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
               placeholder="Paste the value here" aria-describedby="tp-paste-help" />
           </label>
           {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
-          <Button variant="primary" className="h-11 w-full text-body" disabled={value.trim().length < 20} onClick={() => void connect()}>
+          <Button variant="primary" className="w-full" disabled={value.trim().length < 20} onClick={() => void connect()}>
             Connect TrainingPeaks
           </Button>
           <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(1)}>Back</button>

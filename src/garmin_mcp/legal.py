@@ -37,21 +37,21 @@ def _who(contact: str) -> str:
 
 
 def _page(slug: str, title: str, body: str, contact: str) -> str:
-    nav = " · ".join(f'<a href="/app/{s}"{" aria-current=page" if s == slug else ""}>{escape(lbl)}</a>'
+    nav = "".join(f'<a href="/app/{s}"{" aria-current=page" if s == slug else ""}>{escape(lbl)}</a>'
                      for s, (_, lbl) in DOCS.items())
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>rabbt · {escape(title)}</title>
 <style>:root{{color-scheme:light dark;--bg:#f6f2ea;--fg:#1b1d1c;--muted:#5d625f;--brand:#1f4a33;--accent:#2f7d5b;--line:#ddd6c8}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#151716;--fg:#ecebe6;--muted:#a3a8a4;--brand:#9fd3b6;--accent:#7fc9a3;--line:#2c302e}}}}
-body{{margin:0;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}}
-main{{max-width:700px;margin:0 auto;padding:28px 18px 64px}}h1{{font:600 1.7rem/1.2 Georgia,serif;color:var(--brand);margin:0 0 6px}}
-h2{{font-size:1.08rem;margin:28px 0 6px}}.sub{{color:var(--muted);margin:0 0 14px;font-size:.92rem}}
-nav{{font-size:.9rem;margin:0 0 18px;color:var(--muted)}}nav a[aria-current]{{font-weight:600;text-decoration:none}}
-li{{margin:5px 0}}a{{color:var(--accent)}}.box{{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:14px 0}}
+body{{margin:0;font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}}
+main{{max-width:65ch;margin:0 auto;padding:32px 20px 72px}}h1{{font:600 1.9rem/1.2 Georgia,serif;color:var(--brand);margin:0 0 8px}}
+h2{{font-size:1.2rem;line-height:1.3;margin:36px 0 8px}}.sub{{color:var(--muted);margin:0 0 20px;font-size:1rem}}p,ul{{margin:12px 0}}
+nav{{font-size:1rem;margin:0 0 24px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px}}nav a{{padding:10px 0}}nav a[aria-current]{{font-weight:600;text-decoration:none}}
+li{{margin:8px 0}}a{{color:var(--accent)}}.box{{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:18px 0}}
 @media print{{nav{{display:none}}body{{background:#fff;color:#000}}a{{color:#000}}}}</style></head><body><main>
 <nav aria-label="rabbt policies">{nav}</nav>
-<h1>{escape(title)}</h1><p class=sub>rabbt training coach · operated by {OPERATOR} · updated {UPDATED} · version {VERSION}</p>
+<h1>{escape(title)}</h1><p class=sub>rabbt training coach, operated by {OPERATOR}.<br>Updated {UPDATED}, version {VERSION}.</p>
 {body.replace("{CONTACT}", _who(contact))}
 </main></body></html>"""
 

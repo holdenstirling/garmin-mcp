@@ -266,7 +266,7 @@ export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
     <div className="flex items-center justify-between gap-3 px-1">
       <span id={labelId} className="text-body font-medium text-(--text)">Units</span>
       <div role="radiogroup" aria-labelledby={labelId} className="flex rounded-full border border-(--border) p-0.5">
-        {([['imperial', 'Miles', 'mi · lb · ft'], ['metric', 'Kilometers', 'km · kg · m']] as const).map(([v, name, hint]) => {
+        {([['imperial', 'Miles', 'mi, lb, ft'], ['metric', 'Kilometers', 'km, kg, m']] as const).map(([v, name, hint]) => {
           const on = (a.units ?? guessUnits()) === v
           return (
             <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setA({ units: v })}

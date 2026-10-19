@@ -7,7 +7,7 @@ import { isImperial } from '@/lib/plan'
 import { haptic } from '@/lib/haptics'
 import { cn } from '@/lib/utils'
 
-const OPTIONS = [['imperial', 'Miles', 'mi · yd · °F'], ['metric', 'Kilometers', 'km · m · °C']] as const
+const OPTIONS = [['imperial', 'Miles', 'mi, yd, °F'], ['metric', 'Kilometers', 'km, m, °C']] as const
 
 export function UnitsGroup({ me, onChange }: { me: Me; onChange: () => void }) {
   const [units, setUnits] = useState<'imperial' | 'metric'>(isImperial(me.athlete.units) ? 'imperial' : 'metric')

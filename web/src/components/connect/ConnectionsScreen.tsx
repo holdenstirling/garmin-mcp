@@ -35,7 +35,7 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
   }, [load])
 
   return (
-    <Screen title="Connected apps" subtitle="rabbt reads from these so you never log anything by hand. Tap one to connect, sync or disconnect." onClose={onClose}>
+    <Screen title="Connected apps" subtitle="Tap one to connect, sync or disconnect." onClose={onClose}>
       <p className="flex items-start gap-3 rounded-xl bg-(--bg-inset) px-4 py-3.5 text-small leading-snug text-(--text-secondary)">
         <Lock className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
         rabbt only uses what each app lists, changes nothing there unless you ask (like sending a workout to your watch), and stores sign-ins encrypted. Disconnect anytime and rabbt deletes its access.

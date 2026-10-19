@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { AtSign, BookOpen, Download, FileText, HeartHandshake, Mail, Plug, Settings, ShieldCheck, Trash2 } from 'lucide-react'
 import { Screen } from '@/components/plan/ui'
-import { Group, Icon, Row } from '@/components/settings/Grouped'
+import { Group, Icon, LargeGroups, Row } from '@/components/settings/Grouped'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RowsSkeleton } from '@/components/ui/Skeleton'
@@ -32,16 +32,18 @@ export function DocScreen({ slug, onBack, onClose }: { slug: LegalSlug; onBack?:
   }, [slug, tick])
   const meta = LEGAL_DOCS.find((d) => d.slug === slug)!
   return (
-    <Screen title={meta.title} onBack={onBack} onClose={onClose}>
+    <Screen title={meta.title} subtitle={meta.help} onBack={onBack} onClose={onClose}>
       {err ? <ErrorState message="Couldn't load this page." onRetry={() => setTick((t) => t + 1)} />
         : !doc ? <RowsSkeleton label="Loading" count={6} />
         : (
-          <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-            <p className="mb-3 text-small text-(--text-muted)">
-              Operated by {doc.operator} · updated {doc.updated} · version {doc.version}
-            </p>
+          <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-5">
+            <dl className="mb-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-small text-(--text-secondary)">
+              <dt>Operated by</dt><dd className="m-0 text-(--text)">{doc.operator}</dd>
+              <dt>Updated</dt><dd className="m-0 text-(--text)">{doc.updated}</dd>
+              <dt>Version</dt><dd className="m-0 text-(--text)">{doc.version}</dd>
+            </dl>
             <LegalDocBody html={doc.html} />
-            <p className="mt-4 text-small">
+            <p className="mt-6 text-body">
               <a className="underline" href={`/app/${slug}`} target="_blank" rel="noopener">Open the printable page</a>
             </p>
           </article>
@@ -62,24 +64,24 @@ function DeleteAccount({ onCancel }: { onCancel: () => void }) {
     } catch (e) { setErr((e as Error).message || "Couldn't delete just now."); setBusy(false) }
   }
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-(--danger) bg-(--bg-surface) p-4" aria-labelledby="del-h">
-      <h2 id="del-h" className="text-lead font-semibold text-(--danger)">Delete your account</h2>
-      <ul className="list-disc pl-5 text-body leading-snug text-(--text-secondary)">
+    <section className="flex flex-col gap-4 rounded-2xl border border-(--danger) bg-(--bg-surface) p-5" aria-labelledby="del-h">
+      <h2 id="del-h" className="section-title m-0 text-(--danger)">Delete your account</h2>
+      <ul className="flex list-disc flex-col gap-2 pl-5 text-body leading-snug text-(--text-secondary)">
         <li>Everything in your account is deleted: profile, plan, events, chats, workouts feedback, posts, photos and settings.</li>
         <li>Garmin, Oura, Google Calendar and TrainingPeaks are disconnected (their own copies stay with them).</li>
         <li>Follows, clubs, buddy profile and share links are removed. Messages you sent stay in other people's chats, without your name or photo.</li>
         <li>Encrypted backups expire on their own within 12 months. This can't be undone.</li>
       </ul>
-      <label className="flex flex-col gap-1 text-body text-(--text)">
+      <label className="flex flex-col gap-1.5 text-body font-medium text-(--text)">
         Type DELETE to confirm
         <input value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="characters" autoComplete="off"
           spellCheck={false} aria-describedby={err ? 'del-err' : undefined}
-          className="min-h-11 rounded-lg border border-(--border) bg-(--bg) px-3 text-lead" />
+          className="min-h-12 rounded-lg border border-(--border-strong) bg-(--bg) px-3.5 text-lead" />
       </label>
       {err && <p id="del-err" role="alert" className="text-body text-(--danger)">{err}</p>}
-      <div className="flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
-        <Button variant="destructive" className="flex-1" disabled={typed.trim() !== 'DELETE' || busy} onClick={() => void go()}>
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" className="h-12 flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button variant="destructive" className="h-12 flex-1" disabled={typed.trim() !== 'DELETE' || busy} onClick={() => void go()}>
           {busy ? 'Deleting…' : 'Delete forever'}
         </Button>
       </div>
@@ -108,7 +110,8 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
     : undefined
 
   return (
-    <Screen title="Privacy & legal" onClose={onClose}>
+    <Screen title="Privacy & legal" subtitle="Policies, your data, and deleting your account." onClose={onClose}>
+      <LargeGroups.Provider value>
       <Group label="Policies" footer={agreed}>
         {LEGAL_DOCS.map((d) => (
           <Row key={d.slug} icon={<Icon>{ICONS[d.slug]}</Icon>} title={d.title} subtitle={d.help} onClick={() => setDoc(d.slug)} />
@@ -139,11 +142,12 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
       </Group>
 
       {me.owner && (
-        <p className="px-4 text-small leading-snug text-(--text-muted)">
+        <p className="px-1 text-small leading-snug text-(--text-secondary)">
           Owner only: these pages were written from what the code does. Have a lawyer review them before a public launch.
           The owner account can't be deleted from the app.
         </p>
       )}
+      </LargeGroups.Provider>
     </Screen>
   )
 }

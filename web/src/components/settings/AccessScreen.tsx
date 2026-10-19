@@ -120,9 +120,11 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
           )}
           {info.invites.map((inv) => (
             <Row key={inv.id} icon={<Icon tone={inv.status === 'active' ? 'accent' : 'muted'}><Link /></Icon>}
-              title={`${STATUS[inv.status]} · ${inv.uses} of ${inv.max_uses} joined`}
-              subtitle={`Made ${day(inv.created)} · ${inv.status === 'active' ? 'closes' : 'closed'} ${day(inv.expires)}`
-                + (inv.joined.length ? ` · ${inv.joined.map((j) => j.name || 'someone').join(', ')}` : '')}
+              title={`${STATUS[inv.status]}: ${inv.uses} of ${inv.max_uses} joined`}
+              subtitle={<>
+                <span className="block">Made {day(inv.created)}, {inv.status === 'active' ? 'closes' : 'closed'} {day(inv.expires)}</span>
+                {inv.joined.length > 0 && <span className="block">Joined: {inv.joined.map((j) => j.name || 'someone').join(', ')}</span>}
+              </>}
               trailing={inv.status === 'active' ? (
                 <button type="button" className={btn + ' text-(--danger)'} disabled={!!busy} aria-label="Revoke this invite link"
                   onClick={() => void run(inv.id, () => revokeInvite(inv.id))}><Ban className="size-5" aria-hidden />Revoke</button>
@@ -136,7 +138,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
           {info.members.length === 0 && <Row title="No one has joined with a link yet" />}
           {info.members.map((m) => (
             <Row key={m.user_id} icon={<Icon tone="muted"><UserPlus /></Icon>} title={m.name || 'Member'}
-              subtitle={`${m.email} · joined ${day(m.joined)}`}
+              subtitle={<><span className="block break-all">{m.email}</span><span className="block">Joined {day(m.joined)}</span></>}
               trailing={confirm === m.user_id ? (
                 <button type="button" className={btn + ' bg-(--danger-subtle) text-(--danger)'} disabled={!!busy}
                   onClick={() => void run(m.user_id, () => removeMember(m.user_id))}>Remove</button>

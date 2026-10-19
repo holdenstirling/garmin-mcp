@@ -67,7 +67,7 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
   const peak = s ? Math.max(1, ...s.series.map((d) => d.dau)) : 1
   const ret = (r: { pct: number | null; returned: number; cohort: number }) => (r.pct == null ? '–' : `${r.pct}%`)
   return (
-    <Screen title="Usage" subtitle="Last 30 days · anonymous counts" onBack={onClose} onClose={onClose}>
+    <Screen title="Usage" subtitle="Anonymous counts from the last 30 days." onBack={onClose} onClose={onClose}>
       {error && <ErrorState message={`Couldn't load usage: ${error}`} onRetry={load} />}
       {!s && !error && <RowsSkeleton label="Loading usage" count={6} />}
       {s && (

@@ -79,10 +79,10 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
           <p className="font-display text-display-xl leading-none text-(--brand)">
             {r.workouts} <span className="text-title-sm">workout{r.workouts === 1 ? '' : 's'}</span>
           </p>
-          <p className="mt-1 text-small text-(--text-secondary)">
-            {[r.hours ? fmtDuration(r.hours * 60) : '', r.km ? fmtDist(r.km, imperial) : ''].filter(Boolean).join(' · ') || 'No training logged'}
+          <p className="mt-1.5 text-body text-(--text-secondary)">
+            {[r.hours ? fmtDuration(r.hours * 60) : '', r.km ? fmtDist(r.km, imperial) : ''].filter(Boolean).join(', ') || 'No training logged'}
           </p>
-          <p className="mt-1 flex items-center gap-1 text-small font-medium text-(--text)">
+          <p className="mt-1 flex flex-wrap items-center gap-1 text-body font-medium text-(--text)">
             {planned
               ? <>Plan: {planned.done} of {planned.planned} sessions{planned.pct != null ? ` (${planned.pct}%)` : ''}<InfoTip term="adherence" align="end" /></>
               : `Active ${r.active_days} of 7 days`}
@@ -90,10 +90,10 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Tile label={`XP · ${r.level.to_next.toLocaleString()} to level ${r.level.level + 1}`} value={`+${r.xp.toLocaleString()}`}
+      <div className="grid grid-cols-2 gap-3">
+        <Tile label={`XP this week. ${r.level.to_next.toLocaleString()} to level ${r.level.level + 1}`} value={`+${r.xp.toLocaleString()}`}
           icon={<Carrot className="size-6 text-(--accent)" aria-hidden />} tip={<InfoTip term="xp" />}>
-          <span className="mt-0.5 block h-1 w-full max-w-16 overflow-hidden rounded-full bg-(--bg-elevated)">
+          <span className="mt-1 block h-1.5 w-full max-w-20 overflow-hidden rounded-full bg-(--bg-elevated)">
             <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${pct}%` }} />
           </span>
         </Tile>
@@ -102,22 +102,26 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
       </div>
 
       {r.challenges && r.challenges.items.length > 0 && (
-        <p className="flex items-center gap-1.5 px-1 text-small text-(--text-secondary)">
-          <Trophy className="size-4 text-(--accent)" />
-          Challenges: {r.challenges.joined ? `${r.challenges.done} of ${r.challenges.joined} weekly done` : ''}
-          {r.challenges.joined && r.challenges.items.some((i) => i.period === 'month' && i.done) ? ' · ' : ''}
-          {r.challenges.items.filter((i) => i.period === 'month' && i.done).map((i) => i.name).join(', ')}
-          {r.challenges.xp ? ` · +${r.challenges.xp} XP` : ''}
-        </p>
+        <div className="flex items-start gap-2.5 px-1 text-body text-(--text-secondary)">
+          <Trophy className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
+          <div className="min-w-0">
+            <p className="m-0 font-medium text-(--text)">Challenges</p>
+            {r.challenges.joined ? <p className="m-0">{r.challenges.done} of {r.challenges.joined} weekly done</p> : null}
+            {r.challenges.items.some((i) => i.period === 'month' && i.done) && (
+              <p className="m-0">Finished: {r.challenges.items.filter((i) => i.period === 'month' && i.done).map((i) => i.name).join(', ')}</p>
+            )}
+            {r.challenges.xp ? <p className="m-0 font-medium text-(--accent)">+{r.challenges.xp} XP</p> : null}
+          </div>
+        </div>
       )}
       {r.badges.length > 0 && (
         <Card>
-          <div className="flex flex-col gap-2 px-4 py-3">
+          <div className="flex flex-col gap-3 px-4 py-4">
             <Label>Badges earned</Label>
             <div className="flex flex-wrap gap-2">
               {r.badges.map((b) => (
                 <span key={b.id} title={b.description}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-2.5 py-1 text-meta font-medium text-(--accent)">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-small font-medium text-(--accent)">
                   <Award className="size-4" />{b.title}
                 </span>
               ))}
@@ -128,38 +132,39 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
 
       {r.best && (
         <Card>
-          <div className="flex items-center gap-3 px-4 py-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--brand) text-(--on-fill)"><Trophy className="size-5" /></span>
+          <div className="flex items-start gap-3.5 px-4 py-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--brand) text-(--on-fill)"><Trophy className="size-5" aria-hidden /></span>
             <span className="min-w-0 flex-1">
               <Label>Best workout</Label>
-              <span className="block truncate text-body font-medium text-(--text)">{r.best.name}</span>
-              <span className="block text-meta text-(--text-secondary)">
-                {fmtDay(r.best.date, { weekday: 'long' })} · {fmtDuration(r.best.minutes)}{r.best.km ? ` · ${fmtDist(r.best.km, imperial, r.best.sport)}` : ''}
+              <span className="mt-0.5 block text-body-lg font-semibold leading-snug text-(--text)">{r.best.name}</span>
+              <span className="block text-small text-(--text-secondary)">{fmtDay(r.best.date, { weekday: 'long' })}</span>
+              <span className="block text-small text-(--text-secondary)">
+                {fmtDuration(r.best.minutes)}{r.best.km ? `, ${fmtDist(r.best.km, imperial, r.best.sport)}` : ''}
               </span>
             </span>
           </div>
         </Card>
       )}
       {!r.workouts && (
-        <p className="px-1 text-center text-small text-(--text-muted)">A quiet week. Every streak starts with one workout.</p>
+        <p className="px-1 text-center text-body text-(--text-secondary)">A quiet week. Every streak starts with one workout.</p>
       )}
 
       <Card>
-        <div className="flex flex-col gap-2 px-4 py-3">
-          <Label>Next week{nw.phase ? ` · ${nw.phase}${nw.recovery ? ' (recovery)' : ''}` : ''}</Label>
-          {nw.focus && <p className="text-small leading-snug text-(--text)">{nw.focus}</p>}
+        <div className="flex flex-col gap-3 px-4 py-4">
+          <Label>Next week{nw.phase ? `: ${nw.phase}${nw.recovery ? ' (recovery)' : ''}` : ''}</Label>
+          {nw.focus && <p className="text-body leading-snug text-(--text)">{nw.focus}</p>}
           {nw.sessions.length > 0 ? (
             <ul className="flex flex-col divide-y divide-(--border)">
               {nw.sessions.map((s) => (
-                <li key={`${s.date}-${s.title}`} className="flex items-baseline gap-2 py-1.5 text-small">
-                  <span className="w-9 shrink-0 font-mono text-meta uppercase text-(--text-secondary)">{fmtDay(s.date, { weekday: 'short' })}</span>
-                  <span className="min-w-0 flex-1 truncate text-(--text)">{s.title}</span>
+                <li key={`${s.date}-${s.title}`} className="flex items-baseline gap-3 py-2.5 text-body">
+                  <span className="w-10 shrink-0 text-small font-medium text-(--text-secondary)">{fmtDay(s.date, { weekday: 'short' })}</span>
+                  <span className="min-w-0 flex-1 text-(--text)">{s.title}</span>
                   {s.minutes ? <span className="shrink-0 text-small text-(--text-secondary)">{fmtDuration(s.minutes)}</span> : null}
                 </li>
               ))}
             </ul>
-          ) : nw.target ? <p className="text-small leading-snug text-(--text)">{nw.target}</p> : null}
-          <Button variant="default" className="mt-1 h-9 gap-1.5"
+          ) : nw.target ? <p className="text-body leading-snug text-(--text)">{nw.target}</p> : null}
+          <Button variant="default" className="mt-1 h-11 gap-1.5"
             onClick={() => onAsk('About next week: ')}>
             <MessageCircle className="size-5" /> Ask rabbt about next week
           </Button>
@@ -173,15 +178,15 @@ function Tile({ label, value, icon, tip, children }: {
   label: string; value: string; icon: React.ReactNode; tip?: React.ReactNode; children?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
+    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-4 text-center">
       {icon}
-      <span className="font-display text-title leading-none text-(--text)">{value}</span>
-      <span className="text-meta leading-tight text-(--text-secondary)">{label}{tip && <> {tip}</>}</span>
+      <span className="font-display text-title-md leading-none text-(--text)">{value}</span>
+      <span className="text-small leading-snug text-(--text-secondary)">{label}{tip && <> {tip}</>}</span>
       {children}
     </div>
   )
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <span className="block text-meta font-semibold text-(--text-secondary)">{children}</span>
+  return <span className="block text-body font-semibold text-(--text)">{children}</span>
 }

@@ -17,17 +17,17 @@ function Section({ title, onEdit, onTell, children }: {
   title: string; onEdit?: () => void; onTell?: () => void; children: React.ReactNode
 }) {
   return (
-    <section className="panel flex flex-col gap-2">
+    <section className="panel flex flex-col gap-3">
       <div className="flex items-center gap-1">
-        <h3 className="flex-1 font-medium">{title}</h3>
+        <h3 className="section-title section-title--sm m-0 flex-1">{title}</h3>
         {onTell && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-caption" onClick={onTell}>
-            <MessageCircle className="size-4" /> Tell rabbt
+          <Button variant="ghost" size="sm" className="gap-1.5 text-small text-(--accent)" onClick={onTell}>
+            <MessageCircle className="size-5" aria-hidden /> Tell rabbt
           </Button>
         )}
         {onEdit && (
-          <Button variant="ghost" size="icon" className="size-7" aria-label={`Edit ${title}`} onClick={onEdit}>
-            <Pencil className="size-4" />
+          <Button variant="ghost" size="icon" aria-label={`Edit ${title}`} onClick={onEdit}>
+            <Pencil className="size-5" />
           </Button>
         )}
       </div>
@@ -37,7 +37,7 @@ function Section({ title, onEdit, onTell, children }: {
 }
 
 const Empty = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-body text-(--text-muted)">{children}</p>
+  <p className="text-body text-(--text-secondary)">{children}</p>
 )
 
 const ATHLETE_LABELS: [keyof Athlete, string][] = [
@@ -118,18 +118,18 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to rabbt.</Empty>
               )}
               {goal.plan && editing !== 'plan' && goal.plan.length > 280 && (
-                <button className="hit-44 self-start text-meta text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
+                <button className="hit-44 self-start text-body font-medium text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
                   {showFullPlan ? 'Show less' : 'Show all'}
                 </button>
               )}
               {(goal.plan_files ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-col gap-2">
                   {goal.plan_files!.map((f) => (
                     <a key={f.id} href={attachmentUrl(f.id)} target="_blank" rel="noopener"
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary px-2 py-1 text-meta">
-                      <FileText className="size-3.5 text-accent" />
-                      <span className="max-w-[140px] truncate">{f.name}</span>
-                      <span className="font-mono text-caption text-muted-foreground">{formatFileSize(f.size)}</span>
+                      className="flex min-h-11 items-center gap-2.5 rounded-lg border border-(--border) bg-(--bg-inset) px-3 py-2 text-body">
+                      <FileText className="size-5 shrink-0 text-(--accent)" aria-hidden />
+                      <span className="min-w-0 flex-1 break-words">{f.name}</span>
+                      <span className="shrink-0 text-meta text-(--text-secondary)">{formatFileSize(f.size)}</span>
                     </a>
                   ))}
                 </div>
@@ -147,7 +147,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <Input aria-label="Experience" className="text-lead" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
                   <Input aria-label="Hours / week" className="text-lead" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
-                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-lead" value={a.units ?? 'imperial'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
+                  <select aria-label="Units" className="h-12 rounded-md border border-input bg-transparent px-3 text-lead" value={a.units ?? 'imperial'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
                     <option value="metric">Metric</option><option value="imperial">Imperial</option>
                   </select>
                 </div>

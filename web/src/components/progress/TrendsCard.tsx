@@ -333,7 +333,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
     : t.sleep.reason && t.sleep.nights < 7 ? t.sleep.reason : null
   return (
     <Section title={<span className="inline-flex items-center gap-1.5">Trends <InfoTip label={views.find(([v]) => v === view)![1]} text={WHY[view]} align="start" /></span>}
-      description="Distance, easy pace and sleep over the last few months."
+      description="Distance, easy pace and sleep."
       action={!empty ? (
         <button type="button" onClick={() => setTable((x) => !x)} aria-pressed={table}
           className="hit-44 inline-flex shrink-0 items-center gap-1.5 text-body font-medium text-(--accent)">

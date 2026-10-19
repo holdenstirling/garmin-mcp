@@ -47,10 +47,10 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
                 trailing={<Switch label="Coach can see my rabbt chats" checked={c.can_see_rabbit_chats} disabled={busy != null}
                   onChange={(v) => void run(c.email, () => updateCoach(c.email, { can_see_rabbit_chats: v }))} />} />
               {confirm === c.email ? (
-                <div className="flex items-center gap-2 px-4 py-3">
-                  <span className="min-w-0 flex-1 text-body">Remove {c.email}? They lose access right away.</span>
-                  <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirm(null)}>Keep</Button>
-                  <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === c.email}
+                <div className="flex flex-wrap items-center gap-3 px-4 py-3.5">
+                  <span className="min-w-0 basis-full break-words text-body">Remove {c.email}? They lose access right away.</span>
+                  <Button variant="default" size="sm" onClick={() => setConfirm(null)}>Keep</Button>
+                  <Button variant="destructive" size="sm" loading={busy === c.email}
                     onClick={() => void run(c.email, () => removeCoach(c.email), 'Coach removed.').then((ok) => { if (ok) setConfirm(null) })}>Remove</Button>
                 </div>
               ) : (

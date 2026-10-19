@@ -53,15 +53,15 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
         </Button>
       ))}
       {notes.length > 0 && (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-3">
           <h2 className="section-title m-0 px-1">Notes from your coach</h2>
           {notes.map((n) => (
-            <Card key={n.id} className="px-4 py-3">
-              <p className="flex items-start gap-2 text-body leading-snug text-(--text)">
-                {n.pinned ? <Pin className="mt-0.5 size-4 shrink-0 text-(--accent)" /> : <StickyNote className="mt-0.5 size-4 shrink-0 text-(--text-muted)" />}
+            <Card key={n.id} className="px-4 py-4">
+              <p className="flex items-start gap-2.5 text-body-lg leading-snug text-(--text)">
+                {n.pinned ? <Pin className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden /> : <StickyNote className="mt-0.5 size-5 shrink-0 text-(--text-muted)" aria-hidden />}
                 <span className="whitespace-pre-wrap">{n.text}</span>
               </p>
-              <p className="mt-1 text-meta text-(--text-secondary)">{n.coach.split('@')[0]} · {timeAgo(n.ts)} · rabbt follows these too</p>
+              <p className="mt-2 text-small text-(--text-secondary)">From {n.coach.split('@')[0]}, {timeAgo(n.ts)}. rabbt follows these too.</p>
             </Card>
           ))}
         </section>
