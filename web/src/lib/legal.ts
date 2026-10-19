@@ -3,18 +3,21 @@
 // whenever the terms version changes; export / delete are the account controls in Me.
 import { getJSON, postJSON } from '@/lib/api'
 
-export type LegalSlug = 'privacy' | 'terms' | 'security' | 'guidelines'
+export type LegalSlug = 'privacy' | 'terms' | 'security' | 'guidelines' | 'health-data'
 export const LEGAL_DOCS: { slug: LegalSlug; title: string; help: string }[] = [
   { slug: 'privacy', title: 'Privacy policy', help: 'What rabbt collects, why, and your rights' },
   { slug: 'terms', title: 'Terms of service', help: 'The rules for using rabbt' },
   { slug: 'security', title: 'Data & security', help: 'How your data is protected' },
   { slug: 'guidelines', title: 'Community guidelines', help: 'Keeping rabbt kind and safe' },
+  { slug: 'health-data', title: 'Consumer health data policy', help: 'Your health data, your consent and your rights' },
 ]
 export type LegalDoc = { slug: LegalSlug; title: string; version: string; updated: string; operator: string; html: string }
 export type ConsentView = {
   needed: boolean; version: string; accepted_version: string | null; accepted_at: number | null; first: boolean; contact?: string
+  /** the separate, optional consent to share workouts with friends (null: never answered here) */
+  share?: boolean | null
 }
-export type ConsentBody = { terms: boolean; privacy: boolean; age16: boolean; health: boolean; version: string }
+export type ConsentBody = { terms: boolean; privacy: boolean; age16: boolean; health: boolean; version: string; share?: boolean }
 
 export const getLegalDoc = (slug: LegalSlug) => getJSON<LegalDoc>(`/api/legal/${slug}`)
 export const getConsent = () => getJSON<ConsentView>('/api/consent')
@@ -44,3 +47,8 @@ export async function downloadMyData(): Promise<void> {
 }
 
 export const PRIVACY_CONTACT = 'holdenstirling@gmail.com'
+
+/** The data stance, shown on sign-in, consent, Privacy & legal and connect sheets (server: legal.DATA_PROMISE). */
+export const DATA_PROMISE = 'We never sell your data or use it for ads.'
+/** rabbt's tagline: launch screen, sign-in. */
+export const TAGLINE = 'Train for the life you actually have.'

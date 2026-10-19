@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import { fmtDuration } from '@/lib/format'
 import { PHASE_LABEL, fmtMin, type AthleteFull, type BuiltPlan } from '@/lib/plan'
 import {
-  INTENSITY, WEEKDAYS, applyLevers, announcePlanReload, getRaces, getWeekCheck, makeTuneUp, previewPlan, trainFor, undoLevers, weekCheck,
+  INTENSITY, WEEKDAYS, applyLevers, announcePlanReload, hoursLine, getRaces, getWeekCheck, makeTuneUp, previewPlan, trainFor, undoLevers, weekCheck,
   type CheckinAnswers, type CheckinProposal, type Levers, type PlanDiff, type PlanSummary, type Race,
 } from '@/lib/planflow'
 import { Card, Chip, ChipRow, Field, NumberStepper, inputCls } from './ui'
@@ -37,7 +37,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 px-1">
         <p className="text-lead font-semibold leading-snug text-(--text)">
-          {s.weeks} weeks, {s.start_hours === s.peak_hours ? `about ${s.peak_hours}h a week` : `building from about ${s.start_hours}h to ${s.peak_hours}h a week`}
+          {s.weeks} weeks, {hoursLine(s.start_hours, s.peak_hours)}
         </p>
         {s.first_session && (
           <p className="text-small text-(--text-secondary)">

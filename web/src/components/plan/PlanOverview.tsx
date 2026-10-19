@@ -7,6 +7,7 @@ import { ChevronRight } from 'lucide-react'
 import { RabbitNote } from '@/components/ui/brand'
 import { PHASE_LABEL, placedEventLabel, type BuiltPlan, type PlanWeekBuilt } from '@/lib/plan'
 import { cn } from '@/lib/utils'
+import { hoursLine } from '@/lib/planflow'
 import { PhaseStrip, fmtDay } from './PlanParts'
 
 const PHASE_INFO: Record<PlanWeekBuilt['phase'], string> = {
@@ -34,8 +35,10 @@ export function PlanOverview({ plan, onWeek, onClose, onAdjust }: { plan: BuiltP
     <Sheet title="Plan overview" onClose={onClose} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       <RabbitNote title="Your season">
         <p className="m-0 text-(--text)">
-          <b className="font-semibold">{plan.weeks.length} weeks</b> to race day ({fmtDay(plan.race_date, { weekday: 'short', month: 'short', day: 'numeric' })}),
-          building from about <b className="font-semibold">{plan.start_hours}h</b> to <b className="font-semibold">{plan.peak_hours}h</b> a week.
+          {plan.no_race
+            ? <><b className="font-semibold">{plan.weeks.length} weeks</b> of training, {hoursLine(plan.start_hours, plan.peak_hours)}.</>
+            : <><b className="font-semibold">{plan.weeks.length} weeks</b> to race day ({fmtDay(plan.race_date, { weekday: 'short', month: 'short', day: 'numeric' })}),
+              {' '}{hoursLine(plan.start_hours, plan.peak_hours)}.</>}
         </p>
         <p className="m-0 text-(--text-secondary)">Tap a bar or a phase to open that week.</p>
       </RabbitNote>

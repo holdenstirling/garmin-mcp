@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils'
 import { RabbitNap } from '@/components/anim'
 import { ShareChoice } from '@/components/connect/ShareChoice'
 import { ConnectAppleHealth } from '@/components/connect/ConnectAppleHealth'
+import { DataPromise } from '@/components/legal/DataPromise'
 
 const NAME: Record<ConnApp, string> = { garmin: 'Garmin Connect', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
 const SHORT: Record<ConnApp, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', calendar: 'Google Calendar', trainingpeaks: 'TrainingPeaks' }
@@ -341,6 +342,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
               <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
+            <DataPromise className="border-t border-(--border) pt-2" />
             <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
               <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{t.kept}
             </p>
@@ -492,6 +494,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
               <Bullets items={never} tone="no" />
+            <DataPromise className="border-t border-(--border) pt-2" />
               <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{TRUST[app].kept}
               </p>

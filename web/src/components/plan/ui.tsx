@@ -166,13 +166,20 @@ export function BrandMark({ className }: { className?: string }) {
   )
 }
 
-export function Progress({ step, total }: { step: number; total: number }) {
+/** Where you are in a wizard: "About you" and "Step 3 of 6" over one even bar that fills as you go.
+ *  ``names`` labels each step; the bar is one track (no segments of different widths). */
+export function Progress({ step, total, names }: { step: number; total: number; names?: string[] }) {
+  const pct = Math.round(((step + 1) / total) * 100)
   return (
-    <div className="mx-auto mt-2.5 flex max-w-xl gap-1 px-1" aria-label={`Step ${step + 1} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={cn('h-1 flex-1 rounded-full transition-colors duration-300',
-          i <= step ? 'bg-(--accent)' : 'bg-(--bg-elevated)')} />
-      ))}
+    <div className="mx-auto mt-2 flex w-full max-w-xl flex-col gap-1.5 px-1">
+      <div className="flex items-baseline justify-between gap-3 text-meta">
+        <span className="font-semibold text-(--text)">{names?.[step] ?? ''}</span>
+        <span className="tabular-nums text-(--text-muted)">Step {step + 1} of {total}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-(--bg-inset)" role="progressbar"
+        aria-valuemin={1} aria-valuemax={total} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of ${total}${names?.[step] ? `: ${names[step]}` : ''}`}>
+        <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }
@@ -192,7 +199,7 @@ export function StepIntro({ eyebrow, title, children }: { eyebrow: string; title
 /** A labelled field. The label names the group, and any text control inside that has no
  *  accessible name of its own is labelled by it (and described by the hint). */
 export function Field({ label, hint, children, className }: {
-  label: string; hint?: React.ReactNode; children: React.ReactNode; className?: string
+  label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode; className?: string
 }) {
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -206,7 +213,7 @@ export function Field({ label, hint, children, className }: {
   })
   return (
     <div ref={box} role="group" aria-labelledby={id} className={cn('flex flex-col gap-2.5 px-5 py-4', className)}>
-      <span id={id} className="text-meta font-semibold text-(--text-secondary)">{label}</span>
+      <span id={id} className="flex flex-wrap items-center gap-1 text-meta font-semibold text-(--text-secondary)">{label}</span>
       {children}
       {hint && <span id={`${id}-hint`} className="text-meta leading-snug text-(--text-muted)">{hint}</span>}
     </div>
@@ -289,7 +296,7 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
   if (v != null && !opts.some((o) => Math.abs(o - v) < 1e-9)) {
     opts.push(v); opts.sort((a, b) => a - b)
   }
-  const common = (typical ?? []).filter((t) => t >= min && t <= max)
+  void typical  // kept for callers; "Common" picks were dropped (people didn't see themselves in them)
   const unit = suffix ? ` ${suffix}` : ''
   return (
     <div className="relative">
@@ -298,14 +305,7 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
         className={cn('h-12 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-10 text-title-sm tabular-nums',
           'text-(--text) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring', v == null && 'text-(--text-muted)')}>
         <option value="">Choose {label}…</option>
-        {common.length > 0 && v == null && (
-          <optgroup label="Common">
-            {common.map((n) => <option key={`c${n}`} value={fmt(n)}>{fmt(n)}{unit}</option>)}
-          </optgroup>
-        )}
-        <optgroup label={common.length > 0 && v == null ? 'All' : label}>
-          {opts.map((n) => <option key={n} value={fmt(n)}>{fmt(n)}{unit}</option>)}
-        </optgroup>
+        {opts.map((n) => <option key={n} value={fmt(n)}>{fmt(n)}{unit}</option>)}
       </select>
       <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
     </div>

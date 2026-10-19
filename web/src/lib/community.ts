@@ -115,9 +115,8 @@ export type CommunitySettings = {
   /** when my newest workout post went out (unix seconds), or null */
   last_shared_at?: number | null
 }
-/** Effective "Share my workouts with friends" (community.py `sharing_workouts`). */
-export const sharingWorkouts = (s: CommunitySettings) =>
-  s.share_workouts === true || (s.share_workouts == null && !!s.share_prompted)
+/** Effective "Share my workouts with friends" (community.py `sharing_workouts`): only after a yes. */
+export const sharingWorkouts = (s: CommunitySettings) => s.share_workouts === true
 export type Usage = { photos: number; bytes: number; max_photos: number; max_bytes: number }
 export type Sport = 'running' | 'trail' | 'cycling' | 'triathlon' | 'swimming' | 'walking' | 'multisport' | 'other'
 export const SPORTS: [Sport, string][] = [

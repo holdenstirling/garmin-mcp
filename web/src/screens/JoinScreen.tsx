@@ -10,6 +10,8 @@ import { joinInfo, joinWithPasskey, passkeyError, PasskeyApiError, supportsPassk
 import { hapticTap } from '@/lib/haptics'
 import { flushUsage, track } from '@/lib/usage'
 import { useDraft } from '@/lib/drafts'
+import { TAGLINE } from '@/lib/legal'
+import { DataPromise } from '@/components/legal/DataPromise'
 
 type Phase = { kind: 'loading' } | { kind: 'bad'; message: string } | { kind: 'form'; inviter: string; signedIn: boolean }
 
@@ -55,6 +57,7 @@ export function JoinScreen({ token }: { token: string }) {
       <RabbitLoader size={64} gentle decorative />
       <div className="text-center">
         <h1 className="font-display text-display text-(--brand)">Join rabbt</h1>
+        <p className="text-lead text-(--text-secondary)">{TAGLINE}</p>
         {phase.kind === 'form' && (
           <p className="mt-1.5 text-(--text-secondary)">
             {phase.inviter ? `${phase.inviter} invited you to train with rabbt.` : "You're invited to train with rabbt."}
@@ -114,6 +117,7 @@ export function JoinScreen({ token }: { token: string }) {
           </p>
         )
       )}
+      <DataPromise center className="max-w-xs" />
       <LegalFooter />
     </div>
   )

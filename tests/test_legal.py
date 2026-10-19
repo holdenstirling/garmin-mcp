@@ -165,7 +165,9 @@ def test_account_api_end_to_end(env, tmp_path) -> None:
             assert "holdenstirling@gmail.com" in r.json()["html"]  # default contact
             assert (await o.get("/app/api/legal/nope")).status_code == 404
             assert (await c.get("/app/api/legal/terms")).status_code == 200
-            for path in ("/app/security", "/app/guidelines", "/app/privacy", "/app/terms", "/app/about"):
+            hd = await o.get("/app/api/legal/health-data")
+            assert hd.status_code == 200 and "My Health My Data" in hd.json()["html"]
+            for path in ("/app/security", "/app/guidelines", "/app/privacy", "/app/terms", "/app/about", "/app/health-data"):
                 p = await o.get(path)
                 assert p.status_code == 200 and "frame-ancestors 'none'" in p.headers["content-security-policy"]
             # Social data the other person shares with me.
@@ -196,3 +198,38 @@ def test_account_api_end_to_end(env, tmp_path) -> None:
 def test_coach_accounts_can_reach_privacy_routes() -> None:
     for p in ("/app/api/consent", "/app/api/legal/privacy", "/app/api/account/export", "/app/api/account/delete"):
         assert p.startswith(COACH_PATHS)
+
+
+def test_health_data_policy_breach_and_data_promise() -> None:
+    assert legal.VERSION == "2026-10-19"
+    hd = legal.health_data()
+    for phrase in ("consumer health data", "My Health My Data", "Nevada", "Connecticut", "never sell",
+                   "Withdraw consent", "Appeal", "attorney general", "45 days", "Google Cloud", "Anthropic",
+                   "rabbt LLC", "holdenstirling@gmail.com"):
+        assert phrase.lower() in hd.lower(), phrase
+    for page in (legal.privacy(), legal.security()):
+        assert "If there's a breach" in page and "60 days" in page and "Health Breach Notification Rule" in page
+    t = legal.terms()
+    assert "/app/health-data" in t and "at your own risk" in t and "Not medical advice" in t
+    assert legal.DATA_PROMISE == "We never sell your data or use it for ads."
+    assert legal.DATA_PROMISE in legal.FOOTER and "/app/health-data" in legal.FOOTER
+
+
+def test_sharing_consent_is_separate_optional_and_recorded(tmp_path) -> None:
+    c = Consent(_store(tmp_path), clock=lambda: 1000)
+    v = c.accept("u", ALL)  # sharing is optional: not ticking it is fine
+    assert not v["needed"] and v["share"] is None
+    try:
+        c.accept("u", dict(ALL, share="yes"))
+        raise AssertionError
+    except ConsentError:
+        pass
+    v = c.accept("u", dict(ALL, share=True))
+    assert v["share"] is True and c.get("u")["share_ts"] == 1000
+    assert c.accept("u", dict(ALL, share=False))["share"] is False
+
+
+def test_every_legal_page_states_the_data_promise() -> None:
+    from garmin_mcp import legal
+    for slug in legal.DOCS:
+        assert legal.DATA_PROMISE in legal.page(slug), slug

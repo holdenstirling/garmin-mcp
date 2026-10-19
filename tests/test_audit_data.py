@@ -343,3 +343,25 @@ def test_setup_again_for_the_same_race_makes_no_copies(env, tmp_path) -> None:
     assert len(goals) == 1 and agent.coach.active_goal("friend")["id"] == goals[0]["id"]
     evs = [e for e in agent.events.list("friend") if e.get("name") == "Denver 10K"]
     assert len(evs) == 1
+
+
+def test_setup_no_race_block_keeps_the_race_goal(env, tmp_path) -> None:
+    _reset()
+    agent, plan, today = _setup(env)
+    race = agent.coach.active_goal("friend")
+    app = _app(env, agent, tmp_path)
+    end = (today + timedelta(weeks=8) - timedelta(days=1)).isoformat()
+
+    async def go_() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=BASE) as c:
+            r = await c.post("/app/api/plan/setup", headers={"origin": BASE}, json={
+                "goal": {"title": "8-week running block", "distance": "10k", "date": end, "no_race": True,
+                         "goal_type": "finish"}})
+            assert r.status_code == 201, r.text
+            assert r.json()["plan"]["no_race"] is True
+    asyncio.run(go_())
+    block = agent.coach.active_goal("friend")
+    assert block["id"] != race["id"] and block["no_race"] is True
+    kept = {g["id"]: g for g in agent.coach.goals("friend")["goals"]}
+    assert race["id"] in kept and not kept[race["id"]].get("no_race")
+    assert kept[race["id"]]["title"] == race["title"] and kept[race["id"]]["date"] == race["date"]

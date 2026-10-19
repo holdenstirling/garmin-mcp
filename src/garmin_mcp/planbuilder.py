@@ -359,11 +359,12 @@ class Inputs:
     level_given: bool = True
     longest_run_min: float | None = None
     longest_ride_min: float | None = None
+    no_race: bool = False  # a training block: no race week, the last week is lighter
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
     if not goal.get("date"):
-        raise PlanError("Add your race date first.")
+        raise PlanError("Add your race date first." if not goal.get("no_race") else "Pick how many weeks to plan.")
     try:
         race = date.fromisoformat(goal["date"])
     except ValueError:
@@ -394,7 +395,8 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   title=goal.get("title") or "Race",
                   favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS],
                   injuries=str(athlete.get("injuries") or "")[:500], level_given=level_given,
-                  longest_run_min=_pos("longest_run_min"), longest_ride_min=_pos("longest_ride_min"))
+                  longest_run_min=_pos("longest_run_min"), longest_ride_min=_pos("longest_ride_min"),
+                  no_race=goal.get("no_race") is True)
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -867,16 +869,24 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
         n = MAX_WEEKS
         note = (f"Your race is more than {MAX_WEEKS} weeks out, so the plan starts on "
                 f"{week1:%b %-d}. Until then, keep training the way you are.")
-    ph = phases(n, prof["taper"])
+    ph = phases(n, 0 if inp.no_race else prof["taper"])
+    if inp.no_race and len(ph) > 1:
+        ph[-1] = "build"  # no race week: the block ends on a lighter week (below)
     profile_peak = prof["peak"][LEVELS.index(inp.level if inp.level_given else "new")]
     start_h, long0, how = starting_point(inp, race_kind, fitness)
     peak_h = max(profile_peak, min(start_h, profile_peak * 1.3))
     min_weeks = MIN_WEEKS.get(inp.distance, MIN_WEEKS["other"])[0 if inp.level == "new" or not how["known"] else 1]
-    if n < min_weeks and note is None:
+    if inp.no_race:
+        note = note or (f"{'An' if n in (8, 11, 18) else 'A'} {n}-week block to build your fitness, no race needed. The last week "
+                        f"is lighter so you finish fresh and ready for the next block.")
+    elif n < min_weeks and note is None:
         note = (f"{n} week{'s' if n != 1 else ''} is a short runway for this race, so the plan builds "
                 f"slowly from where you are instead of cramming. Treat race day as a strong training "
                 f"day, or pick a later race to build more.")
     hours = week_hours(ph, start_h, peak_h)
+    if inp.no_race and len(hours) > 1:
+        last_full = max([h for h, r in hours[:-1] if not r] or [start_h])
+        hours[-1] = (round(last_full * RECOVERY_FACTOR, 2), True)
     peak_h = max([h for (h, _), p in zip(hours, ph, strict=True) if p == "peak"] or
                  [h for (h, r) in hours if not r] or [start_h])
     split = _split(race_kind, inp.limiters, inp.favorites)
@@ -978,7 +988,7 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
     apply_strength(weeks, inp, race_kind)
     placed_events = apply_events(weeks, events or [], inp, start)
     return {"events": placed_events, "start": week1.isoformat(), "first_day": start.isoformat(),
-            "race_date": inp.race_date.isoformat(), "distance": inp.distance,
+            "race_date": inp.race_date.isoformat(), "distance": inp.distance, "no_race": inp.no_race,
             "race_kind": race_kind, "level": inp.level, "peak_hours": round(peak_h, 1),
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
             "start_from": how["source"], "note": note, "weeks": weeks}

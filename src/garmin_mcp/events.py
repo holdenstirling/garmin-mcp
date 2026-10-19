@@ -527,8 +527,8 @@ class EventStore:
         """After the setup wizard saves the goal: create or refresh its main event.
         ``extra`` carries event-only fields from the wizard (type, location, url, info)."""
         g = self._coach.active_goal(user_id)
-        if not g or not g.get("date"):
-            return None
+        if not g or not g.get("date") or g.get("no_race"):
+            return None  # a training block with no race has no race-day event
         fields = {"name": (g.get("event") or g.get("title") or "My race")[:120], "date": g["date"],
                   "distance": (g.get("distance") or "")[:40], "priority": "A",
                   "goal_type": g.get("goal_type"), "target_time": g.get("target_time"),

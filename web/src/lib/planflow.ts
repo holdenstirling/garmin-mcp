@@ -13,13 +13,23 @@ export const trainFor = (id: string) =>
   sendJSON<{ plan: BuiltPlan | null; goal: GoalFull; has_plan: boolean; races: { races: Race[] } }>('POST', '/api/races/train', { id })
 export const makeTuneUp = (event_id: string) => sendJSON<{ races: Race[] }>('POST', '/api/races/tuneup', { event_id })
 
-export type Phase = { phase: BuiltPlan['weeks'][number]['phase']; from: string; to: string; weeks: number; hours_from: number; hours_to: number; focus: string }
+export type Phase = {
+  phase: BuiltPlan['weeks'][number]['phase']; from: string; to: string; weeks: number; hours_from: number; hours_to: number; focus: string
+  /** the workout kinds that define this phase, most frequent first */
+  key_kinds?: string[]
+  longest_minutes?: number
+}
+export type CalendarWeek = { start: string; phase: Phase['phase']; hours: number; recovery: boolean; days: DaySessions[] }
 export type DaySessions = { date: string; sessions: { sport: string; kind: string | null; title: string; minutes: number }[] }
 export type PlanSummary = {
   weeks: number; race_date: string | null; start: string; start_hours: number; peak_hours: number; level: string
   start_from?: string; note?: string | null; phases: Phase[]; hours: number[]; long_minutes: number[]
   first_two_weeks: DaySessions[]
   first_session: ({ date: string } & DaySessions['sessions'][number]) | null
+  /** a training block, not a race */
+  no_race?: boolean
+  /** every week of the plan, for the calendar view */
+  calendar?: CalendarWeek[]
 }
 export type PlanDiff = {
   weeks: { start: string; before: number | null; after: number | null }[]; changed_weeks: number
@@ -56,3 +66,10 @@ export const INTENSITY: [NonNullable<Levers['plan_intensity']>, string, string][
   ['normal', 'Normal', 'Balanced for your level'],
   ['push', 'Push', 'More hard days (still builds safely)'],
 ]
+
+/** "building from about 5h to 8h a week"; a flat or short block (peak not above the start) reads as a range. */
+export function hoursLine(start: number, peak: number): string {
+  if (peak > start) return `building from about ${start}h to ${peak}h a week`
+  const lo = Math.min(start, peak), hi = Math.max(start, peak)
+  return lo === hi ? `about ${hi}h a week` : `about ${lo}h to ${hi}h a week`
+}

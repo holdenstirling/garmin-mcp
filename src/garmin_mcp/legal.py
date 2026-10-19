@@ -6,15 +6,17 @@ pin the ones other features rely on (test_connections, test_usage, test_tpsync, 
 test_legal). When a fact changes, change the page and bump ``VERSION`` so people are asked to
 review it again (consent.py).
 
-Owner note (not shown to users): have a lawyer review these pages before a public launch.
+Owner note (not shown to users): have a lawyer review these pages before a public launch,
+especially HEALTH_DATA (Washington My Health My Data Act, Nevada SB 370, Connecticut) and the
+breach sections (FTC Health Breach Notification Rule, 16 CFR Part 318).
 """
 
 from __future__ import annotations
 
 from html import escape
 
-VERSION = "2026-10-17"          # consent re-prompts when this changes
-UPDATED = "October 17, 2026"
+VERSION = "2026-10-19"          # consent re-prompts when this changes
+UPDATED = "October 19, 2026"
 OPERATOR = "Holden Ottolini"
 DEFAULT_CONTACT = "holdenstirling@gmail.com"
 GOVERNING = "Colorado, USA"
@@ -24,7 +26,12 @@ DOCS = {  # slug -> (title, short label)
     "terms": ("Terms of service", "Terms"),
     "security": ("How rabbt keeps your data safe", "Data & security"),
     "guidelines": ("Community guidelines", "Community"),
+    "health-data": ("Consumer health data privacy policy", "Health data"),
 }
+
+
+# The one-line data stance shown across the app and on public pages (web: lib/legal.ts DATA_PROMISE).
+DATA_PROMISE = "We never sell your data or use it for ads."
 
 
 def contact_email(contact: str = "") -> str:
@@ -53,6 +60,7 @@ li{{margin:8px 0}}a{{color:var(--accent)}}.box{{border:1px solid var(--line);bor
 <nav aria-label="rabbt policies">{nav}</nav>
 <h1>{escape(title)}</h1><p class=sub>rabbt training coach, operated by {OPERATOR}.<br>Updated {UPDATED}, version {VERSION}.</p>
 {body.replace("{CONTACT}", _who(contact))}
+<footer class=sub style="margin-top:40px;border-top:1px solid var(--line);padding-top:16px">{escape(DATA_PROMISE)}</footer>
 </main></body></html>"""
 
 
@@ -135,7 +143,10 @@ PRIVACY = """
 </ul>
 
 <h2>Health information</h2>
-<p>rabbt is a training tool, not a medical device, and doesn't diagnose or treat anything. You give explicit consent to rabbt processing your health and fitness data when you start using it, and you can withdraw it by deleting your account.</p>
+<p>rabbt is a training tool, not a medical device, and doesn't diagnose or treat anything. You give explicit consent to rabbt processing your health and fitness data when you start using it, and you can withdraw it by deleting your account. Sharing your workouts with friends is a separate choice you can turn on or off any time. The <a href="/app/health-data">consumer health data privacy policy</a> covers this in detail, including your rights under Washington's My Health My Data Act and similar laws in Nevada and Connecticut.</p>
+
+<h2>If there's a breach</h2>
+<p>If someone gets into rabbt's systems and your health or fitness data is exposed, we will tell you by email and in the app without unreasonable delay, and no later than 60 days after we find out. We'll say what happened, what data was involved, what we're doing about it and what you can do to protect yourself. We will also notify the Federal Trade Commission, and the media where the law requires it (for example when 500 or more people in one state are affected), as the FTC's Health Breach Notification Rule requires.</p>
 
 <h2>Children</h2>
 <p>rabbt is not for anyone under 16. If you believe someone under 16 has an account, contact {CONTACT} and it will be deleted.</p>
@@ -158,6 +169,10 @@ TERMS = """
 <p>rabbt is a personal training tool offered free to invited users, as is, without warranties. It may change or stop at any time.</p>
 <h2>Not medical advice</h2>
 <p>Training plans, AI coach replies, readiness and recovery insights, weather changes and injury or fueling tips are general guidance, not medical advice. Check with a doctor before starting or changing training, and stop if you feel unwell or injured. You are responsible for how you train.</p>
+<h2>Training safely</h2>
+<p>Endurance training and sport carry real risks, including injury, illness and accidents. You choose when, where and how hard to train, and you take part at your own risk. Stop and get help if something feels wrong.</p>
+<h2>Your health data</h2>
+<p>rabbt uses your training and health data only to coach you and run the features you choose. We never sell your data or use it for ads. Sharing workouts with friends is your choice, and you can download or delete everything at any time. Details are in the <a href="/app/privacy">privacy policy</a> and the <a href="/app/health-data">consumer health data privacy policy</a>. If there's ever a data breach that affects you, we'll tell you within 60 days, as described in the privacy policy.</p>
 <h2>AI replies</h2>
 <p>rabbt's coach uses AI and can be wrong or incomplete. Use your own judgment and double-check anything important.</p>
 <h2>Your content</h2>
@@ -201,6 +216,8 @@ SECURITY = """
 <li><b>Private by default.</b> Exact locations and routes aren't stored, heart rate isn't shared unless you choose, and Oura and WHOOP data never goes to the AI coach.</li>
 <li><b>Your controls.</b> Download your data or delete your account in Me &rarr; Privacy &amp; legal, and disconnect apps in Me &rarr; Connected apps.</li>
 </ul>
+<h2>If there's a breach</h2>
+<p>If your health or fitness data is ever exposed, rabbt will tell you by email and in the app within 60 days of finding out (sooner whenever possible), explain what happened and what to do, and notify the FTC as its Health Breach Notification Rule requires.</p>
 <p>Found a security problem? Please email {CONTACT} and don't share it publicly until it's fixed.</p>
 """
 
@@ -217,6 +234,65 @@ GUIDELINES = """
 <p>See something wrong? Block the person and use Report. Reports go to rabbt's owner, who may remove content or suspend accounts. Questions: {CONTACT}.</p>
 """
 
+# ------------------------------------------------------------- health data --
+# Washington My Health My Data Act (RCW 19.373), Nevada SB 370, Connecticut (CTDPA health data).
+# Facts: same sources as PRIVACY above; consent.py records the collection consent ("health") and
+# the separate sharing consent ("share", wired to community share_workouts).
+HEALTH_DATA = """
+<p>This policy explains how rabbt handles <b>consumer health data</b>: information about your body, health and fitness. It sits alongside the main <a href="/app/privacy">privacy policy</a> and is written for Washington's My Health My Data Act and similar laws in Nevada and Connecticut, but it applies to everyone who uses rabbt.</p>
+<div class=box><b>The short version.</b> We collect health and fitness data only to coach you and run the features you turn on. We never sell it and never use it for ads. Sharing it with other people only happens when you choose to. You can see, download or delete all of it at any time.</div>
+
+<h2>What consumer health data we collect</h2>
+<ul>
+<li>Workouts: sport, time, distance, pace, power, heart rate and splits.</li>
+<li>Sleep, readiness, heart rate variability and resting heart rate.</li>
+<li>How workouts felt, effort ratings and notes you write.</li>
+<li>Niggles, pain and injury notes, and the dates you turn on sick mode.</li>
+<li>Fueling notes and food preferences you choose to give.</li>
+<li>Body details you give, like age, height and weight.</li>
+<li>Your home city, used to suggest local clubs and weather. We never store exact locations or routes.</li>
+</ul>
+
+<h2>Where it comes from</h2>
+<p>From you, and from apps you connect: Garmin, Oura, WHOOP and Apple Health (through a Shortcut you set up). Each app sends data only after you connect it, and stops when you disconnect.</p>
+
+<h2>Why we use it</h2>
+<ul>
+<li>To build and adjust your training plan, including easing it when you're tired, sick or travelling.</li>
+<li>To show your stats, progress and workout details.</li>
+<li>To answer your questions in the coaching chat.</li>
+<li>To show workouts to friends and groups, only if you turn sharing on.</li>
+</ul>
+<p>We don't use it for advertising, and we don't make decisions with legal effects about you.</p>
+
+<h2>Who we share it with</h2>
+<ul>
+<li><b>Service providers</b> that run rabbt for us under contract: Google Cloud (hosting and encrypted backups), Anthropic (coaching replies) and push notification services (Apple, Google, Mozilla). They may use it only to provide their service to rabbt.</li>
+<li><b>Other rabbt users</b>, only when you choose: workouts you share with friends, groups or clubs, and anything you post.</li>
+<li><b>Legal reasons</b>: when the law requires it, or to protect someone's safety.</li>
+</ul>
+<p><b>We never sell consumer health data</b>, and we never share it with data brokers or advertisers.</p>
+
+<h2>Your consent</h2>
+<p>We ask for your consent before collecting health data beyond what the app needs to work, and separately before sharing any of it with other people. You give these consents on the "Before you start" screen and when you choose to share workouts. You can withdraw either one at any time: turn off sharing in Me, disconnect apps in Me &rarr; Connected apps, or delete your account.</p>
+
+<h2>Your rights</h2>
+<ul>
+<li><b>See your data</b> and get a copy: Me &rarr; Privacy &amp; legal &rarr; Download my data.</li>
+<li><b>Delete your data</b>: Me &rarr; Privacy &amp; legal &rarr; Delete my account. This also removes it from the services that run rabbt for us; backups expire on the schedule in the privacy policy.</li>
+<li><b>Withdraw consent</b> at any time, as described above.</li>
+<li><b>Know who has it</b>: ask us for the list of service providers and other parties your health data was shared with.</li>
+<li><b>Appeal</b>: if we turn down a request, reply to our answer and we'll review it. If you're still not satisfied, you can contact your state attorney general (in Washington, the Washington State Attorney General's Office).</li>
+</ul>
+<p>We answer requests within 45 days. Email {CONTACT} for anything the app doesn't do for you.</p>
+
+<h2>How we protect it</h2>
+<p>Your data is encrypted at rest, kept in separate files per person, and only the people who run rabbt can access the systems that hold it. See <a href="/app/security">How rabbt keeps your data safe</a>. If there's ever a breach, we'll tell you within 60 days, as described in the privacy policy.</p>
+
+<h2>Contact</h2>
+<p>rabbt is operated by """ + OPERATOR + """ in """ + GOVERNING + """ (to become rabbt LLC). Questions or requests: {CONTACT}.</p>
+"""
+
 ABOUT = """
 <p><b>RabbitBot</b> is the web crawler of rabbt, a small private training app. It builds a directory of local run clubs, group rides, triathlon clubs, masters swims and adult sports leagues so athletes can find people to train with.</p>
 <h2>How it behaves</h2>
@@ -230,7 +306,8 @@ ABOUT = """
 <p>Disallow RabbitBot in robots.txt, or contact {CONTACT} and we'll remove or fix a listing.</p>
 """
 
-_BODIES = {"privacy": PRIVACY, "terms": TERMS, "security": SECURITY, "guidelines": GUIDELINES}
+_BODIES = {"privacy": PRIVACY, "terms": TERMS, "security": SECURITY, "guidelines": GUIDELINES,
+           "health-data": HEALTH_DATA}
 
 
 def page(slug: str, contact: str = "") -> str:
@@ -262,10 +339,14 @@ def guidelines(contact: str = "") -> str:
     return page("guidelines", contact)
 
 
+def health_data(contact: str = "") -> str:
+    return page("health-data", contact)
+
+
 # Appended inside the <footer> of public share pages (share.py, sharelinks.py, racepeople.py).
-FOOTER = ('<br><a href="/app/privacy">Privacy</a> · <a href="/app/terms">Terms</a> · '
-          '<a href="/app/security">Data &amp; security</a>')
+FOOTER = ('<br>' + DATA_PROMISE + '<br><a href="/app/privacy">Privacy</a> · <a href="/app/terms">Terms</a> · '
+          '<a href="/app/health-data">Health data</a> · <a href="/app/security">Data &amp; security</a>')
 
 
-__all__ = ["VERSION", "UPDATED", "OPERATOR", "DOCS", "FOOTER", "contact_email", "page", "body_html",
-           "about", "privacy", "terms", "security", "guidelines"]
+__all__ = ["VERSION", "UPDATED", "OPERATOR", "DOCS", "FOOTER", "DATA_PROMISE", "contact_email", "page", "body_html",
+           "about", "privacy", "terms", "security", "guidelines", "health_data"]

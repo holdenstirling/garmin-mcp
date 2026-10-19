@@ -494,16 +494,17 @@ class Community:
                 "default_view": view if view in VIEWS else "feed",
                 "auto_share": {t: bool((s.get("auto_share") or {}).get(t, False)) for t in MILESTONES},
                 "audience": aud if aud in AUDIENCES else "friends",
-                # None = never answered; the prompt (shown once) defaults to on.
+                # None = never answered (off: sharing needs a yes).
                 "share_workouts": sw if isinstance(sw, bool) else None,
                 "share_prompted": bool(s.get("share_prompted")),
                 "share_since": s.get("share_since") if isinstance(s.get("share_since"), str) else None}
 
     @staticmethod
     def sharing_workouts(s: dict[str, Any]) -> bool:
-        """Effective "Share my workouts with friends": on when chosen, or when unanswered
-        after the one-time prompt was shown (the default); never before it was shown."""
-        return s["share_workouts"] is True or (s["share_workouts"] is None and s["share_prompted"])
+        """Effective "Share my workouts with friends": only when the person said yes (an opt-in
+        consent to share health data, as Washington's My Health My Data Act asks: the prompt,
+        the connect sheet, the consent screen or the setting). Unanswered means off."""
+        return s["share_workouts"] is True
 
     def settings(self, uid: str) -> dict[str, Any]:
         self.require(uid)

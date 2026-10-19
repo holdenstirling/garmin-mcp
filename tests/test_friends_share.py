@@ -56,12 +56,15 @@ def _acts(today):
 
 
 # -------------------------------------------------------------- auto-share --
-def test_auto_share_off_until_prompted_on_by_default_and_declinable(fx) -> None:
+def test_auto_share_needs_a_yes_and_is_declinable(fx) -> None:
     cm, today = fx.cm, NOON.date()
     acts = _acts(today)
     assert cm.settings("ann")["share_workouts"] is None
     assert cm.auto_share_workouts("ann", acts, today) == []  # never asked: nothing leaves
-    cm.put_settings("ann", {"share_prompted": True})  # the one-time prompt was shown: default on
+    cm.put_settings("ann", {"share_prompted": True})  # the prompt was shown but not answered: still off
+    assert not Community.sharing_workouts(cm.settings("ann"))
+    assert cm.auto_share_workouts("ann", acts, today) == []
+    cm.put_settings("ann", {"share_workouts": True})  # a clear yes (opt-in consent to share)
     s = cm.settings("ann")
     # Sharing starts with the last few days (BACKFILL_DAYS), never older.
     assert Community.sharing_workouts(s) and s["share_since"] == (today - timedelta(days=2)).isoformat()
@@ -244,9 +247,13 @@ def test_http_unread_quick_and_coach_403(env, tmp_path) -> None:  # noqa: F811
         assert (await ann.post("/app/api/unread/seen", headers=H, json={"kind": "nope"})).status_code == 400
         eid = (await ann.get("/app/api/social")).json()["pending_in"][0]["edge_id"]
         await ann.post(f"/app/api/social/requests/{eid}/accept", headers=H, json={})
-        # The one-time prompt: shown -> on by default; the sync hook posts the workout.
-        s = (await ann.put("/app/api/community/settings", headers=H, json={"share_prompted": True})).json()["settings"]
-        assert s["share_workouts"] is None and s["share_prompted"]
+        # Sharing needs a yes: the consent screen's separate sharing box gives it (and can take it back).
+        ok = {"terms": True, "privacy": True, "age16": True, "health": True}
+        assert (await ann.post("/app/api/consent", headers=H, json=dict(ok, share=False))).status_code == 200
+        assert (await ann.get("/app/api/community/settings")).json()["settings"]["share_workouts"] is False
+        assert (await ann.post("/app/api/consent", headers=H, json=dict(ok, share=True))).status_code == 200
+        s = (await ann.get("/app/api/community/settings")).json()["settings"]
+        assert s["share_workouts"] is True and s["share_prompted"]
         agent.moments.after_workouts("ann")
         feed = (await bob.get("/app/api/community/feed")).json()["items"]
         assert len(feed) == 1 and feed[0]["workout"]["title"] == "Run" and "avg_hr" not in json.dumps(feed[0])
