@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import sportfamily as _sf
 from .workouttargets import _secs, hr_zones
 
 ZONE_LABEL = {1: "Easy", 2: "Aerobic", 3: "Tempo", 4: "Threshold", 5: "Max"}
@@ -114,9 +115,11 @@ def build_view(act: dict[str, Any], *, laps: list[dict[str, Any]] | None = None,
         "training_load": _num(act.get("training_load")), "te_label": act.get("training_effect_label"),
         "swolf": _num(act.get("avg_swolf")), "stroke_rate": _num(act.get("avg_stroke_rate")),
     }
+    fam = _sf.family(sport, act.get("sport"))
+    _fit_numbers(numbers, fam, moving, km, act)
     return {
         "id": aid, "key": str(aid), "source": "garmin", "ai": True,
-        "sport": sport, "name": act.get("name") or "Workout", "start": act.get("date"),
+        "sport": sport, "family": fam, "name": act.get("name") or "Workout", "start": act.get("date"),
         "numbers": {k: v for k, v in numbers.items() if v is not None},
         "laps": lap_rows if len(lap_rows) >= 2 else [],
         "zones": time_in_zones(laps or [], numbers["avg_hr"], moving, zones),
@@ -134,10 +137,36 @@ def build_imported(w: dict[str, Any], *, checkin: dict[str, Any] | None = None,
     numbers = {"km": km, "moving_s": round(mins * 60) if mins else None,
                "pace_s_per_km": round(mins * 60 / km) if sport == "run" and km and mins else None,
                "avg_hr": _num(w.get("avg_hr")), "calories": _num(w.get("calories"))}
+    fam = _sf.family(sport, str(w.get("kind") or w.get("name") or ""))
+    _fit_numbers(numbers, fam, (mins or 0) * 60, km, w)
     return {"id": w.get("key"), "key": w.get("key"), "source": w.get("source") or "other", "ai": False,
-            "sport": sport, "name": w.get("name") or "Workout", "start": w.get("start"),
+            "sport": sport, "family": fam, "name": w.get("name") or "Workout", "start": w.get("start"),
             "numbers": {k: v for k, v in numbers.items() if v is not None}, "laps": [], "zones": None,
             "planned": None, "checkin": checkin, "feedback": feedback, "garmin_url": None}
+
+
+def _fit_numbers(n: dict[str, Any], fam: str, moving: float | None, km: float | None, act: dict[str, Any]) -> None:
+    """Keep only the numbers that mean something for the family (``sportfamily``): no pace or
+    distance for a yoga class, no "speed" for a run, pace per 500 m for a row, vertical for a
+    ski day, sets and reps for the gym."""
+    if fam in _sf.NO_DISTANCE:
+        for k in ("km", "pace_s_per_km", "pace_s_per_100m", "speed_kmh"):
+            n.pop(k, None)
+    if fam in ("run", "walk", "hike", "swim", "row", "paddle", "ski"):
+        n.pop("speed_kmh", None)
+    if fam != "swim":
+        n.pop("pace_s_per_100m", None)
+    if fam in ("row", "paddle") and km and moving:
+        n["pace_s_per_500m"] = round(moving / (km * 2))
+    if fam == "ski" and _num(act.get("elevation_loss_m")):
+        n["vertical_m"] = round(float(act["elevation_loss_m"]))
+    if fam in ("strength", "hiit"):
+        for k in ("total_sets", "total_reps"):
+            v = act.get(k)
+            if isinstance(v, int) and not isinstance(v, bool) and v > 0:
+                n[k.removeprefix("total_")] = v
+    if fam in ("indoor_ride", "swim", "row", "mind", "strength", "hiit"):
+        n.pop("elevation_gain_m", None)
 
 
 def checkin_ref(key: str) -> str:

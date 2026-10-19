@@ -66,7 +66,8 @@ from .appstore import AppStore
 from .explore import parse_distance_km
 from .logs import log_event
 from .progress import tier_name
-from .stats import _rows
+from . import sportfamily as _sf
+from .stats import _rows, _seconds, category
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,9 @@ FIRSTS = {"ultra": "First ultra", "marathon": "First marathon", "half": "First h
 RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source")
+                  "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source",
+                  "family", "kind", "pace_s_500m", "vertical_m", "sets", "reps", "legs")
+LEG_FIELDS = ("family", "km", "minutes", "pace_s_km", "speed_kmh", "pace_s_100m", "pace_s_500m")
 # Where a workout came from ("via Garmin" on its card). Garmin ids are ints; other sources use
 # "<source>:<id>" (workout ingestion adds ``source`` to each activity).
 SOURCES = ("garmin", "oura", "whoop", "apple", "coros", "strava", "polar", "suunto", "wahoo")
@@ -321,33 +324,55 @@ def pb_text(best: dict[str, Any], imperial: bool) -> str:
 
 
 def workout_card(acts: list[dict[str, Any]], aid: int | str, today: date) -> dict[str, Any] | None:
-    """A compact, shareable workout: sport, title, date, distance, time, climb and a
-    highlight line. Never HR, power, location or health data."""
+    """A compact, shareable workout: sport, its family (``sportfamily``: which numbers make
+    sense), title, date, distance, time, climb and a highlight line, plus the one rate that
+    suits the family, a multisport's legs, a ski day's vertical and a gym session's sets and
+    reps. Never HR, power, location or health data."""
     from .workoutday import new_bests
     r = next((r for r in _rows(acts) if r["id"] == aid), None)
     if r is None:
         return None
     bests = new_bests(acts, aid, today)
     hl = bests[0]["label"] if bests else ""
-    act = next((a for a in acts if a.get("activity_id") == aid), None)
-    return {"activity_id": aid, "source": source_of(act), "sport": r["sport"], "title": _clip(str(r["name"] or "Workout"), 80),
-            "date": r["date"].isoformat(), "km": round(r["km"], 2) if r["km"] else None,
-            "minutes": round(r["min"]) if r["min"] else None, "climb_m": int(r["climb"]) if r["climb"] else None,
-            "highlight": hl, **pace_fields(r["sport"], r["km"], r["min"])}
+    act = next((a for a in acts if a.get("activity_id") == aid), None) or {}
+    fam = _sf.family(r["sport"], r.get("raw"))
+    km = r["km"] if fam not in _sf.NO_DISTANCE else 0
+    card: dict[str, Any] = {
+        "activity_id": aid, "source": source_of(act), "sport": r["sport"], "family": fam,
+        "kind": _clip(str(r.get("raw") or ""), 40), "title": _clip(str(r["name"] or "Workout"), 80),
+        "date": r["date"].isoformat(), "km": round(km, 2) if km else None,
+        "minutes": round(r["min"]) if r["min"] else None,
+        "climb_m": int(r["climb"]) if r["climb"] and fam not in ("swim", "indoor_ride", "row", "mind", "strength", "hiit") else None,
+        "highlight": hl, **_sf.pace_fields(fam, km, r["min"])}
+    if fam == "ski":
+        loss = act.get("elevation_loss_m")
+        if isinstance(loss, int | float) and loss > 0:
+            card["vertical_m"] = int(loss)
+    if fam in ("strength", "hiit"):
+        for k in ("total_sets", "total_reps"):
+            v = act.get(k)
+            if isinstance(v, int) and not isinstance(v, bool) and v > 0:
+                card[k.removeprefix("total_")] = v
+    if fam == "brick":
+        legs = []
+        for a in acts:
+            if (a.get("multisport") or {}).get("parent_id") != aid:
+                continue
+            lf = _sf.family(category(a.get("sport")), a.get("sport"))
+            if "transition" in str(a.get("sport") or "").lower():
+                continue
+            lkm = float(a.get("distance_km") or 0)
+            lmin = _seconds(a.get("duration")) / 60
+            legs.append({"family": lf, "km": round(lkm, 2) if lkm else None,
+                         "minutes": round(lmin) if lmin else None, **_sf.pace_fields(lf, lkm, lmin)})
+        if legs:
+            card["legs"] = legs[:5]
+    return card
 
 
-def pace_fields(sport: str, km: float | None, minutes: float | None) -> dict[str, Any]:
-    """Pace for runs/walks/hikes (s/km), speed for rides (km/h), s/100 m for swims."""
-    if not km or not minutes or km <= 0 or minutes <= 0:
-        return {}
-    sec = minutes * 60
-    if sport == "bike":
-        return {"speed_kmh": round(km / (sec / 3600), 1)}
-    if sport == "swim":
-        return {"pace_s_100m": int(round(sec / (km * 10)))}
-    if sport in ("run", "hike", "walk", "brick"):
-        return {"pace_s_km": int(round(sec / km))}
-    return {}
+def pace_fields(sport: str, km: float | None, minutes: float | None, raw: str | None = None) -> dict[str, Any]:
+    """The rate that suits the workout's family (``sportfamily.pace_fields``)."""
+    return _sf.pace_fields(_sf.family(sport, raw), km, minutes)
 
 
 def splits_from(raw: Any) -> list[dict[str, Any]]:
@@ -807,6 +832,9 @@ class Community:
         if workout is not None:
             post["workout"] = {k: workout.get(k) for k in WORKOUT_FIELDS
                                if k in WORKOUT_FIELDS[:8] or workout.get(k) not in (None, "", [], False)}
+            if isinstance(post["workout"].get("legs"), list):
+                post["workout"]["legs"] = [{k: lg.get(k) for k in LEG_FIELDS if lg.get(k) is not None}
+                                           for lg in post["workout"]["legs"][:5] if isinstance(lg, dict)]
         if milestone is not None:
             post["milestone"] = {"type": milestone.get("type"), "key": milestone.get("key")}
         post["photos"] = self._attach_photos(uid, photo_ids, pid)
@@ -1267,10 +1295,10 @@ class Community:
             card = workout_card(acts, r["id"], today)
             if card is None:
                 continue
-            card["title"] = SPORT_TITLE.get(card["sport"], "Workout")
+            card["title"] = _sf.title(card["family"], card.get("kind"))
             card["auto"] = True
-            if isinstance(r["id"], int):  # Garmin: lap splits and the reward headline
-                card.update(self._extras(uid, r["id"]))
+            if isinstance(r["id"], int):  # Garmin: lap splits (where they mean something) and the reward headline
+                card.update(self._extras(uid, r["id"], splits=_sf.splits_ok(card["family"])))
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])
@@ -1309,10 +1337,14 @@ class Community:
             sport = str(w.get("sport") or "other")
             km = w.get("km") if isinstance(w.get("km"), int | float) else None
             mins = w.get("minutes") if isinstance(w.get("minutes"), int | float) else None
-            card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport,
-                    "title": SPORT_TITLE.get(sport, "Workout"), "date": day,
+            raw = str(w.get("kind") or w.get("type") or w.get("name") or "")
+            fam = _sf.family(sport, raw)
+            if fam in _sf.NO_DISTANCE:
+                km = None
+            card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport, "family": fam,
+                    "title": _sf.title(fam, raw), "date": day,
                     "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
-                    "climb_m": None, "highlight": "", "auto": True, **pace_fields(sport, km, mins)}
+                    "climb_m": None, "highlight": "", "auto": True, **_sf.pace_fields(fam, km, mins)}
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])
@@ -1327,11 +1359,12 @@ class Community:
         live = [g for g in self.group_ids(a) if self.groups is not None and self.groups.is_member(g, uid)]
         return "grp:" + ",".join(live) if live else "private"
 
-    def _extras(self, uid: str, aid: int) -> dict[str, Any]:
-        """Split shape and reward headline for a workout card (both best effort)."""
+    def _extras(self, uid: str, aid: int, *, splits: bool = True) -> dict[str, Any]:
+        """Split shape (``splits``: only for families where laps mean something) and reward
+        headline for a workout card (both best effort)."""
         out: dict[str, Any] = {}
         try:
-            if self.splits is not None:
+            if splits and self.splits is not None:
                 sp = self.splits(uid, aid)
                 if sp:
                     out["splits"] = sp[:MAX_SPLITS]

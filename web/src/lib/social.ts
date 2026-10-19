@@ -1,7 +1,8 @@
 // Following friends: people you follow, their recent workouts, kudos and short cheers.
 import { getJSON, postJSON, sendJSON } from '@/lib/api'
-import { fmtClimb, fmtDist, fmtDuration } from '@/lib/format'
+import { fmtClimb, fmtDuration } from '@/lib/format'
 import { counted } from '@/lib/usage'
+import { famDist, noDistance, sportFamily } from '@/lib/sportstats'
 
 export type SocialUser = { id: string; name: string; photo: number | null; picture: string; handle?: string }
 export type FeedUser = SocialUser & { level: number | null; streak: number | null }
@@ -58,10 +59,12 @@ export function friendPhotoUrl(u: SocialUser): string | null {
 }
 
 /** "45 min · 8.2 km" from whatever the person shares. */
-export function workoutLine(it: Pick<FeedItem, 'minutes' | 'km' | 'climb_m'>, imperial = true): string {
+export function workoutLine(it: Pick<FeedItem, 'minutes' | 'km' | 'climb_m'> & { sport?: string }, imperial = true): string {
   const parts: string[] = []
+  const fam = sportFamily(it.sport)
   if (it.minutes != null) parts.push(fmtDuration(it.minutes))
-  if (it.km) parts.push(fmtDist(it.km, imperial))
+  // No distance for a gym, yoga or climbing session; swims in yards or meters.
+  if (it.km && !noDistance(fam)) parts.push(famDist(it.km, fam, imperial))
   if (it.climb_m && it.climb_m >= 100) parts.push(`${fmtClimb(it.climb_m, imperial)} up`)
   return parts.join(' · ')
 }

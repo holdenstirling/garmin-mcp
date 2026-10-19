@@ -55,8 +55,16 @@ export type PostWorkout = {
   /** where it came from: garmin (default), oura, whoop, apple, coros, strava… */
   source?: string
   km: number | null; minutes: number | null; climb_m: number | null; highlight: string
-  /** s/km (runs, walks, hikes) · km/h (rides) · s/100 m (swims) */
-  pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number
+  /** which numbers fit (lib/sportstats): run, walk, hike, ride, indoor_ride, swim, row, paddle, ski,
+   *  strength, mind, hiit, climb, brick, other; ``kind`` is Garmin's type (indoor_cycling, yoga) */
+  family?: string; kind?: string
+  /** the one rate that fits the family: s/km (runs, walks, hikes), km/h (rides), s/100 m (swims),
+   *  s/500 m (rows, paddles) */
+  pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number; pace_s_500m?: number
+  /** a ski day's vertical (m), a gym session's sets and reps */
+  vertical_m?: number; sets?: number; reps?: number
+  /** a multisport's legs, each with its own rate */
+  legs?: { family?: string; km?: number | null; minutes?: number | null; pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number; pace_s_500m?: number }[]
   /** lap shape: distance + time per lap (no HR, no GPS) */
   splits?: { km: number; s: number }[]
   /** the workout reward's headline */

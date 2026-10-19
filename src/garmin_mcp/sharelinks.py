@@ -23,6 +23,7 @@ At most ``MAX_LINKS`` per person (oldest dropped) and ``CREATES_PER_DAY`` new li
 from __future__ import annotations
 
 from . import legal as _legal
+from . import sportfamily as _sf
 
 import hashlib
 import html
@@ -40,7 +41,6 @@ KM_PER_MI = 1.609344
 M_PER_YD = 0.9144
 SPORT_WORD = {"run": "run", "bike": "ride", "swim": "swim", "brick": "brick", "strength": "strength session",
               "walk": "walk", "hike": "hike", "trail": "trail run", "rest": "rest day"}
-SPORT_EMOJI = {"run": "🏃", "bike": "🚴", "swim": "🏊", "brick": "🔁", "strength": "💪", "walk": "🚶", "hike": "🥾"}
 
 
 class ShareError(Exception):
@@ -299,11 +299,16 @@ def activity_snap(view: dict[str, Any], *, who: str, imperial: bool, include_hr:
     sport = str(view.get("sport") or "other")
     garmin = view.get("source") == "garmin"
     hr_ok = include_hr and garmin  # imported (Oura...) workouts never share heart rate
+    fam = str(view.get("family") or sport)  # activitypage already keeps only the numbers that fit
+    p500 = int(round(_num(n.get("pace_s_per_500m")) or 0))
     facts = [fmt_dist(_num(n.get("km")), sport, imperial), fmt_seconds(_num(n.get("moving_s"))),
-             fmt_pace(_num(n.get("pace_s_per_km")), imperial) if sport in ("run", "walk", "hike") else "",
-             fmt_swim(_num(n.get("pace_s_per_100m")), imperial) if sport == "swim" else "",
+             fmt_pace(_num(n.get("pace_s_per_km")), imperial) if fam in ("run", "walk", "hike") else "",
+             fmt_swim(_num(n.get("pace_s_per_100m")), imperial) if fam == "swim" else "",
              (f"{(n['speed_kmh'] / KM_PER_MI if imperial else n['speed_kmh']):.1f} {'mph' if imperial else 'km/h'}"
-              if sport == "bike" and _num(n.get("speed_kmh")) else ""),
+              if fam in ("ride", "indoor_ride", "bike") and _num(n.get("speed_kmh")) else ""),
+             f"{p500 // 60}:{p500 % 60:02d} /500 m" if p500 else "",
+             (f"{round(n['vertical_m'] * 3.28084):,} ft down" if imperial else f"{round(n['vertical_m']):,} m down")
+             if _num(n.get("vertical_m")) else "",
              (f"{round(n['elevation_gain_m'] * 3.28084):,} ft climb" if imperial else f"{round(n['elevation_gain_m']):,} m climb")
              if _num(n.get("elevation_gain_m")) else ""]
     if hr_ok and _num(n.get("avg_hr")):
@@ -317,6 +322,7 @@ def activity_snap(view: dict[str, Any], *, who: str, imperial: bool, include_hr:
             row["hr"] = f"{round(lp['hr'])} bpm"
         laps.append(row)
     return {"kind": "activity", "who": _first(who), "title": str(view.get("name") or "Workout")[:80], "sport": sport,
+            "family": fam,
             "when": _day_label(view.get("start")), "date": str(view.get("start") or "")[:10],
             "facts": [f for f in facts if f], "laps": laps, "hr": bool(hr_ok),
             "source": "Garmin" if garmin else str(view.get("source") or "").title()}
@@ -372,7 +378,11 @@ def _description(snap: dict[str, Any]) -> str:
 
 def render(snap: dict[str, Any], *, url: str, og_image: str, cta_url: str, cta_label: str) -> str:
     k = snap.get("kind")
-    emoji = SPORT_EMOJI.get(str(snap.get("sport") or ""), "🐇")
+    # The sport as a word chip (rabbt's sport icons live in the app; no emoji here).
+    sport_chip = ""
+    if k in ("workout", "activity"):
+        fam = str(snap.get("family") or "") or _sf.family(str(snap.get("sport") or ""))
+        sport_chip = f"<span class=sport>{_e(_sf.title(fam))}</span>"
     title = snap.get("title") or "rabbt"
     head_line = {"workout": f"{snap.get('who')}'s planned workout", "activity": f"{snap.get('who')}'s workout",
                  "event": f"{snap.get('who')} shared an event", "club": f"{snap.get('who')} shared a club",
@@ -428,10 +438,11 @@ main{{max-width:620px;margin:0 auto;padding:20px 16px 40px}}.brand{{display:flex
 .note{{margin:10px 0 0}}h2{{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:20px 0 6px}}
 table{{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}}th{{text-align:left;font-weight:600;padding:8px 10px 8px 0;vertical-align:top;white-space:nowrap}}
 td{{padding:8px 6px 8px 0}}tr{{border-bottom:1px solid var(--line)}}.t{{color:var(--muted);font-size:14px}}
+.sport{{display:inline-block;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600;margin:2px 0 6px}}
 .cta{{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;border-radius:12px;padding:14px;margin-top:18px}}
 @media (prefers-color-scheme:dark){{.cta{{color:#0f1a14}}}}footer{{margin-top:18px;color:var(--muted);font-size:13px}}</style></head>
 <body><main><div class=brand><span aria-hidden="true">🐇</span>rabbt</div>
-<div class=card><p class=kicker>{_e(head_line)}</p><h1>{_e(emoji)} {_e(title)}</h1>{''.join(body)}
+<div class=card><p class=kicker>{_e(head_line)}</p>{sport_chip}<h1>{_e(title)}</h1>{''.join(body)}
 <a class=cta href="{_e(cta_url)}">{_e(cta_label)}</a></div>
 <footer>{foot} The athlete can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
 
