@@ -1,7 +1,6 @@
 // Community → Clubs: your clubs (race groups appear on their own), invites, clubs near you,
 // "Clubs & leagues near you" (Rabbit's public-web directory, Directory.tsx), create / join by code, and a club page
 // (feed, meetups with RSVP, club challenges, members and join requests).
-import type React from 'react'
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useState } from 'react'
@@ -17,7 +16,9 @@ import { EmptyRabbit, HopIn, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ShareButton } from '@/components/ui/ShareSheet'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { Group, Row } from '@/components/settings/Grouped'
+import { Row } from '@/components/settings/Grouped'
+import { RowGroup } from './RowGroup'
+import { Section } from '@/components/ui/section'
 import { Card, Field, OptionCard, Screen, inputCls } from '@/components/plan/ui'
 import { PublicEventsNear } from '@/components/events/PublicEventsNear'
 import { getChallenges, targetLine, type Suggestion } from '@/lib/challenges'
@@ -54,8 +55,12 @@ function ClubIcon({ c, size = 40 }: { c: Pick<ClubSummary, 'emoji'>; size?: numb
 }
 
 const where = (c: Pick<ClubSummary, 'city' | 'state'>) => [c.city, c.state].filter(Boolean).join(', ')
-const sub = (c: ClubSummary) => [SPORT_LABEL[c.sport] ?? null, where(c) || null, `${c.members} member${c.members === 1 ? '' : 's'}`]
-  .filter(Boolean).join(' · ')
+/** The same facts as two short lines (kind and size, then where) for list rows. */
+const subLines = (c: ClubSummary, extra?: string | null) => {
+  const top = [SPORT_LABEL[c.sport] ?? null, `${c.members} member${c.members === 1 ? '' : 's'}`].filter(Boolean).join(' · ')
+  const w = where(c)
+  return <>{top}{extra ? `, ${extra}` : ''}{w && <><br />{w}</>}</>
+}
 
 export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; openId: string | null; onOpen: (id: string | null) => void }) {
   const [data, setData] = useState<ClubsView | null>(null)
@@ -97,10 +102,10 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
     <>
       {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
       {data.invites.length > 0 && (
-        <Group label="Invites">
+        <RowGroup title="Invites">
           {data.invites.map((c) => (
-            <Row key={c.id} icon={<ClubIcon c={c} size={30} />} title={c.name}
-              subtitle={c.invited_by ? `${c.invited_by.name} invited you` : sub(c)}
+            <Row key={c.id} icon={<ClubIcon c={c} size={40} />} title={c.name}
+              subtitle={c.invited_by ? `${c.invited_by.name} invited you` : subLines(c)}
               trailing={
                 <span className="flex shrink-0 gap-1.5">
                   <Button variant="default" className="h-11 w-11 p-0" aria-label="Decline" disabled={busy != null}
@@ -110,57 +115,55 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
                 </span>
               } />
           ))}
-        </Group>
+        </RowGroup>
       )}
 
       {mine.length > 0 && (
-        <Group label="Your clubs">
+        <RowGroup title="Your clubs">
           {mine.map((c) => (
-            <Row key={c.id} icon={<ClubIcon c={c} size={30} />} title={c.name}
-              subtitle={`${sub(c)}${c.requests ? ` · ${c.requests} waiting` : ''}`}
+            <Row key={c.id} icon={<ClubIcon c={c} size={40} />} title={c.name}
+              subtitle={subLines(c, c.requests ? `${c.requests} waiting` : null)}
               trailing={<ChevronRight className="size-5 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
           ))}
-        </Group>
+        </RowGroup>
       )}
       {races.length > 0 && (
-        <Group label="Race crews" footer="Everyone racing the same event with you.">
+        <RowGroup title="Race crews" footer="Everyone racing the same event with you.">
           {races.map((c) => (
-            <Row key={c.id} icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={`${c.members} racing`}
+            <Row key={c.id} icon={<ClubIcon c={c} size={40} />} title={c.name} subtitle={`${c.members} racing`}
               trailing={<ChevronRight className="size-5 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
           ))}
-        </Group>
+        </RowGroup>
       )}
       {/* One search (names, partners, public listings) lives in the directory, partners first. */}
       <ClubDirectory imperial={imperial} onStartGroup={(l) => (l ? setStartFrom(l) : setCreating(true))} />
       <PublicEventsNear />
 
       {near.length > 0 && (
-        <Group label={home ? `rabbt clubs near ${home}` : 'rabbt clubs to join'}>
+        <RowGroup title={home ? `rabbt clubs near ${home}` : 'rabbt clubs to join'}>
           {near.map((c, i) => (
             <HopIn key={c.id} index={i} play={i < 5}>
-              <Row icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={c.description || sub(c)}
+              <Row icon={<ClubIcon c={c} size={40} />} title={c.name} subtitle={c.description ? <span className="line-clamp-2">{c.description}</span> : subLines(c)}
                 onClick={() => onOpen(c.id)} trailing={joinBtn(c)} />
             </HopIn>
           ))}
-        </Group>
+        </RowGroup>
       )}
 
-      <section aria-label="Your own club" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
-        <div>
-          <p className="text-body font-semibold text-(--text)">Have your own crew?</p>
-          <p className="text-meta text-(--text-muted)">Start a club for your Saturday group, or join one with its code.</p>
-        </div>
-        <Button variant="default" className="h-11 gap-1.5 text-small" onClick={() => setCreating(true)}>
+      <Section title="Have your own crew?" description="Start a club for your Saturday group, or join one with its code.">
+        <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+        <Button variant="default" className="h-12 gap-2 text-body" onClick={() => setCreating(true)}>
           <Plus className="size-5" /> Start a club
         </Button>
         <div className="flex items-center gap-2">
-          <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code, like ABCD2345" value={code}
+          <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code" value={code}
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && code.trim()) void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!") }} />
           <Button variant="default" className="h-11 shrink-0 px-3 text-small" loading={busy === 'code'} disabled={!code.trim()}
             onClick={() => void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!")}>Join</Button>
         </div>
-      </section>
+        </div>
+      </Section>
       {(creating || startFrom) && (
         <ClubSheet home={data.home}
           prefill={startFrom ? { name: startFrom.name.slice(0, 40), sport: clubSport(startFrom.kind), description: startFrom.description.slice(0, 300) } : undefined}
@@ -225,7 +228,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         </div>
       </Field>
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
-        <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Who can find and join it</h2>
+        <h3 className="section-title section-title--sm m-0 px-1">Who can find and join it</h3>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
           description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"
@@ -280,17 +283,17 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
   const tabs: [ClubView, string][] = c?.kind === 'race' ? [['feed', 'Feed'], ['members', 'Crew']]
     : [['feed', 'Feed'], ['meetups', 'Meetups'], ['challenges', 'Challenges'], ['members', 'Members']]
   const seg = member ? (
-    <div role="tablist" aria-label="Club" className="mx-auto mt-2 seg flex max-w-xl rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, tabs.findIndex(([v]) => v === view)), '--seg-n': tabs.length } as React.CSSProperties}>
-      <span className="seg__pill" aria-hidden />
+    <div role="tablist" aria-label="Club" className="no-scrollbar -mx-5 mt-1 flex gap-2 overflow-x-auto px-5 py-0.5">
       {tabs.map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-meta font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
-          {label}{v === 'members' && c?.pending.length ? ` · ${c.pending.length}` : ''}
+          className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-small font-semibold transition-colors',
+            view === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary) active:bg-(--border)')}>
+          {label}{v === 'members' && c?.pending.length ? ` (${c.pending.length} waiting)` : ''}
         </button>
       ))}
     </div>
   ) : undefined
-  const subtitle = c ? [c.kind === 'club' ? SPORT_LABEL[c.sport] : null, where(c) || null, `${c.members} member${c.members === 1 ? '' : 's'}`].filter(Boolean).join(' · ') : undefined
+  const subtitle = c ? `${[c.kind === 'club' ? SPORT_LABEL[c.sport] : 'Race crew', where(c) ? `in ${where(c)}` : null].filter(Boolean).join(' ')}. ${c.members} member${c.members === 1 ? '' : 's'}.` : undefined
   return (
     <Screen title={c?.name ?? 'Club'} subtitle={subtitle} closing={closing} onBack={close} onClose={close} headerExtra={seg}>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
@@ -302,10 +305,10 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           {c.description && <p className="text-body text-(--text-secondary)">{c.description}</p>}
           <p className="text-meta text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on rabbt can join.' : 'Admins approve new members.'}</p>
           {c.requested ? (
-            <Button variant="default" className="h-11 px-5 text-small" loading={busy}
-              onClick={() => { setBusy(true); void act(() => cancelJoinRequest(c.id), 'Request withdrawn.').finally(() => setBusy(false)) }}>Requested · withdraw</Button>
+            <Button variant="default" className="h-12 px-6 text-body" loading={busy}
+              onClick={() => { setBusy(true); void act(() => cancelJoinRequest(c.id), 'Request withdrawn.').finally(() => setBusy(false)) }}>Requested. Tap to withdraw</Button>
           ) : (
-            <Button variant="primary" className="h-11 px-5 text-small" loading={busy}
+            <Button variant="primary" className="h-12 px-6 text-body" loading={busy}
               onClick={(e) => { const el = e.currentTarget; setBusy(true); void act(async () => { const r = await joinClub(c.id); if (!r.club.requested) burst(el, 'kudos'); setMsg({ text: r.message, ok: true }) }).finally(() => setBusy(false)) }}>
               {c.privacy === 'open' ? 'Join club' : 'Ask to join'}
             </Button>
@@ -322,7 +325,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                 <MessagesSquare className="size-5" aria-hidden /> {c.kind === 'race' ? 'Crew chat' : 'Club chat'}
               </Button>
               {c.upcoming.length > 0 && (
-                <section aria-label="Upcoming races" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+                <section aria-label="Upcoming races" className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1">
                   {c.upcoming.map((u) => (
                     <div key={`${u.name}-${u.date}`} className="flex min-w-[11rem] snap-start flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
                       <span className="flex items-center gap-1 text-caption font-semibold text-(--accent)"><Flag className="size-3.5" /> Racing</span>
@@ -395,7 +398,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           {view === 'members' && (
             <>
               {admin && c.pending.length > 0 && (
-                <Group label="Asking to join">
+                <RowGroup title="Asking to join">
                   {c.pending.filter((u): u is SocialUser => !!u).map((u) => (
                     <Row key={u.id} icon={<TapAvatar p={u} size={30} />} title={<PersonLink id={u.id} name={u.name} />}
                       trailing={
@@ -408,7 +411,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                         </span>
                       } />
                   ))}
-                </Group>
+                </RowGroup>
               )}
               {(canInvite || c.code) && c.kind === 'club' && (
                 <Card className="flex flex-col gap-2 p-3.5">
@@ -435,7 +438,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                   )}
                 </Card>
               )}
-              <Group label={c.kind === 'race' ? 'Racing together' : 'Members'}>
+              <RowGroup title={c.kind === 'race' ? 'Racing together' : 'Members'}>
                 {c.people.map((p) => (
                   <Row key={p.user_id} icon={p.user ? <TapAvatar p={p.user} size={30} /> : <PersonAvatar u={null} size={30} />}
                     title={<PersonLink id={p.user ? p.user_id : null} name={p.user?.name ?? 'Member'} />}
@@ -455,9 +458,9 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                       </span>
                     ) : undefined} />
                 ))}
-              </Group>
+              </RowGroup>
               {c.kind === 'club' && (
-                <Group>
+                <RowGroup>
                   {admin && <Row title="Edit club" subtitle="Name, sport, city, who can join" onClick={() => setSheet('edit')} />}
                   <Row icon={<LogOut className="size-5" />} title="Leave club" danger
                     onClick={() => { void confirmAsk(`Leave ${c.name}?`, { confirm: 'Leave', danger: true }).then((ok) => { if (ok) void act(() => leaveClub(c.id), undefined, close) }) }} />
@@ -465,7 +468,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                     <Row icon={<Trash2 className="size-5" />} title="Delete club" danger
                       onClick={() => { void confirmAsk(`Delete ${c.name} for everyone?`, { detail: 'Posts stay with their authors.', confirm: 'Delete', danger: true }).then((ok) => { if (ok) void act(() => deleteClub(c.id), undefined, close) }) }} />
                   )}
-                </Group>
+                </RowGroup>
               )}
               {c.kind === 'race' && <p className="px-1 text-meta text-(--text-muted)">Race crews follow the race. Leave from the race's people in Events.</p>}
             </>
@@ -645,14 +648,14 @@ function InviteSheet({ club, onClose }: { club: ClubDetail; onClose: () => void 
       {!people && !error && <RabbitLoader className="py-6" label="Loading friends" />}
       {people && people.length === 0 && <p className="text-small text-(--text-muted)">Everyone you follow is already here. Share the club code instead.</p>}
       {people && people.length > 0 && (
-        <Group footer="People you follow or who follow you.">
+        <RowGroup footer="People you follow or who follow you.">
           {people.map((u) => (
             <Row key={u.id} icon={<PersonAvatar u={u} size={30} />} title={u.name}
               trailing={sent.has(u.id) ? <span className="text-meta text-(--accent)">Invited</span> : (
                 <Button variant="default" className="h-11 px-3 text-meta" onClick={(e) => void invite(u, e.currentTarget)}>Invite</Button>
               )} />
           ))}
-        </Group>
+        </RowGroup>
       )}
     </Sheet>
   )

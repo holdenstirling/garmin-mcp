@@ -3919,7 +3919,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             name=_soc_name, home=_cm_home, today=lambda u: _ag._now(u).date(),
             public_events=lambda: (_pubev._doc.load().get("items") or {}),
             events=lambda u: _ag.events.list(u), post_unread=lambda u: (cm._mine(u).load().get("unread") or {}),
-            mentions=cm.mentions_for)
+            mentions=cm.mentions_for, comment_likes=cm.likes_for)
         community_routes += _pplw.make_routes(people=people_svc, wrap=_cd_wrap, read_json=read_json,
                                               club_chat=_ppl_club_chat, on_follow=_ppl_on_follow)
 

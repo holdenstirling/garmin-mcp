@@ -53,14 +53,19 @@ export function AreaBar({ imperial, what = 'clubs, leagues and meetups', classNa
     <>
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
         aria-label={where ? `Your area: near ${where}, within ${radiusLabel(r, imperial)}. Change` : 'Set your area'}
-        className={cn('flex min-h-11 w-full items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 text-left active:bg-(--bg-inset)', className)}>
-        <MapPin className="size-5 shrink-0 text-(--accent)" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-small text-(--text)" aria-hidden>
-          {s === null ? <span className="text-(--text-muted)">Finding your area…</span>
-            : where ? <>Near <span className="font-semibold">{where}</span> · within {radiusLabel(r, imperial)}</>
-            : <span className="font-medium text-(--accent)">Set your area to see what's near you</span>}
+        className={cn('flex min-h-14 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-2.5 text-left active:bg-(--bg-inset)', className)}>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
+          <MapPin className="size-5" />
         </span>
-        <span className="shrink-0 text-meta font-medium text-(--accent)" aria-hidden>{where ? 'Change' : 'Set'}</span>
+        <span className="min-w-0 flex-1" aria-hidden>
+          {s === null ? <span className="block text-body text-(--text-muted)">Finding your area…</span>
+            : where ? <>
+                <span className="block text-body font-semibold leading-snug text-(--text)">Near {where}</span>
+                <span className="block text-meta text-(--text-muted)">Within {radiusLabel(r, imperial)}</span>
+              </>
+            : <span className="block text-body font-semibold text-(--accent)">Set your area to see what's near you</span>}
+        </span>
+        <span className="hidden shrink-0 text-body font-semibold text-(--accent) min-[380px]:inline" aria-hidden>{where ? 'Change' : 'Set'}</span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       {open && <AreaSheet state={s} imperial={imperial} what={what} onClose={() => setOpen(false)}

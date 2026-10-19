@@ -86,11 +86,12 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
               {found.length > 0 && (
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {found.map((f) => (
-                    <li key={f.user.id} className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
+                    <li key={f.user.id} className="flex min-h-16 items-center gap-3 px-4 py-3">
                       <PersonAvatar p={f.user} size={44} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-lead font-medium text-(--text)">{f.user.name}</span>
-                        <span className="block truncate text-meta text-(--text-muted)">{[f.user.handle ? `@${f.user.handle}` : '', f.contact.name && !f.contact.name.toLowerCase().startsWith(f.user.name.toLowerCase()) ? `In your contacts as ${f.contact.name}` : 'In your contacts'].filter(Boolean).join(' · ')}</span>
+                        <span className="block text-lead font-semibold leading-snug text-(--text)">{f.user.name}</span>
+                        {f.user.handle && <span className="block text-meta text-(--text-muted)">@{f.user.handle}</span>}
+                        <span className="block text-meta text-(--text-secondary)">{f.contact.name && !f.contact.name.toLowerCase().startsWith(f.user.name.toLowerCase()) ? `In your contacts as ${f.contact.name}` : 'In your contacts'}</span>
                       </span>
                       <FollowButton key={f.status} uid={f.user.id} status={f.status} followsYou={f.follows_you} onError={setErr} />
                     </li>

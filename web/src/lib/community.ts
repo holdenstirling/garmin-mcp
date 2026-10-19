@@ -65,7 +65,13 @@ export type PostWorkout = {
   auto?: boolean
 }
 export type PostComment = {
-  id: string; by: { id: string; name: string }; text: string; ts: number; parent: string | null; mine: boolean; can_delete: boolean
+  id: string; by: { id: string; name: string; photo?: number | null; picture?: string; handle?: string }; text: string; ts: number; parent: string | null; mine: boolean; can_delete: boolean
+  /** only the author can edit; ``edited`` is when they last did */
+  can_edit?: boolean; edited?: number | null
+  /** likes, without anyone blocked either way */
+  like_count?: number; liked?: boolean
+  /** the feed preview: how many replies this comment has (they show on the post's page) */
+  reply_count?: number
   /** people @mentioned (links in the text, current names) */
   mentions?: { id: string; name: string }[]
 }
@@ -176,6 +182,13 @@ export const addComment = (id: string, text: string, replyTo?: string | null) =>
   postJSON<{ comment: PostComment }>(`${pp(id)}/comments`, { text, reply_to: replyTo ?? null })
 export const deleteComment = (id: string, cid: string) =>
   sendJSON<{ ok: boolean }>('DELETE', `${pp(id)}/comments/${encodeURIComponent(cid)}`)
+export const editComment = (id: string, cid: string, text: string) =>
+  sendJSON<{ comment: PostComment }>('PATCH', `${pp(id)}/comments/${encodeURIComponent(cid)}`, { text })
+/** Like (``on``) or unlike a comment; idempotent. */
+export const likeComment = (id: string, cid: string, on: boolean) =>
+  sendJSON<{ comment: PostComment }>(on ? 'POST' : 'DELETE', `${pp(id)}/comments/${encodeURIComponent(cid)}/like`)
+export const commentLikers = (id: string, cid: string) =>
+  getJSON<{ people: SocialUser[] }>(`${pp(id)}/comments/${encodeURIComponent(cid)}/likes`)
 export const hidePost = (id: string) => postJSON<{ ok: boolean; message: string }>(`${pp(id)}/hide`)
 export const reportPost = (id: string, reason?: string) => postJSON<{ ok: boolean; message: string }>(`${pp(id)}/report`, { reason })
 export const postPhotoUrls = (p: Post) => p.photos.map((v, i) => `/app${pp(p.id)}/photos/${i}?v=${v}`)

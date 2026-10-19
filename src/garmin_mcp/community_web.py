@@ -15,6 +15,10 @@ with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, c
     POST   /app/api/community/posts/{pid}/comments   {text, reply_to?} (text may hold @[Name](uid) mentions)
     GET    /app/api/community/mentionable?pid=|audience=  people the viewer can @mention there
     DELETE /app/api/community/posts/{pid}/comments/{cid}
+    PATCH  /app/api/community/posts/{pid}/comments/{cid}           {text}  (the comment's author)
+    POST   /app/api/community/posts/{pid}/comments/{cid}/like      like (idempotent)
+    DELETE /app/api/community/posts/{pid}/comments/{cid}/like      unlike
+    GET    /app/api/community/posts/{pid}/comments/{cid}/likes     who liked it
     POST   /app/api/community/posts/{pid}/hide
     POST   /app/api/community/posts/{pid}/report     {reason?}
     POST   /app/api/community/photos                 raw JPEG/WebP body -> {photo_id}
@@ -115,9 +119,19 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
     def cid_of(request: Request) -> str:
         return valid_cid(request.path_params["club_id"])
 
+    def by_of(uid: str, cache: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+        if cache is not None and uid in cache:
+            return cache[uid]
+        u = person(uid) or {}
+        out = {**u, "id": uid, "name": first_name(uid)}
+        if cache is not None:
+            cache[uid] = out
+        return out
+
     def deco(p: dict[str, Any]) -> dict[str, Any]:
+        seen: dict[str, dict[str, Any]] = {}
         return {**p, "user": person(p["author"]),
-                "comments": [{**c, "by": {"id": c["by"], "name": first_name(c["by"])}} for c in p.get("comments") or []]}
+                "comments": [{**c, "by": by_of(c["by"], seen)} for c in p.get("comments") or []]}
 
     # ------------------------------------------------------------- feed --
     async def feed(request: Request, user_id: str) -> Response:
@@ -201,7 +215,31 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         pid = pid_of(request)
         b = await body_of(request)
         c = await run(lambda: cm.comment(user_id, pid, b.get("text"), b.get("reply_to")))
-        return JSONResponse({"comment": {**c, "by": {"id": user_id, "name": first_name(user_id)}}}, status_code=201)
+        return JSONResponse({"comment": {**c, "by": by_of(user_id)}}, status_code=201)
+
+    def comment_id(request: Request) -> str:
+        cid = str(request.path_params["comment_id"])[:40]
+        if not cid.startswith("c"):
+            raise CommunityError("comment not found", 404)
+        return cid
+
+    async def comment_edit(request: Request, user_id: str) -> Response:
+        pid, cid = pid_of(request), comment_id(request)
+        b = await body_of(request)
+        c = await run(lambda: cm.edit_comment(user_id, pid, cid, b.get("text")))
+        return JSONResponse({"comment": {**c, "by": by_of(user_id)}})
+
+    async def comment_like(request: Request, user_id: str) -> Response:
+        pid, cid = pid_of(request), comment_id(request)
+        on = request.method == "POST"
+        c = await run(lambda: cm.like_comment(user_id, pid, cid, on))
+        return JSONResponse({"comment": {**c, "by": by_of(c["by"])}})
+
+    async def comment_likers(request: Request, user_id: str) -> Response:
+        pid, cid = pid_of(request), comment_id(request)
+        ids = await run(lambda: cm.comment_likers(user_id, pid, cid))
+        people = [u for u in (person(i) or (by_of(i) if i == user_id else None) for i in ids[:200]) if u]
+        return JSONResponse({"people": people})
 
     async def mentionable(request: Request, user_id: str) -> Response:
         """People the viewer can @mention on a post (``pid``) or in a new post (``audience``)."""
@@ -498,6 +536,9 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         Route(f"{P}/posts/{{post_id}}/comments", wrap(comment_add, mutating=True), methods=["POST"]),
         Route(f"{P}/mentionable", wrap(mentionable, mutating=False), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}/comments/{{comment_id}}", wrap(comment_delete, mutating=True), methods=["DELETE"]),
+        Route(f"{P}/posts/{{post_id}}/comments/{{comment_id}}", wrap(comment_edit, mutating=True), methods=["PATCH"]),
+        Route(f"{P}/posts/{{post_id}}/comments/{{comment_id}}/like", wrap(comment_like, mutating=True), methods=["POST", "DELETE"]),
+        Route(f"{P}/posts/{{post_id}}/comments/{{comment_id}}/likes", wrap(comment_likers, mutating=False), methods=["GET"]),
         Route(f"{P}/posts/{{post_id}}/hide", wrap(hide, mutating=True), methods=["POST"]),
         Route(f"{P}/posts/{{post_id}}/report", wrap(report, mutating=True), methods=["POST"]),
         Route(f"{P}/photos", photo_upload, methods=["POST"]),

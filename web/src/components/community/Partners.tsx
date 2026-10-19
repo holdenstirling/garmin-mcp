@@ -62,12 +62,12 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
   const [open, setOpen] = useState<Partner | null>(null)
   if (!partners.length) return null
   return (
-    <section aria-label="Partners near you" className="flex flex-col gap-1.5">
-      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Partners near you</h2>
+    <section aria-label="Partners near you" className="flex flex-col gap-3">
+      <h2 className="section-title m-0 px-1">Partners near you</h2>
       {partners.map((p) => (
         <button key={p.id} type="button" onClick={() => setOpen(p)}
           aria-label={`Partner: ${p.name}${p.tagline ? `, ${p.tagline}` : ''}. Open details`}
-          className="flex w-full items-center gap-3 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5 text-left active:opacity-80">
+          className="flex w-full items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4 text-left active:opacity-80">
           <Monogram p={p} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
@@ -91,14 +91,15 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
 export function PartnerRow({ p, onOpen }: { p: Partner; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} aria-label={`Partner: ${p.name}. Open details`}
-      className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3 py-2 text-left active:opacity-80">
-      <Monogram p={p} size={36} />
+      className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-4 py-3 text-left active:opacity-80">
+      <Monogram p={p} size={40} />
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="truncate text-body font-semibold text-(--text)">{p.name}</span>
+        <span className="block text-body-lg font-semibold leading-snug text-(--text)">{p.name}</span>
+        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           <PartnerBadge />
+          {p.kind_label && <span className="text-meta text-(--text-secondary)"><KindIcon p={p} />{p.kind_label}</span>}
         </span>
-        <span className="block truncate text-meta text-(--text-secondary)"><KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}</span>
+        {p.tagline && <span className="mt-0.5 line-clamp-2 block text-meta text-(--text-secondary)">{p.tagline}</span>}
       </span>
       <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
@@ -185,34 +186,34 @@ export function SponsoredCard({ placement, zip, card: given, className }: {
   const tap = () => { if (counting()) countSponsored(card.id, 'tap', placement).catch(() => {}); setOpen(true) }
   const hide = () => { setGone(true); hideSponsored(card.id, placement).catch(() => {}) }
   return (
-    <section aria-label={`Sponsored partner: ${card.name}`} className={cn('flex flex-col gap-1.5', className)}>
+    <section aria-label={`Sponsored partner: ${card.name}`} className={cn('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-1 pl-1">
-        <span className="text-caption font-semibold text-(--text-muted)">Sponsored partner</span>
+        <span className="text-meta font-semibold text-(--text-secondary)">Sponsored partner</span>
         <span className="flex-1" />
         <button type="button" onClick={hide} aria-label={`Hide ${card.name} here`}
-          className="hit-44 flex items-center gap-1 rounded-full px-2 text-caption text-(--text-muted)">
+          className="flex min-h-11 items-center gap-1 rounded-full px-2 text-meta font-medium text-(--text-muted)">
           <X className="size-4" aria-hidden /> Hide
         </button>
       </div>
       <button type="button" onClick={tap} aria-label={`Sponsored: ${card.name}${card.tagline ? `, ${card.tagline}` : ''}. Open details`}
-        className="flex w-full items-center gap-3 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5 text-left active:opacity-80">
+        className="flex w-full items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4 text-left active:opacity-80">
         <Monogram p={card} />
         <span className="min-w-0 flex-1">
-          <span className="mb-1 inline-flex items-center rounded-full bg-(--bg-surface) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">Sponsored</span>
-          <span className="block text-body-lg font-semibold leading-snug text-(--text)">{card.name}</span>
-          <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">
-            <KindIcon p={card} />{[card.kind_label, card.tagline].filter(Boolean).join(' · ')}
-          </span>
+          <span className="block text-lead font-semibold leading-snug text-(--text)">{card.name}</span>
+          {card.kind_label && (
+            <span className="mt-0.5 block text-meta font-medium text-(--text-secondary)"><KindIcon p={card} />{card.kind_label}</span>
+          )}
+          {card.tagline && <span className="mt-0.5 line-clamp-2 block text-meta text-(--text-secondary)">{card.tagline}</span>}
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       <button type="button" aria-expanded={why} onClick={() => setWhy((v) => !v)}
-        className="hit-44 flex items-center gap-1 self-start px-1 text-caption text-(--text-muted)">
-        <Info className="size-3.5" aria-hidden /> Why am I seeing this?
-        <ChevronDown className={cn('size-3.5 transition-transform', why && 'rotate-180')} aria-hidden />
+        className="flex min-h-11 items-center gap-1.5 self-start px-1 text-meta text-(--text-muted)">
+        <Info className="size-4" aria-hidden /> Why am I seeing this?
+        <ChevronDown className={cn('size-4 transition-transform', why && 'rotate-180')} aria-hidden />
       </button>
       {why && (
-        <p className="px-1 text-caption leading-snug text-(--text-muted)">
+        <p className="m-0 px-1 text-meta leading-snug text-(--text-muted)">
           {card.why ?? `${card.name} is a rabbt partner shown to people in its area.`} rabbt doesn't share anything about you with partners.
         </p>
       )}

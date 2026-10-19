@@ -56,8 +56,8 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
   if (!state) return error ? <ErrorState compact message={error} onRetry={() => void load()} /> : <RabbitLoader className="py-6" label="Loading training buddies" cycle={LOADING} />
   const p = state.profile
   return (
-    <section aria-label="Training buddies" className="flex flex-col gap-1.5">
-      <h2 className="font-sans px-4 text-caption font-semibold text-(--text-muted)">Training buddies</h2>
+    <section aria-label="Training buddies" className="flex flex-col gap-3">
+      <h2 className="section-title m-0 px-1">Training buddies</h2>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!p ? (
         <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
@@ -118,8 +118,8 @@ function MatchCard({ m, imperial, onHi, onNotNow }: { m: BuddyMatch; imperial: b
       <div className="flex items-center gap-3">
         <TapAvatar p={m.person} size={40} />
         <div className="min-w-0 flex-1">
-          <PersonLink id={m.person.id} name={m.person.name} className="block truncate text-body-lg font-semibold text-(--text)" />
-          <p className="truncate text-meta text-(--text-muted)">
+          <PersonLink id={m.person.id} name={m.person.name} className="block text-body-lg font-semibold text-(--text)" />
+          <p className="text-meta text-(--text-muted)">
             {m.following && m.follows_you ? 'Friends' : m.following ? 'You follow them' : m.follows_you ? 'Follows you' : m.city}
           </p>
         </div>
@@ -127,9 +127,11 @@ function MatchCard({ m, imperial, onHi, onNotNow }: { m: BuddyMatch; imperial: b
       <ul className="flex flex-wrap gap-1.5" aria-label="Why you match">
         {m.chips.map((c) => <li key={c} className="rounded-full bg-(--accent-subtle) px-2.5 py-1 text-meta font-medium text-(--accent)">{c}</li>)}
       </ul>
-      <p className="text-small leading-snug text-(--text-secondary)">
-        {[band && `Easy ${band}`, m.slots.length ? slotsText(m.slots.slice(0, 4)) : '', m.race && `Training for ${m.race}`].filter(Boolean).join(' · ')}
-      </p>
+      <div className="flex flex-col gap-0.5 text-small leading-snug text-(--text-secondary)">
+        {band && <p className="m-0">Easy pace {band}</p>}
+        {m.slots.length > 0 && <p className="m-0">{slotsText(m.slots.slice(0, 4))}</p>}
+        {m.race && <p className="m-0">Training for {m.race}</p>}
+      </div>
       {m.note && <p className="text-small italic leading-snug text-(--text)">“{m.note}”</p>}
       <div className="flex gap-2">
         <Button variant="primary" className="h-11 flex-1 gap-1.5" onClick={onHi}><MessageCircle className="size-5" aria-hidden />Say hi</Button>

@@ -10,7 +10,8 @@ import { EmptyRabbit, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { Sheet } from '@/components/ui/Sheet'
-import { Group, Row } from '@/components/settings/Grouped'
+import { Row } from '@/components/settings/Grouped'
+import { RowGroup } from './RowGroup'
 import { Field, Screen, inputCls } from '@/components/plan/ui'
 import type { SocialUser } from '@/lib/social'
 import { TAB_SHOWN_EVENT } from '@/lib/nav'
@@ -127,10 +128,10 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
   const shown = term ? list.filter((p) => p.name.toLowerCase().includes(term)) : list
   const chosen = list.filter((p) => picked.includes(p.id))
   return (
-    <section aria-label="People in the group" className="flex flex-col gap-2">
-      <p className="px-1 text-caption font-semibold text-(--text-muted)">
-        People {picked.length > 0 && `· ${picked.length} picked`}
-      </p>
+    <section aria-label="People in the group" className="flex flex-col gap-3">
+      <h3 className="section-title section-title--sm m-0 px-1">
+        People{picked.length > 0 && <span className="font-normal text-(--text-muted)"> ({picked.length} picked)</span>}
+      </h3>
       {chosen.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Picked">
           {chosen.map((p) => (
@@ -243,13 +244,13 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
       {([['feed', 'Feed'], ['members', 'Members']] as const).map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
           className={cn('min-h-11 flex-1 rounded-full text-meta font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
-          {label}{v === 'members' && g ? ` · ${g.count}` : ''}
+          {label}{v === 'members' && g ? ` (${g.count})` : ''}
         </button>
       ))}
     </div>
   )
   return (
-    <Screen title={g ? `${g.emoji} ${g.name}` : 'Group'} subtitle={g ? `${g.count} of ${g.max} · only the group sees posts here` : undefined}
+    <Screen title={g ? `${g.emoji} ${g.name}` : 'Group'} subtitle={g ? `${g.count} of ${g.max} people. Only the group sees posts here.` : undefined}
       closing={closing} onBack={close} onClose={close} headerExtra={seg}>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!g && !error && <RabbitLoader className="py-10" label="Loading group" />}
@@ -260,7 +261,7 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
           <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('add')}>
             <UserPlus className="size-5" /> Invite friends
           </Button>
-          <Group label="Members">
+          <RowGroup title="Members">
             {g.members.length === 0 && <EmptyRabbit size={40} mode="peek" title="Just you so far" body="Invite friends who follow you back." />}
             {g.members.map((m, i) => (
               <Row key={m?.id ?? i} icon={m ? <TapAvatar p={m} size={30} /> : <PersonAvatar u={null} size={30} />}
@@ -274,8 +275,8 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
                   </Button>
                 ) : undefined} />
             ))}
-          </Group>
-          <Group>
+          </RowGroup>
+          <RowGroup>
             {g.owner && <Row icon={<Pencil className="size-5" />} title="Rename or change emoji" onClick={() => setSheet('edit')} />}
             <Row icon={<LogOut className="size-5" />} title="Leave group" danger
               onClick={() => setConfirm({ title: `Leave ${g.name}?`, body: "You won't see its posts any more. A member can add you back.",
@@ -285,7 +286,7 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
                 onClick={() => setConfirm({ title: `Delete ${g.name}?`, body: 'The group goes away for everyone. Posts stay with their authors, seen by nobody else.',
                   action: 'Delete group', run: () => act(() => deleteGroup(g.id), close) })} />
             )}
-          </Group>
+          </RowGroup>
         </>
       )}
       {g && (

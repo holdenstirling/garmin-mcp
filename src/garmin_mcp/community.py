@@ -86,6 +86,8 @@ FEED_FOLLOWEES = 500
 PREVIEW_COMMENTS = 2
 PUSH_EVERY_S = 3600
 MAX_MENTION_ITEMS = 50   # newest @mentions kept per person for the bell
+MAX_LIKE_ITEMS = 50      # newest liked-comment bell items kept per person
+LIKES_PER_DAY = 500
 POSTS_PER_DAY = 20
 COMMENTS_PER_DAY = 100
 PHOTO_MAX = 800 * 1024
@@ -654,7 +656,7 @@ class Community:
             if r.get("day") != today:
                 r = {"day": today}
             if int(r.get(what) or 0) >= limit:
-                noun = "posts" if what == "posts" else "comments"
+                noun = {"posts": "posts", "likes": "likes"}.get(what, "comments")
                 raise CommunityError(f"That's {limit} {noun} today, the daily limit. Try again tomorrow.", 429)
             r[what] = int(r.get(what) or 0) + 1
             d["rate"] = r
@@ -672,7 +674,13 @@ class Community:
         comments = [c for c in post.get("comments") or [] if c["by"] == viewer or not self.social.blocked_between(viewer, c["by"])]
         top = {c["id"] for c in comments if not c.get("parent")}
         comments = [c for c in comments if not c.get("parent") or c["parent"] in top]
-        shown = comments if all_comments else comments[-PREVIEW_COMMENTS:]
+        # The feed shows the newest conversations (top-level comments, each with how many replies
+        # it has); the post's own page shows everything.
+        shown = comments if all_comments else [c for c in comments if not c.get("parent")][-PREVIEW_COMMENTS:]
+        replies: dict[str, int] = {}
+        for c in comments:
+            if c.get("parent"):
+                replies[c["parent"]] = replies.get(c["parent"], 0) + 1
         v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
         out = {k: post.get(k) for k in ("id", "author", "kind", "category", "text", "feeling", "event", "workout",
                                          "milestone", "created", "edited")}
@@ -686,9 +694,7 @@ class Community:
             **({"photo_ids": [p["id"] for p in photos if p.get("id")]} if mine else {}),
             "reactions": counts, "reaction_total": sum(counts.values()), "my_reaction": reactions.get(viewer),
             "comment_count": len(comments),
-            "comments": [{"id": c["id"], "by": c["by"], "ts": c["ts"], "parent": c.get("parent"),
-                          **dict(zip(("text", "mentions"), self._shown_mentions(viewer, c), strict=True)),
-                          "mine": c["by"] == viewer, "can_delete": c["by"] == viewer or mine} for c in shown],
+            "comments": [{**self._comment_view(viewer, c, mine), "reply_count": replies.get(c["id"], 0)} for c in shown],
         })
         if v.startswith("club:"):
             out["club"] = {"id": v[5:], "name": self.clubs.name_of(v[5:], viewer) or "Club"}
@@ -696,6 +702,14 @@ class Community:
             gs = [self.groups.brief(g, viewer) for g in self.group_ids(v)] if self.groups is not None else []
             out["groups"] = [g for g in gs if g]
         return out
+
+    def _comment_view(self, viewer: str, c: dict[str, Any], post_mine: bool) -> dict[str, Any]:
+        likes = [u for u in c.get("likes") or [] if u == viewer or not self.social.blocked_between(viewer, u)]
+        text, shown = self._shown_mentions(viewer, c)
+        return {"id": c["id"], "by": c["by"], "ts": c["ts"], "parent": c.get("parent"), "text": text,
+                "mentions": shown, "mine": c["by"] == viewer, "can_delete": c["by"] == viewer or post_mine,
+                "can_edit": c["by"] == viewer, "edited": c.get("edited"),
+                "like_count": len(likes), "liked": viewer in likes}
 
     # ------------------------------------------------------------ posts --
     def _event_link(self, uid: str, eid: Any) -> dict[str, Any] | None:
@@ -1036,8 +1050,114 @@ class Community:
             self._notify(to, pid, f"{self._name(viewer)} replied", said)
         # The owner and the person replied to already got a push for this comment.
         self._tell_mentioned(viewer, post, c["id"], mids, skip={owner, to or ""})
-        text, shown = self._shown_mentions(viewer, c)
-        return {**c, "text": text, "mentions": shown, "mine": True, "can_delete": True}
+        return self._comment_view(viewer, c, owner == viewer)
+
+    def edit_comment(self, viewer: str, pid: Any, cid: Any, text: Any) -> dict[str, Any]:
+        """The comment's author rewrites it. Only people newly @mentioned hear about it."""
+        self.require(viewer)
+        body = _mtext(text, COMMENT_LEN, what="Comment")
+        if not body:
+            raise CommunityError("Write a comment first.")
+        owner, post = self._load(viewer, pid)
+        body, mids = self._mentions(viewer, body, post)
+        before: list[str] = []
+
+        def fn(p: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+            c = next((x for x in p.get("comments") or [] if x["id"] == cid and x["by"] == viewer), None)
+            if c is None:
+                raise CommunityError("comment not found", 404)
+            before.extend(c.get("mentions") or [])
+            if c["text"] != body:
+                c["text"], c["mentions"], c["edited"] = body, mids, int(self._clock())
+            return p, c
+        post, c = self._touch(owner, pid, fn)
+        self._tell_mentioned(viewer, post, c["id"], [m for m in mids if m not in before], skip=set())
+        return self._comment_view(viewer, c, owner == viewer)
+
+    # ------------------------------------------------------------ likes --
+    def like_comment(self, viewer: str, pid: Any, cid: Any, on: bool = True) -> dict[str, Any]:
+        """Like (or unlike) a comment. Idempotent. The comment's author gets one bell item per
+        comment ("Jesse and 2 others liked your comment") and at most one push an hour."""
+        self.require(viewer)
+        owner, _ = self._load(viewer, pid)
+        if on:
+            self._take(viewer, "likes", LIKES_PER_DAY)
+
+        def fn(p: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], bool]:
+            c = next((x for x in p.get("comments") or [] if x["id"] == cid), None)
+            if c is None or (c["by"] != viewer and self.social.blocked_between(viewer, c["by"])):
+                raise CommunityError("comment not found", 404)
+            likes = list(c.get("likes") or [])
+            changed = (viewer not in likes) if on else (viewer in likes)
+            if changed:
+                likes = [*likes, viewer] if on else [u for u in likes if u != viewer]
+                c["likes"] = likes
+            return p, c, changed
+        post, c, changed = self._touch(owner, pid, fn)
+        author = c["by"]
+        if changed and author != viewer:
+            self._like_item(author, pid, c["id"], viewer, on)
+            if on:
+                said = _mn.display(str(c.get("text") or ""))
+                self._notify(author, f"l:{pid}:{c['id']}", f"{self._name(viewer)} liked your comment", said,
+                             url=f"/app/?open=post&id={pid}&c={c['id']}")
+        return self._comment_view(viewer, c, owner == viewer)
+
+    def comment_likers(self, viewer: str, pid: Any, cid: Any) -> list[str]:
+        """Who liked a comment, newest first, without anyone blocked either way."""
+        self.require(viewer)
+        _, post = self._load(viewer, pid)
+        c = next((x for x in post.get("comments") or [] if x["id"] == cid), None)
+        if c is None or (c["by"] != viewer and self.social.blocked_between(viewer, c["by"])):
+            raise CommunityError("comment not found", 404)
+        return [u for u in reversed(c.get("likes") or []) if u == viewer or not self.social.blocked_between(viewer, u)]
+
+    def _like_item(self, to: str, pid: str, cid: str, by: str, on: bool) -> None:
+        now = int(self._clock())
+
+        def apply(d: dict[str, Any]) -> None:
+            items = [x for x in d.get("likes") or [] if isinstance(x, dict)]
+            cur = next((x for x in items if x.get("pid") == pid and x.get("cid") == cid), None)
+            if cur is None:
+                if not on:
+                    return
+                cur = {"pid": pid, "cid": cid, "by": []}
+            items = [x for x in items if x is not cur]
+            who = [u for u in cur.get("by") or [] if u != by]
+            if on:
+                who.append(by)
+                cur["ts"] = now
+            cur["by"] = who[-20:]
+            if who:
+                items.append(cur)
+            d["likes"] = items[-MAX_LIKE_ITEMS:]
+        try:
+            self._mine(to).update(apply)
+        except Exception as e:  # the like is saved; the bell item is best effort
+            log_event(logger, logging.WARNING, "community_like_item_failed", error=type(e).__name__)
+
+    def likes_for(self, uid: str) -> list[dict[str, Any]]:
+        """The bell's "liked your comment" items: one per comment, newest liker first, only
+        while the comment is still there and visible."""
+        out: list[dict[str, Any]] = []
+        for m in reversed(self._mine(uid).load().get("likes") or []):
+            pid, cid = m.get("pid"), m.get("cid")
+            if not isinstance(pid, str) or not isinstance(cid, str):
+                continue
+            try:
+                _, post = self._load(uid, pid)
+            except CommunityError:
+                continue
+            c = next((x for x in post.get("comments") or [] if x["id"] == cid and x["by"] == uid), None)
+            if c is None:
+                continue
+            still = set(c.get("likes") or [])
+            who = [u for u in reversed(m.get("by") or []) if u in still and not self.social.blocked_between(uid, u)]
+            if not who:
+                continue
+            out.append({"pid": pid, "cid": cid, "by": who[0], "others": len(who) - 1, "ts": int(m.get("ts") or 0),
+                        "text": _clip(_mn.display(str(c.get("text") or "")), 140)})
+        return out
 
     def delete_comment(self, viewer: str, pid: Any, cid: Any) -> None:
         """The comment's author, or the post's author. Replies go with their comment."""

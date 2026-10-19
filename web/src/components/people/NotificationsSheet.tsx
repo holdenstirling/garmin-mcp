@@ -2,7 +2,7 @@
 // Each row opens its exact item (Chat.tsx handles lib/people openTarget); opening one marks it
 // read; "Mark all read" clears the dot.
 import { useEffect, useState } from 'react'
-import { AtSign, Bell, CalendarCheck, Heart, MessageCircle, UserPlus, Users, X } from 'lucide-react'
+import { AtSign, Bell, CalendarCheck, Heart, MessageCircle, UserPlus, Users } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/Avatar'
@@ -14,7 +14,7 @@ import { FollowButton } from '@/components/friends/PersonRows'
 
 const KIND_ICON: Record<string, typeof Bell> = {
   dm: MessageCircle, dm_request: MessageCircle, follow_request: UserPlus, follower: UserPlus,
-  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck, mention: AtSign,
+  kudos: Heart, comment: MessageCircle, post: Users, club_invite: Users, race: CalendarCheck, mention: AtSign, comment_like: Heart,
 }
 
 export function NotificationsSheet({ onClose }: { onClose: () => void }) {
@@ -33,8 +33,12 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="Notifications" onClose={onClose}
-      actions={unread > 0 ? <Button variant="ghost" className="h-9 px-2.5 text-small" onClick={() => void readAll()}>Mark all read</Button> : undefined}>
+    <Sheet title="Notifications" onClose={onClose}>
+      {unread > 0 && (
+        <div className="-mt-2 flex justify-end px-1">
+          <Button variant="ghost" className="h-11 px-3 text-body font-semibold text-(--accent)" onClick={() => void readAll()}>Mark all as read</Button>
+        </div>
+      )}
       {!items && !error && <RabbitLoader className="py-10" label="Loading notifications" />}
       {error && <p className="px-4 py-10 text-center text-body text-(--text-muted)" role="alert">{error}</p>}
       {items && items.length === 0 && (
@@ -45,29 +49,29 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {items && items.length > 0 && (
-        <ul className="flex flex-col pb-3" aria-label={unread ? `${unread} unread` : 'Notifications'}>
+        <ul className="-mx-5 flex flex-col pb-3" aria-label={unread ? `${unread} unread` : 'Notifications'}>
           {items.map((n) => {
             const I = KIND_ICON[n.kind] ?? Bell
             return (
-              <li key={n.key} className={`flex items-center ${n.unread ? 'bg-(--accent-subtle)/40' : ''}`}>
+              <li key={n.key} className={`flex flex-col ${n.unread ? 'bg-(--accent-subtle)/40' : ''}`}>
                 <button type="button" onClick={() => open(n)}
-                  className="flex min-h-14 min-w-0 flex-1 items-start gap-3 py-2.5 pl-4 pr-2 text-left active:bg-(--bg-inset)">
+                  className="flex min-h-16 w-full min-w-0 items-start gap-3.5 py-3.5 pl-5 pr-4 text-left active:bg-(--bg-inset)">
                   <span className="relative shrink-0">
-                    {n.person ? <Avatar name={n.person.name} picture={n.person.picture ?? ''} photo={personPhoto(n.person)} size={36} />
-                      : <span className="flex size-9 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>}
-                    {n.person && <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-(--bg) text-(--accent) ring-1 ring-(--border)"><I className="size-2.5" aria-hidden /></span>}
+                    {n.person ? <Avatar name={n.person.name} picture={n.person.picture ?? ''} photo={personPhoto(n.person)} size={44} />
+                      : <span className="flex size-11 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>}
+                    {n.person && <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-(--bg) text-(--accent) ring-1 ring-(--border)"><I className="size-3" aria-hidden /></span>}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={`block text-body leading-snug ${n.unread ? 'font-semibold text-(--text)' : 'text-(--text-secondary)'}`}>{n.title}</span>
-                    {n.body && <span className="line-clamp-2 block text-meta text-(--text-muted)">{n.body}</span>}
+                    {n.body && <span className="mt-0.5 line-clamp-2 block text-small text-(--text-muted)">{n.body}</span>}
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
-                    <span className="text-caption text-(--text-muted)">{timeAgo(n.ts)}</span>
-                    {n.unread && <span className="size-2 rounded-full bg-(--accent)" aria-label="Unread" />}
+                    <span className="text-meta text-(--text-muted)">{timeAgo(n.ts)}</span>
+                    {n.unread && <span className="size-2.5 rounded-full bg-(--accent)" aria-label="Unread" />}
                   </span>
                 </button>
                 {n.kind === 'follower' && n.follow_back && n.person && (
-                  <span className="shrink-0 pr-4"><FollowButton uid={n.person.id} status="none" followsYou compact /></span>
+                  <span className="-mt-1 pb-3.5 pl-[78px] pr-5"><FollowButton uid={n.person.id} status="none" followsYou compact /></span>
                 )}
                 {n.kind === 'follow_request' && n.edge_id && <RequestButtons edge={n.edge_id} />}
               </li>
@@ -83,17 +87,17 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
 function RequestButtons({ edge }: { edge: string }) {
   const [done, setDone] = useState<'accepted' | 'declined' | null>(null)
   const [busy, setBusy] = useState(false)
-  if (done) return <span className="shrink-0 pr-4 text-meta text-(--text-muted)">{done === 'accepted' ? 'Accepted' : 'Declined'}</span>
+  if (done) return <span className="-mt-1 pb-3.5 pl-[78px] pr-5 text-meta text-(--text-muted)">{done === 'accepted' ? 'Accepted' : 'Declined'}</span>
   const go = async (yes: boolean) => {
     setBusy(true)
     try { await (yes ? acceptRequest(edge) : declineRequest(edge)); setDone(yes ? 'accepted' : 'declined') } catch { /* stays */ } finally { setBusy(false) }
   }
   return (
-    <span className="flex shrink-0 items-center gap-1 pr-3">
+    <span className="-mt-1 flex items-center gap-2 pb-3.5 pl-[78px] pr-5">
       <button type="button" disabled={busy} onClick={() => void go(true)}
-        className="h-9 rounded-full bg-(--accent) px-3 text-meta font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">Accept</button>
-      <button type="button" disabled={busy} onClick={() => void go(false)} aria-label="Decline"
-        className="flex size-9 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
+        className="h-11 flex-1 rounded-full bg-(--accent) px-4 text-body font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">Accept</button>
+      <button type="button" disabled={busy} onClick={() => void go(false)}
+        className="h-11 flex-1 rounded-full border border-(--border) px-4 text-body font-semibold text-(--text-secondary) active:bg-(--bg-inset) disabled:opacity-60">Decline</button>
     </span>
   )
 }
