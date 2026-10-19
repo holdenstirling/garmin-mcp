@@ -230,7 +230,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         </div>
         <div className="modal-body flex flex-col overflow-y-auto pt-3">
           {mode === 'lite' && step === 'pick' && (
-            <p className="mb-2 px-5 text-small leading-snug text-(--text-muted)">
+            <p className="mb-3 px-6 text-small leading-snug text-(--text-muted)">
               rabbt now does training, social support and finding events. Tell us what matters to you and we'll show that first.
             </p>
           )}

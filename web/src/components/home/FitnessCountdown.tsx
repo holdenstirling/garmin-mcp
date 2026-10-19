@@ -32,7 +32,7 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
   const days = daysUntil(race.date)
   if (days <= 7 && race.main) return null
   const Arrow = !trend ? null : trend.delta >= 2 ? ArrowUpRight : trend.delta <= -2 ? ArrowDownRight : ArrowRight
-  const trendWord = !trend ? '' : trend.delta >= 2 ? `Fitness +${trend.delta} in 4 wks` : trend.delta <= -2 ? `Fitness ${trend.delta} in 4 wks` : 'Fitness steady'
+  const trendWord = !trend ? '' : trend.delta >= 2 ? `Fitness up ${trend.delta} in 4 weeks` : trend.delta <= -2 ? `Fitness down ${-trend.delta} in 4 weeks` : 'Fitness steady'
   const spoken = !trend ? '' : trend.delta >= 2 ? `Fitness up ${trend.delta} over 4 weeks` : trend.delta <= -2 ? `Fitness down ${-trend.delta} over 4 weeks` : 'Fitness steady over 4 weeks'
   const label = `${race.name}: ${days} days to go. Race grade ${race.grade}, ${STATUS_LABEL[race.status]}. ${spoken}. Open race readiness`
   return (
@@ -52,7 +52,7 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
         </span>
         <span className={cn('mt-1 block text-small leading-snug', race.status === 'at_risk' || race.status === 'behind' ? 'text-(--warning-text)' : 'text-(--accent)')}>{STATUS_LABEL[race.status]}</span>
         {Arrow && (
-          <span className="flex items-center gap-1 text-small leading-snug text-(--text-secondary)"><Arrow className="size-4 shrink-0" /> {trendWord}</span>
+          <span className="flex items-start gap-1.5 text-small leading-snug text-(--text-secondary)"><Arrow className="mt-0.5 size-4 shrink-0" /> <span>{trendWord}</span></span>
         )}
       </span>
       <ChevronRight className="size-5 shrink-0 self-center text-(--text-muted)" aria-hidden />

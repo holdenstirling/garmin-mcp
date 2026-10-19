@@ -1053,7 +1053,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </span>
             {/* Home shows the race in its greeting; elsewhere a short line says what you're training for. */}
             {!(isLog && homeView === 'home' && atLog) && (
-              <span className="block truncate text-meta leading-tight text-(--text-muted) max-[359px]:hidden">
+              <span className="line-clamp-2 text-meta leading-tight text-(--text-muted) max-[359px]:hidden">
                 {goal ? `${goal.title}${goalLeft(goal) ? ` · ${goalLeft(goal)}` : ''}` : 'No goal set'}
               </span>
             )}
