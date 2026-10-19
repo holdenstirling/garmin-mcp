@@ -51,14 +51,14 @@ function Learn({ s, c, cal, imperial }: { s: PlanSession; c: CalSession | undefi
   return (
     <div className="border-t border-(--border)">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center gap-2 px-3.5 text-left text-small font-medium text-(--accent)">
-        <BookOpen className="size-4" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
+        className="flex min-h-12 w-full items-center gap-2.5 px-4 text-left text-body font-medium text-(--accent)">
+        <BookOpen className="size-5" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
         <ChevronDown className={cn('size-5 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 text-small leading-snug">
+        <div className="flex flex-col gap-3 px-4 pb-4 text-body leading-relaxed">
           {k && (
-            <dl className="flex flex-col gap-1.5">
+            <dl className="flex flex-col gap-2.5">
               <div><dt className="font-semibold text-(--text)">What it is</dt><dd className="text-(--text-secondary)">{k.what}</dd></div>
               <div><dt className="font-semibold text-(--text)">Why it's in your plan</dt><dd className="text-(--text-secondary)">{k.why}</dd></div>
               <div><dt className="font-semibold text-(--text)">How it should feel</dt><dd className="text-(--text-secondary)">{k.feel}</dd></div>
@@ -91,10 +91,10 @@ function AddToCalendar({ s, date }: { s: PlanSession; date: string }) {
   const [open, setOpen] = useState(false)
   const link = 'flex min-h-11 flex-1 items-center justify-center rounded-lg border border-(--border) px-3 text-small font-medium text-(--text) active:bg-(--bg-inset)'
   return (
-    <div className="border-t border-(--border) px-3.5 py-1">
+    <div className="border-t border-(--border) px-4 py-0.5">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center gap-2 text-left text-small font-medium text-(--text-secondary)">
-        <CalendarPlus className="size-4" aria-hidden />
+        className="flex min-h-12 w-full items-center gap-2.5 text-left text-body font-medium text-(--text-secondary)">
+        <CalendarPlus className="size-5" aria-hidden />
         <span className="flex-1">{s.time ? `Add to calendar at ${fmtTime(s.time)}` : 'Add to calendar'}</span>
         <ChevronDown className={cn('size-5 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
@@ -104,7 +104,7 @@ function AddToCalendar({ s, date }: { s: PlanSession; date: string }) {
             <a className={link} href={sessionIcsUrl(s.id)} download="rabbt-workout.ics">Apple / Outlook</a>
             <a className={link} href={googleCalendarUrl(s, date)} target="_blank" rel="noopener noreferrer">Google Calendar</a>
           </div>
-          {!s.time && <p className="text-meta text-(--text-muted)">Tip: set a start time (Edit) to block the time instead of the whole day.</p>}
+          {!s.time && <p className="text-small text-(--text-muted)">Tip: set a start time (Edit) to block the time instead of the whole day.</p>}
         </div>
       )}
     </div>
@@ -127,23 +127,30 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
   const canStart = !!a.onStart && date >= today && status !== 'done' && status !== 'skipped' && s.sport !== 'rest'
   return (
     <Card className={cn(status === 'missed' && 'border-(--danger)/40', status === 'skipped' && 'opacity-70')}>
-      <div className="flex items-start gap-3 px-3.5 pt-3.5">
-        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
+      <div className="flex items-start gap-3.5 px-4 pt-4">
+        <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
           s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
           <Icon className="size-6" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className={cn('text-lead font-semibold leading-tight text-(--text)', status === 'skipped' && 'line-through')}>
+          <h3 className={cn('text-title-sm font-semibold leading-snug text-(--text)', status === 'skipped' && 'line-through')}>
             {a.onOpenPage ? (
               <button type="button" onClick={() => a.onOpenPage!(s)} className="hit-44 text-left underline-offset-2 hover:underline">{s.title}</button>
             ) : s.title}
           </h3>
-          <p className="mt-0.5 text-meta text-(--text-muted)">
-            {s.time && <span className="mr-1 inline-flex items-center gap-0.5 font-semibold text-(--text)"><Clock className="size-3.5" aria-hidden />{fmtTime(s.time)} ·</span>}
-            {SPORT_LABEL[s.sport]}{s.kind !== s.sport && KIND_LABEL[s.kind] ? ` · ${KIND_LABEL[s.kind]}` : ''}
-            {s.synced ? ' · on your Garmin' : ''}{s.travel ? ' · travel version' : ''}{s.sick ? ' · sick mode' : ''}{s.sick_return ? ' · easing back' : ''}
-            {unread && <span className="ml-1 font-semibold text-(--accent)">· new coach message</span>}
+          <p className="mt-1 text-small text-(--text-secondary)">
+            {s.time && <span className="mr-2 inline-flex items-center gap-1 font-semibold text-(--text)"><Clock className="size-4" aria-hidden />{fmtTime(s.time)}</span>}
+            {SPORT_LABEL[s.sport]}{s.kind !== s.sport && KIND_LABEL[s.kind] ? `, ${KIND_LABEL[s.kind]!.toLowerCase()}` : ''}
           </p>
+          {(s.synced || s.travel || s.sick || s.sick_return || unread) && (
+            <p className="mt-1.5 flex flex-wrap gap-1.5">
+              {s.synced && <span className="rounded-full bg-(--accent-subtle) px-2.5 py-0.5 text-caption font-semibold text-(--accent)">On your Garmin</span>}
+              {s.travel && <span className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">Travel version</span>}
+              {s.sick && <span className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">Sick mode</span>}
+              {s.sick_return && <span className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">Easing back</span>}
+              {unread && <span className="rounded-full bg-(--accent) px-2.5 py-0.5 text-caption font-semibold text-(--on-fill)">New coach message</span>}
+            </p>
+          )}
         </div>
         {status === 'planned' && date >= today && <WxChip id={s.id} date={date} />}
         {status === 'done' && <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-semibold text-(--accent)"><Check className="size-3.5" aria-hidden />Done</span>}
@@ -152,44 +159,44 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       </div>
 
       {c?.targets ? <WorkoutSummary t={c.targets} dist={dist} imperial={imperial} /> : (mins || dist || pace) && (
-        <dl className="mx-3.5 mt-3 flex gap-6 rounded-lg bg-(--bg-inset) px-3 py-2">
+        <dl className="mx-4 mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-(--bg-inset) px-4 py-3">
           {([['Time', mins ? fmtDuration(mins) : ''], ['Distance', dist], ['Pace', pace]] as const).filter(([, v]) => !!v).map(([k, v]) => (
             <div key={k} className="min-w-0">
-              <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
-              <dd className="truncate font-mono text-small font-semibold tabular-nums text-(--text)">{v}</dd>
+              <dt className="text-caption font-medium text-(--text-muted)">{k}</dt>
+              <dd className="text-body-lg font-semibold tabular-nums text-(--text)">{v}</dd>
             </div>
           ))}
         </dl>
       )}
       {s.event_id && (
         <button type="button" onClick={() => openEvent(s.event_id!)}
-          className="mx-3.5 mt-2 flex min-h-11 items-center gap-1.5 text-left text-small text-(--text-secondary)">
+          className="mx-4 mt-3 flex min-h-11 items-center gap-1.5 text-left text-small text-(--text-secondary)">
           <CalendarDays className="size-4 shrink-0 text-(--accent)" aria-hidden />
           <span>From your events: <span className="font-medium text-(--accent) underline-offset-2 hover:underline">open the event</span></span>
         </button>
       )}
       {c?.adjusted && (
-        <p className="mx-3.5 mt-2 flex items-start gap-1.5 text-small leading-snug text-(--accent)">
+        <p className="mx-4 mt-3 flex items-start gap-1.5 text-small leading-snug text-(--accent)">
           <RabbitLogo size={14} current className="mt-0.5 shrink-0" /><span><span className="font-semibold">rabbt adjusted this:</span> {c.adjusted}</span>
         </p>
       )}
       {status === 'done' && c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport === 'brick' ? 'run' : s.sport} />}
       {status === 'done' && !c?.went && act && (act.km != null || act.minutes != null) && (
-        <p className="mx-3.5 mt-2 text-small text-(--accent)">
+        <p className="mx-4 mt-3 text-small text-(--accent)">
           You did {[act.km != null ? fmtDist(act.km, imperial, s.sport === 'swim' ? 'swim' : s.sport) : '', act.minutes != null ? `in ${fmtDuration(act.minutes)}` : ''].filter(Boolean).join(' ')}.
         </p>
       )}
-      {status === 'missed' && c?.missed && <p className="mx-3.5 mt-2 text-small leading-snug text-(--text-secondary)">{c.missed.why}</p>}
+      {status === 'missed' && c?.missed && <p className="mx-4 mt-3 text-small leading-snug text-(--text-secondary)">{c.missed.why}</p>}
 
       {c?.note && (c.note.source === 'coach' ? (
-        <div className="mx-3.5 mt-3 flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg) px-3.5 py-3 text-small leading-snug">
+        <div className="mx-4 mt-4 flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg) px-3.5 py-3 text-small leading-snug">
           <p className="section-label m-0">Coach notes</p>
           <p className="text-(--text)">{c.note.why}</p>
           {c.note.how && <p className="text-(--text-secondary)">{c.note.how}</p>}
           {c.note.cues && <p className="text-(--text-muted)">{c.note.cues}</p>}
         </div>
       ) : (
-        <RabbitNote title="Why + how" className="mx-3.5 mt-3">
+        <RabbitNote title="Why + how" className="mx-4 mt-4">
           <p className="m-0 text-(--text)">{c.note.why}</p>
           {c.note.how && <p className="m-0 text-(--text-secondary)">{c.note.how}</p>}
           {c.note.cues && <p className="m-0 text-(--text-muted)">{c.note.cues}</p>}
@@ -197,8 +204,8 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       ))}
 
       {c?.targets ? <WorkoutSteps t={c.targets} imperial={imperial} /> : groups.length > 0 && (
-        <div className="mx-3.5 mt-3 flex flex-col gap-2">
-          <p className="text-caption font-semibold text-(--text-muted)">The workout</p>
+        <div className="mx-4 mt-4 flex flex-col gap-2">
+          <p className="text-meta font-semibold text-(--text-secondary)">The workout</p>
           {groups.map((g, i) => (
             <div key={i} className="flex flex-col gap-1">
               {g.label && <span className="text-meta font-medium text-(--text-secondary)">{g.label}</span>}
@@ -207,14 +214,14 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           ))}
         </div>
       )}
-      {!groups.length && s.detail && <p className="mx-3.5 mt-3 whitespace-pre-line text-small leading-snug text-(--text-secondary)">{s.detail}</p>}
+      {!groups.length && s.detail && <p className="mx-4 mt-4 whitespace-pre-line text-small leading-snug text-(--text-secondary)">{s.detail}</p>}
       {(s.exercises?.length ?? 0) > 0 && (
-        <ul className="mx-3.5 mt-3 flex flex-col gap-1">
+        <ul className="mx-4 mt-4 flex flex-col gap-1">
           {s.exercises!.map((e) => <li key={e.name} className="flex gap-2 text-small"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>)}
         </ul>
       )}
       {(s.fuel_hint || s.fuel) && (
-        <p className="mx-3.5 mt-3 flex items-start gap-1.5 text-small leading-snug text-(--text-secondary)">
+        <p className="mx-4 mt-4 flex items-start gap-1.5 text-small leading-snug text-(--text-secondary)">
           <Utensils className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
           <span>{s.fuel_hint
             ? <><span className="font-semibold text-(--text)">Fuel:</span>{s.fuel_hint.replace(/^Fuel:/, '')}. Full before, during and after on the workout page.</>
@@ -222,14 +229,21 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2 px-3.5 pb-3">
-        {canStart && <Button variant="primary" className="h-11 gap-1.5 px-4 text-body" onClick={() => a.onStart!(s)}><Play className="size-5" aria-hidden />{date === today ? 'Ready to go' : 'Preview'}</Button>}
-        {a.onFix && <Button variant="primary" className="h-11 gap-1.5 px-4 text-body" onClick={() => a.onFix!(s)}><Wrench className="size-5" aria-hidden />Fix my week</Button>}
-        {a.onMove && <Button variant="default" className="h-11 gap-1.5 px-3 text-body" onClick={() => a.onMove!(s, 'move')} aria-label={`Move ${s.title} to another day`}><MoveRight className="size-5" aria-hidden />Move</Button>}
-        {a.onMove && <Button variant="default" className="h-11 gap-1.5 px-3 text-body" onClick={() => a.onMove!(s, 'swap')} aria-label={`Swap ${fmtDay(date, { weekday: 'long' })} with another day`}><ArrowLeftRight className="size-5" aria-hidden />Swap</Button>}
-        {a.onOpenPage && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" onClick={() => a.onOpenPage!(s)} aria-label={`Open ${s.title} in full`}><Maximize2 className="size-5" aria-hidden />Full workout</Button>}
-        <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" onClick={() => a.onEdit(s)} aria-label={`Edit ${s.title}`}><Pencil className="size-5" aria-hidden />Edit</Button>
-        {a.onAsk && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" onClick={() => a.onAsk!(s)} aria-label={`Ask rabbt about ${s.title}`}><MessageCircle className="size-5" aria-hidden />Ask rabbt</Button>}
+      <div className="mt-4 flex flex-col gap-2 px-4 pb-4">
+        {a.onFix && <Button variant="primary" className="h-12 w-full gap-1.5 text-body" onClick={() => a.onFix!(s)}><Wrench className="size-5" aria-hidden />Fix my week</Button>}
+        {(canStart || a.onOpenPage) && (
+          <Button variant={a.onFix ? 'default' : 'primary'} className="h-12 w-full gap-1.5 text-body"
+            onClick={() => canStart ? a.onStart!(s) : a.onOpenPage!(s)} aria-label={canStart ? undefined : `Open ${s.title} in full`}>
+            {canStart ? <><Play className="size-5" aria-hidden />{date === today ? 'Ready to go' : 'Preview'}</> : <><Maximize2 className="size-5" aria-hidden />Full workout</>}
+          </Button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {a.onMove && <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => a.onMove!(s, 'move')} aria-label={`Move ${s.title} to another day`}><MoveRight className="size-5" aria-hidden />Move</Button>}
+          {a.onMove && <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => a.onMove!(s, 'swap')} aria-label={`Swap ${fmtDay(date, { weekday: 'long' })} with another day`}><ArrowLeftRight className="size-5" aria-hidden />Swap</Button>}
+          {canStart && a.onOpenPage && <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => a.onOpenPage!(s)} aria-label={`Open ${s.title} in full`}><Maximize2 className="size-5" aria-hidden />Full workout</Button>}
+          <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => a.onEdit(s)} aria-label={`Edit ${s.title}`}><Pencil className="size-5" aria-hidden />Edit</Button>
+          {a.onAsk && <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => a.onAsk!(s)} aria-label={`Ask rabbt about ${s.title}`}><MessageCircle className="size-5" aria-hidden />Ask rabbt</Button>}
+        </div>
       </div>
       {date >= today && s.kind !== 'race' && <AddToCalendar s={s} date={date} />}
       <Learn s={s} c={c} cal={cal} imperial={imperial} />
@@ -287,11 +301,10 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       <div className="flex items-center gap-1 px-1">
         <button type="button" className="modal-close" aria-label="Previous day" disabled={date <= first} onClick={() => go(-1)}><ChevronLeft className="size-5" /></button>
         <div className="min-w-0 flex-1 text-center" aria-live="polite">
-          <h2 className="text-lead font-semibold leading-tight text-(--text)">{head}</h2>
-          <p className="text-meta text-(--text-muted)">
-            {fmtDay(date, { month: 'long', day: 'numeric' })}{week ? ` · week ${week.index} · ${weekPhaseLabel(week)}` : ''}
-            {date !== today && today >= first && today <= last && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onDate(today)}>Jump to today</button></>}
-          </p>
+          <h2 className="text-title-sm font-semibold leading-tight text-(--text)">{head}</h2>
+          <p className="text-small text-(--text-secondary)">{fmtDay(date, { month: 'long', day: 'numeric' })}</p>
+          {week && <p className="text-small text-(--text-muted)">Week {week.index}, {weekPhaseLabel(week).toLowerCase()}</p>}
+          {date !== today && today >= first && today <= last && <button type="button" className="hit-44 text-small font-semibold text-(--accent) underline-offset-2 hover:underline" onClick={() => onDate(today)}>Jump to today</button>}
         </div>
         <button type="button" className="modal-close" aria-label="Next day" disabled={date >= last} onClick={() => go(1)}><ChevronRight className="size-5" /></button>
       </div>
@@ -330,7 +343,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       {extra}
       {did.length > 0 && (
         <section aria-label="Workouts you did" className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-          <p className="text-caption font-semibold text-(--text-muted)">{did.some((a) => a.source && a.source !== 'garmin') ? (work.length ? 'Also from your apps' : 'From your apps') : work.length ? 'Also from Garmin' : 'From Garmin'}</p>
+          <p className="text-meta font-semibold text-(--text-secondary)">{did.some((a) => a.source && a.source !== 'garmin') ? (work.length ? 'Also from your apps' : 'From your apps') : work.length ? 'Also from Garmin' : 'From Garmin'}</p>
           <ul className="flex flex-col">
             {did.map((a, i) => {
               const I = SPORT_ICON[(a.sport in SPORT_ICON ? a.sport : 'other') as keyof typeof SPORT_ICON] ?? Check
@@ -341,7 +354,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
                   className="flex min-h-11 w-full items-center gap-3 rounded-lg text-left active:bg-(--bg-inset) disabled:cursor-default">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-body font-medium text-(--text)">{a.name}</span>
+                    <span className="block text-body font-medium text-(--text)">{a.name}</span>
                     <span className="block text-meta text-(--text-muted)">
                       {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : '', a.source && a.source !== 'garmin' ? `via ${SOURCE_NAME[a.source] ?? a.source}` : ''].filter(Boolean).join(' · ')}
                     </span>

@@ -310,7 +310,9 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
 
 // ------------------------------------------------------- race switcher --
 export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild }: {
-  title: string; date: string | null; sub?: string
+  title: string; date: string | null
+  /** short facts under the race ("231 days to go", "Week 1 of 34"); a " · " string is split */
+  sub?: string | string[]
   /** the plan for the newly picked race (null: it has no plan yet) */
   onSwitched: (plan: BuiltPlan | null) => void
   onAddRace: () => void
@@ -318,16 +320,26 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
   onBuild: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const facts = (Array.isArray(sub) ? sub : (sub ?? '').split(' · ')).map((x) => x.trim()).filter(Boolean)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
-        className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-left active:bg-(--bg-inset)">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-body-lg font-semibold leading-snug text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
-          {sub && <span className="line-clamp-2 text-meta leading-snug text-(--text-muted)">{sub}</span>}
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. ${facts.join(', ')}. Change race`}
+        className="flex w-full flex-col rounded-xl border border-(--border) bg-(--bg-surface) text-left active:bg-(--bg-inset)">
+        <span className="flex items-start gap-3.5 px-4 pb-3 pt-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lead font-semibold leading-snug text-(--text)">{title}</span>
+            {date && <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+            {facts.length > 0 && (
+              <span className="mt-2 flex flex-wrap gap-2">
+                {facts.map((f) => <span key={f} className="rounded-full bg-(--bg-inset) px-3 py-1 text-meta font-medium text-(--text-secondary)">{f}</span>)}
+              </span>
+            )}
+          </span>
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-meta text-(--accent)">Change race <ChevronDown className="size-5" aria-hidden /></span>
+        <span className="flex min-h-12 items-center justify-between gap-2 border-t border-(--border) px-4 text-body font-semibold text-(--accent)">
+          Change race <ChevronDown className="size-5" aria-hidden />
+        </span>
       </button>
       {open && <RaceSheet onClose={() => setOpen(false)} onSwitched={(p) => { setOpen(false); onSwitched(p) }}
         onAddRace={() => { setOpen(false); onAddRace() }} onBuild={() => { setOpen(false); onBuild() }} />}

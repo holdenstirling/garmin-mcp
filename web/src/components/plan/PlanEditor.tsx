@@ -7,6 +7,7 @@ import { SickBanner } from './SickHost'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
+import { Section } from '@/components/ui/section'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import type { Me, Sport } from '@/lib/api'
@@ -277,7 +278,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       ) : (
         <div className="flex flex-col gap-2">
           <RaceSwitcher title={goalTitle} date={plan.race_date}
-            sub={`${daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}${plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}`}
+            sub={[daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done',
+              plan.current_week ? `Week ${plan.current_week} of ${plan.weeks.length}` : `${plan.weeks.length} weeks`]}
             onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
             onAddRace={onOpenEvents} onBuild={onRebuild} />
           {!readOnly && (
@@ -347,9 +349,10 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
       {!coachMode && <>
       {/* Garmin */}
-      <Group label="Send to your watch" footer={me.garmin.connected
+      <Section title="Send to your watch" description={me.garmin.connected
         ? 'Upcoming workouts go to your Garmin calendar with steps and targets. Moved or edited workouts update on the next sync.'
-        : undefined}>
+        : 'Connect Garmin to get each workout on your watch.'}>
+      <Group>
         <Field label={me.garmin.connected ? (lastSync ? `Last synced ${lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${synced} on your calendar` : 'Not synced yet') : 'Connect Garmin'}>
           {me.garmin.connected ? (
             <div className="flex flex-col gap-2.5">
@@ -358,7 +361,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
                   className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text)">
                   {[7, 14, 28].map((n) => <option key={n} value={n}>Next {n} days</option>)}
                 </select>
-                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" loading={sync.busy === 'sync'}
+                <Button variant="default" className="h-11 flex-1 gap-1.5 text-body font-semibold text-(--accent)" loading={sync.busy === 'sync'}
                   disabled={sync.busy != null} onClick={() => void doSync()}>
                   <Watch className="size-5" /> Sync
                 </Button>
@@ -379,12 +382,14 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           ) : <p className="text-small text-(--text-muted)">Garmin isn't available on this server.</p>}
         </Field>
       </Group>
-      {sync.error && <p className="-mt-3 px-4 text-small text-(--danger)" role="alert">{sync.error}</p>}
+      {sync.error && <p className="px-1 text-small text-(--danger)" role="alert">{sync.error}</p>}
+      </Section>
 
       <BlocksEntry compact />
 
       {/* Plan actions */}
-      <Group label="Plan tools">
+      <Section title="Plan tools" description="Ask about it, plan around trips or sick days, or start over.">
+      <Group>
         <Row icon={<Icon><MessageCircle /></Icon>} title="Ask rabbt about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close?.(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
@@ -413,6 +418,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <Row icon={<Icon tone="danger"><Trash2 /></Icon>} title="Delete plan" danger onClick={() => setConfirmDelete(true)} />
         )}
       </Group>
+      </Section>
       </>}
 
       {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan onClose={() => setImp((x) => x && { ...x, open: false })} onApplied={() => { setImp(null); load(); onChanged() }} />}

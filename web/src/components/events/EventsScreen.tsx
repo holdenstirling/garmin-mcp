@@ -236,22 +236,22 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
       <EventCardButton e={e} onClick={onClick} bare />
       {!onFit ? null : !race ? (
         <button type="button" onClick={onFit}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Gauge className="size-4" /> Event prep <ChevronRight className="ml-auto size-4 text-(--text-muted)" />
+          className="flex min-h-12 w-full items-center gap-2.5 border-t border-(--border) px-4 py-2.5 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-5" /> Event prep <ChevronRight className="ml-auto size-5 text-(--text-muted)" />
         </button>
       ) : grade ? <ReadinessRow g={grade} onClick={onFit} extra={n >= 0 ? <FinishChip eventId={e.id} /> : undefined} /> : (
         <button type="button" onClick={onFit}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Gauge className="size-4" /> Readiness & race fit
+          className="flex min-h-12 w-full flex-wrap items-center gap-2.5 border-t border-(--border) px-4 py-2.5 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-5" /> Readiness and race fit
           <span className="ml-auto flex items-center gap-1.5">
-            {n >= 0 && <FinishChip eventId={e.id} />}<ChevronRight className="size-4 text-(--text-muted)" />
+            {n >= 0 && <FinishChip eventId={e.id} />}<ChevronRight className="size-5 text-(--text-muted)" />
           </span>
         </button>
       )}
       {onPack && (
         <button type="button" onClick={onPack}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Backpack className="size-4" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-4 text-(--text-muted)" />
+          className="flex min-h-12 w-full items-center gap-2.5 border-t border-(--border) px-4 py-2.5 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Backpack className="size-5" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-5 text-(--text-muted)" />
         </button>
       )}
       {(kindOf(e) === 'race' || kindOf(e) === 'challenge' || kindOf(e) === 'trip') && n >= -7 && <ChecklistRow eventId={e.id} />}
@@ -268,40 +268,44 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
     : act !== 'other' ? ACTIVITY_ICON[act] : kind === 'race' ? TYPE_ICON[e.type] ?? Activity : KIND_ICON[kind]
   const when = nextDate(e)
   const n = daysUntil(when)
+  const dateLine = (e.recurring && e.repeat_text ? `${e.repeat_text}${e.time ? `, ${e.time}` : ''}`
+    : new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))
+    + (e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : '')
+  const what = [kind === 'milestone' ? '' : sportLabel(e) ?? TYPE_LABEL[e.type],
+    kind !== 'race' || !e.distance || e.distance === 'other' ? '' : DISTANCE_LABEL[e.distance] ?? e.distance].filter(Boolean).join(', ')
+  const where = [e.location || e.at || '', e.neighborhood ?? ''].filter(Boolean).join(', ')
   return (
     <button type="button" onClick={onClick}
-      className={cn('flex w-full items-center gap-3 bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)',
+      className={cn('flex w-full items-start gap-3.5 bg-(--bg-surface) px-4 py-4 text-left active:bg-(--bg-inset)',
         !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && !isUpcoming(e) && 'opacity-70')}>
-      <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
+      <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
         e.main ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
         <Icon className="size-6" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          {e.main && <Star className="size-4 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
-          <span className="truncate text-lead font-medium text-(--text)">{e.name}</span>
-          {e.visibility === 'public' && <Globe className="size-4 shrink-0 text-(--text-muted)" aria-label="Public" />}
+        <span className="block text-lead font-semibold leading-snug text-(--text)">
+          {e.main && <Star className="mr-1.5 inline size-5 -translate-y-px fill-(--accent) align-middle text-(--accent)" aria-label="Main event" />}
+          {e.name}
+          {e.visibility === 'public' && <Globe className="ml-1.5 inline size-4 align-middle text-(--text-muted)" aria-label="Public" />}
         </span>
-        <span className="block truncate text-meta text-(--text-muted)">
-          {e.recurring && e.repeat_text ? `${e.repeat_text}${e.time ? ` · ${e.time}` : ''}`
-            : new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-          {e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
-          {kind === 'milestone' ? '' : ` · ${sportLabel(e) ?? TYPE_LABEL[e.type]}`}
-          {kind !== 'race' || !e.distance || e.distance === 'other' ? '' : ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}`}
-          {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}{e.neighborhood ? ` · ${e.neighborhood}` : ''}
-        </span>
-        {e.plan && (e.plan.status === 'in_plan' || e.plan.status === 'pending') && (
-          <span className={cn('mt-0.5 flex items-center gap-1 text-caption font-medium', e.plan.status === 'in_plan' ? 'text-(--accent)' : 'text-(--warning-text)')}>
-            {e.recurring && <Repeat className="size-3.5" aria-hidden />}{e.plan.status === 'in_plan' ? 'In your plan' : 'Not in your plan yet'}
+        <span className="mt-0.5 block text-small text-(--text-secondary)">{dateLine}</span>
+        {(what || where) && <span className="block text-small text-(--text-muted)">{[what, where].filter(Boolean).join(' · ')}</span>}
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">
+            {e.main ? 'Main event' : kind !== 'race' ? KIND_LABEL[kind] : e.priority === 'C' ? 'Training race' : `${e.priority} race`}
           </span>
-        )}
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-1">
-        <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">
-          {e.main ? 'Main' : kind !== 'race' ? KIND_LABEL[kind] : e.priority === 'C' ? 'Training' : `${e.priority} race`}
+          <span className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-caption font-semibold text-(--text-secondary)">
+            {e.result && n < 0 ? e.result : e.recurring && isUpcoming(e) ? `Next: ${countdown(when)}` : countdown(when)}
+          </span>
+          {e.plan && (e.plan.status === 'in_plan' || e.plan.status === 'pending') && (
+            <span className={cn('flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption font-semibold',
+              e.plan.status === 'in_plan' ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--warning-subtle) text-(--warning-text)')}>
+              {e.recurring && <Repeat className="size-3.5" aria-hidden />}{e.plan.status === 'in_plan' ? 'In your plan' : 'Not in your plan yet'}
+            </span>
+          )}
         </span>
-        <span className="text-caption text-(--text-muted)">{e.result && n < 0 ? e.result : e.recurring && isUpcoming(e) ? `Next: ${countdown(when)}` : countdown(when)}</span>
       </span>
+      <ChevronRight className="mt-3 size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }

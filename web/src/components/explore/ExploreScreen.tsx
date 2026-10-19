@@ -152,13 +152,13 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
   )
 
   const bar = (
-    <div className="mx-auto mt-2.5 flex w-full max-w-xl flex-col gap-2">
+    <div className="mx-auto mt-3 flex w-full max-w-xl flex-col gap-3">
       <div className="flex gap-2">
-        <input className={cn(inputCls, 'h-9 min-w-0 flex-1 text-body')} value={f.near} maxLength={5}
+        <input className={cn(inputCls, 'h-12 min-w-0 flex-1')} value={f.near} maxLength={5}
           inputMode="text" autoComplete="postal-code" aria-label="Zip code or state" placeholder="Zip or state (e.g. 80204, CO)"
           onChange={(e) => set({ near: e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 5) })} />
         <select aria-label="Radius" disabled={!zip} value={f.radius}
-          className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text) disabled:opacity-45"
+          className="h-12 shrink-0 rounded-lg border border-input bg-transparent px-3 text-body-lg text-(--text) disabled:opacity-45"
           onChange={(e) => set({ radius: Number(e.target.value) })}>
           {RADII.map((r) => <option key={r} value={r}>{r} mi</option>)}
         </select>
@@ -195,7 +195,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
       <p className="text-small leading-snug text-(--text-secondary)">
         Not seeing your race? Big ones like Ironman or Leadville aren't listed here.
       </p>
-      <Button variant="default" className="h-9 gap-1.5 text-small" loading={webBusy} onClick={() => void askWeb()}>
+      <Button variant="default" className="h-11 gap-1.5 text-body" loading={webBusy} onClick={() => void askWeb()}>
         <RabbitLogo size={16} current /> Ask rabbt to search the web
       </Button>
       {webError && <p className="text-meta text-(--danger)" role="alert">{webError}</p>}
@@ -215,11 +215,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             explore={<LetRabbitExplore onOpen={(r) => setDetail(r)} onAsk={onAsk} imperial={imperial} />} />
         ) : <>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
-          <input className={cn(inputCls, 'pl-9')} value={f.q} maxLength={60} placeholder="Search by race name"
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
+          <input className={cn(inputCls, 'pl-11')} value={f.q} maxLength={60} placeholder="Search by race name"
             aria-label="Search by race name" onChange={(e) => set({ q: e.target.value })} />
         </div>
-        {!nearOk(f.near) && <p className="px-1 text-meta text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
+        {!nearOk(f.near) && <p className="px-1 text-small text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
         {wide !== null && !f.near.trim() && (
           <LocationPrompt title={wide || 'Upcoming races across the US'} onChanged={() => {
             exploreDefaults().then((d) => { setHome(d.near); if (d.near) set({ near: d.near }) }, () => {})
@@ -241,7 +241,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             {capped && <p className="px-1 text-meta text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
             {groups.map((g) => (
               <section key={g.month} className="flex flex-col gap-2">
-                <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{g.month}</h2>
+                <h2 className="section-title m-0 px-1">{g.month}</h2>
                 {g.races.map((r, i) => <HopIn key={r.id} index={i}><RaceCard r={r} onClick={() => setDetail(r)} /></HopIn>)}
               </section>
             ))}
@@ -253,11 +253,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
         )}
         {web && (
           <section className="flex flex-col gap-2">
-            <h2 className="font-sans px-1 text-caption font-semibold text-(--accent)">Found on the web by rabbt</h2>
+            <h2 className="section-title m-0 px-1">Found on the web by rabbt</h2>
             {web.length === 0 ? (
               <p className="px-1 text-small text-(--text-muted)">rabbt didn't find anything else that fits. Try different filters.</p>
             ) : web.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}
-            {web.length > 0 && <p className="px-1 text-caption text-(--text-muted)">Found online. Check dates and details on the official site.</p>}
+            {web.length > 0 && <p className="px-1 text-small text-(--text-muted)">Found online. Check dates and details on the official site.</p>}
           </section>
         )}
         {filters !== null && askCta}
@@ -282,7 +282,7 @@ function RaceCard({ r, onClick }: { r: ExploreRace; onClick: () => void }) {
   const hint = r.hints?.[0]
   return (
     <button type="button" onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
+      className="flex w-full items-start gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-4 text-left active:bg-(--bg-inset)">
       {r.logo && logoOk ? (
         <img src={r.logo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setLogoOk(false)}
           className="size-11 shrink-0 rounded-xl border border-(--border) bg-white object-contain p-0.5" />
@@ -291,23 +291,24 @@ function RaceCard({ r, onClick }: { r: ExploreRace; onClick: () => void }) {
           <Icon className="size-6" />
         </span>
       )}
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="line-clamp-2 text-lead font-medium leading-snug text-(--text)">{r.name}</span>
-        <span className="truncate text-meta text-(--text-muted)">
-          {r.ongoing ? `Ongoing${r.end_date ? ` · through ${raceDate(r.end_date)}` : ''}` : raceDate(r.date)}{placeOf(r) ? ` · ${placeOf(r)}` : ''}
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="text-lead font-semibold leading-snug text-(--text)">{r.name}</span>
+        <span className="text-small leading-snug text-(--text-secondary)">
+          {r.ongoing ? `Ongoing${r.end_date ? `, through ${raceDate(r.end_date)}` : ''}` : raceDate(r.date)}
+          {placeOf(r) && <span className="block text-(--text-muted)">{placeOf(r)}</span>}
         </span>
         {(dists.length > 0 || r.registration_open || fee || hint) && (
-          <span className="flex flex-wrap items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1.5">
             {dists.map((d) => (
-              <span key={d} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">{d}</span>
+              <span key={d} className="rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-meta text-(--text-secondary)">{d}</span>
             ))}
-            {more > 0 && <span className="text-caption text-(--text-muted)">+{more}</span>}
-            {hint && <span className={cn('rounded-full px-2 py-0.5 text-caption font-medium', HINT_CLS[hint.tone])}>{hint.label}</span>}
+            {more > 0 && <span className="text-meta text-(--text-muted)">+{more} more</span>}
+            {hint && <span className={cn('rounded-full px-2.5 py-0.5 text-meta font-medium', HINT_CLS[hint.tone])}>{hint.label}</span>}
           </span>
         )}
         {(r as RaceX).estimate && <EstimateLine e={(r as RaceX).estimate!} />}
         {(r.registration_open || fee) && (
-          <span className="flex items-center gap-2 text-caption">
+          <span className="flex flex-wrap items-center gap-x-2.5 text-small">
             {r.registration_open && <span className="font-semibold text-(--accent)">Registration open</span>}
             {fee && <span className="text-(--text-muted)">from {fee}</span>}
           </span>

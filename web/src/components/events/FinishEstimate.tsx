@@ -34,11 +34,11 @@ export function FinishChip({ eventId, className }: { eventId: string; className?
   const { res } = useEventPrediction(eventId)
   if (!hasEstimate(res)) return null
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-meta text-(--text-secondary)', className)}
+    <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full bg-(--bg-inset) px-3 py-1 text-meta text-(--text-secondary)', className)}
       title={`${CONF_LABEL[res.confidence]}: ${res.basis[0] ?? ''}`}>
-      <Timer className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
+      <Timer className="size-4 shrink-0 text-(--accent)" aria-hidden />
       <span className="sr-only">Estimated finish</span>
-      <span aria-hidden>Est.</span> <span className="whitespace-nowrap font-mono font-medium text-(--text)">{res.text}</span>
+      <span aria-hidden>Finish</span> <span className="whitespace-nowrap font-semibold tabular-nums text-(--text)">{res.text}</span>
     </span>
   )
 }
@@ -48,7 +48,7 @@ export function FinishEstimate({ eventId, athleteId, className }: { eventId: str
   const { res, error, retry } = useEventPrediction(eventId, athleteId)
   return (
     <section className={cn('flex flex-col gap-2', className)} aria-labelledby={`fe-${eventId}`}>
-      <h2 id={`fe-${eventId}`} className="font-sans px-1 text-caption font-semibold text-(--text-muted)">
+      <h2 id={`fe-${eventId}`} className="section-title m-0 px-1">
         Your estimated finish
       </h2>
       {error ? <ErrorState compact message={error} onRetry={retry} />

@@ -41,16 +41,16 @@ export function KindPicker({ value, onChange }: { value: EventKind | null; onCha
   return (
     <Card>
       <Field label="What is it?" hint={value ? KIND_HINT[value] : 'Races, group workouts, trips and big life days all shape your plan.'}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Kind of event">
+        <div className="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2 sm:grid-cols-3" role="radiogroup" aria-label="Kind of event">
           {EVENT_KINDS.map(([k, label]) => {
             const Icon = KIND_ICON[k]
             const on = value === k
             return (
               <button key={k} type="button" role="radio" aria-checked={on} onClick={() => onChange(k)}
-                className={cn('flex min-h-16 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-body font-medium transition-colors',
+                className={cn('flex min-h-14 items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-body-lg font-medium transition-colors',
                   on ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) bg-(--bg-surface) text-(--text) active:bg-(--bg-inset)')}>
-                <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
-                  <Icon className="size-4.5" />
+                <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
+                  <Icon className="size-5" />
                 </span>
                 {label}
               </button>
@@ -179,7 +179,7 @@ export function RepeatFields({ date, value, onChange, hint }: {
           options={[['none', 'Once'], ['weekly', 'Weekly'], ['biweekly', 'Every 2 weeks'], ['monthly', 'Monthly']]} />
         {value && mode !== 'monthly' && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-meta text-(--text-muted)">On</span>
+            <span className="text-small text-(--text-muted)">On</span>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Days it repeats on">
               {WEEKDAYS.map(([d, l]) => (
                 <button key={d} type="button" aria-pressed={days.includes(d)} aria-label={DAY_LONG[d]} onClick={() => toggleDay(d)}
@@ -193,15 +193,15 @@ export function RepeatFields({ date, value, onChange, hint }: {
         )}
         {value && mode === 'monthly' && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-meta text-(--text-muted)">Which week</span>
+            <span className="text-small text-(--text-muted)">Which week</span>
             <Choice value={String(value.setpos ?? 1)} onChange={(v) => v && onChange({ ...value, setpos: Number(v) as Recurring['setpos'] })} options={ORD} />
-            <span className="text-meta text-(--text-muted)">Day</span>
+            <span className="text-small text-(--text-muted)">Day</span>
             <Choice value={days[0]!} onChange={(v) => v && onChange({ ...value, weekdays: [v], weekday: undefined })} options={WEEKDAYS} />
           </div>
         )}
         {value && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-meta text-(--text-muted)">Ends</span>
+            <span className="text-small text-(--text-muted)">Ends</span>
             <Choice value={ends} onChange={(e) => onChange({ ...value,
               until: e === 'on' ? (value.until ?? date ?? todayIso()) : null, count: e === 'after' ? (value.count ?? 10) : null })}
               options={[['never', 'Never'], ['on', 'On a date'], ['after', 'After some dates']]} />
@@ -330,7 +330,7 @@ export function EventVisibility({ value, onChange }: { value: EventFields; onCha
   const pub = value.visibility === 'public'
   return (
     <section aria-label="Who can see it" className="flex flex-col gap-2">
-      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Who can see it</h2>
+      <h2 className="section-title m-0 px-1">Who can see it</h2>
       <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Who can see it">
         <OptionCard selected={!pub} title="Just me" description="Private: on your calendar and in your plan only."
           onClick={() => onChange({ visibility: 'private' })} />
@@ -396,12 +396,12 @@ export function EventGoal({ value, onChange, hidePriority, imperial, raceOnly = 
 /** What the web lookup found, labelled as such, with its sources. */
 export function InfoBlock({ info }: { info: EventInfo }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="flex items-center gap-1.5 text-caption font-semibold text-(--accent)">
-        <Globe className="size-4" /> Found online{info.fetched_at ? ` · ${new Date(info.fetched_at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
+    <div className="flex flex-col gap-3">
+      <p className="flex items-center gap-2 text-meta font-semibold text-(--accent)">
+        <Globe className="size-5" /> Found online{info.fetched_at ? ` · ${new Date(info.fetched_at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
       </p>
       {info.summary && <p className="text-body leading-snug text-(--text)">{info.summary}</p>}
-      <dl className="grid grid-cols-[84px_1fr] gap-x-3 gap-y-1.5 text-small">
+      <dl className="grid grid-cols-[96px_1fr] gap-x-3 gap-y-2 text-body">
         {INFO_LABEL.filter(([k]) => info[k]).map(([k, label]) => (
           <div key={k} className="contents">
             <dt className="text-(--text-muted)">{label}</dt>
@@ -410,15 +410,15 @@ export function InfoBlock({ info }: { info: EventInfo }) {
         ))}
       </dl>
       {(info.website || info.sources?.length) && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-meta">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-small">
           {[info.website, ...(info.sources ?? [])].filter((u, i, a): u is string => !!u && a.indexOf(u) === i).slice(0, 4).map((u) => (
-            <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-(--accent)">
-              {hostOf(u)} <ExternalLink className="size-3.5" />
+            <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium text-(--accent)">
+              {hostOf(u)} <ExternalLink className="size-4" />
             </a>
           ))}
         </div>
       )}
-      <p className="text-caption text-(--text-muted)">From a web search. Double-check dates and cutoffs on the official site.</p>
+      <p className="text-small text-(--text-muted)">From a web search. Double-check dates and cutoffs on the official site.</p>
     </div>
   )
 }

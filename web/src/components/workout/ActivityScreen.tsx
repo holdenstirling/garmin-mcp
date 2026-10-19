@@ -143,11 +143,11 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
 
       {stats.length > 0 && (
         <SectionCard title="Key numbers">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-3.5 pt-2 min-[400px]:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 px-4 pt-3 min-[400px]:grid-cols-3">
             {stats.map(([k, x]) => (
               <div key={k} className="min-w-0">
-                <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
-                <dd className="truncate font-mono text-body-lg font-semibold tabular-nums text-(--text)">{x}</dd>
+                <dt className="text-caption font-medium text-(--text-muted)">{k}</dt>
+                <dd className="text-body-lg font-semibold tabular-nums text-(--text) [overflow-wrap:anywhere]">{x}</dd>
               </div>
             ))}
           </dl>
@@ -163,12 +163,12 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       )}
       {v.garmin_url && (
         <a href={v.garmin_url} target="_blank" rel="noopener noreferrer"
-          className="flex min-h-11 items-center justify-center gap-1.5 text-small font-medium text-(--accent)">
-          <ExternalLink className="size-4" aria-hidden /> Open in Garmin Connect
+          className="flex min-h-12 items-center justify-center gap-2 text-body font-medium text-(--accent)">
+          <ExternalLink className="size-5" aria-hidden /> Open in Garmin Connect
         </a>
       )}
       {!v.ai && (
-        <p className="px-1 text-meta text-(--text-muted)">
+        <p className="px-1 text-small text-(--text-muted)">
           Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; rabbt's coaching doesn't use it.
         </p>
       )}
@@ -181,22 +181,24 @@ function ZonesCard({ z }: { z: NonNullable<ActivityView['zones']> }) {
   const COLORS = ['var(--bg-inset)', 'var(--accent-subtle)', 'color-mix(in oklab, var(--accent) 45%, transparent)', 'var(--warning)', 'var(--danger)']
   return (
     <SectionCard title="Time in heart-rate zones" icon={HeartPulse}>
-      <div className="flex flex-col gap-2 px-3.5 pt-2">
+      <div className="flex flex-col gap-2.5 px-4 pt-3">
         <div className="flex h-3 overflow-hidden rounded-full bg-(--bg-inset)" role="img"
           aria-label={z.zones.filter((x) => x.s).map((x) => `Zone ${x.zone} ${x.label}: ${Math.round(x.s / 60)} minutes`).join(', ')}>
           {z.zones.map((x, i) => x.s > 0 && <span key={x.zone} style={{ width: `${(x.s / total) * 100}%`, background: COLORS[i] }} />)}
         </div>
         <ul className="flex flex-col">
           {z.zones.map((x, i) => (
-            <li key={x.zone} className="flex min-h-9 items-center gap-2 text-small">
-              <span className="size-2.5 shrink-0 rounded-full border border-(--border)" style={{ background: COLORS[i] }} aria-hidden />
-              <span className="w-24 shrink-0 text-(--text)">Z{x.zone} {x.label}</span>
-              <span className="flex-1 font-mono text-meta text-(--text-muted)">{x.low}–{x.high} bpm</span>
-              <span className="font-mono tabular-nums text-(--text)">{x.s ? hms(x.s) : '–'}</span>
+            <li key={x.zone} className="flex min-h-12 items-center gap-3 border-t border-(--border) py-1.5 text-body first:border-t-0">
+              <span className="size-3 shrink-0 rounded-full border border-(--border)" style={{ background: COLORS[i] }} aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block text-(--text)">Zone {x.zone}, {x.label.toLowerCase()}</span>
+                <span className="block text-small tabular-nums text-(--text-muted)">{x.low}–{x.high} bpm</span>
+              </span>
+              <span className="font-semibold tabular-nums text-(--text)">{x.s ? hms(x.s) : '–'}</span>
             </li>
           ))}
         </ul>
-        {z.basis === 'average' && <p className="text-meta text-(--text-muted)">Estimate from your average heart rate (no laps with heart rate).</p>}
+        {z.basis === 'average' && <p className="text-small text-(--text-muted)">Estimate from your average heart rate (no laps with heart rate).</p>}
       </div>
     </SectionCard>
   )
@@ -207,20 +209,20 @@ function LapsCard({ laps, imperial, sport }: { laps: ActivityView['laps']; imper
   const paced = sport === 'run' || sport === 'walk' || sport === 'hike'
   return (
     <SectionCard title={`Laps (${laps.length})`}>
-      <div className="overflow-x-auto px-3.5 pt-2">
-        <table className="w-full text-left text-small tabular-nums">
-          <thead className="text-caption text-(--text-muted) font-semibold">
-            <tr><th className="py-1 pr-2 font-semibold">#</th><th className="py-1 pr-2 font-semibold">Dist</th><th className="py-1 pr-2 font-semibold">Time</th>
-              <th className="py-1 pr-2 font-semibold">{paced ? 'Pace' : 'Speed'}</th>{showHr && <th className="py-1 font-semibold">HR</th>}</tr>
+      <div className="overflow-x-auto px-4 pt-3">
+        <table className="w-full text-left text-body tabular-nums">
+          <thead className="text-meta text-(--text-muted) font-semibold">
+            <tr><th className="py-1.5 pr-3 font-semibold">Lap</th><th className="py-1.5 pr-3 font-semibold">Distance</th><th className="py-1.5 pr-3 font-semibold">Time</th>
+              <th className="py-1.5 pr-3 font-semibold">{paced ? 'Pace' : 'Speed'}</th>{showHr && <th className="py-1.5 font-semibold">HR</th>}</tr>
           </thead>
           <tbody>
             {laps.map((l) => (
               <tr key={l.n} className="border-t border-(--border)">
-                <td className="py-1.5 pr-2 text-(--text-muted)">{l.n}</td>
-                <td className="py-1.5 pr-2">{fmtDist(l.km, imperial, distSport(sport))}</td>
-                <td className="py-1.5 pr-2 font-mono">{hms(l.s)}</td>
-                <td className="py-1.5 pr-2 font-mono">{paced ? fmtPaceKm(l.pace_s_per_km, imperial) : fmtSpeed(l.km / (l.s / 3600), imperial)}</td>
-                {showHr && <td className="py-1.5 font-mono">{l.hr ?? '–'}</td>}
+                <td className="py-2.5 pr-3 text-(--text-muted)">{l.n}</td>
+                <td className="py-2.5 pr-3">{fmtDist(l.km, imperial, distSport(sport))}</td>
+                <td className="py-2.5 pr-3">{hms(l.s)}</td>
+                <td className="py-2.5 pr-3">{paced ? fmtPaceKm(l.pace_s_per_km, imperial) : fmtSpeed(l.km / (l.s / 3600), imperial)}</td>
+                {showHr && <td className="py-2.5">{l.hr ?? '–'}</td>}
               </tr>
             ))}
           </tbody>
@@ -252,13 +254,13 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="font-sans text-caption font-semibold text-(--text-muted)">How did it go?</h4>
+    <section aria-label="How did it go" className="flex flex-col gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+      <h4 className="font-sans text-lead font-semibold text-(--text)">How did it go?</h4>
       {ck && !editing && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {checkinChips(ck).map((x) => (
-              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-meta font-medium',
+              <span key={x.label} className={cn('rounded-full border px-3 py-1 text-meta font-medium',
                 x.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--border) text-(--text)')}>{x.label}</span>
             ))}
           </div>
@@ -271,7 +273,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
           <label className="flex flex-col gap-1.5">
             <span className="flex items-baseline justify-between text-small text-(--text)">
               <span>Effort (RPE)</span>
-              <span className="font-mono font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe}/10 · {RPE_WORD[rpe]}</span>
+              <span className="font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe} of 10, {RPE_WORD[rpe]!.toLowerCase()}</span>
             </span>
             <input type="range" min={1} max={10} step={1} value={rpe} onChange={(e) => setRpe(Number(e.target.value))}
               aria-valuetext={`${rpe} out of 10, ${RPE_WORD[rpe]}`} className="h-11 w-full accent-(--accent)" />
@@ -295,7 +297,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
         </div>
       )}
       {fb && (
-        <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
+        <div className={cn('flex flex-col gap-2 rounded-lg border px-4 py-3.5', TONE[fb.tone])} aria-live="polite">
           <p className="flex items-center gap-1.5 text-body font-semibold text-(--text)"><RabbitLogo size={16} current className="shrink-0 text-(--accent)" /> {fb.headline}</p>
           <div className="flex flex-col gap-1">
             {fb.lines.map((l) => <p key={l} className="m-0 text-body leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}

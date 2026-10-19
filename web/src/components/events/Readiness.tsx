@@ -104,18 +104,20 @@ function ComponentRow({ c }: { c: ReadinessComponent }) {
   return (
     <div className="flex items-start">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-        className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 py-2.5 pl-4 text-left active:bg-(--bg-inset)">
-        <span className="flex w-full items-center gap-2.5">
-          <span className="w-32 shrink-0 truncate text-body font-medium text-(--text)">{c.label}</span>
-          <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)" role="meter"
+        className="flex min-h-12 min-w-0 flex-1 flex-col gap-1.5 py-3 pl-4 text-left active:bg-(--bg-inset)">
+        <span className="flex w-full items-center gap-2">
+          <span className="min-w-0 flex-1 text-body font-medium text-(--text)">{c.label}</span>
+          <span className="w-9 shrink-0 text-right text-meta font-semibold tabular-nums text-(--text-secondary)">{c.score}</span>
+          <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+        </span>
+        <span className="flex w-full items-center">
+          <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-(--bg-inset)" role="meter"
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.score} aria-label={`${c.label} ${c.score} of 100`}>
             <span className={cn('block h-full rounded-full', barCls(c.score))} style={{ width: `${Math.max(4, c.score)}%` }} />
           </span>
-          <span className="w-7 shrink-0 text-right font-mono text-caption text-(--text-muted)">{c.score}</span>
-          <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
         </span>
-        <span className={cn('text-meta leading-snug text-(--text-secondary)', !open && 'truncate')}>{c.detail}</span>
-        {open && <span className="text-caption text-(--text-muted)">Counts for {c.weight}% of the grade.</span>}
+        <span className="text-small leading-snug text-(--text-secondary)">{c.detail}</span>
+        {open && <span className="text-small text-(--text-muted)">Counts for {c.weight}% of the grade.</span>}
       </button>
       <InfoTip className="mr-3 mt-3.5 ml-1" label={c.label} text={c.tip} align="end" />
     </div>
@@ -126,18 +128,18 @@ function ComponentRow({ c }: { c: ReadinessComponent }) {
 export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () => void; extra?: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick}
-      className="flex min-h-11 w-full items-center gap-2.5 border-t border-(--border) px-3.5 py-2 text-left active:bg-(--bg-inset)">
+      className="flex min-h-12 w-full items-center gap-3 border-t border-(--border) px-4 py-3 text-left active:bg-(--bg-inset)">
       <GradeBadge grade={g.grade} />
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-meta font-semibold text-(--text-secondary)">Readiness and race fit</span>
           <StatusChip status={g.status} />
-          <span className="truncate text-caption text-(--text-muted)">Readiness & race fit</span>
         </span>
-        <span className="mt-0.5 block truncate text-small text-(--text)">{headlineRest(g.headline)}</span>
+        <span className="mt-1 block text-body leading-snug text-(--text)">{headlineRest(g.headline)}</span>
         {/* The finish estimate gets its own line instead of squeezing the label. */}
-        {extra && <span className="mt-1 flex">{extra}</span>}
+        {extra && <span className="mt-2 flex">{extra}</span>}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }
