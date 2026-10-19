@@ -18,12 +18,14 @@ import { getFriendsToday, openPerson, sportWord, type FriendsToday } from '@/lib
 import { PersonAvatar as TapAvatar } from '@/components/people/PersonLink'
 import { daysUntil } from '@/lib/events'
 import { displayText } from '@/lib/mentions'
+import { statsFor } from '@/lib/sportstats'
 
 function line(p: Post, imperial: boolean): string {
   const w = p.workout
   if (w) {
-    const bits = [w.km ? fmtDist(w.km, imperial, w.sport) : null, w.minutes ? fmtDuration(w.minutes) : null].filter(Boolean)
-    return [w.title, ...bits].join(' · ') + (w.headline ? ` · ${w.headline}` : '')
+    // The two numbers that fit the sport (lib/sportstats): "6.3 mi, 8:12/mi", "42 min, 18 sets".
+    const bits = statsFor(w, imperial).slice(0, 2).map((s) => s.value)
+    return `${w.title}${bits.length ? `: ${bits.join(', ')}` : ''}${w.headline ? `. ${w.headline}` : ''}`
   }
   return displayText(p.text) || (p.photos.length ? 'Shared a photo' : 'Shared a post')
 }
@@ -130,7 +132,7 @@ export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {
                   <span className="block text-body leading-snug text-(--text)">
                     <span className="font-semibold">{p.user?.name ?? 'A friend'}</span> <span className="text-(--text-muted)">{ago(p.created)}</span>
                   </span>
-                  <span className="mt-0.5 line-clamp-2 text-small leading-snug text-(--text-secondary)">{line(p, imperial)}</span>
+                  <span className={cn('mt-0.5 text-small leading-snug text-(--text-secondary)', !p.workout && 'line-clamp-2')}>{line(p, imperial)}</span>
                 </span>
               </button>
               <button type="button" aria-pressed={p.my_reaction != null}
