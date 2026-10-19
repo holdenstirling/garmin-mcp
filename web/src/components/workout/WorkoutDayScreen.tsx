@@ -93,12 +93,12 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
         <>
           {s.id && ahead && status !== 'done' && (
             <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={() => setMoving(s.id)}>
-              <CalendarClock className="size-5" aria-hidden /> Move
+              <CalendarClock className="size-5 shrink-0" aria-hidden /> Move
             </Button>
           )}
           {s.id && (
             <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={edit} aria-label="Edit this workout in your schedule">
-              <Pencil className="size-5" aria-hidden /> Edit
+              <Pencil className="size-5 shrink-0" aria-hidden /> Edit
             </Button>
           )}
           {s.id && data && (

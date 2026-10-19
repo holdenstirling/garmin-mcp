@@ -251,10 +251,10 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
     <Sheet title="Adjust my plan" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-body" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
+          <Button variant="default" className="h-12 shrink-0 px-5 text-body" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" className="h-12 min-w-0 flex-1 whitespace-normal text-body leading-tight" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
             onClick={() => void apply()}>
-            {tooFew ? 'Pick at least 2 days' : !changed ? 'Change something above' : 'Update my plan'}
+            {tooFew ? 'Pick at least 2 days' : !changed ? 'Make a change first' : 'Update my plan'}
           </Button>
         </div>
       }>
@@ -309,8 +309,10 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
 }
 
 // ------------------------------------------------------- race switcher --
-export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild }: {
+export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild, onAdjust }: {
   title: string; date: string | null
+  /** "Adjust plan" next to "Change race" (the levers sheet) */
+  onAdjust?: () => void
   /** short facts under the race ("231 days to go", "Week 1 of 34"); a " · " string is split */
   sub?: string | string[]
   /** the plan for the newly picked race (null: it has no plan yet) */
@@ -323,9 +325,8 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
   const facts = (Array.isArray(sub) ? sub : (sub ?? '').split(' · ')).map((x) => x.trim()).filter(Boolean)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. ${facts.join(', ')}. Change race`}
-        className="flex w-full flex-col rounded-xl border border-(--border) bg-(--bg-surface) text-left active:bg-(--bg-inset)">
-        <span className="flex items-start gap-3.5 px-4 pb-3 pt-4">
+      <div className="flex w-full flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
+        <span className="flex items-start gap-3.5 px-4 pb-3.5 pt-4">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-lead font-semibold leading-snug text-(--text)">{title}</span>
@@ -337,10 +338,20 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
             )}
           </span>
         </span>
-        <span className="flex min-h-12 items-center justify-between gap-2 border-t border-(--border) px-4 text-body font-semibold text-(--accent)">
-          Change race <ChevronDown className="size-5" aria-hidden />
+        <span className={cn('grid border-t border-(--border)', onAdjust && 'grid-cols-2 divide-x divide-(--border)')}>
+          <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
+            aria-label={`Change race. Now training for ${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`}
+            className={cn('flex min-h-12 items-center gap-1.5 px-4 text-body font-semibold text-(--accent) active:bg-(--bg-inset)', onAdjust ? 'justify-center rounded-bl-xl' : 'justify-between rounded-b-xl')}>
+            Change race <ChevronDown className="size-5 shrink-0" aria-hidden />
+          </button>
+          {onAdjust && (
+            <button type="button" onClick={onAdjust}
+              className="flex min-h-12 items-center justify-center gap-1.5 rounded-br-xl px-4 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
+              <SlidersHorizontal className="size-5 shrink-0" aria-hidden /> Adjust plan
+            </button>
+          )}
         </span>
-      </button>
+      </div>
       {open && <RaceSheet onClose={() => setOpen(false)} onSwitched={(p) => { setOpen(false); onSwitched(p) }}
         onAddRace={() => { setOpen(false); onAddRace() }} onBuild={() => { setOpen(false); onBuild() }} />}
     </>
@@ -465,13 +476,13 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
   const changes = prop?.changes ?? []
-  const label = useMemo(() => !answered ? 'Answer one question to start' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
+  const label = useMemo(() => !answered ? 'Answer a question first' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
   return (
     <Sheet title="How was this week?" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-4 text-body" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
-          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
+          <Button variant="default" className="h-12 shrink-0 px-5 text-body" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
+          <Button variant="primary" className="h-12 min-w-0 flex-1 whitespace-normal text-body leading-tight" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
             onClick={() => void go(!prop ? 'preview' : prop.status === 'suggest' ? 'apply' : 'skip')}>{label}</Button>
         </div>
       }>

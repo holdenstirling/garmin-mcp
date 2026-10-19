@@ -1,7 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
 import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
 import { SickBanner } from './SickHost'
 import { Button } from '@/components/ui/button'
@@ -276,17 +276,12 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <RaceSwitcher title={goalTitle} date={plan.race_date}
             sub={[daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done',
               plan.current_week ? `Week ${plan.current_week} of ${plan.weeks.length}` : `${plan.weeks.length} weeks`]}
             onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
-            onAddRace={onOpenEvents} onBuild={onRebuild} />
-          {!readOnly && (
-            <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => setAdjusting(true)}>
-              <SlidersHorizontal className="size-5" aria-hidden /> Adjust my plan
-            </Button>
-          )}
+            onAddRace={onOpenEvents} onBuild={onRebuild} onAdjust={readOnly ? undefined : () => setAdjusting(true)} />
           {undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
           {!readOnly && <SickBanner />}
           {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}

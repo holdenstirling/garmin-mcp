@@ -102,8 +102,8 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     <Sheet title={session ? session.title : 'Add a workout'} className="modal--tall" footer={!locked ? (
         // Pinned under the form so Save is always in reach (also with the keyboard open).
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-body" disabled={!!busy} onClick={close}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'}
+          <Button variant="default" className="h-12 shrink-0 px-5 text-body" disabled={!!busy} onClick={close}>Cancel</Button>
+          <Button variant="primary" className="h-12 min-w-0 flex-1 whitespace-normal text-body leading-tight" loading={busy === 'save'}
             disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
             {adding ? 'Add workout' : Object.keys(changed).length === 0 ? 'No changes yet' : 'Save changes'}
           </Button>

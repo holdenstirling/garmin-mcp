@@ -277,7 +277,7 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
             {unread && <span className="ml-1.5 inline-block size-2 rounded-full bg-(--accent) align-middle" aria-label="New coach message" />}
           </span>
           {size && <span className="mt-0.5 block text-small tabular-nums text-(--text-secondary)">{size}</span>}
-          {pace && <span className="block text-small tabular-nums text-(--text-muted)">Pace {pace}</span>}
+          {pace && <span className="block text-small tabular-nums text-(--text-muted)">Pace <span className="whitespace-nowrap">{pace}</span></span>}
           {!size && !pace && s.kind !== 'race' && <span className="mt-0.5 block text-small text-(--text-muted)">{KIND_LABEL[s.kind] ?? s.kind}</span>}
           {(c?.status === 'done' || c?.status === 'missed' || c?.status === 'skipped' || (s.synced && !c?.status.match(/done|missed/))) && (
             <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -521,7 +521,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   }
   const editToggle = editable && cal && (
     <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)}
-      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-body font-medium',
+      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-body font-medium',
         editing ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
       {editing ? <><Check className="size-5" aria-hidden />Done</> : <><Pencil className="size-5" aria-hidden />Edit week</>}
     </button>
@@ -546,7 +546,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           drag && !canDrop(d.date) && 'opacity-50')}>
         <div className="flex min-h-11 items-center gap-2">
           <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}`}
-            className="-ml-1 flex min-h-11 min-w-0 items-baseline gap-2 rounded-lg px-1 text-left active:bg-(--bg-inset)">
+            className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-1 text-left active:bg-(--bg-inset)">
             <span className={cn('text-body font-semibold', isToday ? 'text-(--accent)' : 'text-(--text)')}>
               {isToday ? 'Today' : fmtDay(d.date, { weekday: 'long' })}
             </span>
@@ -634,9 +634,9 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
       <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Today'], ['week', 'Week'], ['list', 'List'], ['month', 'Month']] as const}
         onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : today) : setView(v)} /></div>
       <div className="flex flex-col gap-0.5 px-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setOverview(true)}
-            className="flex min-h-11 items-center gap-2 text-body font-semibold text-(--accent)">
+            className="flex min-h-11 items-center gap-2 whitespace-nowrap text-body font-semibold text-(--accent)">
             <MapIcon className="size-5" aria-hidden />Plan overview
           </button>
           <span className="ml-auto">{(view === 'week' || view === 'list') && editToggle}</span>
