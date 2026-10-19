@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import { MessageSquarePlus, Pin, Trash2 } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
-import { goalCountdown, type Goal, type Thread } from '@/lib/api'
+import type { Goal, Thread } from '@/lib/api'
 import { Segmented } from '@/components/nav/Segmented'
 import { DmList } from '@/components/dm/DmList'
 
@@ -38,8 +38,8 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       header={
         <div className="min-w-0">
           <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with rabbt'}</h2>
-          <button type="button" className="hit-44 max-w-full truncate text-left text-meta text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
-            {goal ? `Training for ${goal.title}${goalCountdown(goal) ? ` · ${goalCountdown(goal)}` : ''}` : 'Set what you’re training for'}
+          <button type="button" className="hit-44 max-w-full text-left text-small leading-snug text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
+            {goal ? `Training for ${goal.title}` : 'Set what you’re training for'}
           </button>
         </div>
       }
@@ -50,7 +50,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
         </button>
       }
       below={onView && (
-        <div className="px-4 pb-2">
+        <div className="px-5 pb-2">
           <Segmented label="Chats" value={view} onChange={onView}
             options={[['rabbit', 'rabbt'], ['people', dmUnread > 0 ? `People · ${dmUnread}` : 'People']] as const} />
         </div>
@@ -62,21 +62,21 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
           {people && onOpenDm && onNewDm ? <DmList onOpen={onOpenDm} onNew={onNewDm} /> : threads.map((t) => (
             <div key={t.id} role="button" tabIndex={0} onClick={() => onSelect(t.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(t.id) } }}
-              className={`group flex w-full cursor-pointer items-start gap-2 border-b border-border/40 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${activeId === t.id ? 'bg-muted' : ''}`}>
-              {t.kind === 'coach' && <Pin className="mt-0.5 size-4 shrink-0 text-(--accent)" />}
+              className={`group flex min-h-16 w-full cursor-pointer items-center gap-3 border-b border-(--border) px-5 py-3.5 text-left transition-colors hover:bg-muted/50 active:bg-(--bg-inset) ${activeId === t.id ? 'bg-muted' : ''}`}>
+              {t.kind === 'coach' && <Pin className="size-5 shrink-0 text-(--accent)" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-body font-medium">
+                <p className="line-clamp-2 text-body-lg font-medium leading-snug">
                   {t.kind === 'coach' ? 'rabbt' : t.title || 'New chat'}
                 </p>
-                <p className="mt-0.5 text-meta text-muted-foreground">
+                <p className="mt-0.5 text-small text-muted-foreground">
                   {t.kind === 'coach' ? 'Briefs, workout notes and chats you started' : formatRelativeTime(t.updated)}
                 </p>
               </div>
               {t.kind === 'topic' && (
                 <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t) }}
-                  className="hit-44 mt-0.5 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
                   title="Delete" aria-label="Delete chat">
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-5" />
                 </button>
               )}
             </div>

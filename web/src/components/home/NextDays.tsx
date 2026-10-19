@@ -33,7 +33,7 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
   const imperial = data.units !== 'metric'
   return (
     <div role="group" aria-label="Next 3 days" className="settings-group flex flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-(--border) px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 py-3">
         <h3 className="m-0 text-body-lg font-semibold text-(--text)">Next 3 days</h3>
         {data.place && <span className="text-small text-(--text-muted)">Weather for {data.place}</span>}
       </div>

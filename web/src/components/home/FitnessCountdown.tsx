@@ -37,7 +37,7 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
   const label = `${race.name}: ${days} days to go. Race grade ${race.grade}, ${STATUS_LABEL[race.status]}. ${spoken}. Open race readiness`
   return (
     <button type="button" onClick={() => onOpen(race.event_id)} aria-label={label}
-      className="flex min-h-[96px] w-full items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4 text-left shadow-[var(--shadow-sm)] active:bg-(--bg-inset)">
+      className="flex min-h-[96px] w-full items-start gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4 text-left shadow-[var(--shadow-sm)] active:bg-(--bg-inset)">
       <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-(--accent-subtle) leading-none text-(--accent)" aria-hidden>
         <span className="font-display text-title-md">{race.grade}</span>
         <span className="mt-1 text-caption font-semibold">Grade</span>
@@ -47,16 +47,15 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
           <Flag className="size-4" /> {race.main ? 'Goal race' : 'Next race'}
         </span>
         <span className="block text-body-lg font-semibold leading-snug text-(--text)">{race.name}</span>
-        <span className={cn('mt-0.5 block text-small leading-snug', race.status === 'at_risk' || race.status === 'behind' ? 'text-(--warning-text)' : 'text-(--accent)')}>{STATUS_LABEL[race.status]}</span>
+        <span className="mt-0.5 block font-display text-title leading-tight text-(--brand)">
+          {days === 0 ? 'Race day' : `${days} ${days === 1 ? 'day' : 'days'} to go`}
+        </span>
+        <span className={cn('mt-1 block text-small leading-snug', race.status === 'at_risk' || race.status === 'behind' ? 'text-(--warning-text)' : 'text-(--accent)')}>{STATUS_LABEL[race.status]}</span>
         {Arrow && (
           <span className="flex items-center gap-1 text-small leading-snug text-(--text-secondary)"><Arrow className="size-4 shrink-0" /> {trendWord}</span>
         )}
       </span>
-      <span className="flex shrink-0 flex-col items-end leading-none" aria-hidden>
-        <span className="font-display text-display text-(--brand)">{days}</span>
-        <span className="mt-1 text-meta text-(--text-muted)">{days === 1 ? 'day' : 'days'}</span>
-      </span>
-      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 self-center text-(--text-muted)" aria-hidden />
     </button>
   )
 }

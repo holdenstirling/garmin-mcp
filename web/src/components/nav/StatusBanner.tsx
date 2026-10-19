@@ -35,13 +35,13 @@ function SetupRing({ done, total }: { done: number; total: number }) {
   const r = 12, c = 2 * Math.PI * r
   const frac = total > 0 ? Math.min(1, done / total) : 0
   return (
-    <span className="relative inline-flex size-7 shrink-0 items-center justify-center" aria-hidden>
-      <svg viewBox="0 0 28 28" className="absolute inset-0 size-7 -rotate-90">
+    <span className="relative inline-flex size-10 shrink-0 items-center justify-center" aria-hidden>
+      <svg viewBox="0 0 28 28" className="absolute inset-0 size-10 -rotate-90">
         <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" strokeOpacity={0.2} strokeWidth={2.5} />
         <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
           className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - frac)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="font-mono text-caption font-medium leading-none tabular-nums">{done}/{total}</span>
+      <span className="text-caption font-semibold leading-none tabular-nums">{done}/{total}</span>
     </span>
   )
 }

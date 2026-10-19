@@ -18,11 +18,11 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
   return (
     <div className={cn('relative flex w-full min-w-0 flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
       {showLabel && (isUser ? (
-        <span className="px-1 pr-2 text-caption font-semibold text-muted-foreground">You</span>
+        <span className="px-1 pr-2 text-meta font-semibold text-muted-foreground">You</span>
       ) : (
         // Every Rabbit message carries the same mark: the brand tile + name.
-        <span className="flex items-center gap-1.5 pl-1 text-caption font-semibold text-(--accent)">
-          <span className="logo-tile flex size-5 items-center justify-center rounded-[6px] bg-(--brand)" aria-hidden><RabbitLogo size={15} /></span>
+        <span className="flex items-center gap-2 pl-1 text-meta font-semibold text-(--accent)">
+          <span className="logo-tile flex size-6 items-center justify-center rounded-[7px] bg-(--brand)" aria-hidden><RabbitLogo size={18} /></span>
           rabbt
         </span>
       ))}
@@ -50,7 +50,7 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
         </div>
       )}
       {message.text && <div data-msg-id={message.id} {...pressProps} className={cn(
-        'msg-press chat-text relative min-w-0 max-w-[85%] overflow-hidden break-words rounded-xl px-3.5 py-2.5 text-lead leading-[1.45] shadow-sm',
+        'msg-press chat-text relative min-w-0 max-w-[88%] overflow-hidden break-words rounded-xl px-4 py-3 text-lead leading-[1.5] shadow-sm',
         isUser
           ? 'rounded-tr-sm border border-black/10 bg-[var(--msg-user-bg)] text-[var(--msg-user-text)]'
           : message.error

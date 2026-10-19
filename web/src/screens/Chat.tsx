@@ -77,7 +77,7 @@ import { MessageBubble } from '@/components/chat/MessageBubble'
 import { ToolCallCard, ToolCallGroup } from '@/components/chat/ToolCallCard'
 import { Button } from '@/components/ui/button'
 import {
-  createThread, deleteThread, getPlanWeek, goalCountdown, listThreads, putSettings,
+  createThread, deleteThread, getPlanWeek, listThreads, putSettings,
   type Goal, type Me, type PlannedSession, type PlanWeek, type Thread, type WeekDay,
 } from '@/lib/api'
 import { useCoach, type QueuedSend, type ChartItem, type Approval, type ChatItem, type ChatMessage, type MomentAction, type MomentItem, type ThreadLink, type ToolCall } from '@/hooks/useCoach'
@@ -171,6 +171,16 @@ const coarsePointer = () => { try { return window.matchMedia('(pointer: coarse)'
 
 const HEADER_ICON = 'relative flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)'
 
+
+/** The header's goal line: "Boulder 70.3 · 33 weeks to go" (two facts, not three). */
+function goalLeft(goal: { date?: string | null }): string {
+  if (!goal.date) return ''
+  const days = daysUntil(goal.date)
+  if (days < 0) return 'done'
+  if (days <= 7) return days === 0 ? 'race day' : 'race week'
+  const weeks = Math.floor(days / 7)
+  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} to go`
+}
 
 /** Home's nudges, most important first (one shows under the hero, the rest in More for you). */
 type HomeNudge = 'notes' | 'banner' | 'niggle' | 'calendar' | 'next'
@@ -972,7 +982,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const chips = status === 'idle' && me.chat.available && lastRow?.kind === 'message' && lastRow.item.role === 'agent' && !lastRow.item.error
     ? replyChips(lastRow.item.text) : []
   const idlePrompt = useRotatingPrompt(tab === 'rabbit' && status === 'idle' && !composerFocus, composerPrompts(intents))
-  const countdown = goalCountdown(goal)
   const coachThread = coachId ? byId[coachId] : undefined
 
   // Rabbit's one status slot, most important first.
@@ -1042,9 +1051,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <span className={cn('block truncate font-display leading-tight text-(--brand)', isLog ? 'text-title-md' : 'text-title-sm')}>
               {isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}
             </span>
-            <span className="block truncate text-meta leading-tight text-(--text-muted) max-[359px]:hidden">
-              {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set'}
-            </span>
+            {/* Home shows the race in its greeting; elsewhere a short line says what you're training for. */}
+            {!(isLog && homeView === 'home' && atLog) && (
+              <span className="block truncate text-meta leading-tight text-(--text-muted) max-[359px]:hidden">
+                {goal ? `${goal.title}${goalLeft(goal) ? ` · ${goalLeft(goal)}` : ''}` : 'No goal set'}
+              </span>
+            )}
           </span>
         </button>
         {meButton}

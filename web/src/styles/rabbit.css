@@ -171,12 +171,13 @@ html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-
 @keyframes msg-menu-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 .rabbit-toast {
   position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: var(--z-toast);
-  transform: translateX(-50%); padding: 6px 14px; border-radius: 999px;
-  background: var(--text); color: var(--bg); font-size: var(--text-small); box-shadow: var(--shadow-md); pointer-events: none;
-  animation: toast-in 1.6s ease both;
+  transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; width: max-content; max-width: calc(100vw - 40px);
+  text-align: center; line-height: 1.35;
+  background: var(--text); color: var(--bg); font-size: var(--text-body); font-weight: 500; box-shadow: var(--shadow-md); pointer-events: none;
+  animation: toast-in 2.8s ease both;
 }
 @keyframes toast-in {
-  0% { opacity: 0; transform: translate(-50%, 8px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); }
+  0% { opacity: 0; transform: translate(-50%, 8px); } 8%, 86% { opacity: 1; transform: translate(-50%, 0); }
   100% { opacity: 0; transform: translate(-50%, 0); }
 }
 @media (prefers-reduced-motion: reduce) {

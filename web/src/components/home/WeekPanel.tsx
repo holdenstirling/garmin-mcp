@@ -170,7 +170,7 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
   const label = `Week at a glance: ${head} ${unit}. ${trend}. Open this week in your schedule`
   return (
     <button type="button" onClick={onOpen} aria-label={label}
-      className="flex w-full items-end gap-3 border-b border-(--border) px-4 py-4 text-left active:bg-(--bg-inset)">
+      className="flex w-full items-end gap-3 px-4 py-4 text-left active:bg-(--bg-inset)">
       <span className="min-w-0 flex-1" aria-hidden>
         <span className="block text-title font-semibold tabular-nums text-(--text)">{head}</span>
         <span className="block text-small text-(--text-muted)">{unit}</span>
@@ -241,18 +241,18 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
   }
   return (
     <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
-      <div className="border-b border-(--border) px-4 py-3">
+      <div className="px-4 py-3">
         <h3 className="m-0 text-body-lg font-semibold leading-snug text-(--text)">{weekHead(week).title}</h3>
         <p className="m-0 mt-0.5 text-small text-(--text-muted)">{weekHead(week).sub}</p>
       </div>
       <WeekGlance week={week} miles={miles} imperial={imperial} onOpen={onOpenWeek ?? onOpenPlan} />
-      {week.garmin_error && <p className="px-3.5 pt-2 text-meta text-(--warning-text)">{week.garmin_error}</p>}
+      {week.garmin_error && <p className="px-4 py-3 text-small text-(--warning-text)">{week.garmin_error}</p>}
       <ul className="divide-y divide-(--border)">
         {week.days.map((d) => <DayLine key={d.date} d={d} imperial={imperial} onOpen={onOpenDay} onSheet={(x) => setSheetDay(x.date)} />)}
       </ul>
       {sheet && <PlanDaySheet day={sheet} imperial={imperial} onClose={() => setSheetDay(null)} onAsk={onAskDay} />}
       <button type="button" onClick={onOpenPlan}
-        className="flex min-h-12 w-full items-center justify-center gap-1 border-t border-(--border) text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+        className="flex min-h-12 w-full items-center justify-center gap-1 text-body font-medium text-(--accent) active:bg-(--bg-inset)">
         See full plan <ChevronRight className="size-5" aria-hidden />
       </button>
     </div>

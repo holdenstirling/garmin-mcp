@@ -19,11 +19,11 @@ export function replyChips(text: string): string[] {
 export function ReplyChips({ chips, onPick, disabled }: { chips: string[]; onPick: (t: string) => void; disabled?: boolean }) {
   if (!chips.length) return null
   return (
-    <div className="-mt-2 flex flex-wrap gap-1.5 pl-1" role="group" aria-label="Quick replies">
+    <div className="-mt-1 flex flex-wrap gap-2 pl-1" role="group" aria-label="Quick replies">
       {chips.slice(0, 3).map((c) => (
         <button key={c} type="button" disabled={disabled} onClick={() => onPick(c)}
           className="inline-flex min-h-11 items-center rounded-full disabled:opacity-50">
-          <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-small font-medium text-(--accent) active:opacity-70">
+          <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-4 py-2 text-body font-medium leading-snug text-(--accent) active:opacity-70">
             {c}
           </span>
         </button>
