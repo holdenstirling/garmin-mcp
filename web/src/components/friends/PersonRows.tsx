@@ -39,18 +39,18 @@ export function PersonRow({ user, reason, status, followsYou, onDismiss, onFollo
   user: FindUser; reason?: string; status: FindStatus; followsYou?: boolean
   onDismiss?: () => void; onFollowed?: (s: FindStatus) => void; onError?: (msg: string) => void
 }) {
-  const sub = [user.handle ? `@${user.handle}` : '', reason ?? ''].filter(Boolean).join(' · ')
   return (
-    <li className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
+    <li className="flex min-h-16 items-center gap-3 px-4 py-3">
       <PersonAvatar p={user} size={44} />
       <button type="button" onClick={() => openPerson(user.id)} className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-lead font-medium text-(--text)">{user.name}</span>
-        {sub && <span className="block truncate text-meta text-(--text-muted)">{sub}</span>}
+        <span className="block text-lead font-semibold leading-snug text-(--text)">{user.name}</span>
+        {user.handle && <span className="block text-meta text-(--text-muted)">@{user.handle}</span>}
+        {reason && <span className="block text-meta text-(--text-secondary)">{reason}</span>}
       </button>
       <FollowButton uid={user.id} status={status} followsYou={followsYou} onDone={onFollowed} onError={onError} />
       {onDismiss && (
         <button type="button" onClick={onDismiss} aria-label={`Hide ${user.name}`}
-          className="-mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)">
+          className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)">
           <X className="size-5" aria-hidden />
         </button>
       )}

@@ -244,13 +244,13 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
       {([['feed', 'Feed'], ['members', 'Members']] as const).map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
           className={cn('min-h-11 flex-1 rounded-full text-meta font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
-          {label}{v === 'members' && g ? ` · ${g.count}` : ''}
+          {label}{v === 'members' && g ? ` (${g.count})` : ''}
         </button>
       ))}
     </div>
   )
   return (
-    <Screen title={g ? `${g.emoji} ${g.name}` : 'Group'} subtitle={g ? `${g.count} of ${g.max} · only the group sees posts here` : undefined}
+    <Screen title={g ? `${g.emoji} ${g.name}` : 'Group'} subtitle={g ? `${g.count} of ${g.max} people. Only the group sees posts here.` : undefined}
       closing={closing} onBack={close} onClose={close} headerExtra={seg}>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!g && !error && <RabbitLoader className="py-10" label="Loading group" />}

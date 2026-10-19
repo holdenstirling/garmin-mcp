@@ -73,11 +73,11 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
       title="Search"
       below={
         <div className="px-4 pb-2">
-          <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-inset) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
+          <label className="flex h-12 items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-inset) px-4 focus-within:ring-1 focus-within:ring-(--accent)">
             <SearchIcon className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             <input ref={input} type="search" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') rememberSearch(q) }}
-              placeholder="People, clubs, races, workouts…" aria-label="Search people, clubs, races, sessions and workouts"
+              placeholder="People, clubs, races…" aria-label="Search people, clubs, races, sessions and workouts"
               className="min-w-0 flex-1 bg-transparent text-lead [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none text-(--text) outline-none placeholder:text-(--text-muted)" />
             {q && (
               <button type="button" aria-label="Clear search" onClick={() => { setQ(''); input.current?.focus() }}
@@ -124,7 +124,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             <Group title="People" n={res.people.length}>
               {res.people.map((p) => (
                 <Row key={p.id} onClick={() => pick({ kind: 'person', id: p.id })}
-                  icon={<Avatar name={p.name} picture={p.picture ?? ''} photo={photoUrl(p.photo ?? null, p.id)} size={32} />}
+                  icon={<Avatar name={p.name} picture={p.picture ?? ''} photo={photoUrl(p.photo ?? null, p.id)} size={40} />}
                   title={p.name} sub={p.relation === 'following' ? 'You follow' : 'Follows you'} />
               ))}
             </Group>
@@ -138,14 +138,14 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
               {res.clubs.map((c) => (
                 <Row key={`${c.source}:${c.id}`} onClick={() => pick({ kind: 'club', id: c.id, source: c.source })}
                   icon={<Tile>{(() => { const I = ACTIVITY_ICON[c.activity ?? 'other'] ?? Users; return <I className="size-5" /> })()}</Tile>} title={c.name}
-                  sub={[c.mine ? 'Your club' : c.kind ?? 'Club', c.city, c.members ? `${c.members} members` : ''].filter(Boolean).join(' · ')} />
+                  sub={[[c.mine ? 'Your club' : c.kind ?? 'Club', c.members ? `${c.members} members` : ''].filter(Boolean).join(' · '), c.city ?? '']} />
               ))}
             </Group>
             <Group title="Races & events" n={res.events.length}>
               {res.events.map((e) => (
                 <Row key={e.id} onClick={() => pick(e.public ? { kind: 'club', id: '', source: 'directory' } : { kind: 'event', id: e.id })}
                   icon={<Tile>{(() => { const I = isSport(e.activity) ? EVENT_SPORT_ICON[e.activity] : Flag; return <I className="size-5" /> })()}</Tile>} title={e.title}
-                  sub={[e.public ? 'Public, near you' : '', e.date ? fmtDay(e.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be set', e.location, e.past ? 'Done' : ''].filter(Boolean).join(' · ')} />
+                  sub={[[e.date ? fmtDay(e.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be set', e.past ? 'Done' : ''].filter(Boolean).join(' · '), [e.public ? 'Public, near you' : '', e.location ?? ''].filter(Boolean).join(', ')]} />
               ))}
             </Group>
             <Group title="Your plan" n={res.sessions.length}>
@@ -164,7 +164,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
                 return (
                   <Row key={w.id} onClick={() => pick({ kind: 'workout', id: w.id })}
                     icon={<Tile><Icon className="size-5" /></Tile>} title={w.name}
-                    sub={[fmtDay(w.date), w.km ? fmtDist(w.km, imperial, w.sport) : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(' · ')} />
+                    sub={[fmtDay(w.date), [w.km ? fmtDist(w.km, imperial, w.sport) : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(', ')]} />
                 )
               })}
             </Group>
@@ -181,7 +181,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
 function Group({ title, n, children }: { title: string; n: number; children: React.ReactNode }) {
   if (!n) return null
   return (
-    <section className="mt-2 px-1">
+    <section className="mt-5 px-1">
       <h3 className="section-title section-title--sm m-0 px-3 pb-1">{title}</h3>
       <ul>{children}</ul>
     </section>
@@ -189,18 +189,20 @@ function Group({ title, n, children }: { title: string; n: number; children: Rea
 }
 
 function Tile({ children }: { children: React.ReactNode }) {
-  return <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-(--bg-inset) text-(--text-secondary)">{children}</span>
+  return <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-(--bg-inset) text-(--text-secondary)">{children}</span>
 }
 
-function Row({ icon, title, sub, onClick }: { icon: React.ReactNode; title: string; sub?: string; onClick: () => void }) {
+/** A result: icon, title, and up to two short lines under it (never one long dotted line). */
+function Row({ icon, title, sub, onClick }: { icon: React.ReactNode; title: string; sub?: string | string[]; onClick: () => void }) {
+  const lines = (Array.isArray(sub) ? sub : sub ? [sub] : []).filter(Boolean)
   return (
     <li>
       <button type="button" onClick={onClick}
-        className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left active:bg-(--bg-inset)">
+        className="flex min-h-14 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left active:bg-(--bg-inset)">
         {icon}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-body text-(--text)">{title}</span>
-          {sub && <span className="block truncate text-meta text-(--text-muted)">{sub}</span>}
+          <span className="line-clamp-2 block text-body-lg font-medium leading-snug text-(--text)">{title}</span>
+          {lines.map((l) => <span key={l} className="block text-meta text-(--text-muted)">{l}</span>)}
         </span>
       </button>
     </li>

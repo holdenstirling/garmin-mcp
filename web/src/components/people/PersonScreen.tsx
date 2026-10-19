@@ -75,16 +75,18 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
       )}
       {error && <p className="py-12 text-center text-body text-(--text-muted)" role="alert">{error}</p>}
       {p && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-7">
           <section className="flex items-center gap-4 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
             <Avatar name={p.person.name} picture={p.person.picture ?? ''} photo={personPhoto(p.person)} size={64} />
             <div className="min-w-0 flex-1">
               <p className="font-display text-title-lg leading-tight text-(--brand)">{p.person.name}</p>
               {p.city && <p className="text-small text-(--text-muted)">{p.city}</p>}
               <p className="mt-1 text-small text-(--text-secondary)">
-                {p.me ? 'This is you' : [p.follows_you && 'Follows you', p.following && 'You follow them',
-                  p.in_common.clubs.length > 0 && `${p.in_common.clubs.length} club${p.in_common.clubs.length === 1 ? '' : 's'} in common`].filter(Boolean).join(' · ') || 'On rabbt'}
+                {p.me ? 'This is you' : (p.follows_you && p.following ? 'You follow each other' : p.follows_you ? 'Follows you' : p.following ? 'You follow them' : 'On rabbt')}
               </p>
+              {!p.me && p.in_common.clubs.length > 0 && (
+                <p className="text-small text-(--text-muted)">{p.in_common.clubs.length} club{p.in_common.clubs.length === 1 ? '' : 's'} in common</p>
+              )}
             </div>
           </section>
           {note && <p className="rounded-lg bg-(--accent-subtle) px-3 py-2 text-small text-(--accent)" role="status">{note}</p>}
@@ -97,7 +99,7 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
             </section>
           )}
 
-          <section className="flex flex-col gap-2" aria-label="Recent workouts">
+          <section className="flex flex-col gap-3" aria-label="Recent workouts">
             <SectionLabel>Recent workouts</SectionLabel>
             {p.workouts_hidden ? (
               <p className="rounded-xl border border-dashed border-(--border-strong) px-3.5 py-3 text-small text-(--text-muted)">
@@ -110,21 +112,22 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
                 {p.workouts.map((w) => {
                   const sw = sportWord(w.sport)
                   const I = sportIcon(sw)
-                  const line = [w.km != null ? fmtDist(w.km, imperial, w.sport.includes('swim') ? 'swim' : 'run') : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(' · ')
+                  const line = [w.km != null ? fmtDist(w.km, imperial, w.sport.includes('swim') ? 'swim' : 'run') : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(', ')
                   const inner = (
                     <>
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-5" aria-hidden /></span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-body font-medium text-(--text)">{w.title}</span>
-                        <span className="block text-meta text-(--text-muted)">{fmtDay(w.date, { weekday: 'short', month: 'short', day: 'numeric' })}{line ? ` · ${line}` : ''}</span>
+                        <span className="block text-body-lg font-medium leading-snug text-(--text)">{w.title}</span>
+                        <span className="block text-meta text-(--text-muted)">{fmtDay(w.date, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                        {line && <span className="block text-meta text-(--text-secondary)">{line}</span>}
                       </span>
                     </>
                   )
                   return (
                     <li key={w.id}>
                       {p.me ? (
-                        <button type="button" onClick={() => openActivity(w.id)} className="flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)">{inner}</button>
-                      ) : <div className="flex min-h-12 items-center gap-3 px-3.5 py-2">{inner}</div>}
+                        <button type="button" onClick={() => openActivity(w.id)} className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">{inner}</button>
+                      ) : <div className="flex min-h-14 items-center gap-3 px-4 py-3">{inner}</div>}
                     </li>
                   )
                 })}
@@ -133,14 +136,14 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
           </section>
 
           {p.races.length > 0 && (
-            <section className="flex flex-col gap-2" aria-label="Upcoming events">
+            <section className="flex flex-col gap-3" aria-label="Upcoming events">
               <SectionLabel>Upcoming</SectionLabel>
               <ul className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
                 {p.races.map((r) => (
-                  <li key={r.key} className="flex min-h-12 items-center gap-3 px-3.5 py-2">
+                  <li key={r.key} className="flex min-h-14 items-center gap-3 px-4 py-3">
                     <Flag className="size-5 shrink-0 text-(--accent)" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body font-medium text-(--text)">{r.name}</span>
+                      <span className="block text-body-lg font-medium leading-snug text-(--text)">{r.name}</span>
                       <span className="block text-meta text-(--text-muted)">{fmtDay(r.date, { weekday: 'short', month: 'short', day: 'numeric' })}{r.neighborhood ? ` · ${r.neighborhood}` : ''}</span>
                     </span>
                   </li>
