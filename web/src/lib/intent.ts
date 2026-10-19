@@ -61,7 +61,7 @@ export function onOpenWelcome(fn: () => void): () => void {
 
 /** "Train for a goal · Find my people" */
 export const intentsSummary = (intents: readonly Intent[]) =>
-  intents.length ? intents.map((i) => INTENT_OPTIONS.find((o) => o.id === i)!.title).join(' · ') : 'Not set'
+  intents.length ? intents.map((i) => INTENT_OPTIONS.find((o) => o.id === i)!.title).join(', ') : 'Not set'
 
 // ------------------------------------------------------- composer + chat ---
 const PROMPTS: Record<Intent, string[]> = {
