@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react'
 import { CalendarCheck, Clock, ExternalLink, Globe, MapPin, Megaphone, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { burst } from '@/components/anim'
-import { Group, Row, Switch } from '@/components/settings/Grouped'
+import { Row, Switch } from '@/components/settings/Grouped'
+import { RowGroup } from './RowGroup'
 import { Sheet } from '@/components/ui/Sheet'
 import { inputCls } from '@/components/plan/ui'
 import { SPORTS, joinClub, meetupWhen, rsvpMeetup, type Sport } from '@/lib/community'
@@ -163,7 +164,7 @@ export function FeatureSwitch({ clubId, listingId }: { clubId?: string; listingI
   }
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   return (
-    <Group label="App owner" footer={s.featured ? undefined : `${s.slots_left ?? 0} of 3 featured spots free.`}>
+    <RowGroup as="h3" title="App owner" footer={s.featured ? undefined : `${s.slots_left ?? 0} of 3 featured spots free.`}>
       <Row icon={<Megaphone className="size-5 text-(--accent)" />} title="Feature this club"
         subtitle="Top of Community and Explore, labelled Featured"
         trailing={<Switch label="Feature this club" checked={!!s.featured} disabled={busy} onChange={(v) => void save(v)} />} />
@@ -184,7 +185,7 @@ export function FeatureSwitch({ clubId, listingId }: { clubId?: string; listingI
         </div>
       )}
       {msg && <p className={cn('px-3 pb-2 text-meta', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
-    </Group>
+    </RowGroup>
   )
 }
 

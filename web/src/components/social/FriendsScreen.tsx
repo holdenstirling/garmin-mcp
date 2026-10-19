@@ -10,7 +10,8 @@ import { EmptyRabbit, PullToRefresh, burst, HopIn } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { messagePeople } from '@/lib/dm'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { Group, Row, Switch } from '@/components/settings/Grouped'
+import { Row, Switch } from '@/components/settings/Grouped'
+import { RowGroup } from '@/components/community/RowGroup'
 import { Card, Field, Screen, inputCls } from '@/components/plan/ui'
 import { LevelBadge } from '@/components/progress/Progress'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
@@ -313,7 +314,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
       {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
 
       {people.pending_in.length > 0 && (
-        <Group label="Requests">
+        <RowGroup title="Requests">
           {people.pending_in.map((e) => person(e, (
             <span className="flex shrink-0 gap-1.5">
               <Button variant="default" className="h-8 px-2.5" aria-label="Decline" disabled={busy != null}
@@ -322,10 +323,10 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
                 onClick={() => void run(e.edge_id, () => acceptRequest(e.edge_id), 'They can see your training now.')}><Check className="size-5" /> Accept</Button>
             </span>
           ), 'Wants to follow you'))}
-        </Group>
+        </RowGroup>
       )}
 
-      <Group label={`Following · ${people.following.length}`}
+      <RowGroup title={`Following · ${people.following.length}`}
         footer={people.following.length === 0 ? 'Nobody yet. Add a friend above.' : undefined}>
         {people.following.map((e) => (
           <div key={e.edge_id} className="flex items-center">
@@ -345,9 +346,9 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
           <Button variant="ghost" className="h-8 px-2 text-caption" disabled={busy != null}
             onClick={() => void run(e.edge_id, () => unfollow(e.edge_id))}>Cancel</Button>
         ), 'Requested'))}
-      </Group>
+      </RowGroup>
 
-      <Group label={`Followers · ${people.followers.length}`}>
+      <RowGroup title={`Followers · ${people.followers.length}`}>
         {people.followers.length === 0 && <Row title="No followers yet" subtitle="Share your code so friends can follow you." />}
         {people.followers.map((e) => confirm === e.edge_id ? (
           <div key={e.edge_id} className="flex flex-wrap items-center gap-2 px-4 py-3">
@@ -365,24 +366,24 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
             <UserMinus className="size-5" />
           </Button>
         )))}
-      </Group>
+      </RowGroup>
 
-      <Group label="What followers see" footer="Never your heart rate, health data or where you trained.">
+      <RowGroup title="What followers see" footer="Never your heart rate, health data or where you trained.">
         {PRIVACY.map(([k, title, sub]) => (
           <Row key={k} title={title} subtitle={sub}
             trailing={<Switch label={title} checked={people.settings[k]} onChange={(v) => void setSetting(k, v)} />} />
         ))}
         <Row title="Auto-accept" subtitle="Accept requests from people I follow"
           trailing={<Switch label="Auto-accept from people I follow" checked={people.settings.auto_accept} onChange={(v) => void setSetting('auto_accept', v)} />} />
-      </Group>
+      </RowGroup>
 
       {people.blocked.filter(Boolean).length > 0 && (
-        <Group label="Blocked">
+        <RowGroup title="Blocked">
           {people.blocked.filter((u): u is SocialUser => !!u).map((u) => (
             <Row key={u.id} icon={<FriendAvatar u={u} size={30} />} title={u.name}
               trailing={<Button variant="ghost" className="h-8 px-2 text-caption" onClick={() => void run(u.id, () => unblockUser(u.id))}>Unblock</Button>} />
           ))}
-        </Group>
+        </RowGroup>
       )}
     </>
   )

@@ -8,7 +8,8 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { PullToRefresh } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { Group, Row } from '@/components/settings/Grouped'
+import { Row } from '@/components/settings/Grouped'
+import { RowGroup } from './RowGroup'
 import { PeopleTab } from '@/components/social/FriendsScreen'
 import { getPeople, markSocialSeen, type People, type SocialUser } from '@/lib/social'
 import { followSuggested, getSuggested } from '@/lib/community'
@@ -46,7 +47,7 @@ export function PeopleSection({ onChanged }: { imperial?: boolean; onChanged?: (
       <PullToRefresh onRefresh={load} />
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {sug.length > 0 && (
-        <Group label="Suggested">
+        <RowGroup title="Suggested">
           {sug.slice(0, 8).map(({ user: u, reason }) => (
             <Row key={u.id} icon={<TapAvatar p={u} size={30} />} title={<PersonLink id={u.id} name={u.name} />} subtitle={reason}
               trailing={done[u.id] ? <span className="text-meta text-(--accent)">{done[u.id]}</span> : (
@@ -54,7 +55,7 @@ export function PeopleSection({ onChanged }: { imperial?: boolean; onChanged?: (
                   onClick={() => void follow(u)}><UserPlus className="size-4" /> Follow</Button>
               )} />
           ))}
-        </Group>
+        </RowGroup>
       )}
       <PeopleTab people={people} onOpen={openPerson} setPeople={setPeople}
         onChanged={() => { void load(); onChanged?.() }} />

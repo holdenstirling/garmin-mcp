@@ -5,7 +5,8 @@
 import { useEffect, useState } from 'react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { Group, Row, Switch } from '@/components/settings/Grouped'
+import { Row, Switch } from '@/components/settings/Grouped'
+import { RowGroup } from './RowGroup'
 import { Choice } from './Choice'
 import { Screen } from '@/components/plan/ui'
 import { Segmented } from '@/components/nav/Segmented'
@@ -91,36 +92,36 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
           {!s && !error && <RabbitLoader className="py-6" label="Loading" />}
           {s && (
             <>
-              <Group label="Milestones rabbt spots" footer="rabbt offers these as drafts. Nothing is shared until you tap Share.">
+              <RowGroup as="h3" title="Milestones rabbt spots" footer="rabbt offers these as drafts. Nothing is shared until you tap Share.">
                 {TYPES.map((t) => (
                   <Row key={t} title={MILESTONE_LABEL[t]}
                     trailing={<Switch label={MILESTONE_LABEL[t]} checked={s.milestones[t]}
                       onChange={(v) => void put({ milestones: { ...s.milestones, [t]: v } }, { ...s, milestones: { ...s.milestones, [t]: v } })} />} />
                 ))}
-              </Group>
-              <Group label="Share automatically" footer="Skip the draft for these and post to your default audience right away.">
+              </RowGroup>
+              <RowGroup as="h3" title="Share automatically" footer="Skip the draft for these and post to your default audience right away.">
                 {TYPES.filter((t) => s.milestones[t]).map((t) => (
                   <Row key={t} title={MILESTONE_LABEL[t]}
                     trailing={<Switch label={`Auto-share ${MILESTONE_LABEL[t]}`} checked={s.auto_share[t]}
                       onChange={(v) => void put({ auto_share: { ...s.auto_share, [t]: v } }, { ...s, auto_share: { ...s.auto_share, [t]: v } })} />} />
                 ))}
-              </Group>
+              </RowGroup>
               {groups.length > 0 && (
-                <Group label="Auto-shared workouts go to" footer="Right after your watch syncs. Group posts are only seen by the group.">
+                <RowGroup as="h3" title="Auto-shared workouts go to" footer="Right after your watch syncs. Group posts are only seen by the group.">
                   <div className="px-3 py-2.5">
                     <Choice label="Auto-shared workouts audience" value={s.share_audience ?? 'friends'}
                       options={[['friends', 'Friends'], ...groups.map((g) => [`grp:${g.id}`, `${g.emoji} ${g.name}`] as const)]}
                       onChange={(v) => void put({ share_audience: v }, { ...s, share_audience: v })} />
                   </div>
-                </Group>
+                </RowGroup>
               )}
-              <Group label="Shared milestones go to" footer="Never your heart rate, health data or where you trained.">
+              <RowGroup as="h3" title="Shared milestones go to" footer="Never your heart rate, health data or where you trained.">
                 <div className="px-3 py-2.5">
                   <Choice label="Default audience" value={s.audience}
                     options={[['friends', 'Friends'], ['public', 'Everyone on rabbt'], ['private', 'Only me']]}
                     onChange={(v) => void put({ audience: v }, { ...s, audience: v })} />
                 </div>
-              </Group>
+              </RowGroup>
               {usage && (
                 <p className="px-1 text-caption text-(--text-muted)">
                   Photos: {usage.photos} of {usage.max_photos} · {Math.round(usage.bytes / 1024 / 1024)} of {Math.round(usage.max_bytes / 1024 / 1024)} MB

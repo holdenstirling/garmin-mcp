@@ -132,15 +132,15 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           </span>
         </button>
         {main && (onInvite || onSettings) && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             {onInvite && (
               <Button variant="default" className="h-11 flex-1 gap-2 px-4 text-body" onClick={onInvite}>
                 <UserPlus className="size-5" aria-hidden /> Find friends
               </Button>
             )}
             {onSettings && (
-              <Button variant="default" className="h-11 flex-1 gap-2 px-4 text-body" onClick={onSettings}>
-                <SlidersHorizontal className="size-5" aria-hidden /> Sharing
+              <Button variant="default" className="h-11 shrink-0 gap-2 px-3.5 text-body" aria-label="Sharing settings" onClick={onSettings}>
+                <SlidersHorizontal className="size-5" aria-hidden /><span className="hidden min-[360px]:inline">Sharing</span>
               </Button>
             )}
           </div>
@@ -661,8 +661,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
             <span className="inline-flex min-w-0 items-center gap-1">{audience}</span>
           </span>
         </span>
-        <div className="relative -mr-2 -mt-1 flex shrink-0 items-center gap-1">
-          <span className="rounded-full bg-(--accent-subtle) px-2.5 py-1 text-caption font-semibold text-(--accent)">{p.kind === 'workout' ? 'Workout' : CATEGORY_LABEL[p.category]}</span>
+        <div className="relative -mr-2 -mt-1 shrink-0">
           <Button variant="ghost" className="size-11 p-0" aria-label="Post options" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             <Ellipsis className="size-5" />
           </Button>
@@ -686,6 +685,9 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
         </div>
       </header>
 
+      {p.kind !== 'workout' && p.category !== 'other' && (
+        <span className="-mt-1 self-start rounded-full bg-(--accent-subtle) px-3 py-1 text-meta font-semibold text-(--accent)">{CATEGORY_LABEL[p.category]}</span>
+      )}
       {p.text ? (
         <p className="m-0 whitespace-pre-wrap break-words text-body-lg leading-normal text-(--text)"><MentionText text={p.text} mentions={p.mentions} /></p>
       ) : null}

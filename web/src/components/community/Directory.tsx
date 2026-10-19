@@ -87,16 +87,16 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
   const what = [l.type_label ?? l.kind_label, l.activity && l.activity !== 'other' ? ACTIVITY_LABEL[l.activity] : null].filter(Boolean).join(' · ')
   const meta = [l.pace, l.cost === 'free' ? 'Free' : l.cost === 'paid' ? 'Paid' : ''].filter(Boolean).join(' · ')
   return (
-    <article className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <div className="flex items-start gap-2.5">
-        <ActivityTile activity={l.activity} />
+    <article className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+      <div className="flex items-start gap-3">
+        <ActivityTile activity={l.activity} size={44} />
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-body-lg font-medium leading-snug text-(--text)">{l.name}</h3>
-          <p className="truncate text-meta text-(--text-muted)">{what}</p>
+          <h3 className="m-0 text-lead font-semibold leading-snug text-(--text)">{l.name}</h3>
+          {what && <p className="m-0 mt-0.5 text-meta text-(--text-secondary)">{what}</p>}
+          {l.distance_km !== undefined && (
+            <p className="m-0 text-meta text-(--text-muted)">{distanceLabel(l.distance_km, imperial)} away</p>
+          )}
         </div>
-        {l.distance_km !== undefined && (
-          <span className="shrink-0 pt-0.5 text-caption font-medium text-(--text-secondary)">{distanceLabel(l.distance_km, imperial)}</span>
-        )}
       </div>
       {when && (
         <p className="flex items-center gap-1.5 text-small font-medium text-(--text)">
@@ -310,12 +310,12 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
   const extraOn = (weekday ? 1 : 0) + (when ? 1 : 0)
   const radius = data.area ? radiusLabel(data.area.radius_mi, imperial) : ''
   return (
-    <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
+    <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-3">
       {bar}
-      <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
+      <label className="flex h-12 items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-4 focus-within:ring-1 focus-within:ring-(--accent)">
         <SearchIcon className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         <input type="text" inputMode="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 60))}
-          placeholder="Search clubs, leagues and meetups" aria-label={`Search clubs, leagues and meetups near ${data.area?.label || metro.label}`}
+          placeholder="Search clubs and meetups" aria-label={`Search clubs, leagues and meetups near ${data.area?.label || metro.label}`}
           className="min-w-0 flex-1 bg-transparent text-body text-(--text) outline-none placeholder:text-(--text-muted)" />
         {q && (
           <button type="button" aria-label="Clear search" onClick={() => setQ('')}
@@ -355,10 +355,11 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
           finding them), inside the empty state otherwise. Other partners keep their own spot. */}
       {(listings.length > 0 || crawling) && <SponsoredCard placement="local" />}
       <PartnersNearYou partners={(data.partners ?? []).filter((p) => !p.sponsored)} metro={metro.label} />
-      <div className="flex items-center justify-between gap-2 px-1 pt-1">
-        <h2 className="font-sans text-caption font-semibold text-(--text-muted)">
-          {activity ? ACTIVITY_LABEL[activity] : 'Clubs, leagues & meetups'}{radius ? ` within ${radius}` : ''}
-        </h2>
+      <div className="flex items-end justify-between gap-3 px-1 pt-2">
+        <div className="min-w-0">
+          <h2 className="section-title m-0">{activity ? ACTIVITY_LABEL[activity] : 'Clubs and meetups'}</h2>
+          {radius && <p className="m-0 mt-0.5 text-small text-(--text-muted)">Within {radius} of you</p>}
+        </div>
         {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}
       </div>
       {mappable && (
@@ -368,7 +369,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       {listings.length > 0 && mappable && view === 'map' ? (
         <DirectoryMap listings={listings.slice(0, 30)} center={data.center} metroLabel={metro.label} renderCard={card} />
       ) : listings.length > 0 ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {listings.slice(0, 30).map((l, i) => (
             <HopIn key={l.id} index={i} play={i < 4}>{card(l)}</HopIn>
           ))}
@@ -398,7 +399,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       )}
       {!listings.length && fallback.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="px-1 text-caption font-semibold text-(--text-muted)">Meanwhile, from Explore</p>
+          <h3 className="section-title section-title--sm m-0 px-1">Meanwhile, from Explore</h3>
           {fallback.map((g) => (
             <a key={g.id} href={g.url} target="_blank" rel="noopener noreferrer"
               className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
@@ -412,8 +413,8 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
         </div>
       )}
       </>)}
-      <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-caption text-(--text-muted)">From public club pages. Times change; check the site.</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
+        <p className="m-0 text-meta text-(--text-muted)">From public club pages. Times change, so check the site.</p>
         <button type="button" className={cn(linkCls, 'shrink-0 text-(--accent)')} onClick={() => setSuggesting(true)}>
           <Plus className="size-4" aria-hidden /> Suggest one
         </button>
