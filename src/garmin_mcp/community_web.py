@@ -238,7 +238,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
     async def comment_likers(request: Request, user_id: str) -> Response:
         pid, cid = pid_of(request), comment_id(request)
         ids = await run(lambda: cm.comment_likers(user_id, pid, cid))
-        people = [u for u in (person(i) for i in ids[:200]) if u]
+        people = [u for u in (person(i) or (by_of(i) if i == user_id else None) for i in ids[:200]) if u]
         return JSONResponse({"people": people})
 
     async def mentionable(request: Request, user_id: str) -> Response:

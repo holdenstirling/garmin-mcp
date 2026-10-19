@@ -69,7 +69,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
 
   return (
     <Screen title="Find friends" onClose={onClose}>
-      <div className="flex flex-col gap-5 pb-[max(16px,env(safe-area-inset-bottom))]">
+      <div className="flex flex-col gap-7 pb-[max(16px,env(safe-area-inset-bottom))]">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-6 -translate-y-1/2 text-(--text-muted)" aria-hidden />
           <input type="text" inputMode="search" role="searchbox" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"

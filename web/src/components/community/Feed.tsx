@@ -337,7 +337,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           <h2 className="modal-title">{clubName ? `Share with ${clubName}` : groupName ? `Share with ${groupName}` : 'Share something'}</h2>
           <button className="modal-close" aria-label="Close" onClick={close}><X className="size-5" /></button>
         </div>
-        <div className="modal-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <div className="modal-body flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
           <div className="relative">
             {mention.list}
             <textarea ref={mention.ref} aria-label="Post text" className={cn(areaCls, 'min-h-[96px] text-lead')} autoFocus maxLength={TEXT_LEN} value={text}
@@ -347,48 +347,53 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           </div>
           <PhotoPicker picker={photos} />
           {!template && !text.trim() && !photos.items.length && !fixed && (
-            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" aria-label="Ideas">
-              {TEMPLATES.map((t) => (
-                <button key={t.label} type="button" onClick={() => { setD((x) => ({ ...x, text: t.text, category: t.category })) }}
-                  className="inline-flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-(--border) bg-(--bg-surface) px-3 text-meta font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-                  <span aria-hidden>{t.emoji}</span>{t.label}
-                </button>
-              ))}
+            <div className="flex flex-col gap-2">
+              <p className="m-0 text-meta font-semibold text-(--text-secondary)">Need an idea? Tap one to start.</p>
+              <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5" aria-label="Ideas">
+                {TEMPLATES.map((t) => (
+                  <button key={t.label} type="button" onClick={() => { setD((x) => ({ ...x, text: t.text, category: t.category })) }}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-(--border) bg-(--bg-surface) px-4 text-small font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+                    <span aria-hidden>{t.emoji}</span>{t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <button type="button" aria-expanded={details} onClick={() => setDetails((v) => !v)}
-            className="flex min-h-11 items-center gap-2 rounded-xl px-1 text-left text-small font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+            className="flex min-h-12 items-center gap-2.5 rounded-xl px-1 text-left text-body font-medium text-(--text-secondary) active:bg-(--bg-inset)">
             <SlidersHorizontal className="size-5 text-(--text-muted)" aria-hidden />
-            <span className="flex-1">{details ? 'Hide details' : 'Add details'}{!details && detailBits.length > 0 && <span className="text-(--text-muted)"> · {detailBits.join(' · ')}</span>}</span>
+            <span className="flex-1">{details ? 'Hide details' : 'Add details'}{!details && detailBits.length > 0 && <span className="block text-meta text-(--text-muted)">{detailBits.join(', ')}</span>}</span>
             <ChevronRight className={cn('size-5 text-(--text-muted) transition-transform', details && 'rotate-90')} aria-hidden />
           </button>
           {details && (
-            <div className="flex flex-col gap-3">
-              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5" role="radiogroup" aria-label="What is it">
+            <div className="flex flex-col gap-4">
+              <p className="-mb-2 m-0 text-meta font-semibold text-(--text-secondary)">What is it?</p>
+              <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5" role="radiogroup" aria-label="What is it">
                 {CATEGORIES.map(([id, label]) => (
                   <button key={id} type="button" role="radio" aria-checked={category === id} onClick={() => setCategory(id)}
-                    className={cn('min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-meta font-medium',
+                    className={cn('min-h-11 shrink-0 whitespace-nowrap rounded-full border px-4 text-small font-medium',
                       category === id ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) text-(--text-secondary)')}>{label}</button>
                 ))}
               </div>
-              <div className="flex flex-wrap items-center gap-0.5" role="radiogroup" aria-label="Feeling">
+              <p className="-mb-2 m-0 text-meta font-semibold text-(--text-secondary)">How do you feel?</p>
+              <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Feeling">
                 {FEELINGS.map((f) => (
                   <button key={f} type="button" role="radio" aria-checked={feeling === f} aria-label={`Feeling ${f}`}
                     onClick={() => setFeeling(feeling === f ? null : f)}
-                    className={cn('hit-44 flex size-9 items-center justify-center rounded-full text-title-sm', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-70')}>{f}</button>
+                    className={cn('flex size-11 items-center justify-center rounded-full text-title-sm', feeling === f ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'opacity-80')}>{f}</button>
                 ))}
               </div>
               {events && events.length > 0 && (
-                <label className="flex flex-col gap-1 text-caption text-(--text-muted)">Link an event
+                <label className="flex flex-col gap-2 text-meta font-semibold text-(--text-secondary)">Link an event
                   <select className={cn(inputCls, 'text-body')} value={eventId} onChange={(e) => setEventId(e.target.value)}>
                     <option value="">None</option>
-                    {events.map((e) => <option key={e.id} value={e.id}>{e.name} · {e.date}</option>)}
+                    {events.map((e) => <option key={e.id} value={e.id}>{e.name}, {e.date}</option>)}
                   </select>
                 </label>
               )}
             </div>
           )}
-          <p className="text-caption text-(--text-muted)">Never your heart rate, health data or where you trained.</p>
+          <p className="m-0 text-meta text-(--text-muted)">Never your heart rate, health data or where you trained.</p>
           {draft.restored && (
             <p className="flex flex-wrap items-center gap-x-2 text-caption text-(--text-muted)" role="status">
               <span>Restored your unsaved post. Photos aren't kept in drafts: add them again.</span>
@@ -398,7 +403,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
           {queued && <SaveStatus state="queued" />}
           {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
         </div>
-        <div className="flex items-center gap-2 border-t border-(--border) bg-(--bg-surface) px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        <div className="flex items-center gap-2 border-t border-(--border) bg-(--bg-surface) px-5 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
           {fixed ? (
             <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-meta text-(--text-muted)">
               <UsersRound className="size-5 shrink-0" aria-hidden /> Only {clubName ?? groupName ?? 'members'} see it
@@ -408,7 +413,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
               <span className="sr-only">Who can see it</span>
               <AudIcon className="pointer-events-none absolute left-3 size-5 text-(--text-secondary)" aria-hidden />
               <select value={audience} onChange={(e) => setAudience(e.target.value)}
-                className="h-11 w-full min-w-0 appearance-none truncate rounded-full border border-(--border) bg-(--bg-surface) pl-9 pr-7 text-small font-medium text-(--text)">
+                className="h-12 w-full min-w-0 appearance-none truncate rounded-full border border-(--border) bg-(--bg-surface) pl-10 pr-8 text-body font-medium text-(--text)">
                 <option value="friends">Friends</option>
                 {groups.map((g) => <option key={g.id} value={`grp:${g.id}`}>{g.emoji} {g.name}</option>)}
                 <option value="public">Everyone on rabbt</option>
@@ -418,7 +423,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
               <ChevronRight className="pointer-events-none absolute right-3 size-4 rotate-90 text-(--text-muted)" aria-hidden />
             </label>
           )}
-          <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-5 text-body" loading={busy} disabled={!canPost}
+          <Button variant="primary" className="h-12 shrink-0 gap-2 px-5 text-body" loading={busy} disabled={!canPost}
             onClick={(e) => void post(e.currentTarget)}>
             <Send className="size-5" /> {photos.busy ? 'Uploading…' : 'Post'}
           </Button>

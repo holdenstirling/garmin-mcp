@@ -48,7 +48,7 @@ export function CommentThreads({ post, threads, focus, actions, onMore, classNam
             <CommentItem c={top} focused={focus === top.id} post={post} actions={actions} thread={top} />
             {elsewhere > 0 && (
               <button type="button" onClick={() => onMore?.(top)}
-                className="ml-[44px] min-h-11 self-start text-meta font-semibold text-(--accent)">
+                className="-mt-2 ml-[44px] min-h-11 self-start text-meta font-semibold text-(--accent)">
                 View {elsewhere} {elsewhere === 1 ? 'reply' : 'replies'}
               </button>
             )}
@@ -83,7 +83,7 @@ function CommentItem({ c, post, actions, thread, focused, small }: {
   const size = small ? 28 : 32
   return (
     <div id={`comment-${c.id}`} className={cn('flex scroll-mt-24 items-start gap-3 rounded-xl', focused && 'comment-focus')}>
-      {c.mine ? <Avatar name="You" picture={c.by.picture ?? ''} photo={personPhoto(c.by)} size={size} />
+      {c.mine ? <Avatar name={c.by.name} picture={c.by.picture ?? ''} photo={personPhoto(c.by)} size={size} />
         : <PersonAvatar p={c.by} size={size} />}
       <div className="min-w-0 flex-1">
         <p className="m-0 flex flex-wrap items-baseline gap-x-2">
