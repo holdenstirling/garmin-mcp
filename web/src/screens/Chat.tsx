@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
 import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
@@ -18,10 +18,11 @@ import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progr
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
-import { UpNextCard } from '@/components/home/UpNextCard'
+import { UpNextCard, UpNextSkeleton } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
 import { NextDays } from '@/components/home/NextDays'
 import { HomeGreeting } from '@/components/home/HomeGlance'
+import { Section, SeeAll } from '@/components/ui/section'
 import { ReadinessSnapshot } from '@/components/home/ReadinessSnapshot'
 import { FitnessCountdown } from '@/components/home/FitnessCountdown'
 import { OPEN_PLAN_DAY_EVENT, PLAN_VIEW_KEY, openPlanDay } from '@/lib/plancal'
@@ -62,7 +63,6 @@ import { Group, Icon, Row as SettingsRow } from '@/components/settings/Grouped'
 import { WeekList } from '@/components/week/WeekStrip'
 import { TAB_IDS, TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@/components/nav/TabBar'
 import { useTabSwipe } from '@/hooks/useTabSwipe'
-import { HomeCardSkeleton } from '@/components/ui/Skeleton'
 import { setUsageOff, track, trackAppOpen } from '@/lib/usage'
 import { PullToRefresh, celebrate, reducedMotion, signalReplyDone } from '@/components/fx'
 import { Segmented } from '@/components/nav/Segmented'
@@ -171,6 +171,10 @@ const coarsePointer = () => { try { return window.matchMedia('(pointer: coarse)'
 
 const HEADER_ICON = 'relative flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)'
 
+
+/** Home's nudges, most important first (one shows under the hero, the rest in More for you). */
+type HomeNudge = 'notes' | 'banner' | 'niggle' | 'calendar' | 'next'
+
 export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [goal, setGoal] = useState<Goal | null>(me.goal)
@@ -259,6 +263,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   const [shareAsk, setShareAsk] = useState(false)  // Home: the share-workouts question is showing
+  // Home nudges that load themselves: whether each is up (Home shows one at a time).
+  const [homeNudges, setHomeNudges] = useState<{ niggle: boolean; calendar: boolean }>({ niggle: false, calendar: false })
+  const setHomeNudge = useCallback((k: 'niggle' | 'calendar', v: boolean) => setHomeNudges((n) => (n[k] === v ? n : { ...n, [k]: v })), [])
   const [composerFocus, setComposerFocus] = useState(false)
   // Rabbit tab: Home (dashboard) or Chat (Rabbit's log + composer); kept for this browser session.
   const [homeView, setHomeViewState] = useState<'home' | 'chat'>(() => {
@@ -1092,80 +1099,115 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function renderHome() {
     const athlete = me.role === 'athlete'
     const waiting = isCoach ? pendingCount : 0
+    // One nudge at a time right under the hero (most important first); the rest wait in
+    // "More for you" further down. The share question / first-visit card is the last resort.
+    const kinds: HomeNudge[] = []
+    if (logNew > 0 || waiting > 0) kinds.push('notes')
+    if (banner) kinds.push('banner')
+    if (athlete && homeNudges.niggle) kinds.push('niggle')
+    if (athlete && goal && homeNudges.calendar) kinds.push('calendar')
+    const top: HomeNudge = kinds[0] ?? 'next'
+    const nudge = (k: HomeNudge) => {
+      if (k === 'notes') {
+        return (logNew > 0 || waiting > 0) ? (
+          <button key="notes" type="button" onClick={() => setHomeView('chat')}
+            className="flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-4 py-3 text-left active:opacity-80">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--brand)"><RabbitLogo size={24} /></span>
+            <span className="min-w-0 flex-1 text-body font-medium leading-snug text-(--accent)">
+              {waiting > 0 ? `rabbt needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
+                : `rabbt has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
+          </button>
+        ) : null
+      }
+      if (k === 'banner') {
+        return banner ? (
+          <StatusBanner key="banner" flush banner={banner} onTap={tapBanner}
+            onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
+        ) : null
+      }
+      if (k === 'niggle') return athlete ? <NiggleNudge key="niggle" refreshKey={feedTick} onShown={(v) => setHomeNudge('niggle', v)} /> : null
+      if (k === 'calendar') return athlete && goal ? <CalendarNudge key="calendar" refreshKey={feedTick} onShown={(v) => setHomeNudge('calendar', v)} /> : null
+      // The one-time share question, or what a first visitor without a watch can do now.
+      if (banner) return null
+      return (
+        <Fragment key="next">
+          {athlete && <SharePrompt onShown={setShareAsk} />}
+          {!shareAsk && (
+            <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
+              onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
+          )}
+        </Fragment>
+      )
+    }
+    const rest = (['notes', 'banner', 'niggle', 'calendar', 'next'] as const).filter((k) => k !== top)
+    const race = goal?.date ? { title: goal.title || 'Your race', days: daysUntil(goal.date) } : null
     return (
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div ref={homeScroll} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="mx-auto flex w-full max-w-2xl flex-col pb-4">
-            <PullToRefresh onRefresh={refreshHome} />
-            <div className="mx-4 mt-2"><HomeGreeting name={me.profile.name} /></div>
-            {(logNew > 0 || waiting > 0) && (
-              <button type="button" onClick={() => setHomeView('chat')}
-                className="mx-4 mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2 text-left active:opacity-80">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--brand)"><RabbitLogo size={20} /></span>
-                <span className="min-w-0 flex-1 text-body font-medium text-(--accent)">
-                  {waiting > 0 ? `rabbt needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
-                    : `rabbt has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
-                </span>
-                <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
-              </button>
-            )}
-            {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
-            {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
-            {athlete && builtPlan && <SickBanner className="mx-4 mt-3" />}
-            {athlete && <NiggleNudge refreshKey={feedTick} />}
-            {athlete && goal && <CalendarNudge refreshKey={feedTick} />}
-            {upnext && (
-              <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
-                onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
-                onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
-                hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} hideReadiness={me.role === 'athlete'} />
-            )}
-            {/* Today's readiness: sleep, HRV, readiness, form and one call (push / normal / ease off). */}
-            {athlete && (
-              <div className="mx-4 mt-3">
-                <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
-              </div>
-            )}
+          <PullToRefresh onRefresh={refreshHome} />
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-7 px-5 pb-10 pt-3">
+            {/* 1. Hello, today's date and the race you're training for. */}
+            <HomeGreeting name={me.profile.name} race={athlete ? race : null} onRace={goal ? openPlan : undefined} />
+
+            {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
+            <div className="flex flex-col gap-3 empty:hidden">
+              {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
+              {athlete && builtPlan && <SickBanner />}
+              {!upnext && !upnextTried && me.garmin.connected && <UpNextSkeleton />}
+              {upnext && (
+                <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
+                  onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
+                  onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
+                  hideStreak={intents[0] === 'consistent' || (!stripFirst(intents) && intents[1] === 'consistent')} hideReadiness={me.role === 'athlete'} />
+              )}
+            </div>
+
+            {/* 3. One nudge (the most important thing to fix or answer), never a pile. */}
+            <div className="flex flex-col gap-3 empty:hidden">{nudge(top)}</div>
+
             {stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
-                onOpen={(t) => t === 'progress' ? goTab('progress') : t === 'events' ? openRaces() : t === 'explore' ? openDiscover() : t === 'coach' ? openMeRow('inbox') : t === 'friends' ? openCommunity() : showScreen(t)} />
+                onOpen={(tg) => tg === 'progress' ? goTab('progress') : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
             )}
+
+            {/* 4. This week: every day at a glance, then the next 3 days with the weather. */}
             {goal && (
-              <div className="mx-4 mt-3">
+              <Section title="This week">
                 <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
                   refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay}
                   onOpenWeek={() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, 'week') } catch { /* storage off */ } openPlan() }} />
-              </div>
+                {athlete && <NextDays refreshKey={feedTick} />}
+              </Section>
             )}
-            {goal && athlete && <div className="mx-4 mt-3"><NextDays refreshKey={feedTick} /></div>}
-            {/* Goal race: days to go, race grade and the 4-week fitness trend (hidden in race week). */}
-            {athlete && goal && (
-              <div className="mx-4 mt-3">
-                <FitnessCountdown refreshKey={feedTick} onOpen={(id) => showPage({ k: 'fit', id })} />
-              </div>
-            )}
-            {athlete && <RaceChecklistCard refreshKey={feedTick} />}
+
+            {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today. */}
             {athlete && (
-              <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
-                skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
+              <Section title="How you're doing" action={<SeeAll label="Details" ariaLabel="Open Progress" onClick={openProgress} />}>
+                <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
+              </Section>
             )}
-            {/* One "next step" at a time, most useful first: setup / recap banner, then the
-                share-workouts question, then first-visit suggestions. Streak, level, race grade
-                and the week ring live in Progress; the race countdown is in the header. */}
-            {banner ? (
-              <StatusBanner banner={banner} onTap={tapBanner}
-                onDismiss={banner.kind === 'recap' && recapPillWeek ? () => dismissRecapPill(recapPillWeek) : undefined} />
-            ) : (
-              <>
-                {athlete && <div className="px-4"><div className="mx-auto max-w-2xl"><SharePrompt onShown={setShareAsk} /></div></div>}
-                {!shareAsk && (
-                  <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
-                    onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
-                )}
-              </>
+
+            {/* 6. Friends: who trained today, who races soon, their latest posts. */}
+            {athlete && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
+
+            {/* 7. Coming up: the goal race (grade, countdown, fitness trend) and its checklist. */}
+            {athlete && (
+              <Section title="Coming up" hideWhenEmpty>
+                {goal && <FitnessCountdown refreshKey={feedTick} onOpen={(id) => showPage({ k: 'fit', id })} />}
+                <RaceChecklistCard refreshKey={feedTick} />
+              </Section>
             )}
-            {athlete && (me.garmin.connected || firstVisitHidden()) && (
-              <div className="mt-3">
+
+            {/* 8. Everything else, most useful first: one-tap actions, the other nudges, setup. */}
+            <Section title="More for you" hideWhenEmpty>
+              {athlete && (
+                <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
+                  skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
+              )}
+              {rest.map((k) => nudge(k))}
+              {athlete && (me.garmin.connected || firstVisitHidden()) && (
                 <GetStartedCard garmin={me.garmin.connected} hasGoal={!!goal} progress={progress} onStep={(st) => {
                   if (st === 'garmin') setConnect({ app: 'garmin' })
                   else if (st === 'plan') startSetup()
@@ -1174,9 +1216,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                   else if (st === 'club') openCommunity('clubs')
                   else doQuest('notify')
                 }} />
-              </div>
-            )}
-            {athlete && <div className="mt-3"><FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} /></div>}
+              )}
+            </Section>
           </div>
         </div>
         {/* Ask Rabbit: switches to Chat with the composer focused. */}
@@ -1430,10 +1471,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 <MessageBubble message={pending.seedMsg} showLabel={false} />
               </div>
             )}
-            <div className="chat-empty flex flex-1 flex-col items-center justify-center py-6 text-center">
+            <div className="chat-empty flex flex-1 flex-col items-center text-center">
               <EmptyHero suggestions={pending.seedMsg ? undefined : TOPIC_SUGGESTIONS.map((q) => (
                     <button key={q} disabled={!me.chat.available || busy}
-                      className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-small text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                      className="min-h-12 w-full cursor-pointer rounded-(--radius) border border-border bg-(--bg-surface) px-4 py-3 text-left text-body leading-snug text-(--text) transition-all hover:bg-secondary active:bg-(--bg-inset) disabled:opacity-50"
                       onClick={() => void sendPending(q, [])}>{q}</button>
                   ))}>
                 {!pending.seedMsg && <RabbitLogo size={64} className="mb-3 opacity-40" />}
@@ -1498,17 +1539,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           </div>
         </div>
       ) : items.length === 0 && settled ? (
-        <div className="chat-empty flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <div className="chat-empty flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 text-center">
           <EmptyHero gap={20} suggestions={suggestions.map((s) => (
               <button key={s} disabled={!me.chat.available}
-                className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-small text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                className="min-h-12 w-full cursor-pointer rounded-(--radius) border border-border bg-(--bg-surface) px-4 py-3 text-left text-body leading-snug text-(--text) transition-all hover:bg-secondary active:bg-(--bg-inset) disabled:opacity-50"
                 onClick={() => void (isCoach ? sendFromLog(s, []) : send(s))}>{s}</button>
             ))}>
-          <RabbitLogo size={80} className="mb-3 opacity-40" />
+          <RabbitLogo size={72} className="mb-3 opacity-40" />
           <p className="mb-2 font-display text-title-lg leading-tight text-(--brand)">
             {isCoach ? 'Chat with rabbt' : 'Ready when you are.'}
           </p>
-          <p className="text-small text-muted-foreground">
+          <p className="max-w-[34ch] text-body leading-snug text-(--text-secondary)">
             {isCoach ? 'Morning briefs and workout notes land here. Ask anything about your training.'
               : 'Ask about your training, recovery or what to do next.'}
           </p>

@@ -8,7 +8,7 @@ import type { PlannedSession, PlanWeek, WeekDay } from '@/lib/api'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { getCalendar, SPORT_DIST_LABEL, type DistSport, type Mileage } from '@/lib/plancal'
 import { SPORT_ICON } from '@/components/plan/PlanParts'
-import { weekTitle } from '@/components/week/WeekStrip'
+import { fmtDay } from '@/components/plan/PlanParts'
 import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
@@ -16,6 +16,15 @@ import { PlanDaySheet } from '@/components/week/PlanDaySheet'
 import { RabbitNap } from '@/components/anim'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
+
+/** "Week 1 of 34" over "Base phase · Oct 12 to 18" (one fact per line, not three in a row). */
+function weekHead(week: PlanWeek): { title: string; sub: string } {
+  const range = `${fmtDay(week.start, { month: 'short', day: 'numeric' })} to ${fmtDay(week.end, { month: 'short', day: 'numeric' })}`
+  if (!(week.index && week.index > 0)) return { title: 'This week', sub: range }
+  const title = `Week ${week.index}${week.weeks ? ` of ${week.weeks}` : ''}`
+  const phase = week.phase && week.phase !== 'post-race' ? `${week.phase[0]!.toUpperCase()}${week.phase.slice(1)} phase` : null
+  return { title, sub: phase ? `${phase} · ${range}` : range }
+}
 
 function sessionLine(s: PlannedSession, imperial: boolean): string {
   const km = s.activity?.distance_km
@@ -47,22 +56,24 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
     ? work.map((s) => `${s.title} ${STATE_WORD[s.status]}`).join(', ')
     : d.extra.length ? d.extra.map((a) => `${a.name} done`).join(', ') : 'rest'}. Open this day in your plan`
   // Each planned workout opens its own full page (lib/workoutnav); the date and the rest of the
-  // row open the day in the Schedule.
+  // row open the day in the Schedule. The title gets the full width and wraps; how it went and
+  // how long sit on the line under it.
+  const row = 'flex min-h-14 min-w-0 items-center gap-3 py-2.5 pr-4 text-left active:bg-(--bg-inset)'
   return (
     <li className={cn('flex items-stretch', d.today && 'bg-(--accent-subtle)')}>
       <button type="button" onClick={() => onOpen(d.date)} aria-label={summary}
-        className="flex w-14 shrink-0 flex-col items-center justify-center py-2 pl-1.5 leading-none active:bg-(--bg-inset)">
-        <span className={cn('text-caption font-semibold', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
-          {d.weekday.slice(0, 3)}
+        className="flex w-16 shrink-0 flex-col items-center justify-center py-2.5 leading-none active:bg-(--bg-inset)">
+        <span className={cn('text-meta font-semibold', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
+          {d.today ? 'Today' : d.weekday.slice(0, 3)}
         </span>
-        <span className={cn('mt-0.5 font-mono text-body', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>
+        <span className={cn('mt-1 text-lead tabular-nums', d.today ? 'font-semibold text-(--accent)' : 'font-medium text-(--text-secondary)')}>
           {Number(d.date.slice(8, 10))}
         </span>
       </button>
-      <span className="flex min-w-0 flex-1 flex-col justify-center py-1">
+      <span className="flex min-w-0 flex-1 flex-col justify-center">
         {work.length === 0 && d.extra.length === 0 && (
           <button type="button" onClick={() => onOpen(d.date)} tabIndex={-1} aria-hidden
-            className="flex min-h-11 items-center pr-3.5 text-left text-small text-(--text-muted)">
+            className="flex min-h-14 items-center pr-4 text-left text-body text-(--text-muted)">
             {d.sessions.length ? 'Rest day' : 'Nothing planned'}
           </button>
         )}
@@ -71,14 +82,17 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
           const line = sessionLine(s, imperial)
           return (
             <button key={s.id ?? i} type="button" onClick={() => (s.id ? openWorkout(s.id, d.date) : onSheet(d))}
-              aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`}
-              className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
-              <StateMark st={s.status} />
-              <Icon className="size-4 shrink-0 text-(--text-secondary)" aria-hidden />
-              <span className={cn('min-w-0 flex-1 truncate text-small', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
-                {s.title}
+              aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`} className={row}>
+              <span className="min-w-0 flex-1">
+                <span className={cn('block text-body leading-snug', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
+                  {s.title}
+                </span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-meta text-(--text-muted)">
+                  <StateMark st={s.status} />
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  <span>{s.status === 'done' ? 'Done' : s.status === 'missed' ? 'Missed' : 'Planned'}{line ? ` · ${line}` : ''}</span>
+                </span>
               </span>
-              {line && <span className="shrink-0 font-mono text-meta text-(--text-muted)">{line}</span>}
               <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </button>
           )
@@ -87,13 +101,14 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
           const Icon = SPORT_ICON[a.sport] ?? Activity
           return (
             <button key={`x${i}`} type="button" onClick={() => (a.id != null ? openActivity(a.id) : onOpen(d.date))}
-              aria-label={`${a.name}, done, ${dayLabel}. ${a.id != null ? 'Open the workout' : 'Open this day'}`}
-              className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
-              <StateMark st="done" />
-              <Icon className="size-4 shrink-0 text-(--text-secondary)" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-small text-(--text)">{a.name}</span>
-              <span className="shrink-0 font-mono text-meta text-(--text-muted)">
-                {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}
+              aria-label={`${a.name}, done, ${dayLabel}. ${a.id != null ? 'Open the workout' : 'Open this day'}`} className={row}>
+              <span className="min-w-0 flex-1">
+                <span className="block text-body leading-snug text-(--text)">{a.name}</span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-meta text-(--text-muted)">
+                  <StateMark st="done" />
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  <span>Done · {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}</span>
+                </span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </button>
@@ -155,12 +170,12 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
   const label = `Week at a glance: ${head} ${unit}. ${trend}. Open this week in your schedule`
   return (
     <button type="button" onClick={onOpen} aria-label={label}
-      className="flex w-full items-end gap-3 border-b border-(--border) px-3.5 py-3 text-left active:bg-(--bg-inset)">
+      className="flex w-full items-end gap-3 border-b border-(--border) px-4 py-4 text-left active:bg-(--bg-inset)">
       <span className="min-w-0 flex-1" aria-hidden>
-        <span className="block font-mono text-lead font-semibold tabular-nums text-(--text)">{head}</span>
-        <span className="block text-caption text-(--text-muted)">{unit}</span>
+        <span className="block text-title font-semibold tabular-nums text-(--text)">{head}</span>
+        <span className="block text-small text-(--text-muted)">{unit}</span>
         {trend && (
-          <span className={cn('mt-1 flex items-center gap-1 text-meta font-medium leading-snug',
+          <span className={cn('mt-1.5 flex items-center gap-1.5 text-small font-medium leading-snug',
             tone === 'behind' ? 'text-(--warning-text)' : tone === 'ahead' ? 'text-(--accent)' : 'text-(--text-secondary)')}>
             {allDone && <RabbitNap size={18} mode="cheer" className="shrink-0" />}{trend}
           </span>
@@ -208,7 +223,7 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
 
   if (!week) {
     return (
-      <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
+      <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-4">
         {error && !loading ? (
           <button type="button" onClick={onRetry} className="min-h-11 w-full text-left text-small text-(--text-muted)">
             Couldn't load this week. <span className="underline">Retry</span>
@@ -221,15 +236,14 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
             {[0, 1, 2, 3, 4, 5, 6].map((i) => <span key={i} className="skeleton h-10" aria-hidden />)}
           </div>
         )}
-      </section>
+      </div>
     )
   }
   return (
-    <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
-      <div className="flex items-center gap-2 border-b border-(--border) px-3.5 py-2">
-        <h2 className="font-sans min-w-0 flex-1 truncate text-caption font-semibold text-(--text-muted)">
-          {weekTitle(week)}
-        </h2>
+    <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
+      <div className="border-b border-(--border) px-4 py-3">
+        <h3 className="m-0 text-body-lg font-semibold leading-snug text-(--text)">{weekHead(week).title}</h3>
+        <p className="m-0 mt-0.5 text-small text-(--text-muted)">{weekHead(week).sub}</p>
       </div>
       <WeekGlance week={week} miles={miles} imperial={imperial} onOpen={onOpenWeek ?? onOpenPlan} />
       {week.garmin_error && <p className="px-3.5 pt-2 text-meta text-(--warning-text)">{week.garmin_error}</p>}
@@ -238,9 +252,9 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
       </ul>
       {sheet && <PlanDaySheet day={sheet} imperial={imperial} onClose={() => setSheetDay(null)} onAsk={onAskDay} />}
       <button type="button" onClick={onOpenPlan}
-        className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-(--border) text-small font-medium text-(--accent) active:bg-(--bg-inset)">
-        See full plan <ChevronRight className="size-4" aria-hidden />
+        className="flex min-h-12 w-full items-center justify-center gap-1 border-t border-(--border) text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+        See full plan <ChevronRight className="size-5" aria-hidden />
       </button>
-    </section>
+    </div>
   )
 }

@@ -3,7 +3,9 @@
 // one-tap cheer). Names and avatars open that person; a post line opens the Community feed.
 // Light on purpose: nothing renders until there's something from friends.
 import { useEffect, useState } from 'react'
-import { ChevronRight, Flag } from 'lucide-react'
+import { Flag } from 'lucide-react'
+import { Section, SeeAll } from '@/components/ui/section'
+import { Card } from '@/components/plan/ui'
 import { burst } from '@/components/anim'
 import { PersonAvatar } from '@/components/community/Feed'
 import { ago, react, unreact, type Post } from '@/lib/community'
@@ -82,29 +84,26 @@ export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {
     }
   }
 
+  const kudosBtn = 'hit-44 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-small font-medium transition-colors'
   return (
-    <div className="px-4">
-      <section aria-label="Friends' latest" className="mx-auto max-w-2xl rounded-2xl border border-(--border) bg-(--bg-surface) px-3 py-2">
-        <button type="button" onClick={onOpenFeed} className="flex min-h-9 w-full items-center gap-1 text-left">
-          <h2 className="font-sans flex-1 text-caption font-semibold text-(--text-muted)">{trained.length || racing.length ? 'Friends today' : "Friends' latest"}</h2>
-          <span className="flex items-center text-meta font-medium text-(--accent)">Feed <ChevronRight className="size-4" aria-hidden /></span>
-        </button>
-        <ul className="flex flex-col">
+    <Section title={trained.length || racing.length ? 'Friends today' : "Friends' latest"}
+      action={<SeeAll label="Feed" ariaLabel="Open the feed" onClick={onOpenFeed} />}>
+      <Card>
+        <ul className="flex flex-col divide-y divide-(--border)">
           {trained.map((t, i) => {
             const w = t.workout
-            const bits = [sportWord(w.sport), w.km != null ? fmtDist(w.km, imperial, w.sport.includes('swim') ? 'swim' : w.sport) : null, w.minutes ? fmtDuration(w.minutes) : null].filter(Boolean)
+            const bits = [w.km != null ? fmtDist(w.km, imperial, w.sport.includes('swim') ? 'swim' : w.sport) : null, w.minutes ? fmtDuration(w.minutes) : null].filter(Boolean)
             return (
-              <li key={`t:${t.person.id}:${w.id}`} className="flex items-center gap-2 border-t border-(--border) first:border-t-0">
-                <TapAvatar p={t.person} size={30} />
-                <button type="button" onClick={() => openPerson(t.person.id)} className="flex min-h-12 min-w-0 flex-1 flex-col justify-center text-left">
-                  <span className="block truncate text-small text-(--text)"><span className="font-medium">{t.person.name}</span> <span className="text-(--text-muted)">· today</span></span>
-                  <span className="block truncate text-meta text-(--text-secondary)">{w.title}{bits.length ? ` · ${bits.join(' · ')}` : ''}</span>
+              <li key={`t:${t.person.id}:${w.id}`} className="flex items-center gap-3 px-4 py-3">
+                <TapAvatar p={t.person} size={40} />
+                <button type="button" onClick={() => openPerson(t.person.id)} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-left">
+                  <span className="block text-body leading-snug text-(--text)"><span className="font-semibold">{t.person.name}</span> <span className="text-(--text-muted)">trained today</span></span>
+                  <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{w.title || sportWord(w.sport)}{bits.length ? ` · ${bits.join(' · ')}` : ''}</span>
                 </button>
                 <button type="button" aria-pressed={t.you_cheered}
                   aria-label={t.you_cheered ? `Gave ${t.person.name} kudos` : `Give ${t.person.name} kudos`}
                   onClick={(e) => void kudos(i, e.currentTarget)}
-                  className={cn('hit-44 inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-meta font-medium transition-colors',
-                    t.you_cheered ? 'bg-(--accent-subtle) text-(--accent)' : 'border border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
+                  className={cn(kudosBtn, t.you_cheered ? 'bg-(--accent-subtle) text-(--accent)' : 'border border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
                   <span aria-hidden className={cn(t.you_cheered && 'celebrate')}>👏</span>
                   {t.kudos > 0 ? <span className="tabular-nums">{t.kudos}</span> : 'Kudos'}
                 </button>
@@ -114,39 +113,38 @@ export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {
           {racing.map((r) => {
             const d = daysUntil(r.date)
             return (
-              <li key={`r:${r.key}`} className="flex items-center gap-2 border-t border-(--border) first:border-t-0">
-                <TapAvatar p={r.person} size={30} />
-                <button type="button" onClick={() => openPerson(r.person.id)} className="flex min-h-12 min-w-0 flex-1 flex-col justify-center text-left">
-                  <span className="block truncate text-small text-(--text)"><span className="font-medium">{r.person.name}</span> <span className="text-(--text-muted)">· {d <= 0 ? 'racing today' : d === 1 ? 'races tomorrow' : `races in ${d} days`}</span></span>
-                  <span className="flex items-center gap-1 truncate text-meta text-(--text-secondary)"><Flag className="size-3.5 shrink-0 text-(--accent)" aria-hidden />{r.name}</span>
+              <li key={`r:${r.key}`} className="flex items-center gap-3 px-4 py-3">
+                <TapAvatar p={r.person} size={40} />
+                <button type="button" onClick={() => openPerson(r.person.id)} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-left">
+                  <span className="block text-body leading-snug text-(--text)"><span className="font-semibold">{r.person.name}</span> <span className="text-(--text-muted)">{d <= 0 ? 'is racing today' : d === 1 ? 'races tomorrow' : `races in ${d} days`}</span></span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-small leading-snug text-(--text-secondary)"><Flag className="size-4 shrink-0 text-(--accent)" aria-hidden />{r.name}</span>
                 </button>
               </li>
             )
           })}
           {items.map((p) => (
-            <li key={p.id} className="flex items-center gap-2 border-t border-(--border) first:border-t-0">
-              <button type="button" onClick={onOpenFeed} className="flex min-h-12 min-w-0 flex-1 items-center gap-2.5 text-left">
-                <PersonAvatar u={p.user} size={30} />
+            <li key={p.id} className="flex items-center gap-3 px-4 py-3">
+              <button type="button" onClick={onOpenFeed} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
+                <PersonAvatar u={p.user} size={40} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-small text-(--text)">
-                    <span className="font-medium">{p.user?.name ?? 'A friend'}</span> <span className="text-(--text-muted)">· {ago(p.created)}</span>
+                  <span className="block text-body leading-snug text-(--text)">
+                    <span className="font-semibold">{p.user?.name ?? 'A friend'}</span> <span className="text-(--text-muted)">{ago(p.created)}</span>
                   </span>
-                  <span className="block truncate text-meta text-(--text-secondary)">{line(p, imperial)}</span>
+                  <span className="mt-0.5 line-clamp-2 text-small leading-snug text-(--text-secondary)">{line(p, imperial)}</span>
                 </span>
               </button>
               <button type="button" aria-pressed={p.my_reaction != null}
                 aria-label={p.my_reaction ? `Cheered ${p.user?.name ?? ''}`.trim() : `Cheer ${p.user?.name ?? 'your friend'}`}
                 onClick={(e) => void cheer(p, e.currentTarget)}
-                className={cn('hit-44 inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-meta font-medium transition-colors',
-                  p.my_reaction ? 'bg-(--accent-subtle) text-(--accent)' : 'border border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
+                className={cn(kudosBtn, p.my_reaction ? 'bg-(--accent-subtle) text-(--accent)' : 'border border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
                 <span aria-hidden className={cn(p.my_reaction && 'celebrate')}>🎉</span>
                 {p.reaction_total > 0 ? <span className="tabular-nums">{p.reaction_total}</span> : 'Cheer'}
               </button>
             </li>
           ))}
         </ul>
-        {err && <p className="pb-1 text-meta text-(--danger)" role="status">{err}</p>}
-      </section>
-    </div>
+        {err && <p className="px-4 pb-3 text-small text-(--danger)" role="status">{err}</p>}
+      </Card>
+    </Section>
   )
 }

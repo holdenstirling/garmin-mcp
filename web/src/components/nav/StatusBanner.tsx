@@ -46,16 +46,20 @@ function SetupRing({ done, total }: { done: number; total: number }) {
   )
 }
 
-export function StatusBanner({ banner, onTap, onDismiss }: { banner: Banner; onTap: () => void; onDismiss?: () => void }) {
+export function StatusBanner({ banner, onTap, onDismiss, flush }: {
+  banner: Banner; onTap: () => void; onDismiss?: () => void
+  /** Home's nudge slot: no outer margins, a roomier row and text that wraps */
+  flush?: boolean
+}) {
   const look = LOOK[banner.kind]
   const Icon = banner.kind === 'plan' && !banner.goal ? Target : look.icon
   return (
-    <div className={cn('coach-pins mx-4 mt-2 flex h-12 shrink-0 items-center overflow-hidden rounded-xl border', look.cls)}
+    <div className={cn('coach-pins flex shrink-0 items-center overflow-hidden rounded-xl border', flush ? 'min-h-14' : 'mx-4 mt-2 h-12', look.cls)}
       role={banner.kind === 'error' ? 'alert' : undefined}>
-      <button type="button" onClick={onTap} className="flex h-full min-w-0 flex-1 items-center gap-2 pl-3 pr-2 text-left"
+      <button type="button" onClick={onTap} className={cn('flex min-w-0 flex-1 items-center text-left', flush ? 'min-h-14 gap-3 py-3 pl-4 pr-3' : 'h-full gap-2 pl-3 pr-2')}
         aria-label={banner.kind === 'quest' ? `Setup ${banner.done} of ${banner.total}. Next: ${banner.title}` : undefined}>
         {banner.kind === 'quest' ? <SetupRing done={banner.done} total={banner.total} /> : <Icon className="size-5 shrink-0" />}
-        <span className="min-w-0 flex-1 truncate text-small font-medium">{text(banner)}</span>
+        <span className={cn('min-w-0 flex-1 font-medium', flush ? 'text-body leading-snug' : 'truncate text-small')}>{text(banner)}</span>
         {!onDismiss && <ChevronRight className="size-5 shrink-0" />}
       </button>
       {onDismiss && (

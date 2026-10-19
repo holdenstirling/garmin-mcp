@@ -27,7 +27,7 @@ const chipPlain = 'border-(--border) bg-(--bg-surface) text-(--text-secondary)'
 
 function Strip({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <HopIn as="section" className="mx-4 mt-2 shrink-0" aria-label={label}>
+    <HopIn as="section" className="shrink-0" aria-label={label}>
       <div className="flex gap-2 overflow-x-auto [scrollbar-width:none]">{children}</div>
     </HopIn>
   )
@@ -87,15 +87,15 @@ function CommunityStrip({ onOpen, refreshKey }: { onOpen: (t: HomeTarget) => voi
   }, [refreshKey])
   if (!items.length) return null // nothing yet: hide quietly
   return (
-    <HopIn as="section" className="mx-4 mt-2 shrink-0 rounded-xl border border-(--border) bg-(--bg-surface)" aria-label="From your community">
-      <button type="button" onClick={() => onOpen('friends')} className="flex min-h-11 w-full items-center gap-2 px-3 pt-2 text-left">
+    <HopIn as="section" className="shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]" aria-label="From your community">
+      <button type="button" onClick={() => onOpen('friends')} className="flex min-h-12 w-full items-center gap-2.5 px-4 pt-3 text-left">
         <Users className="size-5 shrink-0 text-(--accent)" />
-        <span className="flex-1 text-meta font-semibold text-(--text-muted)">From your community</span>
+        <span className="flex-1 text-body-lg font-semibold text-(--text)">From your community</span>
         <ChevronRight className="size-5 text-(--text-muted)" />
       </button>
-      <ul className="px-3 pb-2">
+      <ul className="flex flex-col gap-1.5 px-4 pb-3.5">
         {items.map((h) => (
-          <li key={h.id} className="truncate py-0.5 text-small text-(--text)">
+          <li key={h.id} className="text-body leading-snug text-(--text)">
             {h.who && <span className="font-semibold">{h.who}: </span>}{h.title}
             {h.subtitle && <span className="text-(--text-muted)"> · {h.subtitle}</span>}
           </li>

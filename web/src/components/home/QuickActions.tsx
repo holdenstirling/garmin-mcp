@@ -15,7 +15,6 @@ import { getQuickActions, type QuickAction } from '@/lib/unread'
 import { cn } from '@/lib/utils'
 
 const FACES: [number, string, string][] = [[1, '😣', 'Awful'], [2, '😕', 'Rough'], [3, '😐', 'OK'], [4, '🙂', 'Good'], [5, '😄', 'Great']]
-const chip = 'hit-44 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-small font-medium transition-colors active:scale-[0.97] disabled:opacity-50'
 
 function when(iso: string): string {
   const d = new Date(iso)
@@ -27,19 +26,20 @@ function when(iso: string): string {
   return `${day} ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
 }
 
-function text(a: QuickAction, imperial: boolean): string {
+const ICON = { feel: Smile, rsvp: CalendarCheck, cheer: PartyPopper, watch: Watch } as const
+
+/** The action as a title and a quieter second line (the details), so nothing gets cut off. */
+function lines(a: QuickAction, imperial: boolean): [string, string | null] {
   switch (a.kind) {
     case 'feel': {
       const bits = [a.km ? fmtDist(a.km, imperial, a.sport) : null, a.minutes ? fmtDuration(a.minutes) : null].filter(Boolean)
-      return `How did it feel? ${a.title}${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+      return [`How did your ${a.title.toLowerCase()} feel?`, bits.length ? bits.join(' · ') : null]
     }
-    case 'rsvp': return `Going? ${a.title} · ${when(a.next)}`
-    case 'cheer': return `Cheer ${a.name}'s ${a.what}`
-    case 'watch': return `Send ${a.title} to watch`
+    case 'rsvp': return [`Going to ${a.title}?`, when(a.next) || null]
+    case 'cheer': return [`Cheer ${a.name}`, `Their ${a.what}`]
+    case 'watch': return [`Send ${a.title} to your watch`, null]
   }
 }
-
-const ICON = { feel: Smile, rsvp: CalendarCheck, cheer: PartyPopper, watch: Watch } as const
 
 export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, onToast }: {
   refreshKey?: number; imperial: boolean
@@ -85,41 +85,46 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
   }
 
   const feel = shown.find((a) => a.kind === 'feel')
+  if (!shown.length) return null
   return (
-    <div className="px-4" data-usage-card="actions">
-      <div className="mx-auto max-w-2xl">
-        {shown.length > 0 && (
-          <div role="group" aria-label="Quick actions" className="mt-2 flex flex-wrap gap-2">
-            {shown.slice(0, 2).map((a) => {
-              const Icon = done === a.kind ? Check : ICON[a.kind]
-              const active = a.kind === 'feel' && feelOpen
-              return (
-                <button key={a.kind} type="button" disabled={busy !== null || done === a.kind}
-                  aria-expanded={a.kind === 'feel' ? feelOpen : undefined}
-                  className={cn(chip, active || done === a.kind
-                    ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)'
-                    : 'border-(--border) bg-(--bg-surface) text-(--text)')}
-                  onClick={(e) => a.kind === 'feel' ? setFeelOpen((v) => !v) : void run(a, e.currentTarget)}>
-                  <Icon className="size-5 shrink-0" aria-hidden />
-                  <span className="max-w-60 truncate">{text(a, imperial)}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {feel && feelOpen && (
-          <div role="group" aria-label="How did it feel?" className="mb-1 flex items-center justify-between gap-1 rounded-2xl border border-(--border) bg-(--bg-surface) px-2 py-1.5">
-            {FACES.map(([n, face, label]) => (
-              <button key={n} type="button" aria-label={label} disabled={busy !== null}
-                className="hit-44 flex min-h-11 min-w-11 flex-col items-center justify-center rounded-xl text-title-md leading-none active:bg-(--bg-inset) disabled:opacity-50"
-                onClick={() => void run(feel, null, n)}>
-                <span aria-hidden>{face}</span>
-                <span className="mt-0.5 text-caption text-(--text-muted)">{label}</span>
+    <div data-usage-card="actions" role="group" aria-label="Quick actions"
+      className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
+      <ul className="flex flex-col divide-y divide-(--border)">
+        {shown.slice(0, 2).map((a) => {
+          const Icon = done === a.kind ? Check : ICON[a.kind]
+          const active = a.kind === 'feel' && feelOpen
+          const [title, sub] = lines(a, imperial)
+          return (
+            <li key={a.kind}>
+              <button type="button" disabled={busy !== null || done === a.kind}
+                aria-expanded={a.kind === 'feel' ? feelOpen : undefined}
+                className="flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left transition-colors active:bg-(--bg-inset) disabled:opacity-60"
+                onClick={(e) => a.kind === 'feel' ? setFeelOpen((v) => !v) : void run(a, e.currentTarget)}>
+                <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full',
+                  active || done === a.kind ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
+                  <Icon className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body font-medium leading-snug text-(--text)">{title}</span>
+                  {sub && <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{sub}</span>}
+                </span>
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+              {a.kind === 'feel' && feel && feelOpen && (
+                <div role="group" aria-label="How did it feel?" className="flex items-center justify-between gap-1 px-3 pb-3">
+                  {FACES.map(([n, face, label]) => (
+                    <button key={n} type="button" aria-label={label} disabled={busy !== null}
+                      className="flex min-h-14 min-w-11 flex-1 flex-col items-center justify-center rounded-xl text-title-md leading-none active:bg-(--bg-inset) disabled:opacity-50"
+                      onClick={() => void run(feel, null, n)}>
+                      <span aria-hidden>{face}</span>
+                      <span className="mt-1 text-caption text-(--text-muted)">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
@@ -127,6 +132,10 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
 /** The one-time "Share my workouts with friends" card (Home's "next step" slot). Shown once:
  *  being shown turns the default on (server-side), "Keep private" turns it off. Changeable in
  *  Me. `onShown` tells Home whether it's up, so no other prompt stacks under it. */
+// Once the question is up it stays up for this visit, even if Home moves it (remounts it) to
+// another spot: the server marks it as asked the first time it's shown.
+let askedThisVisit = false
+
 export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void }) {
   const [s, setS] = useState<CommunitySettings | null>(null)
   const [answered, setAnswered] = useState<boolean | null>(null)
@@ -139,12 +148,13 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
     }, () => {})
     return () => { live = false }
   }, [])
-  const hidden = !s || s.share_workouts != null || (s.share_prompted && answered === null)
+  const hidden = !s || s.share_workouts != null || (s.share_prompted && answered === null && !askedThisVisit)
+  if (!hidden) askedThisVisit = true
   useEffect(() => { onShown?.(!hidden && answered === null) }, [hidden, answered]) // eslint-disable-line react-hooks/exhaustive-deps
   if (hidden) return null
   if (answered !== null) {
     return (
-      <p role="status" className="py-1.5 text-meta text-(--text-muted)">
+      <p role="status" className="m-0 text-small text-(--text-muted)">
         {answered ? 'Your workouts will show up for friends. Change it anytime in Me.' : 'Kept private. You can turn sharing on in Me.'}
       </p>
     )
@@ -154,16 +164,16 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
     try { await putCommunitySettings({ share_workouts: v }) } catch { setAnswered(null) }
   }
   return (
-    <section aria-labelledby="share-prompt-title" className="my-1.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h2 id="share-prompt-title" className="flex items-center gap-2 text-body-lg font-semibold text-(--text)">
-        <Share2 className="size-5 text-(--accent)" aria-hidden /> Share your workouts with friends?
+    <section aria-labelledby="share-prompt-title" className="rounded-xl border border-(--accent)/30 bg-(--bg-surface) p-4 shadow-[var(--shadow-sm)]">
+      <h2 id="share-prompt-title" className="m-0 flex items-start gap-2.5 text-body-lg font-semibold leading-snug text-(--text)">
+        <Share2 className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden /> Share your workouts with friends?
       </h2>
-      <p className="mt-1 text-small leading-snug text-(--text-secondary)">
+      <p className="mt-2 text-body leading-snug text-(--text-secondary)">
         Friends who follow you see each new workout: sport, time and distance. Never heart rate, maps or where you trained. It's on unless you say no.
       </p>
-      <div className="mt-2.5 flex gap-2">
-        <Button variant="primary" className="h-11 flex-1" onClick={() => void choose(true)}>Share with friends</Button>
-        <Button variant="ghost" className="h-11 flex-1" onClick={() => void choose(false)}>Keep private</Button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button variant="default" className="min-w-36 flex-1 border-(--accent)/40 font-semibold text-(--accent)" onClick={() => void choose(true)}>Share with friends</Button>
+        <Button variant="ghost" className="min-w-36 flex-1" onClick={() => void choose(false)}>Keep private</Button>
       </div>
     </section>
   )

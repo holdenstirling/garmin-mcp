@@ -6,25 +6,32 @@ import { CalendarClock, ChevronRight } from 'lucide-react'
 import { getCalInsights, type CalRec } from '@/lib/calinsights'
 import { openPlanDay } from '@/lib/plancal'
 
-export function CalendarNudge({ refreshKey }: { refreshKey?: number }) {
+export function CalendarNudge({ refreshKey, onShown }: {
+  refreshKey?: number
+  /** after each load: whether the nudge shows (Home keeps one nudge up at a time) */
+  onShown?: (shown: boolean) => void
+}) {
   const [rec, setRec] = useState<CalRec | null>(null)
   useEffect(() => {
     let live = true
     getCalInsights().then((d) => {
-      if (!live || !d.connected || !d.today) return
+      if (!live) return
+      if (!d.connected || !d.today) { onShown?.(false); return }
       const t = new Date(`${d.today}T12:00:00`)
       t.setDate(t.getDate() + 1)
       const tomorrow = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
-      setRec(d.recs.find((r) => r.kind !== 'long_day' && (r.date === d.today || r.date === tomorrow)) ?? null)
-    }, () => { /* hidden on error */ })
+      const r = d.recs.find((x) => x.kind !== 'long_day' && (x.date === d.today || x.date === tomorrow)) ?? null
+      setRec(r)
+      onShown?.(!!r)
+    }, () => { if (live) onShown?.(false) /* hidden on error */ })
     return () => { live = false }
-  }, [refreshKey])
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!rec) return null
   return (
     <button type="button" onClick={() => openPlanDay(rec.date)}
-      className="mx-4 mt-3 flex min-h-12 w-[calc(100%-2rem)] shrink-0 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:opacity-80">
-      <CalendarClock className="size-5 shrink-0 text-(--accent)" aria-hidden />
-      <span className="min-w-0 flex-1 text-body text-(--text)">{rec.title}</span>
+      className="flex min-h-14 w-full shrink-0 items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:opacity-80">
+      <CalendarClock className="size-6 shrink-0 text-(--accent)" aria-hidden />
+      <span className="min-w-0 flex-1 text-body leading-snug text-(--text)">{rec.title}</span>
       <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )

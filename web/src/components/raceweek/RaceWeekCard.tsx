@@ -56,7 +56,7 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
     <>
       {card && (
         <section aria-label="Race week"
-          className="mx-4 mt-3 shrink-0 rounded-xl border border-(--brand)/30 bg-(--bg-surface) px-3 pb-3 pt-2.5 shadow-sm">
+          className="shrink-0 rounded-2xl border border-(--brand)/30 bg-(--bg-surface) p-5 shadow-sm">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-(--brand) text-(--on-fill)">
               <Flag className="size-5" aria-hidden />
@@ -65,7 +65,7 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
               <span className="block text-caption font-semibold text-(--text-muted)">
                 {card.race_day ? 'Race day' : 'Race week'}
               </span>
-              <span className="block truncate text-lead font-semibold leading-tight text-(--text)">{card.event.name}</span>
+              <span className="block text-lead font-semibold leading-snug text-(--text)">{card.event.name}</span>
               <span className="block font-display text-title-sm leading-tight text-(--brand)">{countdown(card.days)}</span>
             </span>
             {card.packing.total > 0 && <PackRing done={card.packing.done} total={card.packing.total} />}
@@ -91,14 +91,14 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
             </div>
           )}
           <div className="mt-2.5">
-            <Button variant="primary" className="h-11 px-4 text-body" onClick={() => onOpen(card.event.id)}>
+            <Button variant="default" className="border-(--brand)/40 font-semibold text-(--brand)" onClick={() => onOpen(card.event.id)}>
               {card.race_day ? 'Open race day' : 'Race-week plan'}
             </Button>
           </div>
         </section>
       )}
       {friends.length > 0 && (
-        <section aria-label="Friends racing today" className="mx-4 mt-2 shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
+        <section aria-label="Friends racing today" className="shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
           <p className="text-caption font-semibold text-(--text-muted)">Friends racing today</p>
           <ul className="mt-1 flex flex-col gap-1.5">
             {friends.slice(0, 4).map((f) => (

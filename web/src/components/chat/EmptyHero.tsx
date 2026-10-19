@@ -1,33 +1,17 @@
-// Empty-chat hero: logo + heading, with suggestion buttons hanging below. With the
-// keyboard closed the whole group is centered; while typing the suggestions fade and the
-// heading glides to the center (html.kb-open). Suggestions sit outside the layout, so
-// nothing reflows while the keyboard animates.
-import { useLayoutEffect, useRef, useState } from 'react'
-
-export function EmptyHero({ children, suggestions, gap = 12 }: {
+// Empty-chat hero: logo + heading, with suggestion buttons under it, all in the normal flow so
+// nothing can slide up under the Home / Chat switch on a short phone. The parent scrolls when
+// the group doesn't fit and centers it when it does (`my-auto` inside an overflow container).
+// While typing, the suggestions step aside (html.kb-open) so the composer has the room.
+export function EmptyHero({ children, suggestions, gap = 16 }: {
   children: React.ReactNode
   suggestions?: React.ReactNode
   gap?: number
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [h, setH] = useState(0)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) { setH(0); return }
-    const measure = () => setH(el.offsetHeight)
-    measure()
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [suggestions != null])
   return (
-    <div className="empty-hero relative flex flex-col items-center"
-      style={{ ['--hero-shift' as string]: suggestions ? `${-(h + gap) / 2}px` : '0px' }}>
+    <div className="empty-hero my-auto flex w-full flex-col items-center py-6">
       {children}
       {suggestions && (
-        <div ref={ref} style={{ marginTop: gap }}
-          className="chat-suggestions absolute left-1/2 top-full flex w-[min(300px,calc(100vw-48px))] -translate-x-1/2 flex-col gap-2">
+        <div style={{ marginTop: gap }} className="chat-suggestions flex w-full max-w-[340px] flex-col gap-2.5">
           {suggestions}
         </div>
       )}

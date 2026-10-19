@@ -2,7 +2,7 @@
 // primary action. Today's planned session (Start, Send to watch) > rest day + tomorrow > build
 // your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
 // that card isn't shown separately.
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useState, type ReactNode } from 'react'
 import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Thermometer, Users, Watch, Waves, Zap, Utensils } from 'lucide-react'
 import { useSick } from '@/components/plan/SickHost'
 import { Button } from '@/components/ui/button'
@@ -100,100 +100,127 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
   const t = up.tomorrow
   const g = up.group
   const headline = s && up.kind === 'session' ? [s.title, fmtDuration(s.minutes)].filter(Boolean).join(' · ') : up.headline
+  // Two chips at most (what to aim for, and whether it's on the watch); everything else is a line.
+  const chips: { key: string; node: ReactNode }[] = []
+  if (s?.target) chips.push({ key: 'target', node: <span className="rounded-full border border-(--border) px-3 py-1 text-meta font-medium text-(--text)">{s.target}</span> })
+  if (s?.on_watch) {
+    chips.push({ key: 'watch', node: (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-3 py-1 text-meta font-medium text-(--accent)">
+        <Watch className="size-4" aria-hidden /> On your watch
+      </span>
+    ) })
+  }
+  for (const x of signals) {
+    chips.push({ key: x.label, node: (
+      <span className={cn('inline-flex items-center gap-1 rounded-full border py-1 pl-3 text-meta font-medium',
+        SIGNAL_TERM[x.label] ? 'pr-1.5' : 'pr-3',
+        x.good ? 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' : 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)')}>
+        {x.label} {x.value}
+        {SIGNAL_TERM[x.label] && <InfoTip term={SIGNAL_TERM[x.label]!} />}
+      </span>
+    ) })
+  }
+  const tomorrowLine = t && (rest || up.tone === 'done')
+    ? `Tomorrow: ${t.rest ? 'rest' : `${t.title}${t.minutes ? `, ${fmtDuration(t.minutes)}` : ''}`}` : null
+  const clubLine = g?.club ? `${g.club}${g.rsvp === 'going' ? ' · you\'re going' : ''}` : null
+  const titleCls = 'block text-left text-title-sm font-semibold leading-snug text-(--text)'
+  const quiet = 'hit-44 inline-flex min-h-11 items-center gap-1.5 text-body font-medium text-(--accent) underline-offset-2 hover:underline disabled:opacity-50'
+  const canMove = !!s?.id && up.kind === 'session' && up.tone !== 'done'
   return (
     <section aria-label="Up next" data-usage-card="upnext"
-      className={cn('relative mx-4 mt-3 shrink-0 rounded-xl border bg-(--bg-surface) px-3 pb-3 pt-2.5 shadow-sm',
+      className={cn('relative shrink-0 rounded-2xl border bg-(--bg-surface) p-5 shadow-sm',
         up.tone === 'race' ? 'border-(--brand)/30' : rest ? 'border-(--border-strong)' : 'border-(--accent)/30', hop && 'rb-hop-in')}>
-      <div className="flex items-center gap-2.5">
-        <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full text-(--on-fill)',
+      <div className="flex items-start gap-3.5">
+        <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-full text-(--on-fill)',
           up.tone === 'race' ? 'bg-(--brand)' : rest ? 'bg-(--text-muted)' : 'bg-(--accent)')}>
-          <Icon className="size-5" aria-hidden />
+          <Icon className="size-6" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-caption font-semibold text-(--text-muted)">Up next</span>
+          <span className="block text-meta font-medium text-(--text-muted)">Up next</span>
           {s?.id && up.kind === 'session' ? (
             <button type="button" onClick={() => openWorkout(s.id!, isoToday())} aria-label={`${headline}. Open the workout`}
-              className="hit-44 block max-w-full truncate text-left text-lead font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+              className={cn(titleCls, 'underline-offset-2 hover:underline')}>{headline}</button>
           ) : logged != null ? (
             <button type="button" onClick={() => openActivity(logged)} aria-label={`${headline}. Open your workout`}
-              className="hit-44 block max-w-full truncate text-left text-lead font-semibold leading-tight text-(--text) underline-offset-2 hover:underline">{headline}</button>
+              className={cn(titleCls, 'underline-offset-2 hover:underline')}>{headline}</button>
           ) : (
-            <span className="block truncate text-lead font-semibold leading-tight text-(--text)">{headline}</span>
+            <span className={titleCls}>{headline}</span>
           )}
         </span>
-        {week && week.length === 7 && <WeekDots days={week} />}
+        {week && week.length === 7 && <WeekDots days={week} className="mt-1" />}
       </div>
-      {up.detail && <p className="mt-1.5 line-clamp-2 text-small leading-snug text-(--text-secondary)">{up.detail}</p>}
+      {up.detail && <p className="mt-3 text-body leading-normal text-(--text-secondary)">{up.detail}</p>}
       {up.fuel && (
-        <p className="mt-1.5 flex items-start gap-1.5 text-meta leading-snug text-(--text-secondary)">
-          <Utensils className="mt-px size-4 shrink-0 text-(--accent)" aria-hidden /><span>{up.fuel}</span>
+        <p className="mt-3 flex items-start gap-2 text-small leading-snug text-(--text-secondary)">
+          <Utensils className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden /><span>{up.fuel}</span>
         </p>
       )}
-      {(s?.target || s?.on_watch || (rest && t) || (t && up.tone === 'done') || g?.club || signals.length > 0) && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {s?.target && <span className="rounded-full border border-(--border) px-2 py-0.5 text-meta font-medium text-(--text)">{s.target}</span>}
-          {s?.on_watch && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-2 py-0.5 text-meta font-medium text-(--accent)">
-              <Watch className="size-3.5" aria-hidden /> On your watch
-            </span>
-          )}
-          {t && (rest || up.tone === 'done') && (
-            <span className="rounded-full border border-(--border) px-2 py-0.5 text-meta text-(--text-secondary)">
-              Tomorrow: {t.rest ? 'rest' : `${t.title}${t.minutes ? ` · ${fmtDuration(t.minutes)}` : ''}`}
-            </span>
-          )}
-          {g?.club && <span className="rounded-full border border-(--border) px-2 py-0.5 text-meta text-(--text-secondary)">{g.club}{g.rsvp === 'going' ? ' · going' : ''}</span>}
-          {signals.map((x) => (
-            <span key={x.label}
-              className={cn('inline-flex items-center gap-1 rounded-full border py-0.5 pl-2 text-meta font-medium',
-                SIGNAL_TERM[x.label] ? 'pr-1' : 'pr-2',
-                x.good ? 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)' : 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)')}>
-              {x.label} {x.value}
-              {SIGNAL_TERM[x.label] && <InfoTip term={SIGNAL_TERM[x.label]!} />}
-            </span>
-          ))}
-        </div>
+      {chips.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">{chips.slice(0, 2).map((c) => <span key={c.key} className="contents">{c.node}</span>)}</div>
+      )}
+      {(tomorrowLine || clubLine) && (
+        <p className="mt-3 text-small leading-snug text-(--text-secondary)">
+          {[tomorrowLine, clubLine].filter(Boolean).join('. ')}
+        </p>
       )}
       {insight && (up.kind === 'session' || up.kind === 'today') && (
         <button type="button" onClick={onOpenInsight} disabled={!onOpenInsight}
-          className="hit-44 mt-1 flex items-center gap-1.5 text-left text-meta leading-snug text-(--text-secondary)">
-          <Lightbulb className="size-4 shrink-0 text-(--accent)" aria-hidden />
-          <span className="min-w-0 truncate"><span className="font-semibold">Insight:</span> {insight}</span>
+          className="mt-3 flex min-h-11 items-start gap-2 text-left text-small leading-snug text-(--text-secondary)">
+          <Lightbulb className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0"><span className="font-semibold">Insight:</span> {insight}</span>
         </button>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <Button variant="primary" className="h-11 min-w-28 px-4 text-body" onClick={primary}>{up.primary.label}</Button>
-        {up.secondary && (
-          <Button variant="default" className="h-11 gap-1.5 px-3 text-body" loading={sending} onClick={() => void send()}>
-            <Watch className="size-5" aria-hidden /> {up.secondary.label}
-          </Button>
-        )}
-        {s?.id && up.kind === 'session' && up.tone !== 'done' && (
-          <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" aria-label={`Move ${s.title} to another day`} onClick={() => { setMoved(false); setMoving(s.id) }}>
-            <CalendarClock className="size-5" aria-hidden /> Move
-          </Button>
-        )}
-        {up.extra && todayKind && (
-          <button type="button" className="hit-44 px-1 text-small font-medium text-(--accent) underline-offset-2 hover:underline"
-            onClick={() => onToday(todayKind)}>{up.extra.label}</button>
-        )}
-        {g?.url && (
-          <a href={g.url} target="_blank" rel="noopener noreferrer"
-            className="hit-44 px-1 text-small text-(--text-muted) underline-offset-2 hover:underline">Details</a>
-        )}
-      </div>
-      {s?.id && up.kind === 'session' && up.tone !== 'done' && sickOff && (
+      <Button variant="primary" className="mt-4 w-full text-body-lg" onClick={primary}>{up.primary.label}</Button>
+      {(up.secondary || canMove || (up.extra && todayKind) || g?.url) && (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
+          {up.secondary && (
+            <button type="button" className={quiet} disabled={sending} aria-busy={sending || undefined} onClick={() => void send()}>
+              <Watch className="size-5" aria-hidden /> {sending ? 'Sending…' : up.secondary.label}
+            </button>
+          )}
+          {canMove && (
+            <button type="button" className={quiet} aria-label={`Move ${s!.title} to another day`} onClick={() => { setMoved(false); setMoving(s!.id) }}>
+              <CalendarClock className="size-5" aria-hidden /> Move
+            </button>
+          )}
+          {up.extra && todayKind && (
+            <button type="button" className={quiet} onClick={() => onToday(todayKind)}>{up.extra.label}</button>
+          )}
+          {g?.url && (
+            <a href={g.url} target="_blank" rel="noopener noreferrer" className={quiet}>Details</a>
+          )}
+        </div>
+      )}
+      {canMove && sickOff && (
         <button type="button" onClick={openSick}
-          className="hit-44 mt-0.5 flex items-center gap-1 px-1 text-meta text-(--text-muted) underline-offset-2 hover:underline">
+          className="mx-auto mt-1 flex min-h-11 items-center gap-1.5 text-small text-(--text-muted) underline-offset-2 hover:underline">
           <Thermometer className="size-4" aria-hidden /> Not feeling well? Sick mode
         </button>
       )}
-      {sendMsg && <p className="mt-1.5 text-meta text-(--text-muted)" role="status">{sendMsg}</p>}
+      {sendMsg && <p className="mt-2 text-center text-small text-(--text-muted)" role="status">{sendMsg}</p>}
       {moving && (
         <Suspense fallback={null}>
           <MoveSessionSheet sessionId={moving} onClose={() => { setMoving(null); if (moved) onSynced() }} onMoved={() => setMoved(true)} />
         </Suspense>
       )}
     </section>
+  )
+}
+
+/** Up next while it loads: the same shape and size as the card, so Home doesn't jump. */
+export function UpNextSkeleton() {
+  return (
+    <div role="status" aria-label="Loading what's up next" className="shrink-0 rounded-2xl border border-(--border) bg-(--bg-surface) p-5">
+      <div className="flex items-start gap-3.5" aria-hidden>
+        <span className="skeleton size-11 rounded-full" />
+        <span className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
+          <span className="skeleton h-3.5 w-16" />
+          <span className="skeleton h-5 w-3/4" />
+        </span>
+      </div>
+      <span className="skeleton mt-4 block h-4 w-full" aria-hidden />
+      <span className="skeleton mt-2 block h-4 w-2/3" aria-hidden />
+      <span className="skeleton mt-4 block h-12 w-full rounded-(--radius)" aria-hidden />
+    </div>
   )
 }

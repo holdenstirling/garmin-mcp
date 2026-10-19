@@ -191,9 +191,7 @@ html.kb-open .coach-pins { display: none; }
 /* Typing: fade the suggestions out without changing layout (removing them made the
    centered empty state jump while the keyboard animated). */
 .chat-suggestions { transition: opacity 0.2s ease; }
-html.kb-open .chat-suggestions { opacity: 0; pointer-events: none; }
-.empty-hero { transform: translateY(var(--hero-shift, 0px)); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
-html.kb-open .empty-hero { transform: none; }
+html.kb-open .chat-suggestions { display: none; }
 /* The expanded week: a drawer that slides down over the feed while everything else dims. */
 .week-dim { position: fixed; inset: 0; z-index: var(--z-drawer); background: rgba(0, 0, 0, 0.45);
   opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
@@ -566,3 +564,7 @@ html.kb-open .tab-bar { display: none; }
 .tab-topbar__name { display: block; line-height: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font-family: var(--font); font-size: var(--text-lead); font-weight: 650; color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .tab-topbar__slot { transition: none; } }
+
+/* Section hideWhenEmpty (components/ui/section.tsx): a section whose only child is its heading
+   (every card inside rendered nothing) takes no space at all. */
+.section--hide-empty:not(:has(> :nth-child(2))) { display: none; }

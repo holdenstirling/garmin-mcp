@@ -28,66 +28,69 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
     return () => { live = false; window.removeEventListener(PLAN_CHANGED_EVENT, onChange) }
   }, [refreshKey])
   if (failed) return null
-  if (!data) return <div className="skeleton h-[188px] rounded-xl" aria-hidden />
+  if (!data) return <div className="skeleton h-[220px] rounded-xl" aria-hidden />
   if (!data.available && data.days.every((d) => d.sessions.length === 0)) return null
   const imperial = data.units !== 'metric'
   return (
-    <section aria-label="Next 3 days" className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
-      <h2 className="font-sans flex items-center justify-between px-3.5 pt-3 pb-1 text-caption font-semibold text-(--text-muted)">
-        <span>Next 3 days</span>
-        {data.place && <span className="truncate pl-2 font-sans normal-case tracking-normal">{data.place}</span>}
-      </h2>
+    <div role="group" aria-label="Next 3 days" className="settings-group flex flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-(--border) px-4 py-3">
+        <h3 className="m-0 text-body-lg font-semibold text-(--text)">Next 3 days</h3>
+        {data.place && <span className="text-small text-(--text-muted)">Weather for {data.place}</span>}
+      </div>
       <ul className="flex flex-col">
         {data.days.map((d, i) => {
           const w = d.weather
           const WI = wxIcon(w?.code)
+          const day = label(d.date, data.today, i)
           return (
-            <li key={d.date} className={cn('flex gap-3 px-3.5 py-2', i > 0 && 'border-t border-(--border)')}>
+            <li key={d.date} className={cn('flex flex-col px-4 py-3', i > 0 && 'border-t border-(--border)')}>
+              {/* The day and its weather on one line; tap for the day in Schedule. */}
               <button type="button" onClick={() => openPlanDay(d.date)}
-                aria-label={`${label(d.date, data.today, i)}${w ? `: ${w.summary}, high ${fmtTemp(w.hi_c, imperial)}, low ${fmtTemp(w.lo_c, imperial)}${w.rain_pct ? `, ${w.rain_pct}% rain` : ''}` : ''}. Open this day`}
-                className="flex w-[4.75rem] shrink-0 flex-col items-start gap-0.5 rounded-lg py-1 text-left active:bg-(--bg-inset)">
-                <span className="text-small font-semibold text-(--text)">{label(d.date, data.today, i)}</span>
+                aria-label={`${day}${w ? `: ${w.summary}, high ${fmtTemp(w.hi_c, imperial)}, low ${fmtTemp(w.lo_c, imperial)}${w.rain_pct ? `, ${w.rain_pct}% rain` : ''}` : ''}. Open this day`}
+                className="-mx-1 flex min-h-11 items-center gap-2 rounded-lg px-1 text-left active:bg-(--bg-inset)">
+                <span className="text-body font-semibold text-(--text)">{day}</span>
                 {w ? (
-                  <span className="flex items-center gap-1 text-meta text-(--text-secondary)" aria-hidden>
-                    <WI className="size-4 text-(--accent)" />{fmtTemp(w.hi_c, imperial)}<span className="text-(--text-muted)">/{fmtTemp(w.lo_c, imperial)}</span>
+                  <span className="ml-auto flex items-center gap-1.5 text-small text-(--text-secondary)" aria-hidden>
+                    <WI className="size-5 text-(--accent)" />{fmtTemp(w.hi_c, imperial)}<span className="text-(--text-muted)">/ {fmtTemp(w.lo_c, imperial)}</span>
+                    {w.rain_pct != null && w.rain_pct >= 30 && <span className="text-(--text-muted)">· {w.rain_pct}% rain</span>}
                   </span>
-                ) : <span className="text-caption text-(--text-muted)" aria-hidden>No forecast</span>}
-                {w?.rain_pct != null && w.rain_pct >= 30 && <span className="text-caption text-(--text-muted)" aria-hidden>{w.rain_pct}% rain</span>}
+                ) : <span className="ml-auto text-small text-(--text-muted)" aria-hidden>No forecast</span>}
               </button>
-              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                {d.sessions.length === 0 && <span className="py-2 text-small text-(--text-muted)">{data.has_plan ? 'Rest day' : w?.summary ?? ''}</span>}
-                {d.sessions.map((s) => {
-                  const I = SPORT_ICON[s.sport as Sport] ?? SPORT_ICON.other
-                  const warn = s.badges.filter((b) => b !== 'rain' || s.badges.length === 1).slice(0, 2)
-                  return (
-                    <button key={s.id} type="button" onClick={() => openWorkout(s.id, d.date)}
-                      aria-label={`${s.title}${s.time ? ` at ${fmtHour(s.time, imperial)}` : ''}${s.minutes ? `, ${fmtDuration(s.minutes)}` : ''}${warn.length ? `. Weather: ${warn.map((b) => BADGE[b].label).join(', ')}` : ''}. Open workout`}
-                      className="flex min-h-11 w-full items-center gap-2 rounded-lg text-left active:bg-(--bg-inset)">
-                      <I className="size-5 shrink-0 text-(--text-secondary)" aria-hidden />
-                      <span className="min-w-0 flex-1" aria-hidden>
-                        <span className="block truncate text-body text-(--text)">{s.title}</span>
-                        <span className="block truncate text-caption text-(--text-muted)">
-                          {[s.time ? fmtHour(s.time, imperial) : null, s.minutes ? fmtDuration(s.minutes) : null].filter(Boolean).join(' · ')}
+              {d.sessions.length === 0 && <p className="m-0 pb-1 text-body text-(--text-muted)">{data.has_plan ? 'Rest day' : w?.summary ?? ''}</p>}
+              {d.sessions.map((s) => {
+                const I = SPORT_ICON[s.sport as Sport] ?? SPORT_ICON.other
+                const warn = s.badges.filter((b) => b !== 'rain' || s.badges.length === 1).slice(0, 2)
+                const when = [s.time ? fmtHour(s.time, imperial) : null, s.minutes ? fmtDuration(s.minutes) : null].filter(Boolean).join(' · ')
+                return (
+                  <button key={s.id} type="button" onClick={() => openWorkout(s.id, d.date)}
+                    aria-label={`${s.title}${s.time ? ` at ${fmtHour(s.time, imperial)}` : ''}${s.minutes ? `, ${fmtDuration(s.minutes)}` : ''}${warn.length ? `. Weather: ${warn.map((b) => BADGE[b].label).join(', ')}` : ''}. Open workout`}
+                    className="-mx-1 flex min-h-12 items-center gap-3 rounded-lg px-1 py-1.5 text-left active:bg-(--bg-inset)">
+                    <I className="size-5 shrink-0 text-(--text-secondary)" aria-hidden />
+                    <span className="min-w-0 flex-1" aria-hidden>
+                      <span className="block text-body leading-snug text-(--text)">{s.title}</span>
+                      {(when || warn.length > 0) && (
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-meta text-(--text-muted)">
+                          {when && <span>{when}</span>}
+                          {warn.map((b) => {
+                            const B = BADGE[b]
+                            return (
+                              <span key={b} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium',
+                                B.warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
+                                <B.icon className="size-3.5" />{b === 'heat' && s.pct ? `+${Math.round(s.pct)}%` : B.label}
+                              </span>
+                            )
+                          })}
                         </span>
-                      </span>
-                      {warn.map((b) => {
-                        const B = BADGE[b]
-                        return (
-                          <span key={b} aria-hidden className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption font-medium',
-                            B.warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
-                            <B.icon className="size-3" />{b === 'heat' && s.pct ? `+${Math.round(s.pct)}%` : B.label}
-                          </span>
-                        )
-                      })}
-                      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
-                    </button>
-                  )
-                })}
-              </div>
+                      )}
+                    </span>
+                    <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+                  </button>
+                )
+              })}
             </li>
           )
         })}
       </ul>
-    </section>
+    </div>
   )
 }
