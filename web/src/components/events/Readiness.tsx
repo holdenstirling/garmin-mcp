@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import { Section } from '@/components/ui/section'
 import { useTrackRefresh } from '@/components/stats/refresh'
 import { STATUS_LABEL, listReadiness, mainRace, type RaceGrade, type Readiness, type ReadinessComponent, type ReadinessStatus } from '@/lib/readiness'
-import { Section } from '@/components/ui/section'
 
 const GRADE_CLS: Record<string, string> = {
   A: 'bg-(--success-subtle) text-(--success) border-(--success)/40',
