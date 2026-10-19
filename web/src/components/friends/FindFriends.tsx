@@ -73,7 +73,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-6 -translate-y-1/2 text-(--text-muted)" aria-hidden />
           <input type="text" inputMode="search" role="searchbox" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
-            aria-label="Search people by name, @handle, email or phone" placeholder="Name, @handle, email or phone"
+            aria-label="Search people by name, @handle, email or phone" placeholder="Name, @handle or email"
             autoCapitalize="none" autoCorrect="off" spellCheck={false}
             className="h-12 w-full rounded-full border border-(--border) bg-(--bg-surface) pl-11 pr-11 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/40" />
           {q && (
@@ -110,24 +110,24 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
             </div>
 
             {requests.length > 0 && (
-              <section aria-labelledby="ff-req" className="flex flex-col gap-2">
+              <section aria-labelledby="ff-req" className="flex flex-col gap-3">
                 <h2 id="ff-req" className="section-title m-0 px-1">Want to follow you</h2>
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {requests.map((e) => e.user && (
-                    <li key={e.edge_id} className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
+                    <li key={e.edge_id} className="flex min-h-16 items-center gap-3 px-4 py-3">
                       <PersonAvatar p={e.user} size={44} />
-                      <span className="min-w-0 flex-1 truncate text-lead font-medium text-(--text)">{e.user.name}</span>
+                      <span className="min-w-0 flex-1 text-lead font-semibold leading-snug text-(--text)">{e.user.name}</span>
                       <button type="button" onClick={() => void answer(e, true)}
-                        className="h-9 shrink-0 rounded-full bg-(--accent) px-3.5 text-small font-semibold text-(--on-fill) active:opacity-80">Accept</button>
+                        className="h-11 shrink-0 rounded-full bg-(--accent) px-4 text-body font-semibold text-(--on-fill) active:opacity-80">Accept</button>
                       <button type="button" onClick={() => void answer(e, false)} aria-label={`Decline ${e.user.name}`}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
+                        className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            <section aria-labelledby="ff-sug" className="flex flex-col gap-2">
+            <section aria-labelledby="ff-sug" className="flex flex-col gap-3">
               <h2 id="ff-sug" className="section-title m-0 px-1">People you may know</h2>
               {sug === null ? <RabbitLoader className="py-8" label="Finding people you may know" cycle={['Finding your crew…', 'Lacing up…']} />
                 : sug.length ? (
