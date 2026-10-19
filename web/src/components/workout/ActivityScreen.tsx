@@ -253,7 +253,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
   }
   return (
     <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="text-caption font-semibold text-(--text-muted)">How did it go?</h4>
+      <h4 className="font-sans text-caption font-semibold text-(--text-muted)">How did it go?</h4>
       {ck && !editing && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">

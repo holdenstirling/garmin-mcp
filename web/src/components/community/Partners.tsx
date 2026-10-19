@@ -63,7 +63,7 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
   if (!partners.length) return null
   return (
     <section aria-label="Partners near you" className="flex flex-col gap-1.5">
-      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Partners near you</h2>
+      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Partners near you</h2>
       {partners.map((p) => (
         <button key={p.id} type="button" onClick={() => setOpen(p)}
           aria-label={`Partner: ${p.name}${p.tagline ? `, ${p.tagline}` : ''}. Open details`}

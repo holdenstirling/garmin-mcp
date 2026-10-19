@@ -44,7 +44,7 @@ export function FuelSection({ fp, ahead, onSaved }: { fp: FuelPlan; ahead: boole
   return (
     <section aria-label="Fuel" className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
       <div className="flex items-center gap-1.5 px-3.5 pt-3">
-        <h4 className="flex flex-1 items-center gap-1.5 text-caption font-semibold text-(--text-muted)">
+        <h4 className="font-sans flex flex-1 items-center gap-1.5 text-caption font-semibold text-(--text-muted)">
           <Utensils className="size-4" aria-hidden />Fuel
         </h4>
         <button type="button" onClick={() => setPrefs(true)}

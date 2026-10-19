@@ -341,14 +341,20 @@
   }
 
   /* Base Typography Elements */
+  /* Headings are the sans unless they ask for the display serif (font-display: screen titles,
+     sheet titles, hero words). Small headings in the serif were hard to read. */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    font-family: var(--font-display);
+    font-family: inherit;
     color: var(--text);
+    font-weight: 600;
+  }
+  /* DM Serif Display has one weight: never let a heading's default bold fake a heavier one. */
+  :where(.font-display) {
     font-weight: 400;
   }
 

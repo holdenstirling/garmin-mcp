@@ -55,7 +55,7 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
   const shown = all ? items : items.slice(0, max)
   return (
     <section className="flex flex-col gap-2" aria-label="What your data says">
-      <h2 className="flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
+      <h2 className="font-sans flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
         What your data says
         <InfoTip label="these insights" align="start"
           text="Patterns rabbt spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." />

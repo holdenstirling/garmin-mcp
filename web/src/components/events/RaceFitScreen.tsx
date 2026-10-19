@@ -92,7 +92,7 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
           {race && <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />}
           {race && <FinishEstimate eventId={eventId} />}
           <RacePeopleSection eventId={eventId} eventName={v.event.name} />
-          <h2 className="mt-1 px-1 text-caption font-semibold text-(--text-muted)">Course & conditions</h2>
+          <h2 className="font-sans mt-1 px-1 text-caption font-semibold text-(--text-muted)">Course & conditions</h2>
           <p className="px-1 text-body-lg leading-snug text-(--text)">{v.racefit.summary}</p>
           {v.racefit.factors.length > 0 && (
             <Card>

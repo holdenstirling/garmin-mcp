@@ -190,19 +190,19 @@ export function TPWorkoutSheet({ tp, today, imperial, onToast }: {
       )}
       {it.coach_notes && (
         <section className="flex flex-col gap-1">
-          <h2 className="text-caption font-semibold text-(--text-muted)">Coach notes</h2>
+          <h2 className="font-sans text-caption font-semibold text-(--text-muted)">Coach notes</h2>
           <p className="whitespace-pre-line text-body leading-snug text-(--text)">{it.coach_notes}</p>
         </section>
       )}
       {it.description && (
         <section className="flex flex-col gap-1">
-          <h2 className="text-caption font-semibold text-(--text-muted)">Description</h2>
+          <h2 className="font-sans text-caption font-semibold text-(--text-muted)">Description</h2>
           <p className="whitespace-pre-line text-body leading-snug text-(--text-secondary)">{it.description}</p>
         </section>
       )}
       {it.structure.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h2 className="text-caption font-semibold text-(--text-muted)">Structure</h2>
+          <h2 className="font-sans text-caption font-semibold text-(--text-muted)">Structure</h2>
           <ul className="flex flex-col gap-0.5 text-small text-(--text-secondary)">
             {it.structure.map((l, i) => <li key={i}>{l}</li>)}
           </ul>

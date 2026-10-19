@@ -356,7 +356,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       {(listings.length > 0 || crawling) && <SponsoredCard placement="local" />}
       <PartnersNearYou partners={(data.partners ?? []).filter((p) => !p.sponsored)} metro={metro.label} />
       <div className="flex items-center justify-between gap-2 px-1 pt-1">
-        <h2 className="text-caption font-semibold text-(--text-muted)">
+        <h2 className="font-sans text-caption font-semibold text-(--text-muted)">
           {activity ? ACTIVITY_LABEL[activity] : 'Clubs, leagues & meetups'}{radius ? ` within ${radius}` : ''}
         </h2>
         {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}

@@ -57,7 +57,7 @@ export function GetStartedCard({ garmin, hasGoal, progress, onStep }: {
     <div className="px-4">
       <section aria-label="Get started" className="mx-auto max-w-2xl rounded-2xl border border-(--border) bg-(--bg-surface) px-3 py-2">
         <div className="flex min-h-9 items-center gap-2">
-          <h2 className="flex-1 text-caption font-semibold text-(--text-muted)">Get started · {done} of {steps.length}</h2>
+          <h2 className="font-sans flex-1 text-caption font-semibold text-(--text-muted)">Get started · {done} of {steps.length}</h2>
           <button type="button" onClick={hide} aria-label="Hide Get started" className="hit-44 rounded-full p-1 text-(--text-muted)"><X className="size-5" /></button>
         </div>
         <div className="mb-1 h-1 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>

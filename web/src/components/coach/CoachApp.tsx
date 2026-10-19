@@ -90,7 +90,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
       {legal && <PrivacyLegalScreen me={me} onClose={() => setLegal(false)} onOpenSettings={() => setLegal(false)} onOpenConnections={() => setLegal(false)} />}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 py-5">
-          <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Your athletes</h2>
+          <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Your athletes</h2>
           {body}
         </div>
       </div>

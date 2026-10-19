@@ -86,7 +86,7 @@ export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {
     <div className="px-4">
       <section aria-label="Friends' latest" className="mx-auto max-w-2xl rounded-2xl border border-(--border) bg-(--bg-surface) px-3 py-2">
         <button type="button" onClick={onOpenFeed} className="flex min-h-9 w-full items-center gap-1 text-left">
-          <h2 className="flex-1 text-caption font-semibold text-(--text-muted)">{trained.length || racing.length ? 'Friends today' : "Friends' latest"}</h2>
+          <h2 className="font-sans flex-1 text-caption font-semibold text-(--text-muted)">{trained.length || racing.length ? 'Friends today' : "Friends' latest"}</h2>
           <span className="flex items-center text-meta font-medium text-(--accent)">Feed <ChevronRight className="size-4" aria-hidden /></span>
         </button>
         <ul className="flex flex-col">

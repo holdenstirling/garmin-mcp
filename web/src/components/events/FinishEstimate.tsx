@@ -48,7 +48,7 @@ export function FinishEstimate({ eventId, athleteId, className }: { eventId: str
   const { res, error, retry } = useEventPrediction(eventId, athleteId)
   return (
     <section className={cn('flex flex-col gap-2', className)} aria-labelledby={`fe-${eventId}`}>
-      <h2 id={`fe-${eventId}`} className="px-1 text-caption font-semibold text-(--text-muted)">
+      <h2 id={`fe-${eventId}`} className="font-sans px-1 text-caption font-semibold text-(--text-muted)">
         Your estimated finish
       </h2>
       {error ? <ErrorState compact message={error} onRetry={retry} />

@@ -241,7 +241,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             {capped && <p className="px-1 text-meta text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
             {groups.map((g) => (
               <section key={g.month} className="flex flex-col gap-2">
-                <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{g.month}</h2>
+                <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{g.month}</h2>
                 {g.races.map((r, i) => <HopIn key={r.id} index={i}><RaceCard r={r} onClick={() => setDetail(r)} /></HopIn>)}
               </section>
             ))}
@@ -253,7 +253,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
         )}
         {web && (
           <section className="flex flex-col gap-2">
-            <h2 className="px-1 text-caption font-semibold text-(--accent)">Found on the web by rabbt</h2>
+            <h2 className="font-sans px-1 text-caption font-semibold text-(--accent)">Found on the web by rabbt</h2>
             {web.length === 0 ? (
               <p className="px-1 text-small text-(--text-muted)">rabbt didn't find anything else that fits. Try different filters.</p>
             ) : web.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}

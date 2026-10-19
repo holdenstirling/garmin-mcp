@@ -217,7 +217,7 @@ export function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bik
 export function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
-      <h4 className="flex items-center gap-1.5 px-3.5 pt-3 text-caption font-semibold text-(--text-muted)">
+      <h4 className="font-sans flex items-center gap-1.5 px-3.5 pt-3 text-caption font-semibold text-(--text-muted)">
         {Icon && <Icon className="size-4" aria-hidden />}{title}
       </h4>
       {children}
@@ -457,7 +457,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
   const form = editing || (got !== null && !ck)
   return (
     <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="text-caption font-semibold text-(--text-muted)">How did it go?</h4>
+      <h4 className="font-sans text-caption font-semibold text-(--text-muted)">How did it go?</h4>
       {got === null && <div className="skeleton h-[120px] rounded-lg" aria-hidden />}
       {ck && !editing && (
         <div className="flex flex-col gap-2">

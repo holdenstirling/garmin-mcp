@@ -23,7 +23,7 @@ export function WeatherSection({ sessionId, imperial, onShown }: { sessionId: st
   return (
     <section aria-label="Weather" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-center gap-2">
-        <h4 className="flex flex-1 items-center gap-1.5 text-caption font-semibold text-(--text-muted)">
+        <h4 className="font-sans flex flex-1 items-center gap-1.5 text-caption font-semibold text-(--text-muted)">
           <CloudSun className="size-4" aria-hidden />Weather{w.place ? ` · ${w.place}` : ''}
         </h4>
         {w.day && (

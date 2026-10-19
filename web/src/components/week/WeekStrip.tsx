@@ -74,7 +74,7 @@ export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = t
   }
   return (
     <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
-      <h2 className="border-b border-(--border) px-3.5 py-2.5 text-caption font-semibold text-(--text-muted)">
+      <h2 className="font-sans border-b border-(--border) px-3.5 py-2.5 text-caption font-semibold text-(--text-muted)">
         {weekTitle(week)}
       </h2>
       {week.garmin_error && <p className="px-3.5 pt-2 text-meta text-(--warning-text)">{week.garmin_error}</p>}

@@ -108,7 +108,7 @@ export function CardRow({ children }: { children: React.ReactNode }) {
 
 function Title({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="flex items-center gap-1.5 px-1 text-caption font-semibold text-(--text-muted)">
+    <h2 className="font-sans flex items-center gap-1.5 px-1 text-caption font-semibold text-(--text-muted)">
       <MapPin className="size-4" />{children}
     </h2>
   )

@@ -439,7 +439,7 @@ export function FollowingRaces({ refreshKey = 0 }: { refreshKey?: number }) {
   if (races.length === 0) return null
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Events you're following</h2>
+      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Events you're following</h2>
       {races.map((r) => <FollowedCard key={r.id} r={r} onLeave={() => setRaces((x) => x.filter((y) => y.id !== r.id))} />)}
     </section>
   )

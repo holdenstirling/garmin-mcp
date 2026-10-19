@@ -225,7 +225,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         </div>
       </Field>
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
-        <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Who can find and join it</h2>
+        <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Who can find and join it</h2>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
           description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"

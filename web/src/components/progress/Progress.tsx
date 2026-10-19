@@ -159,7 +159,7 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
       </div>
       <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
       {extra.length > 0 && <>
-        <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Bonus</h2>
+        <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Bonus</h2>
         <QuestList quests={extra} onAction={(q) => { onAction(q); onClose() }} />
       </>}
     </Screen>

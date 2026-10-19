@@ -27,7 +27,7 @@ const latest = (r: RecoveryData | null | undefined): Day | null =>
 const day = (d: Day | null) => (d ? new Date(`${d.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '')
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
+  return <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
 }
 
 /** Progress: recovery as one tappable row ("Recovery · Garmin · readiness 72 · sleep 7.4 h")

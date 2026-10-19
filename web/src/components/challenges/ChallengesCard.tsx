@@ -186,7 +186,7 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
 function Label({ streak }: { streak?: number }) {
   return (
     <div className="flex items-center justify-between px-1">
-      <h2 className="text-caption font-semibold text-(--text-muted)">Challenges</h2>
+      <h2 className="font-sans text-caption font-semibold text-(--text-muted)">Challenges</h2>
       {!!streak && streak > 0 && (
         <span className="inline-flex items-center gap-1 text-caption font-medium text-(--accent)">
           <Flame className="size-3.5" /> {streak}-week challenge streak

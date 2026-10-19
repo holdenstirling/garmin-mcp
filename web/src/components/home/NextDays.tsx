@@ -33,7 +33,7 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
   const imperial = data.units !== 'metric'
   return (
     <section aria-label="Next 3 days" className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
-      <h2 className="flex items-center justify-between px-3.5 pt-3 pb-1 text-caption font-semibold text-(--text-muted)">
+      <h2 className="font-sans flex items-center justify-between px-3.5 pt-3 pb-1 text-caption font-semibold text-(--text-muted)">
         <span>Next 3 days</span>
         {data.place && <span className="truncate pl-2 font-sans normal-case tracking-normal">{data.place}</span>}
       </h2>

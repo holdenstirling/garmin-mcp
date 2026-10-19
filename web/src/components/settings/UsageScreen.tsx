@@ -23,7 +23,7 @@ const TAB_LABEL: Record<string, string> = {
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-      <h2 className="text-caption font-semibold text-(--text-muted)">{title}</h2>
+      <h2 className="font-sans text-caption font-semibold text-(--text-muted)">{title}</h2>
       {children}
       {note && <p className="text-meta leading-snug text-(--text-muted)">{note}</p>}
     </section>

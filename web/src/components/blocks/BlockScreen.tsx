@@ -198,7 +198,7 @@ function BlockPage({ id, imperial, onClose }: { id: string; imperial: boolean; o
             {b.week.state !== 'upcoming' && <CheckIn b={b} onChanged={setB} onNote={setNote} />}
             {b.feed && (
               <section className="flex flex-col gap-2">
-                <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Block feed</h2>
+                <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Block feed</h2>
                 <CommunityFeed imperial={imperial} clubId={b.feed} clubName={b.name} />
               </section>
             )}

@@ -315,7 +315,7 @@ function Templates({ tpl, busy, who, api, onPick, onMine }: {
   )
   return (
     <section className="flex flex-col gap-2.5">
-      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Start from a template</h2>
+      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Start from a template</h2>
       {tpl.mine && tpl.mine.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <p className="px-1 text-meta font-medium text-(--text-secondary)">My templates</p>

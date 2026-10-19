@@ -154,7 +154,7 @@ function planTime(s: Stats): string | undefined {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
+  return <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
 }
 
 function StreakHero({ s }: { s: Stats }) {

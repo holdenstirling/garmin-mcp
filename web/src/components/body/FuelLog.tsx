@@ -94,7 +94,7 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
     <section aria-label="Fueling" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
       <div className="flex items-center gap-2">
         <Utensils className="size-5 text-(--accent)" aria-hidden />
-        <h4 className="flex-1 text-caption font-semibold text-(--text-muted)">Fueling</h4>
+        <h4 className="font-sans flex-1 text-caption font-semibold text-(--text-muted)">Fueling</h4>
         {plannedGh ? <span className="text-meta text-(--text-muted)">Plan: {plannedGh} g/h</span> : null}
       </div>
 

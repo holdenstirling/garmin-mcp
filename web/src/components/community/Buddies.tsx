@@ -57,7 +57,7 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
   const p = state.profile
   return (
     <section aria-label="Training buddies" className="flex flex-col gap-1.5">
-      <h2 className="px-4 text-caption font-semibold text-(--text-muted)">Training buddies</h2>
+      <h2 className="font-sans px-4 text-caption font-semibold text-(--text-muted)">Training buddies</h2>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!p ? (
         <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">

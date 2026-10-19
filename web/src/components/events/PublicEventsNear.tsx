@@ -33,7 +33,7 @@ export function PublicEventsNear({ refreshKey }: { refreshKey?: number }) {
   if (!rows || rows.length === 0) return null
   return (
     <section aria-label="Meetups and games near you" className="flex flex-col gap-2">
-      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Meetups &amp; games near you</h2>
+      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Meetups &amp; games near you</h2>
       <ul className="flex flex-col gap-2">
         {rows.map((e) => {
           const Icon = isSport(e.activity) ? SPORT_ICON[e.activity] : Users

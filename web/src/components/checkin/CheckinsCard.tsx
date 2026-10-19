@@ -25,7 +25,7 @@ export function CheckinsCard() {
   }
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Check-ins · last 30 days</h2>
+      <h2 className="font-sans px-1 text-caption font-semibold text-(--text-muted)">Check-ins · last 30 days</h2>
       <Card>
         {error && <p className="px-4 py-3 text-small text-(--danger)" role="alert">{error}</p>}
         {items && items.length === 0 && (

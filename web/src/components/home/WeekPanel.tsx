@@ -227,7 +227,7 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
   return (
     <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       <div className="flex items-center gap-2 border-b border-(--border) px-3.5 py-2">
-        <h2 className="min-w-0 flex-1 truncate text-caption font-semibold text-(--text-muted)">
+        <h2 className="font-sans min-w-0 flex-1 truncate text-caption font-semibold text-(--text-muted)">
           {weekTitle(week)}
         </h2>
       </div>

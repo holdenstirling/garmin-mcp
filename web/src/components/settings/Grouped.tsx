@@ -9,7 +9,7 @@ export function Group({ label, footer, children }: {
   return (
     <section className="flex flex-col gap-1.5">
       {label && (
-        <h2 className="px-4 text-caption font-semibold text-(--text-muted)">{label}</h2>
+        <h2 className="font-sans px-4 text-caption font-semibold text-(--text-muted)">{label}</h2>
       )}
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">{children}</div>
       {footer && <div className="px-4 text-small leading-snug text-(--text-muted)">{footer}</div>}
