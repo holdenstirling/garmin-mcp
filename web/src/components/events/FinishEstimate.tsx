@@ -66,7 +66,7 @@ function Detail({ p }: { p: Prediction }) {
     <Card className="flex flex-col gap-3 p-3.5">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-title-lg font-semibold leading-none text-(--text)">{p.text}</p>
+          <p className="text-display-sm font-semibold leading-none tabular-nums text-(--text)">{p.text}</p>
           <p className="mt-1 text-meta text-(--text-muted)">
             Most likely ~{fmtClock(e.mid_s)} · {CONF_LABEL[p.confidence]}
           </p>
@@ -82,7 +82,7 @@ function Detail({ p }: { p: Prediction }) {
           {p.splits!.map((s) => (
             <div key={s.leg} className="min-w-0 rounded-lg bg-(--bg-elevated) px-1 py-1.5">
               <dt className="text-caption text-(--text-muted)">{LEG_LABEL[s.leg]}</dt>
-              <dd className="font-mono text-meta font-medium text-(--text)">{fmtClock(s.mid_s)}</dd>
+              <dd className="text-body font-medium tabular-nums text-(--text)">{fmtClock(s.mid_s)}</dd>
             </div>
           ))}
         </dl>

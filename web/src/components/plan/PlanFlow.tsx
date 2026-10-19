@@ -341,12 +341,12 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild,
         <span className={cn('grid border-t border-(--border)', onAdjust && 'grid-cols-2 divide-x divide-(--border)')}>
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
             aria-label={`Change race. Now training for ${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`}
-            className={cn('flex min-h-12 items-center gap-1.5 px-4 text-body font-semibold text-(--accent) active:bg-(--bg-inset)', onAdjust ? 'justify-center rounded-bl-xl' : 'justify-between rounded-b-xl')}>
-            Change race <ChevronDown className="size-5 shrink-0" aria-hidden />
+            className={cn('flex min-h-12 items-center gap-1.5 whitespace-nowrap text-body font-semibold text-(--accent) active:bg-(--bg-inset)', onAdjust ? 'justify-center rounded-bl-xl px-2' : 'justify-between rounded-b-xl px-4')}>
+            Change race {!onAdjust && <ChevronDown className="size-5 shrink-0" aria-hidden />}
           </button>
           {onAdjust && (
             <button type="button" onClick={onAdjust}
-              className="flex min-h-12 items-center justify-center gap-1.5 rounded-br-xl px-4 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
+              className="flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-br-xl px-2 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
               <SlidersHorizontal className="size-5 shrink-0" aria-hidden /> Adjust plan
             </button>
           )}
@@ -476,7 +476,7 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
   const changes = prop?.changes ?? []
-  const label = useMemo(() => !answered ? 'Answer a question first' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
+  const label = useMemo(() => !answered ? 'Pick an answer' : prop ? (prop.status === 'suggest' ? `Apply ${changes.length} ${changes.length === 1 ? 'change' : 'changes'}` : 'Keep next week as planned') : 'See suggestions', [answered, prop, changes.length])
   return (
     <Sheet title="How was this week?" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight, ListChecks } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { Card, Field } from '@/components/plan/ui'
+import { Card } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { useTrackRefresh } from '@/components/stats/refresh'
 import { STATUS_LABEL, listReadiness, mainRace, type RaceGrade, type Readiness, type ReadinessComponent, type ReadinessStatus } from '@/lib/readiness'
+import { Section } from '@/components/ui/section'
 
 const GRADE_CLS: Record<string, string> = {
   A: 'bg-(--success-subtle) text-(--success) border-(--success)/40',
@@ -37,7 +38,7 @@ export function GradeBadge({ grade, size = 'sm', className }: { grade: string; s
 
 export function StatusChip({ status, className }: { status: ReadinessStatus; className?: string }) {
   return (
-    <span className={cn('inline-flex shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold', STATUS_CLS[status], className)}>
+    <span className={cn('inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-meta font-semibold', STATUS_CLS[status], className)}>
       {STATUS_LABEL[status]}
     </span>
   )
@@ -56,40 +57,40 @@ export function ReadinessSection({ r, error, onRetry }: { r: Readiness | null; e
   return (
     <>
       <Card>
-        <div className="flex items-center gap-4 px-4 py-4">
-          <GradeBadge grade={r.grade} size="lg" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-col gap-3 px-5 py-5">
+          <div className="flex items-center gap-4">
+            <GradeBadge grade={r.grade} size="lg" />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <StatusChip status={r.status} />
-              <span className="text-caption text-(--text-muted)">{r.score}/100</span>
+              <span className="text-meta font-semibold tabular-nums text-(--text-secondary)">{r.score} of 100</span>
               <InfoTip label="the readiness grade" align="end"
                 text="A weighted score of fitness trajectory, key sessions, consistency, course and conditions, and health. It comes from your Garmin training, plan and check-ins, and updates as you train." />
             </div>
-            <p className="mt-1 text-lead font-medium leading-snug text-(--text)">{headlineRest(r.headline)}</p>
-            <p className="mt-0.5 text-meta leading-snug text-(--text-muted)">{r.summary}</p>
           </div>
+          <p className="text-title-sm font-semibold leading-snug text-(--text)">{headlineRest(r.headline)}</p>
+          <p className="text-body leading-relaxed text-(--text-secondary)">{r.summary}</p>
         </div>
       </Card>
-      <Card>
-        <Field label="How you're tracking">
-          <div className="-mx-4 -mb-3.5 divide-y divide-(--border)">
+      <Section title="How you're tracking" description="Tap a line to see what counts.">
+        <Card>
+          <div className="divide-y divide-(--border)">
             {r.components.map((c) => <ComponentRow key={c.id} c={c} />)}
           </div>
-        </Field>
-      </Card>
+        </Card>
+      </Section>
       {r.actions.length > 0 && (
-        <Card>
-          <Field label="Do next">
-            <ol className="flex flex-col gap-2">
+        <Section title="Do next">
+          <Card>
+            <ol className="flex flex-col gap-3 px-4 py-4">
               {r.actions.map((a, i) => (
-                <li key={a} className="flex gap-2.5 text-body leading-snug text-(--text)">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) font-mono text-caption font-semibold text-(--accent)">{i + 1}</span>
-                  <span className="min-w-0 flex-1">{a}</span>
+                <li key={a} className="flex gap-3 text-body leading-snug text-(--text)">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-meta font-semibold text-(--accent)">{i + 1}</span>
+                  <span className="min-w-0 flex-1 pt-0.5">{a}</span>
                 </li>
               ))}
             </ol>
-          </Field>
-        </Card>
+          </Card>
+        </Section>
       )}
     </>
   )
@@ -104,7 +105,7 @@ function ComponentRow({ c }: { c: ReadinessComponent }) {
   return (
     <div className="flex items-start">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-        className="flex min-h-12 min-w-0 flex-1 flex-col gap-1.5 py-3 pl-4 text-left active:bg-(--bg-inset)">
+        className="flex min-h-12 min-w-0 flex-1 flex-col gap-1.5 py-3.5 pl-4 text-left active:bg-(--bg-inset)">
         <span className="flex w-full items-center gap-2">
           <span className="min-w-0 flex-1 text-body font-medium text-(--text)">{c.label}</span>
           <span className="w-9 shrink-0 text-right text-meta font-semibold tabular-nums text-(--text-secondary)">{c.score}</span>

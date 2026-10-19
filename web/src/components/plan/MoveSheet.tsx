@@ -175,8 +175,8 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
           Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. rabbt keeps hard days apart and your weekly miles on track.
         </p>
       </div>
-      <Segmented label="Move this workout or swap whole days" value={mode} onChange={setMode}
-        options={[['move', 'Move it'], ['swap', 'Swap days']] as const} />
+      <div className="w-full"><Segmented label="Move this workout or swap whole days" value={mode} onChange={setMode}
+        options={[['move', 'Move it'], ['swap', 'Swap days']] as const} /></div>
       {mode === 'move' && (tomorrowOk || best) && (
         <ChipRow>
           {tomorrowOk && <Chip selected={pick === tomorrow} onClick={() => setPick(tomorrow)}>Tomorrow</Chip>}

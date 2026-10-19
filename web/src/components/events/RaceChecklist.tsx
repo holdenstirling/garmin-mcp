@@ -36,7 +36,7 @@ export function ProgressRing({ done, total, size = 64 }: { done: number; total: 
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={6} strokeLinecap="round"
           className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="absolute font-mono text-small font-semibold tabular-nums text-(--text)" aria-hidden>
+      <span className="absolute text-small font-semibold tabular-nums text-(--text)" aria-hidden>
         {done}/{total}
       </span>
     </span>
