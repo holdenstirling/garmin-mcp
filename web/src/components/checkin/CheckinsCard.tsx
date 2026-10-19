@@ -30,7 +30,7 @@ export function CheckinsCard() {
         {error && <p className="px-4 py-3 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
         {items && items.length === 0 && (
           <EmptyRabbit className="px-4 pb-3 pt-4" size={44}
-            body="None yet. Tap the mic on home after a workout and tell Rabbit how it felt." />
+            body="None yet. Tap the mic on home after a workout and tell rabbt how it felt." />
         )}
         {items?.map((c, i) => (
           <div key={c.id} className={`flex items-start gap-2 px-4 py-3 ${i ? 'border-t border-(--border)' : ''}`}>

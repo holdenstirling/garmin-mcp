@@ -961,10 +961,10 @@ class Directory:
         rows = [{k: r[k] for k in ("name", "kind_label", "sessions", "meet_spot", "pace", "cost", "join_url",
                                    "last_verified")} | ({"only_on": r["link_only"]} if r["link_only"] else {})
                 for r in v["listings"][:12]]
-        note = "" if rows else ("Rabbit's directory for this city is still being built; check back in a few minutes."
-                                if v["state"] != "idle" or v["due"] else "Nothing in Rabbit's directory matches.")
+        note = "" if rows else ("rabbt's directory for this city is still being built; check back in a few minutes."
+                                if v["state"] != "idle" or v["due"] else "Nothing in rabbt's directory matches.")
         return {"city": m.label, "listings": rows, "note": note,
-                "source": "Rabbit's directory of public club and league web pages; times can change, so check the link."}
+                "source": "rabbt's directory of public club and league web pages; times can change, so check the link."}
 
     # ------------------------------------------------------- name search --
     def search(self, m: Metro, query: Any, *, now_local: datetime | None, uid: str | None = None) -> list[dict[str, Any]]:
@@ -1060,7 +1060,7 @@ class Directory:
             raise DirectoryError("Add the club's website (https://…).")
         label = link_only_label(urlsplit(u).hostname)
         if label:
-            raise DirectoryError(f"Rabbit can't read {label} pages. Share the club's own website instead.")
+            raise DirectoryError(f"rabbt can't read {label} pages. Share the club's own website instead.")
         if not crawlable(u):
             raise DirectoryError("That link doesn't look like a public website.")
         if not self._take(self._suggests, uid, SUGGEST_PER_DAY):
@@ -1078,7 +1078,7 @@ class Directory:
             d["city"], d["state"] = m.city, m.state
             return "ok"
         self._doc(m).update(put)
-        return {"ok": True, "message": "Thanks! Rabbit will check that page on the next update.", "metro": m.label}
+        return {"ok": True, "message": "Thanks! rabbt will check that page on the next update.", "metro": m.label}
 
     def report(self, uid: str, m: Metro, lid: Any) -> dict[str, Any]:
         if not isinstance(lid, str) or not _LID.match(lid):
@@ -1095,8 +1095,8 @@ class Directory:
             return len(set(r)) >= REPORTS_TO_HIDE
         hidden = self._doc(m).update(put)
         return {"ok": True, "hidden": hidden,
-                "message": "Thanks. Rabbit will re-check it on the next update." if not hidden
-                else "Thanks. It's hidden until Rabbit re-checks it."}
+                "message": "Thanks. rabbt will re-check it on the next update." if not hidden
+                else "Thanks. It's hidden until rabbt re-checks it."}
 
     def link(self, m: Metro, lid: Any, club_id: str) -> None:
         if not isinstance(lid, str) or not _LID.match(lid):

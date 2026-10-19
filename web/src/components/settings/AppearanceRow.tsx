@@ -27,7 +27,7 @@ export function AppearanceGroup() {
           ))}
         </div>
       </div>
-      <Row icon={<Icon><Compass /></Icon>} title="Take the tour" subtitle="A one-minute look around Rabbit" onClick={startTour} />
+      <Row icon={<Icon><Compass /></Icon>} title="Take the tour" subtitle="A one-minute look around rabbt" onClick={startTour} />
     </Group>
   )
 }

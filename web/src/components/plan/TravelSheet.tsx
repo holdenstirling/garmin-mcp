@@ -35,7 +35,7 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
   return (
     <Sheet title="Travel mode" onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">
-            Rabbit reworks the sessions on those days for what you'll have, keeps them under 75 minutes, and moves long sessions to home days that week.
+            rabbt reworks the sessions on those days for what you'll have, keeps them under 75 minutes, and moves long sessions to home days that week.
           </p>
           <Card>
             <Field label="Trip">

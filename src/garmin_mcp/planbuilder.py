@@ -1257,7 +1257,7 @@ def summary_markdown(plan: dict[str, Any], goal: dict[str, Any]) -> str:
     if plan.get("origin"):
         return _imported_summary(plan, goal)
     lines = ["### Overview",
-             f"- Built in Rabbit's plan builder for {goal.get('title') or 'the race'}"
+             f"- Built in rabbt's plan builder for {goal.get('title') or 'the race'}"
              f" on {plan['race_date']} ({goal.get('distance') or plan['distance']}).",
              f"- {len(weeks)} weeks from {plan['first_day']}, about {plan['start_hours']} h/week "
              f"building to {plan['peak_hours']} h at peak. Recovery week every 4th week.",
@@ -1441,7 +1441,7 @@ def garmin_workouts(session: dict[str, Any], athlete: dict[str, Any]) -> list[di
         if len(parts) > 1:
             name = f"{name} ({'bike' if leg['sport'] == 'bike' else 'run'} leg)"
         wo: dict[str, Any] = {
-            "workoutName": f"Rabbit: {name}"[:80],
+            "workoutName": f"rabbt: {name}"[:80],
             "description": (session.get("detail") or "")[:1000],
             "sportType": GARMIN_SPORT[sport],
             "estimatedDurationInSecs": int(round(step_minutes(steps) * 60)),

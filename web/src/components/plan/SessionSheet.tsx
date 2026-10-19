@@ -168,7 +168,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             <>
               <h3 className={section}>How long</h3>
               <Card>
-                <Field label="Length" hint={d.sport === 'swim' ? 'Swims sync to Garmin by distance, worked out from this time and your swim pace.' : 'Rabbit rebuilds the steps to fit.'}>
+                <Field label="Length" hint={d.sport === 'swim' ? 'Swims sync to Garmin by distance, worked out from this time and your swim pace.' : 'rabbt rebuilds the steps to fit.'}>
                   <NumberStepper label="minutes" value={d.minutes} min={10} max={600} step={5} suffix="min"
                     typical={[20, 30, 45, 60, 75, 90, 120]} onChange={(v) => set({ minutes: v ?? 10 })} />
                 </Field>
@@ -264,7 +264,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
           )}
           {onAsk && (
             <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onAsk}>
-              <MessageCircle className="size-4" /> Ask Rabbit
+              <MessageCircle className="size-4" /> Ask rabbt
             </Button>
           )}
           {onMessage && (

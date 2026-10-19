@@ -56,12 +56,12 @@ def redact(value: Any) -> Any:
     return value
 
 
-README = """Your Rabbit data
+README = """Your rabbt data
 ================
 
 Exported {when} (UTC) for account {uid}.
 
-docs/<name>.json   everything Rabbit stores for your account, one file per kind of data
+docs/<name>.json   everything rabbt stores for your account, one file per kind of data
                    (profile, plan, events, goals, chats, workouts feedback, posts and more).
 extra/<name>.json  your part of shared data: who you follow, clubs, conversations you're in.
 

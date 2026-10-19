@@ -201,7 +201,7 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
           ))}
         </section>
       )}
-      <Field label="Someone else on Rabbit" hint="Their email or invite code. Only friends you follow, or who follow you, get it.">
+      <Field label="Someone else on rabbt" hint="Their email or invite code. Only friends you follow, or who follow you, get it.">
         <div className="flex gap-2">
           <input className={inputCls} value={other} onChange={(e) => setOther(e.target.value)} placeholder="email or code" autoCapitalize="off" />
           <Button variant="primary" className="h-11 px-3" aria-label="Send invite" disabled={!other.trim()} loading={busy === 'other'}
@@ -232,7 +232,7 @@ function LinkTab({ eventId, v, onUpdate }: { eventId: string; v: RacePeopleView;
   return (
     <>
       <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-        A private page for crew and family without Rabbit: the race, your countdown and your crew notes. Never health data or chats.
+        A private page for crew and family without rabbt: the race, your countdown and your crew notes. Never health data or chats.
       </p>
       {v.share_url ? (
         <div className="flex flex-col gap-2">
@@ -265,7 +265,7 @@ function LinkTab({ eventId, v, onUpdate }: { eventId: string; v: RacePeopleView;
         <textarea className={areaCls} maxLength={1000} value={s.crew_notes} placeholder="e.g. Twin Lakes ~10am: swap bottles, new socks"
           onChange={(e) => setS((x) => ({ ...x, crew_notes: e.target.value }))} />
       </Field>
-      <Field label="Official tracking link" hint="Shown on race day. Rabbit has no live tracking of its own.">
+      <Field label="Official tracking link" hint="Shown on race day. rabbt has no live tracking of its own.">
         <input className={inputCls} value={s.tracking_url} placeholder="https://" inputMode="url" autoCapitalize="off"
           onChange={(e) => setS((x) => ({ ...x, tracking_url: e.target.value }))} />
       </Field>
@@ -456,7 +456,7 @@ function FollowedCard({ r, onLeave }: { r: FollowedRace; onLeave: () => void }) 
         <div className="flex flex-col gap-1 bg-(--accent) px-3.5 py-2.5 text-(--on-fill)">
           <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold"><Flag className="size-4" /> Race day!</p>
           <p className="text-[0.7059rem] leading-snug opacity-90">
-            Rabbit doesn't do live tracking. {link ? 'Follow along on the ' : ''}
+            rabbt doesn't do live tracking. {link ? 'Follow along on the ' : ''}
             {link && <a href={link} target="_blank" rel="noopener noreferrer" className="underline">{r.tracking_url ? 'official tracker' : 'race website'}</a>}
           </p>
         </div>

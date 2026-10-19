@@ -98,7 +98,7 @@ function AreaSheet({ state, imperial, what, onClose, onChanged }: {
       <div className="flex flex-col gap-4">
         <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
           {where ? <>Showing {what} near <span className="font-semibold text-(--text)">{where}</span>.</> : `Pick where to look for ${what}.`}
-          {' '}Rabbit keeps only a rough spot (about 1 km), never your exact location.
+          {' '}rabbt keeps only a rough spot (about 1 km), never your exact location.
         </p>
 
         <Button variant="default" className="h-12 justify-start gap-2.5 px-4 text-[0.8235rem]" loading={busy === 'locate'}

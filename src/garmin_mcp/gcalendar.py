@@ -150,7 +150,7 @@ class GoogleCalendar:
             raise CalendarError("Calendar access wasn't granted. Try again and tick the calendar box.")
         rt = tok.get("refresh_token")
         if not rt:
-            raise CalendarError("Google didn't return a refresh token. Remove Rabbit's access in your "
+            raise CalendarError("Google didn't return a refresh token. Remove rabbt's access in your "
                                 "Google account, then connect again.")
         now = int(self._clock())
         self._doc(user_id).save({"refresh_token": rt, "access_token": tok.get("access_token"),

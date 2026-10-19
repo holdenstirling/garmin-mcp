@@ -37,14 +37,14 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       bodyClassName="min-h-0 flex-1 gap-0 p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
       header={
         <div className="min-w-0">
-          <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with Rabbit'}</h2>
+          <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with rabbt'}</h2>
           <button type="button" className="hit-44 max-w-full truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
             {goal ? `Training for ${goal.title}${goalCountdown(goal) ? ` · ${goalCountdown(goal)}` : ''}` : 'Set what you’re training for'}
           </button>
         </div>
       }
       actions={
-        <button className="modal-close" aria-label={people ? 'New message' : 'New chat with Rabbit'} title={people ? 'New message' : 'New chat'}
+        <button className="modal-close" aria-label={people ? 'New message' : 'New chat with rabbt'} title={people ? 'New message' : 'New chat'}
           onClick={people ? onNewDm : onNew}>
           <MessageSquarePlus className="size-4" />
         </button>
@@ -52,7 +52,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       below={onView && (
         <div className="px-4 pb-2">
           <Segmented label="Chats" value={view} onChange={onView}
-            options={[['rabbit', 'Rabbit'], ['people', dmUnread > 0 ? `People · ${dmUnread}` : 'People']] as const} />
+            options={[['rabbit', 'rabbt'], ['people', dmUnread > 0 ? `People · ${dmUnread}` : 'People']] as const} />
         </div>
       )}
       extra={deleteTarget && (
@@ -66,7 +66,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
               {t.kind === 'coach' && <Pin className="mt-0.5 size-3.5 shrink-0 text-(--accent)" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
-                  {t.kind === 'coach' ? 'Rabbit' : t.title || 'New chat'}
+                  {t.kind === 'coach' ? 'rabbt' : t.title || 'New chat'}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {t.kind === 'coach' ? 'Briefs, workout notes and chats you started' : formatRelativeTime(t.updated)}

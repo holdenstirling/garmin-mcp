@@ -141,7 +141,7 @@ export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = true 
                       <button type="button" tabIndex={expanded ? 0 : -1}
                         onClick={() => onAsk(day, it.session)}
                         className="hit-44 inline-flex w-fit items-center gap-1.5 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.6471rem] font-medium text-(--accent) active:opacity-70">
-                        <MessageCircle className="size-3.5" /> Ask Rabbit
+                        <MessageCircle className="size-3.5" /> Ask rabbt
                       </button>
                     </span>
                   </span>
@@ -263,7 +263,7 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
               <span className="min-w-0 flex-1">
                 <span className="block text-[0.8235rem] font-medium text-foreground">{hasPlan ? 'Your plan' : 'Add your plan'}</span>
                 <span className="block truncate text-[0.6471rem] text-muted-foreground">
-                  {hasPlan ? (week?.focus?.replace(/\s*\([^)]*\)\s*$/, '') || goal.title) : 'Upload it or tell Rabbit about it'}
+                  {hasPlan ? (week?.focus?.replace(/\s*\([^)]*\)\s*$/, '') || goal.title) : 'Upload it or tell rabbt about it'}
                 </span>
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

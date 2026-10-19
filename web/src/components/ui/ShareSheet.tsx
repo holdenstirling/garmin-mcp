@@ -50,7 +50,7 @@ async function drawShareCard(canvas: HTMLCanvasElement, kicker: string, title: s
   rabbit(ctx, pad, pad - 6, 60, INK)
   ctx.fillStyle = INK
   ctx.font = `42px ${SERIF}`
-  ctx.fillText('Rabbit', pad + 76, pad + 42)
+  ctx.fillText('rabbt', pad + 76, pad + 42)
   ctx.fillStyle = SOFT
   ctx.font = `600 30px ${SANS}`
   ctx.fillText(kicker.toUpperCase(), pad, 300)
@@ -64,7 +64,7 @@ async function drawShareCard(canvas: HTMLCanvasElement, kicker: string, title: s
   ctx.fill()
   ctx.fillStyle = BG
   ctx.font = `600 32px ${SANS}`
-  ctx.fillText('Join me on Rabbit', pad + 30, IMG_H - pad - 28)
+  ctx.fillText('Join me on rabbt', pad + 30, IMG_H - pad - 28)
 }
 
 export function ShareSheet({ target, hrOption, onSendInRabbit, onClose }: {
@@ -114,7 +114,7 @@ export function ShareSheet({ target, hrOption, onSendInRabbit, onClose }: {
     setBusy('image')
     try {
       await drawShareCard(canvas.current, SHARE_KIND_LABEL[target.kind], link.title, text)
-      await shareImage(canvas.current, 'rabbit-share.png', link.title)
+      await shareImage(canvas.current, 'rabbt-share.png', link.title)
     } finally { setBusy(null) }
   }
 
@@ -168,7 +168,7 @@ export function ShareSheet({ target, hrOption, onSendInRabbit, onClose }: {
           </button>
           {onSendInRabbit && (
             <button type="button" className={row} onClick={() => { onClose(); onSendInRabbit() }}>
-              <MessageCircle className="size-4 text-(--accent)" aria-hidden /> Send in Rabbit
+              <MessageCircle className="size-4 text-(--accent)" aria-hidden /> Send in rabbt
             </button>
           )}
           {target.kind !== 'invite' && (
@@ -195,7 +195,7 @@ export function ShareButton({ target, hrOption, onSendInRabbit, label = 'Share',
     <>
       <Button variant="default" size={iconOnly ? 'icon' : undefined}
         className={cn(iconOnly ? 'size-11 shrink-0' : 'h-11 gap-1.5 text-[0.8235rem]', className)}
-        aria-label={iconOnly ? `${label}: text, copy a link or send in Rabbit` : undefined} onClick={() => setOpen(true)}>
+        aria-label={iconOnly ? `${label}: text, copy a link or send in rabbt` : undefined} onClick={() => setOpen(true)}>
         <Share2 className="size-4" aria-hidden />{!iconOnly && ` ${label}`}
       </Button>
       {open && <ShareSheet target={target} hrOption={hrOption} onSendInRabbit={onSendInRabbit} onClose={() => setOpen(false)} />}

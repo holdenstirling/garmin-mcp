@@ -19,7 +19,7 @@ const ERRORS: Record<string, string> = {
   bad_mfa: "That code didn't work. Use the newest code Garmin sent you.",
   rate_limited: 'Garmin is limiting sign-ins right now. Nothing is wrong with your account.',
   blocked: "Garmin's security check stopped this sign-in. Wait a few minutes and try again.",
-  failed: "Rabbit couldn't reach Garmin just now. Check your connection and try again.",
+  failed: "rabbt couldn't reach Garmin just now. Check your connection and try again.",
   expired: 'That sign-in timed out, so nothing was saved. Start again whenever you’re ready.',
 }
 
@@ -99,7 +99,7 @@ export function ConnectGarmin({ cooldownUntil, onConnected, onStep }: {
     if (j.cooldown_until) {
       setUntil(j.cooldown_until)
       setMessage(j.cooldown_scope === 'global'
-        ? `${base ?? ERRORS.rate_limited} To avoid a longer block, Rabbit will wait until ${fmtTime(j.cooldown_until)} before trying again.`
+        ? `${base ?? ERRORS.rate_limited} To avoid a longer block, rabbt will wait until ${fmtTime(j.cooldown_until)} before trying again.`
         : `${base ?? ''} You can try again at ${fmtTime(j.cooldown_until)}.`.trim())
     } else {
       setMessage(base)
@@ -200,7 +200,7 @@ export function ConnectGarmin({ cooldownUntil, onConnected, onStep }: {
       </Button>
       <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
         <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
-        Rabbit passes your password to Garmin once to sign in and never stores it. Rabbit keeps only Garmin’s sign-in token, encrypted, and you can disconnect anytime.
+        rabbt passes your password to Garmin once to sign in and never stores it. rabbt keeps only Garmin’s sign-in token, encrypted, and you can disconnect anytime.
       </p>
     </form>
   )

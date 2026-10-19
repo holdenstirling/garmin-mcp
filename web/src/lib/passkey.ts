@@ -80,8 +80,8 @@ export async function getPasskey(o: RequestJSON): Promise<Record<string, unknown
 export function passkeyError(e: unknown): string {
   const name = (e as { name?: string })?.name
   if (name === 'NotAllowedError' || name === 'AbortError') return 'The passkey request was cancelled or timed out. Try again when you are ready.'
-  if (name === 'InvalidStateError') return 'This device already has a Rabbit passkey for this account.'
-  if (name === 'SecurityError') return "Passkeys don't work on this address. Open Rabbit from its usual link."
+  if (name === 'InvalidStateError') return 'This device already has a rabbt passkey for this account.'
+  if (name === 'SecurityError') return "Passkeys don't work on this address. Open rabbt from its usual link."
   if (name === 'NotSupportedError') return "This browser can't make passkeys. Try Safari, Chrome or Edge."
   return (e as Error)?.message || "That didn't work. Give it another try."
 }
@@ -165,7 +165,7 @@ export const removeMember = (id: string) => sendJSON<{ ok: boolean }>('DELETE', 
 export async function shareLink(url: string): Promise<'shared' | 'copied' | 'failed'> {
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Join me on Rabbit', text: 'Join me on Rabbit, my training app:', url })
+      await navigator.share({ title: 'Join me on rabbt', text: 'Join me on rabbt, my training app:', url })
       track('share', { what: 'invite' })
       return 'shared'
     } catch (e) {

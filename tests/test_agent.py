@@ -148,7 +148,7 @@ def test_unconnected_user_gets_reconnect_message(env) -> None:
     events, emit = collect()
     go(agent, "andrew", "hi", emit)
     err = next(e for e in events if e["type"] == "tool-call-error")
-    assert "Reconnect Garmin in Rabbit" in err["error"]
+    assert "Reconnect Garmin in rabbt" in err["error"]
     assert "garmin-mcp-login" not in err["error"]  # no server-operator instructions for app users
 
 

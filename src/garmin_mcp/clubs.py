@@ -147,7 +147,7 @@ class Clubs:
 
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self._is_athlete(uid):
-            raise ClubError("Community is for athletes on Rabbit.", 403)
+            raise ClubError("Community is for athletes on rabbt.", 403)
 
     # ------------------------------------------------------------ helpers --
     @staticmethod

@@ -677,7 +677,7 @@ def _fix_easy(plan: dict[str, Any], sid: str, to: str | None, today: date, st: d
         to = _free_day(plan, monday, today, st, _available(athlete), today.isoformat(), hard=False, sport=sp) \
             or _free_day(plan, monday, today, st, set(range(7)), today.isoformat(), hard=False, sport=sp)
         if to is None:
-            raise PlanError("No free day left this week. Skip it instead; Rabbit spreads the miles.")
+            raise PlanError("No free day left this week. Skip it instead; rabbt spreads the miles.")
     sport = s["sport"] if s["sport"] in ("run", "bike", "swim") else "run"
     tw = week_for(plan, date.fromisoformat(to))
     new = make_session(sport, _easy_kind(sport), min(int(s.get("minutes") or 40), 40),
@@ -921,7 +921,7 @@ def adjusted_line(plan: dict[str, Any], s: dict[str, Any]) -> str | None:
         what = (orig or {}).get("title") or "a session"
         return f"Added to make up for {what} you missed" + (f" on {_label(d)}." if d else ".")
     if s.get("rebalanced"):
-        return s.get("adjust_why") or "Rabbit adjusted this after a change to your week."
+        return s.get("adjust_why") or "rabbt adjusted this after a change to your week."
     return None
 
 

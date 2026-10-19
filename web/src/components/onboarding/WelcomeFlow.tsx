@@ -29,7 +29,7 @@ import {
 const ICON: Record<Intent, LucideIcon> = {
   train: Target, community: Users, events: CalendarDays, consistent: Flame, coach: UserRound, explore: Compass,
 }
-const SAVING = ['Tuning Rabbit to you…', 'Sorting your setup…', 'Stretching first…']
+const SAVING = ['Tuning rabbt to you…', 'Sorting your setup…', 'Stretching first…']
 
 type Mode = 'full' | 'lite' | 'edit'
 type Step = 'hello' | 'pick' | 'yours'
@@ -87,12 +87,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <span className="rb-jump inline-flex" style={{ animationDelay: '380ms' }}><RabbitLogo size={78} /></span>
       </HopIn>
       <HopIn index={2} className="flex flex-col gap-3">
-        {first && <p className="text-[0.8235rem] font-medium text-(--text-secondary)">Hi {first}, welcome to Rabbit</p>}
+        {first && <p className="text-[0.8235rem] font-medium text-(--text-secondary)">Hi {first}, welcome to rabbt</p>}
         <h1 className="font-display text-[1.8824rem] leading-[1.15] text-(--brand)">
           Train smarter. Find your people. Never miss the start line.
         </h1>
         <p className="text-[0.9412rem] leading-snug text-(--text-secondary)">
-          Rabbit is your coach, your crew and your calendar of what's next.
+          rabbt is your coach, your crew and your calendar of what's next.
         </p>
       </HopIn>
       <HopIn index={4} className="flex flex-wrap justify-center gap-2" aria-hidden="true">
@@ -104,12 +104,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   ) : step === 'pick' ? (
     <div className="flex flex-1 flex-col gap-3 px-4 pb-2">
       <div className="px-1">
-        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">What brings you to Rabbit?</h2>
+        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">What brings you to rabbt?</h2>
         <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
           Pick all that fit. Tap the most important one first.
         </p>
       </div>
-      <div className="flex flex-col gap-2" role="group" aria-label="What brings you to Rabbit">
+      <div className="flex flex-col gap-2" role="group" aria-label="What brings you to rabbt">
         {INTENT_OPTIONS.map((o, i) => {
           const at = picks.indexOf(o.id)
           const on = at >= 0
@@ -145,9 +145,9 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <span className="logo-tile flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-(--brand) shadow-sm">
           <RabbitLogo size={40} />
         </span>
-        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Here's your Rabbit</h2>
+        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Here's your rabbt</h2>
       </HopIn>
-      <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">What we'll set up next, made for how you use Rabbit:</p>
+      <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">What we'll set up next, made for how you use rabbt:</p>
       <ul className="flex flex-col gap-2.5">
         {plan.bullets.map((b, i) => (
           <HopIn as="li" key={b} index={i + 1} className="flex items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
@@ -156,7 +156,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           </HopIn>
         ))}
       </ul>
-      <p className="text-[0.7059rem] text-(--text-muted)">Change this any time in Settings, under How you use Rabbit.</p>
+      <p className="text-[0.7059rem] text-(--text-muted)">Change this any time in Settings, under How you use rabbt.</p>
     </div>
   )
 
@@ -201,7 +201,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   if (mode === 'full') {
     return (
       <div ref={box} className="fixed inset-0 flex flex-col bg-(--bg) pt-[max(10px,env(safe-area-inset-top))]" style={{ zIndex: 'var(--z-dialog)' }}
-        role="dialog" aria-modal="true" aria-label="Welcome to Rabbit">
+        role="dialog" aria-modal="true" aria-label="Welcome to rabbt">
         <div className="flex items-center justify-between px-2">
           <span className="w-11" />
           {progress}
@@ -222,8 +222,8 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="wf-title" className="modal-title">
-            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-bold uppercase text-(--on-fill)">New</span>Tell Rabbit how you use it</>
-              : 'How you use Rabbit'}
+            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-bold uppercase text-(--on-fill)">New</span>Tell rabbt how you use it</>
+              : 'How you use rabbt'}
           </h2>
           <button type="button" className="modal-close" aria-label={mode === 'edit' ? 'Close' : 'Skip for now'}
             onClick={step === 'yours' ? () => onFinish({ saved: true, intents: picks, next: null }) : skip}><X className="size-4" /></button>
@@ -231,7 +231,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <div className="modal-body flex flex-col overflow-y-auto pt-3">
           {mode === 'lite' && step === 'pick' && (
             <p className="mb-2 px-5 text-[0.7647rem] leading-snug text-(--text-muted)">
-              Rabbit now does training, social support and finding events. Tell us what matters to you and we'll show that first.
+              rabbt now does training, social support and finding events. Tell us what matters to you and we'll show that first.
             </p>
           )}
           {body}

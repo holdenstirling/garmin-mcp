@@ -24,7 +24,7 @@ export function ConsentScreen({ consent, onDone, onSignOut }: {
     { id: 'terms', label: <>I agree to the {link('terms', 'Terms of service')} and {link('guidelines', 'Community guidelines')}.</> },
     { id: 'privacy', label: <>I've read the {link('privacy', 'Privacy policy')}.</> },
     { id: 'age16', label: <>I'm 16 or older.</> },
-    { id: 'health', label: <>I agree to Rabbit processing my health and fitness data (heart rate, sleep, recovery, how workouts felt, niggles) to coach me, as the privacy policy explains.</> },
+    { id: 'health', label: <>I agree to rabbt processing my health and fitness data (heart rate, sleep, recovery, how workouts felt, niggles) to coach me, as the privacy policy explains.</> },
   ]
   async function agree() {
     setBusy(true); setErr(null)
@@ -40,8 +40,8 @@ export function ConsentScreen({ consent, onDone, onSignOut }: {
         </h1>
         <p className="text-[0.9412rem] leading-snug text-(--text-secondary)">
           {consent.first
-            ? 'Rabbit uses your training and health data to coach you. It never sells your data or shows ads.'
-            : 'Please review the updated terms and privacy policy to keep using Rabbit.'}
+            ? 'rabbt uses your training and health data to coach you. It never sells your data or shows ads.'
+            : 'Please review the updated terms and privacy policy to keep using rabbt.'}
         </p>
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">Agreements</legend>

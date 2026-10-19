@@ -34,7 +34,7 @@ COVERED_JS = """() => { const r = []; for (const el of document.querySelectorAll
   return r.slice(0, 12) }"""
 TABS = ["Home", "Schedule", "Feed", "Clubs", "Progress"]
 HEADER = ["Search", re.compile(r"^Notifications"), re.compile(r"^Chats"), re.compile(r"^Me\b")]
-ME_ROWS = ["Training profile", "What Rabbit knows", "Gear garage", "Coaches", "Connected apps", "Settings", "Usage"]
+ME_ROWS = ["Training profile", "What rabbt knows", "Gear garage", "Coaches", "Connected apps", "Settings", "Usage"]
 
 
 async def sweep(base: str, out: str, chromium: str | None, scheme: str, deep: list[tuple[str, str]]) -> dict:

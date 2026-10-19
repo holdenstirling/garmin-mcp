@@ -23,7 +23,7 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
         // Every Rabbit message carries the same mark: the brand tile + name.
         <span className="flex items-center gap-1.5 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
           <span className="logo-tile flex size-5 items-center justify-center rounded-[6px] bg-(--brand)" aria-hidden><RabbitLogo size={15} /></span>
-          Rabbit
+          rabbt
         </span>
       ))}
       {message.attachments && message.attachments.length > 0 && (

@@ -62,7 +62,7 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
           )}
           {ask && (
             <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={ask}>
-              <MessageCircle className="size-4" aria-hidden /> Ask Rabbit
+              <MessageCircle className="size-4" aria-hidden /> Ask rabbt
             </Button>
           )}
         </>
@@ -92,7 +92,7 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
             onClick: v.planned ? () => { const p = v.planned!; close(); window.setTimeout(() => openWorkout(p.id, p.date), 220) } : null },
           { key: 'day', icon: <CalendarDays className="size-4" />, label: 'This day in your plan', sub: v.start ? fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' }) : undefined,
             onClick: v.start ? () => { const d = v.start!.slice(0, 10); close(); window.setTimeout(() => openPlanDay(d), 220) } : null },
-          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask Rabbit about it', onClick: ask ?? null },
+          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask rabbt about it', onClick: ask ?? null },
         ]} link={{ kind: 'activity', id: String(v.id) }} />
       )}
     </Screen>
@@ -169,7 +169,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       )}
       {!v.ai && (
         <p className="px-1 text-[0.7059rem] text-(--text-muted)">
-          Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; Rabbit's coaching doesn't use it.
+          Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; rabbt's coaching doesn't use it.
         </p>
       )}
     </>
@@ -304,7 +304,7 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
       )}
       {onAsk && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onAsk}>
-          <MessageCircle className="size-4" aria-hidden /> Ask Rabbit for feedback on this workout
+          <MessageCircle className="size-4" aria-hidden /> Ask rabbt for feedback on this workout
         </Button>
       )}
     </section>

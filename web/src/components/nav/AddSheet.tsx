@@ -42,7 +42,7 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
       bodyClassName="settings flex flex-col gap-2.5 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {hasPlan ? (
         <Option icon={<Dumbbell className="size-5" />} title="A workout"
-          sub="Pick the day and a start time; Rabbit balances the rest of the week" onClick={pick(onWorkout)} />
+          sub="Pick the day and a start time; rabbt balances the rest of the week" onClick={pick(onWorkout)} />
       ) : (
         <Option icon={<Dumbbell className="size-5" />} title="A workout"
           sub="Workouts live in a plan: build one first (about 3 minutes)" onClick={pick(onBuildPlan)} />
@@ -51,7 +51,7 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
         sub="A race, group run, league night or trip; it can repeat every week and goes into your plan" onClick={pick(onEvent)} />
       {hasPlan && onTravel && (
         <Option icon={<Plane className="size-5" />} title="Travel / days away"
-          sub="Hotel gym, treadmill or runs only: Rabbit swaps those days' sessions" onClick={pick(onTravel)} />
+          sub="Hotel gym, treadmill or runs only: rabbt swaps those days' sessions" onClick={pick(onTravel)} />
       )}
       {hasPlan && onSick && (
         <Option icon={<Thermometer className="size-5" />} title="I'm sick"

@@ -177,7 +177,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <RabbitLoader className="py-16" label="Loading plan" cycle={['Opening your plan…', 'Lining up your weeks…', 'Checking your watch…']} />
         ) : (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in Rabbit yet." : "There's no plan built in Rabbit for this goal yet.")}</p>
+            <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in rabbt yet." : "There's no plan built in rabbt for this goal yet.")}</p>
             {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
             {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan</Button>}
           </div>
@@ -385,7 +385,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
       {/* Plan actions */}
       <Group label="Plan tools">
-        <Row icon={<Icon><MessageCircle /></Icon>} title="Ask Rabbit about my plan" subtitle="Questions, swaps, travel weeks"
+        <Row icon={<Icon><MessageCircle /></Icon>} title="Ask rabbt about my plan" subtitle="Questions, swaps, travel weeks"
           onClick={() => { close?.(); onAsk('About my plan: ') }} />
         <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
           onClick={onOpenEvents} />

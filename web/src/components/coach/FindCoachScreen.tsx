@@ -21,7 +21,7 @@ import {
 
 const FILTERS_FROM = 5 // text search only helps once there are 5+ coaches
 const WEB_STATE: Record<Exclude<WebCoachResp['state'], 'ok'>, string> = {
-  needs_location: 'Add your location in Explore first, so Rabbit knows which city to search.',
+  needs_location: 'Add your location in Explore first, so rabbt knows which city to search.',
   limit: "That's today's web searches used up. Try again tomorrow.",
   unavailable: "Web search isn't available right now.",
   failed: "The web search didn't work just now. Try again in a minute.",
@@ -68,7 +68,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
   const close = () => { setClosing(true); setTimeout(onBack ?? onClose, 200) }
 
   return (
-    <Screen title="Find a coach" subtitle="Human coaches who can work alongside Rabbit" closing={closing}
+    <Screen title="Find a coach" subtitle="Human coaches who can work alongside rabbt" closing={closing}
       onClose={close} onBack={onBack ? close : undefined}>
       <div role="tablist" aria-label="Where" className="seg flex rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, scope === 'remote' ? 1 : 0), '--seg-n': 2 } as React.CSSProperties}>
       <span className="seg__pill" aria-hidden />
@@ -79,7 +79,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
         ))}
       </div>
       <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
-        Rabbit doesn't take a cut; you contact coaches directly. Ranked for {data?.race?.name ? <b className="text-(--text)">{data.race.name}</b> : 'your sports'}.
+        rabbt doesn't take a cut; you contact coaches directly. Ranked for {data?.race?.name ? <b className="text-(--text)">{data.race.name}</b> : 'your sports'}.
       </p>
       <div className="flex flex-col gap-2">
         {total >= FILTERS_FROM && (
@@ -115,7 +115,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
       {error && <ErrorState message={error} onRetry={load} />}
       {data && data.coaches.length === 0 && (
         <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">
-          {scope === 'local' ? 'No coaches in Rabbit’s list near you yet. Try Anywhere, or search the web below.' : 'No coaches match that yet.'}
+          {scope === 'local' ? 'No coaches in rabbt’s list near you yet. Try Anywhere, or search the web below.' : 'No coaches match that yet.'}
         </p>
       )}
       {data?.coaches.map((c) => <CoachCard key={c.id} c={c} onOpen={() => setOpen(c)} />)}
@@ -180,7 +180,7 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1 text-[0.9412rem] font-medium text-(--text)">
             <span className="truncate">{c.name}</span>
-            {c.verified_by_operator && <BadgeCheck className="size-4 shrink-0 text-(--accent)" aria-label="Checked by Rabbit" />}
+            {c.verified_by_operator && <BadgeCheck className="size-4 shrink-0 text-(--accent)" aria-label="Checked by rabbt" />}
           </span>
           <span className="block truncate text-[0.7647rem] text-(--text-muted)">{c.business} · {c.distance_label ?? c.location}</span>
         </span>
@@ -296,8 +296,8 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
                     <Switch label="Coach can edit my plan" checked={canEdit} disabled={busy} onChange={setCanEdit} />
                   </div>
                   <div className="flex min-h-11 items-center justify-between gap-3">
-                    <span className="text-[0.7647rem] text-(--text)">See my Rabbit chats</span>
-                    <Switch label="Coach can see my Rabbit chats" checked={canSee} disabled={busy} onChange={setCanSee} />
+                    <span className="text-[0.7647rem] text-(--text)">See my rabbt chats</span>
+                    <Switch label="Coach can see my rabbt chats" checked={canSee} disabled={busy} onChange={setCanSee} />
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" className="h-11 flex-1 text-[0.7647rem]" disabled={busy} onClick={() => setConfirm(false)}>Cancel</Button>
@@ -310,7 +310,7 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
               )}
               {onAsk && (
                 <Button variant="ghost" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => onAsk(askText)}>
-                  <MessageCircle className="size-4" /> Ask Rabbit if this coach fits me
+                  <MessageCircle className="size-4" /> Ask rabbt if this coach fits me
                 </Button>
               )}
             </div>

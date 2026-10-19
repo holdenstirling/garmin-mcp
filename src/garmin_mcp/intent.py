@@ -85,7 +85,7 @@ def context_line(intents: Any) -> str:
     c = clean(intents)
     if not c:
         return ""
-    line = "Uses Rabbit mainly for (athlete-entered, most important first): " + "; ".join(
+    line = "Uses rabbt mainly for (athlete-entered, most important first): " + "; ".join(
         INTENTS[i][2] for i in c) + "."
     if "train" not in c and c != ["explore"]:
         line += " Lean replies that way; don't push a race plan unless they ask."

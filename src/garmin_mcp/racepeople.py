@@ -49,7 +49,7 @@ from .appstore import AppStore
 ROLES = ("racing", "crew", "pacer", "spectator", "coach")
 FOLLOW_ROLES = ("crew", "pacer", "spectator")
 ROLE_LABEL = {"racing": "racing", "crew": "crew", "pacer": "pace", "spectator": "cheer", "coach": "coach"}
-GENERIC_SENT = "If they're a Rabbit friend, they'll get your invite."
+GENERIC_SENT = "If they're a rabbt friend, they'll get your invite."
 MAX_PEOPLE = 40
 MAX_INVITES_PER_DAY = 30
 GHOST_TTL = 30 * 86400
@@ -251,7 +251,7 @@ class RacePeople:
         elif isinstance(code, str) and code.strip():
             target = self._code_owner(code.strip().upper().replace("-", "").replace(" ", ""))
             if not target or not self._is_athlete(target):
-                raise RaceError("That code doesn't match anyone on Rabbit.", 404)
+                raise RaceError("That code doesn't match anyone on rabbt.", 404)
             if target == uid:
                 raise RaceError("That's you!")
             if not self._ok(uid, target):
@@ -666,7 +666,7 @@ def render(first: str, event: dict[str, Any], settings: dict[str, Any], today: d
     link = track or (event.get("url") or "")
     if days == 0 and link.startswith("https://"):
         label = "Official live tracking" if track else "Race website"
-        parts.append(f"<p class=banner>It's race day. Rabbit has no live tracking; follow along on the "
+        parts.append(f"<p class=banner>It's race day. rabbt has no live tracking; follow along on the "
                      f"<a href=\"{_e(link)}\" rel=\"noopener noreferrer nofollow\">{_e(label)}</a>.</p>")
     if settings.get("crew_notes"):
         parts.append(f"<h2>Crew notes from {_e(first)}</h2><p class=notes>{_e(settings['crew_notes'])}</p>")
@@ -700,7 +700,7 @@ table{{width:100%;border-collapse:collapse}}th{{text-align:left;font-weight:600;
 td{{padding:8px 0}}tr{{border-bottom:1px solid color-mix(in srgb,CanvasText 12%,transparent)}}ul{{padding-left:18px}}a{{color:var(--a)}}
 footer{{margin-top:32px;color:GrayText;font-size:12px}}</style></head>
 <body><main>{body}
-<footer>Shared from Rabbit for {_e(first)}'s crew and family. {_e(first)} can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
+<footer>Shared from rabbt for {_e(first)}'s crew and family. {_e(first)} can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""
 
 
 __all__ = [

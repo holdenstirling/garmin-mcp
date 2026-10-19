@@ -158,7 +158,7 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
             </a>
           )}
           <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={ask}>
-            <MessageCircle className="size-4" /> Ask Rabbit about this race
+            <MessageCircle className="size-4" /> Ask rabbt about this race
           </Button>
         </div>
         {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}

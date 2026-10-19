@@ -51,13 +51,13 @@ export function SoonSheet({ app, onClose, onChanged }: {
         <SoonTile app={cur.id} size={56} />
       </div>
       <div className="text-center">
-        <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">Rabbit + {cur.name}</p>
+        <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">rabbt + {cur.name}</p>
         <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-[0.7059rem] font-medium text-(--text-secondary)">
           <Clock className="size-3" aria-hidden /> Coming soon
         </p>
       </div>
       <section className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-        <p className="text-[0.8235rem] font-semibold text-(--text)">What Rabbit would use</p>
+        <p className="text-[0.8235rem] font-semibold text-(--text)">What rabbt would use</p>
         <Bullets items={cur.would_use} tone="yes" />
       </section>
       <section className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">

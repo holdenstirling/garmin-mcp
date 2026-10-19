@@ -110,7 +110,7 @@ def make_routes(*, finder: FriendFinder, wrap: Callable[..., Any], read_json: Ca
             return uid
         uid = await run(look)
         if uid is None:
-            raise FindError("That code doesn't match anyone on Rabbit.", 404)
+            raise FindError("That code doesn't match anyone on rabbt.", 404)
         if uid == user_id:
             return JSONResponse({"user": person(uid), "status": "self", "follows_you": False})
         return JSONResponse({"user": person(uid), "status": await run(lambda: finder.status(user_id, uid)),

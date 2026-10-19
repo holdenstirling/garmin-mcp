@@ -90,7 +90,7 @@ def make_routes(*, blocks: Blocks, plan_api: Callable[..., Any], read_json: Call
         who = (person(by) or {}).get("name") or "A friend"
         for x in to:
             push(x, f"block-invite:{x}:{by}", 86400, "Training block invite",
-                 f"{who} invited you to {name} on Rabbit.")
+                 f"{who} invited you to {name} on rabbt.")
 
     async def create(request: Request, user_id: str) -> Response:
         b = await body_of(request)
@@ -142,7 +142,7 @@ def make_routes(*, blocks: Blocks, plan_api: Callable[..., Any], read_json: Call
         other = b.get("user_id")
         out = await run(lambda: blocks.nudge(user_id, bid_of(request), other))
         if out.get("push") and isinstance(other, str):
-            push(other, f"block-cheer:{other}", 1, "Rabbit", out["push"])  # Blocks already coalesced it
+            push(other, f"block-cheer:{other}", 1, "rabbt", out["push"])  # Blocks already coalesced it
         return JSONResponse({"ok": True})
 
     p = "/app/api/blocks"

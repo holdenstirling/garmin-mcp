@@ -67,7 +67,7 @@ def make_routes(*, tp: TPSync, api: Callable[..., Any],
         b = await body_of(request)
         src = b.get("source")
         if not isinstance(src, str):
-            raise TPUserError("Pick TrainingPeaks or Rabbit.")
+            raise TPUserError("Pick TrainingPeaks or rabbt.")
         return JSONResponse(await run(lambda: tp.set_source(uid, src)))
 
     async def sync(request: Request, uid: str) -> Response:

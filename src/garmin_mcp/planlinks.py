@@ -33,7 +33,7 @@ TIMEOUT = 10.0
 HOST = "docs.google.com"
 _ID = r"[A-Za-z0-9_-]{10,200}"
 _REDIRECT_HOST = re.compile(r"^(docs\.google\.com|[a-z0-9-]{1,80}\.googleusercontent\.com)$")
-PRIVATE = ("That document isn't public, so Rabbit can't open it. In Google {kind} choose File → "
+PRIVATE = ("That document isn't public, so rabbt can't open it. In Google {kind} choose File → "
            "Share → Publish to web ({fmt}) and paste that link, or download it and drop the file here.")
 
 
@@ -108,7 +108,7 @@ async def fetch_google(url: str, *, transport: Any = None) -> tuple[str, bytes, 
     with a plain message otherwise."""
     got = google_export_url(url)
     if got is None:
-        raise LinkError("Rabbit only opens Google Sheets and Docs links. Download the file and drop it here, "
+        raise LinkError("rabbt only opens Google Sheets and Docs links. Download the file and drop it here, "
                         "or paste the plan's text.")
     target, kind = got
     sheet = "/spreadsheets/" in target
@@ -125,7 +125,7 @@ async def fetch_google(url: str, *, transport: Any = None) -> tuple[str, bytes, 
                     if "accounts.google.com" in loc or "ServiceLogin" in loc:
                         raise LinkError(private)
                     if not redirect_ok(loc):
-                        raise LinkError("That link went somewhere Rabbit doesn't open. Download the file and drop it here.")
+                        raise LinkError("That link went somewhere rabbt doesn't open. Download the file and drop it here.")
                     target = loc
                     continue
                 if r.status_code in (401, 403, 404):

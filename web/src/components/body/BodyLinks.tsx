@@ -17,7 +17,7 @@ export function BodyLinks() {
   return (
     <section aria-label="Body logs" className="flex flex-col divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {row(<Utensils className="size-4" />, 'Fueling', 'Carbs per hour that work for you, vs your race target', () => openBody({ view: 'fueling' }))}
-      {row(<Bandage className="size-4" />, 'Body & niggles', 'Track aches; Rabbit eases the plan around them', () => openBody({ view: 'niggles' }))}
+      {row(<Bandage className="size-4" />, 'Body & niggles', 'Track aches; rabbt eases the plan around them', () => openBody({ view: 'niggles' }))}
     </section>
   )
 }

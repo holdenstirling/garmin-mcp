@@ -219,7 +219,7 @@ export function TPWorkoutSheet({ tp, today, imperial, onToast }: {
       ) : (
         <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
           {it.completed ? 'This workout is done, so it stays where it is.'
-            : 'This one follows your Rabbit plan: move the workout in Rabbit and TrainingPeaks follows.'}
+            : 'This one follows your rabbt plan: move the workout in rabbt and TrainingPeaks follows.'}
         </p>
       )}
       {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}

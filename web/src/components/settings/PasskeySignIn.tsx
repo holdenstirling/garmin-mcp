@@ -27,7 +27,7 @@ export function PasskeySignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) 
       </Button>
       {error && <p role="alert" className="max-w-sm text-[0.7647rem] text-(--danger)">{error}</p>}
       <p className="max-w-xs text-[0.7059rem] leading-snug text-(--text-muted)">
-        Got an invite link? Open it to join. Rabbit doesn't need Google.
+        Got an invite link? Open it to join. rabbt doesn't need Google.
       </p>
     </div>
   )

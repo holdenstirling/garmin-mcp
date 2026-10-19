@@ -24,7 +24,7 @@ export function SharedLinks() {
 
   return (
     <>
-      <Row icon={<Icon><UserPlus /></Icon>} title="Invite a friend by text" subtitle="Send a link that opens Rabbit's invite page"
+      <Row icon={<Icon><UserPlus /></Icon>} title="Invite a friend by text" subtitle="Send a link that opens rabbt's invite page"
         onClick={() => setInviting(true)} />
       {(links ?? []).slice(0, 30).map((l) => (
         <div key={l.id} className="flex min-h-14 items-center gap-3 px-4 py-2">

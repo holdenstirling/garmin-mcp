@@ -336,11 +336,11 @@ def club_snap(c: dict[str, Any], *, who: str, code: str | None = None) -> dict[s
     return {"kind": "club", "who": _first(who), "title": str(c.get("name") or "Club")[:80],
             "sport": str(c.get("sport") or ""), "where": city, "about": str(c.get("description") or "")[:300],
             "members": int(c.get("members") or 0), "code": code or None,
-            "join": "Ask to join in Rabbit" if c.get("privacy") == "approval" else "Join in Rabbit"}
+            "join": "Ask to join in rabbt" if c.get("privacy") == "approval" else "Join in rabbt"}
 
 
 def invite_snap(*, who: str) -> dict[str, Any]:
-    return {"kind": "invite", "who": _first(who), "title": f"{_first(who)} invited you to Rabbit"}
+    return {"kind": "invite", "who": _first(who), "title": f"{_first(who)} invited you to rabbt"}
 
 
 def default_text(snap: dict[str, Any]) -> str:
@@ -356,8 +356,8 @@ def default_text(snap: dict[str, Any]) -> str:
         return (f"I'm racing {title} {when}. Follow along!" if snap.get("race")
                 else f"Join me for {title} {when}?")
     if k == "club":
-        return f"Come run with {title}! Here's the club on Rabbit."
-    return "Join me on Rabbit, the training app I use. Here's my invite:"
+        return f"Come run with {title}! Here's the club on rabbt."
+    return "Join me on rabbt, the training app I use. Here's my invite:"
 
 
 # ------------------------------------------------------------------- page --
@@ -367,16 +367,16 @@ def _e(v: Any) -> str:
 
 def _description(snap: dict[str, Any]) -> str:
     bits = [snap.get("when") or "", *(snap.get("facts") or [])[:3], snap.get("where") or ""]
-    return " · ".join(b for b in bits if b)[:200] or "Shared from Rabbit"
+    return " · ".join(b for b in bits if b)[:200] or "Shared from rabbt"
 
 
 def render(snap: dict[str, Any], *, url: str, og_image: str, cta_url: str, cta_label: str) -> str:
     k = snap.get("kind")
     emoji = SPORT_EMOJI.get(str(snap.get("sport") or ""), "🐇")
-    title = snap.get("title") or "Rabbit"
+    title = snap.get("title") or "rabbt"
     head_line = {"workout": f"{snap.get('who')}'s planned workout", "activity": f"{snap.get('who')}'s workout",
                  "event": f"{snap.get('who')} shared an event", "club": f"{snap.get('who')} shared a club",
-                 "invite": "You're invited"}.get(str(k), "Shared from Rabbit")
+                 "invite": "You're invited"}.get(str(k), "Shared from rabbt")
     body: list[str] = []
     if snap.get("when") or snap.get("where"):
         body.append(f"<p class=sub>{_e(' · '.join(x for x in (snap.get('when'), snap.get('where')) if x))}</p>")
@@ -401,17 +401,17 @@ def render(snap: dict[str, Any], *, url: str, og_image: str, cta_url: str, cta_l
         if snap.get("code"):
             body.append(f"<p>Club code: <b>{_e(snap['code'])}</b></p>")
     if k == "invite":
-        body.append("<p class=note>Rabbit is a training app with a plan that adapts to your life, workouts synced "
+        body.append("<p class=note>rabbt is a training app with a plan that adapts to your life, workouts synced "
                     "from your watch, and friends to train with.</p>")
     foot = ("Heart rate is included because the athlete chose to share it." if snap.get("hr")
-            else "Shared from Rabbit. No heart rate or location is included.")
+            else "Shared from rabbt. No heart rate or location is included.")
     if snap.get("source") and snap.get("source") != "Garmin":
         foot = f"Recorded with {_e(snap['source'])}. " + foot
     desc = _description(snap)
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noindex,nofollow">
-<title>{_e(title)} · Rabbit</title>
-<meta property="og:type" content="website"><meta property="og:site_name" content="Rabbit">
+<title>{_e(title)} · rabbt</title>
+<meta property="og:type" content="website"><meta property="og:site_name" content="rabbt">
 <meta property="og:title" content="{_e(title)}"><meta property="og:description" content="{_e(desc)}">
 <meta property="og:url" content="{_e(url)}"><meta property="og:image" content="{_e(og_image)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{_e(title)}">
@@ -430,7 +430,7 @@ table{{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}}th
 td{{padding:8px 6px 8px 0}}tr{{border-bottom:1px solid var(--line)}}.t{{color:var(--muted);font-size:14px}}
 .cta{{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;border-radius:12px;padding:14px;margin-top:18px}}
 @media (prefers-color-scheme:dark){{.cta{{color:#0f1a14}}}}footer{{margin-top:18px;color:var(--muted);font-size:13px}}</style></head>
-<body><main><div class=brand><span aria-hidden="true">🐇</span>Rabbit</div>
+<body><main><div class=brand><span aria-hidden="true">🐇</span>rabbt</div>
 <div class=card><p class=kicker>{_e(head_line)}</p><h1>{_e(emoji)} {_e(title)}</h1>{''.join(body)}
 <a class=cta href="{_e(cta_url)}">{_e(cta_label)}</a></div>
 <footer>{foot} The athlete can turn this link off at any time.{_legal.FOOTER}</footer></main></body></html>"""

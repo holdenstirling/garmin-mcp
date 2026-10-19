@@ -244,7 +244,7 @@ function ReportSheet({ onClose, onSend }: { onClose: () => void; onSend: (why: s
   const [busy, setBusy] = useState(false)
   return (
     <Sheet title="Report" onClose={onClose} portal bodyClassName="flex flex-col gap-3 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <p className="text-[0.7647rem] text-(--text-secondary)">The Rabbit team reviews reports. The person isn't told who reported them.</p>
+      <p className="text-[0.7647rem] text-(--text-secondary)">The rabbt team reviews reports. The person isn't told who reported them.</p>
       <textarea value={why} onChange={(e) => setWhy(e.target.value.slice(0, 300))} placeholder="What happened? (optional)" aria-label="What happened"
         className="min-h-20 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-[0.8235rem] text-(--text) outline-none focus:ring-1 focus:ring-(--accent)" />
       <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} onClick={async () => { setBusy(true); await onSend(why) }}>Send report</Button>

@@ -16,20 +16,20 @@ DOC = "app-demand"
 SOON: dict[str, dict[str, Any]] = {
     "whoop": {
         "name": "WHOOP",
-        "why": "Rabbit's WHOOP connection isn't switched on yet. Tap below so we know you want it.",
+        "why": "rabbt's WHOOP connection isn't switched on yet. Tap below so we know you want it.",
         "would_use": ["Workouts, so they show up with your plan and your friends' feed",
                       "Recovery, strain and sleep, shown in the app and used by fixed rules"],
     },
     "apple": {
         "name": "Apple Watch",
         "why": "Apple Watch workouts live in Apple Health on your iPhone, which only an iPhone app "
-               "can read. Rabbit is a web app today, so this needs a Rabbit iPhone app first.",
+               "can read. rabbt is a web app today, so this needs a rabbt iPhone app first.",
         "would_use": ["Workouts recorded on your Apple Watch",
                       "Heart rate and sleep from Apple Health"],
     },
     "coros": {
         "name": "Coros",
-        "why": "Coros shares data only with approved partner apps, so Rabbit can't connect to it yet.",
+        "why": "Coros shares data only with approved partner apps, so rabbt can't connect to it yet.",
         "would_use": ["Workouts, heart rate and training load",
                       "Sending your planned workouts to your Coros watch"],
     },

@@ -334,7 +334,7 @@ async def test_push_subscribe_send_decrypts_and_prunes_gone(h: Harness) -> None:
         assert f"k={h.push.public_key}" in req.headers["authorization"]
         body = http_ece.decrypt(req.content, private_key=key, auth_secret=auth,
                                 version="aes128gcm")
-        assert json.loads(body) == {"title": "Rabbit", "body": "Notifications are working.",
+        assert json.loads(body) == {"title": "rabbt", "body": "Notifications are working.",
                                     "url": "/app/"}
 
         h.pushsvc.status = 410  # subscription expired at the push service

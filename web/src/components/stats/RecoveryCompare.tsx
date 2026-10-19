@@ -71,7 +71,7 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
   const usesOura = r.oura_connected && (r.sources.show_both || r.sources.recovery === 'oura' || r.sources.sleep === 'oura')
   const foot = (
     <p className="px-1 text-[0.6471rem] text-(--text-muted)">
-      Stats and your plan count Garmin workouts; a workout two apps recorded counts once.{usesOura ? ' Oura data is shown here only and never sent to Rabbit.' : ''} Change in Settings → Data sources.
+      Stats and your plan count Garmin workouts; a workout two apps recorded counts once.{usesOura ? ' Oura data is shown here only and never sent to rabbt.' : ''} Change in Settings → Data sources.
     </p>
   )
 
@@ -117,7 +117,7 @@ export function RecoveryCompare({ loadKey = 0, compact = false }: {
             </tbody>
           </table>
         </div>
-        <p className="px-1 text-[0.6471rem] text-(--text-muted)">Each device scores differently, so expect gaps. Rabbit plans from {SOURCE_NAME[r.sources.recovery]}.</p>
+        <p className="px-1 text-[0.6471rem] text-(--text-muted)">Each device scores differently, so expect gaps. rabbt plans from {SOURCE_NAME[r.sources.recovery]}.</p>
         {foot}
       </section>
     )

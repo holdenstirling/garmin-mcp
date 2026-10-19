@@ -42,7 +42,7 @@ export const COMMENT_LEN = 280
 export const MAX_PHOTOS = 10
 
 export function audienceLabel(a: Audience, club?: { name: string } | null): string {
-  if (a === 'public') return 'Everyone on Rabbit'
+  if (a === 'public') return 'Everyone on rabbt'
   if (a === 'private') return 'Only me'
   if (a.startsWith('club:')) return club?.name ?? 'Club'
   if (a.startsWith('grp:')) return 'Group'

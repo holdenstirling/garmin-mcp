@@ -89,7 +89,7 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
             <p className="text-[0.7059rem] text-(--text-muted)">{s.new_users} new {s.new_users === 1 ? 'person' : 'people'} in 30 days</p>
           </Section>
 
-          <Section title="Coming back" note="Of people first seen in the last 30 days, the share who used Rabbit again exactly 1 and 7 days later.">
+          <Section title="Coming back" note="Of people first seen in the last 30 days, the share who used rabbt again exactly 1 and 7 days later.">
             <div className="flex gap-2">
               <Stat n={ret(s.retention.d1)} label={`Next day (${s.retention.d1.returned}/${s.retention.d1.cohort})`} />
               <Stat n={ret(s.retention.d7)} label={`Day 7 (${s.retention.d7.returned}/${s.retention.d7.cohort})`} />

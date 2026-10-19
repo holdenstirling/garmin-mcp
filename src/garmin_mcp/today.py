@@ -152,7 +152,7 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
         n = len(adjust.get("changes") or [])
         detail = (reasons[0] if reasons else "Your week drifted from the plan.") + \
             f" {n} change{'s' if n != 1 else ''} ready to review."
-        return card("plan", "Rabbit suggests adjusting your week", detail, ("review_adjust", "Review changes"), session)
+        return card("plan", "rabbt suggests adjusting your week", detail, ("review_adjust", "Review changes"), session)
 
     # 3. Already trained and nothing left today.
     if trained_today and not planned:
@@ -209,7 +209,7 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
         if missed:
             detail += " Skip making up missed work."
         return card("go", f"Today: {session['title']}{_mins(session.get('minutes'))}", detail,
-                    ("open_session", "Open session") if session.get("id") else ("ask", "Ask Rabbit"), session)
+                    ("open_session", "Open session") if session.get("id") else ("ask", "Ask rabbt"), session)
 
     # 6. Plan rest day.
     if has_plan and rest_day:
@@ -223,7 +223,7 @@ def recommend(*, today: date, days: list[dict[str, Any]] | None, has_plan: bool,
         return card("go", f"Keep your {cur}-day streak alive",
                     "You've used this week's free rest day. 20 easy minutes of anything counts.",
                     ("ask", "Ideas for today"))
-    action = ("ask", "Ask Rabbit") if has_plan else ("build_plan", "Build a plan")
+    action = ("ask", "Ask rabbt") if has_plan else ("build_plan", "Build a plan")
     if form is not None and form > FRESH_TSB:
         return card("go", "You're fresh: good day for quality",
                     f"Form {form:+.0f}. Try intervals or a tempo effort, or go a bit longer than usual.", action)

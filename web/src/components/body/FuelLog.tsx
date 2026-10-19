@@ -112,13 +112,13 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
           </p>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="hit-44 text-[0.7647rem] font-medium text-(--accent)" onClick={startEdit}>Edit</button>
-            <button type="button" className="hit-44 text-[0.7647rem] font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>What Rabbit's learned</button>
+            <button type="button" className="hit-44 text-[0.7647rem] font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>What rabbt's learned</button>
           </div>
         </div>
       )}
       {!open && !entry && (
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[0.7647rem] text-(--text-secondary)">Log what you ate and drank. Rabbit learns which carbs per hour work for you before race day.</p>
+          <p className="m-0 text-[0.7647rem] text-(--text-secondary)">Log what you ate and drank. rabbt learns which carbs per hour work for you before race day.</p>
           <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={startEdit}><Plus className="size-4" aria-hidden />Log fueling</Button>
         </div>
       )}
@@ -176,7 +176,7 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
       )}
 
       {!open && learn && learn.lines.length > 0 && (
-        <RabbitNote title="What Rabbit's learned" compact>
+        <RabbitNote title="What rabbt's learned" compact>
           {learn.lines.slice(0, 3).map((l) => <p key={l} className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={l} /></p>)}
         </RabbitNote>
       )}

@@ -10,7 +10,7 @@ import { Sheet } from '@/components/ui/Sheet'
 const CHOICES: { id: CoachStatus; title: string; sub: string }[] = [
   { id: 'looking', title: "I'd like a coach", sub: 'See coaches who fit your race' },
   { id: 'have_coach', title: 'I already have one', sub: 'Invite them to see your plan' },
-  { id: 'self_coached', title: "I'll go solo", sub: 'Rabbit has your back' },
+  { id: 'self_coached', title: "I'll go solo", sub: 'rabbt has your back' },
 ]
 
 export function CoachStatusSheet({ current, onClose, onSaved }: {
@@ -33,7 +33,7 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
   return (
     <Sheet title="Do you want a coach?" onClose={onClose} dismissible={!busy}>
           <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
-            A human coach can work alongside Rabbit. You can change this any time.
+            A human coach can work alongside rabbt. You can change this any time.
           </p>
           <fieldset className="flex flex-col gap-2">
             <legend className="sr-only">Coaching</legend>

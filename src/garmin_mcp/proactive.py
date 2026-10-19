@@ -58,7 +58,7 @@ TURN_TIMEOUT = 180.0
 WORKOUT_PROMPT = (
     "A new activity just synced from Garmin (id | sport | start | duration | distance):\n"
     "{lines}\n\n"
-    "Write Rabbit's quick reaction to it: 2-3 short sentences, under 50 words. Line 1: a specific "
+    "Write rabbt's quick reaction to it: 2-3 short sentences, under 50 words. Line 1: a specific "
     "win or verdict vs. what today's planned session was for (e.g. **Nailed the tempo.** 7:42/mi "
     "held right in zone). Then one practical note for the next day or two of their plan. Look up "
     "details or recent load/HRV with tools if that helps. No greeting, no recap of the data you "
@@ -345,7 +345,7 @@ class Proactive:
             return True
         if self._store.user_doc(user_id, "proactive").update(mark):
             self._notify(user_id, "Garmin disconnected",
-                         "Rabbit can't see your training right now. Tap to reconnect Garmin.")
+                         "rabbt can't see your training right now. Tap to reconnect Garmin.")
             log_event(logger, logging.INFO, "reauth_nudge", user_id=user_id)
 
     def on_connected(self, user_id: str) -> None:
@@ -392,7 +392,7 @@ class AgentDelivery:
         if not text:
             return FireResult(FireOutcome.FAILED)  # model unreachable: nothing was delivered
         if self._push is not None:
-            title, url = ("Morning brief" if kind == "brief" else "Rabbit"), "/app/?open=coach"
+            title, url = ("Morning brief" if kind == "brief" else "rabbt"), "/app/?open=coach"
             rewards = getattr(self._runner.agent, "rewards", None) if kind == "workout" else None
             try:  # reward.py: the workout note's push leads with the reward headline and opens it
                 hit = rewards.claim_push(user_id) if rewards is not None else None

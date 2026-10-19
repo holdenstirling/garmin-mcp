@@ -111,9 +111,9 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
               How did it go?
             </Button>
           ) : onAsk && (
-            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" aria-label="Ask Rabbit"
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" aria-label="Ask rabbt"
               onClick={() => onAsk(`About my ${s.title} on ${when}: `)}>
-              <MessageCircle className="size-4 shrink-0" aria-hidden /><span className="max-[359px]:hidden">Ask Rabbit</span><span className="min-[360px]:hidden">Ask</span>
+              <MessageCircle className="size-4 shrink-0" aria-hidden /><span className="max-[359px]:hidden">Ask rabbt</span><span className="min-[360px]:hidden">Ask</span>
             </Button>
           )}
         </>
@@ -157,7 +157,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
             onClick: () => { close(); window.setTimeout(() => openPlanDay(data.date), 220) } },
           { key: 'act', icon: <Activity className="size-4" />, label: 'The recorded workout', sub: s?.activity?.name,
             onClick: (s?.activity?.id ?? c?.activity?.id) ? () => openActivity(String(s?.activity?.id ?? c?.activity?.id)) : null },
-          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask Rabbit about it',
+          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask rabbt about it',
             onClick: onAsk && s ? () => onAsk(`About my ${s.title} on ${when}: `) : null },
         ]} link={s?.id ? { kind: 'workout', id: s.id, date: data.date } : undefined} />
       )}
@@ -382,7 +382,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       <LearnMore s={s} />
       {cal?.pace_source === 'default' && s.sport === 'run' && ahead && (
         <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-          Paces start from a typical runner. Add your threshold pace in Me › Training profile, or keep training and Rabbit will learn it from your runs.
+          Paces start from a typical runner. Add your threshold pace in Me › Training profile, or keep training and rabbt will learn it from your runs.
         </p>
       )}
       {s.id && (status === 'done' || d.date <= d.today) && (
@@ -502,7 +502,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
       )}
       {fb && (
         <div aria-live="polite">
-          <RabbitNote title="Rabbit's feedback" className={fb.tone === 'ease' || fb.tone === 'care' ? TONE[fb.tone] : undefined}>
+          <RabbitNote title="rabbt's feedback" className={fb.tone === 'ease' || fb.tone === 'care' ? TONE[fb.tone] : undefined}>
             <p className="m-0 text-[0.8235rem] font-semibold text-(--text)">{fb.headline}</p>
             {fb.lines.map((l) => <p key={l} className="m-0 text-(--text-secondary)"><RabbitInline text={l} /></p>)}
           </RabbitNote>
@@ -510,7 +510,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
       )}
       {onAsk && (ck || c?.went) && (
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={askMore}>
-          <MessageCircle className="size-4" aria-hidden /> Ask Rabbit for more feedback
+          <MessageCircle className="size-4" aria-hidden /> Ask rabbt for more feedback
         </Button>
       )}
     </section>

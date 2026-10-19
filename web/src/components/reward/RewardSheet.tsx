@@ -56,7 +56,7 @@ export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheck
     return (
       <CelebrationScreen c={{
         id: `pr:${r.activity_id}`, kind: 'pr', date: r.date, title: 'New personal record', subtitle: r.headline.text,
-        line: r.headline.text.includes('12 months') ? 'Your best in a year. The work is showing.' : 'Your best ever on Rabbit. Take a moment.',
+        line: r.headline.text.includes('12 months') ? 'Your best in a year. The work is showing.' : 'Your best ever on rabbt. Take a moment.',
         stats: r.chips,
       }} onClose={() => setParty(false)} />
     )

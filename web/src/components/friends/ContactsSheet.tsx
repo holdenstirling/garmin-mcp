@@ -39,8 +39,8 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
       const matched = new Set(hits.map((h) => h.contact))
       setFound(hits)
       setInvite(list.filter((c) => !matched.has(c)))
-      try { const l = await createShareLink({ kind: 'invite', label: 'Rabbit' }); setLink({ url: l.url, text: l.text }) }
-      catch { setLink({ url: fallback, text: 'Train with me on Rabbit.' }) }
+      try { const l = await createShareLink({ kind: 'invite', label: 'rabbt' }); setLink({ url: l.url, text: l.text }) }
+      catch { setLink({ url: fallback, text: 'Train with me on rabbt.' }) }
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   async function pick() {
@@ -66,18 +66,18 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
   const sms = (c: Contact) => link && c.phones[0]
     ? `sms:${c.phones[0].replace(/[^\d+]/g, '')}?&body=${encodeURIComponent(`${link.text} ${link.url}`)}` : null
   const mail = (c: Contact) => link && c.emails[0]
-    ? `mailto:${c.emails[0]}?subject=${encodeURIComponent('Join me on Rabbit')}&body=${encodeURIComponent(`${link.text} ${link.url}`)}` : null
+    ? `mailto:${c.emails[0]}?subject=${encodeURIComponent('Join me on rabbt')}&body=${encodeURIComponent(`${link.text} ${link.url}`)}` : null
   const toFollow = (found ?? []).filter((f) => f.status === 'none').length
 
   return (
     <Sheet title="Find friends from contacts" onClose={onClose} portal className="modal--tall">
       <div className="flex flex-col gap-4 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-        {busy ? <RabbitLoader className="py-10" label="Checking your contacts" cycle={['Checking who’s on Rabbit…', 'Almost there…']} /> : found ? (
+        {busy ? <RabbitLoader className="py-10" label="Checking your contacts" cycle={['Checking who’s on rabbt…', 'Almost there…']} /> : found ? (
           <>
             <section aria-labelledby="ff-on" className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <h3 id="ff-on" className="min-w-0 flex-1 text-[0.8824rem] font-semibold text-(--text)">
-                  {found.length ? `On Rabbit (${found.length})` : 'None of them are on Rabbit yet'}
+                  {found.length ? `On rabbt (${found.length})` : 'None of them are on rabbt yet'}
                 </h3>
                 {toFollow > 1 && followAll !== 'done' && (
                   <Button variant="primary" className="h-9 px-3.5 text-[0.7647rem]" loading={followAll === 'busy'} onClick={() => void followEveryone()}>Follow all</Button>
@@ -100,7 +100,7 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
             </section>
             {invite.length > 0 && (
               <section aria-labelledby="ff-inv" className="flex flex-col gap-2">
-                <h3 id="ff-inv" className="text-[0.8824rem] font-semibold text-(--text)">Invite to Rabbit ({invite.length})</h3>
+                <h3 id="ff-inv" className="text-[0.8824rem] font-semibold text-(--text)">Invite to rabbt ({invite.length})</h3>
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {invite.slice(0, 200).map((c, i) => {
                     const s = sms(c), m = mail(c)
@@ -123,7 +123,7 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
                     )
                   })}
                 </ul>
-                <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Opens your Messages or Mail with an invite link. Rabbit never texts or emails anyone for you.</p>
+                <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Opens your Messages or Mail with an invite link. rabbt never texts or emails anyone for you.</p>
               </section>
             )}
             <Button variant="default" className="h-11" onClick={() => { setFound(null); setInvite([]); setPaste(''); setFollowAll('idle') }}>Check more contacts</Button>
@@ -133,7 +133,7 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
             <div className="flex items-start gap-3 rounded-2xl bg-(--accent-subtle) p-3.5">
               <Users className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
               <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-                Rabbit checks these against people on Rabbit and <b className="text-(--text)">doesn&rsquo;t keep them</b>. People who turned off &ldquo;find me by email or phone&rdquo; won&rsquo;t show up.
+                rabbt checks these against people on rabbt and <b className="text-(--text)">doesn&rsquo;t keep them</b>. People who turned off &ldquo;find me by email or phone&rdquo; won&rsquo;t show up.
               </p>
             </div>
             {picker && (
@@ -148,7 +148,7 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
               <textarea id="ff-paste" rows={4} value={paste} onChange={(e) => setPaste(e.target.value)}
                 placeholder={'Jesse 303-555-1234\nsam@example.com'}
                 className="w-full rounded-xl border border-input bg-transparent p-3 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-              <Button variant="primary" className="h-11" disabled={!paste.trim()} onClick={() => void check(parsePasted(paste))}>Find them on Rabbit</Button>
+              <Button variant="primary" className="h-11" disabled={!paste.trim()} onClick={() => void check(parsePasted(paste))}>Find them on rabbt</Button>
             </section>
             <section className="flex flex-col gap-2">
               <input ref={file} type="file" accept=".vcf,text/vcard,text/x-vcard" className="sr-only" tabIndex={-1} aria-hidden

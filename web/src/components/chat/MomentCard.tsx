@@ -25,13 +25,13 @@ export const MomentCard = memo(function MomentCard({ item, onAction, disabled }:
   const fresh = !shown.has(item.id) && Date.now() / 1000 - item.ts < FRESH_S
   shown.add(item.id)
   return (
-    <HopIn play={fresh} className="flex w-full max-w-[92%] items-start gap-2.5" role="article" aria-label="Update from Rabbit">
+    <HopIn play={fresh} className="flex w-full max-w-[92%] items-start gap-2.5" role="article" aria-label="Update from rabbt">
       <span className="logo-tile mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-(--brand) shadow-sm" aria-hidden>
         <RabbitLogo size={22} />
       </span>
       <div className="rabbit-voice rabbit-voice--tail min-w-0 flex-1 px-3.5 py-2.5">
         <div className="flex items-baseline gap-1.5 text-[0.6471rem]">
-          <span className="rabbit-voice__label">Rabbit</span>
+          <span className="rabbit-voice__label">rabbt</span>
           <span className="text-(--text-muted)">· {fmtTime(item.ts)}</span>
         </div>
         <p className="m-0 mt-0.5 text-[1rem] leading-[1.45] text-(--text)"><RabbitInline text={item.text} /></p>

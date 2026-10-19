@@ -6,8 +6,8 @@ export function InstallPrompt({ onSkip }: { onSkip: () => void }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
       <RabbitLogo size={72} />
       <div>
-        <h1 className="font-display text-3xl text-(--brand)">Rabbit</h1>
-        <p className="mt-1 text-(--text-secondary)">Add Rabbit to your Home Screen to get started.</p>
+        <h1 className="font-display text-3xl text-(--brand)">rabbt</h1>
+        <p className="mt-1 text-(--text-secondary)">Add rabbt to your Home Screen to get started.</p>
       </div>
       <ol className="panel w-full max-w-sm space-y-4 text-left">
         <li className="flex items-center gap-3">
@@ -20,7 +20,7 @@ export function InstallPrompt({ onSkip }: { onSkip: () => void }) {
         </li>
         <li className="flex items-center gap-3">
           <span className="font-display text-xl text-(--accent)">3</span>
-          <span>Open <b>Rabbit</b> from your Home Screen and sign in there.</span>
+          <span>Open <b>rabbt</b> from your Home Screen and sign in there.</span>
         </li>
       </ol>
       <p className="max-w-sm text-xs text-(--text-muted)">

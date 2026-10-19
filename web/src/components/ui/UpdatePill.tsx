@@ -17,7 +17,7 @@ export function UpdatePill() {
     <div role="status" className="pointer-events-none fixed inset-x-0 top-[max(8px,env(safe-area-inset-top))] z-[90] flex justify-center px-4">
       <button type="button" onClick={reloadNow}
         className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full bg-(--accent) px-4 text-[0.8235rem] font-semibold text-(--on-fill) shadow-lg active:opacity-80">
-        <RefreshCw className="size-4" aria-hidden /> New version of Rabbit · Update
+        <RefreshCw className="size-4" aria-hidden /> New version of rabbt · Update
       </button>
     </div>
   )

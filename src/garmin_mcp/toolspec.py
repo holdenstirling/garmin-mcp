@@ -96,7 +96,7 @@ CHART_DESC = (
 
 CLUBS_DESC = (
     "Run clubs, trail groups, tri clubs, group rides, masters swims and adult social sports "
-    "leagues near the athlete's home city, from Rabbit's directory of public club and league web "
+    "leagues near the athlete's home city, from rabbt's directory of public club and league web "
     "pages. Filter by kind and weekday (e.g. 'run clubs on Tuesdays'). Returns name, weekly "
     "sessions (weekday + 24h time), meet spot, pace, cost, link and last-verified date. Times can "
     "change, so tell them to check the link. If the note says the directory is still being built, "

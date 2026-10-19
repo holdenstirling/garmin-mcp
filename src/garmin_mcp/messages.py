@@ -111,7 +111,7 @@ class Messages:
     # ------------------------------------------------------------ helpers --
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self._is_athlete(uid):
-            raise DMError("Messages are for athletes on Rabbit.", 403)
+            raise DMError("Messages are for athletes on rabbt.", 403)
 
     def reachable(self, a: str, b: str) -> bool:
         """No request needed: mutual follow, or a club / group in common."""
@@ -213,7 +213,7 @@ class Messages:
         out: list[str] = []
         for p in to:
             if not isinstance(p, str) or not _UID.fullmatch(p) or p == uid:
-                raise DMError("Pick people on Rabbit.")
+                raise DMError("Pick people on rabbt.")
             if p not in out:
                 out.append(p)
         if len(out) + 1 > MAX_GROUP:

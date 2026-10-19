@@ -54,7 +54,7 @@ def test_rest_day_previews_tomorrow_and_today_calls() -> None:
     rest = choose(card=card(tone="rest", headline="Rest day", action=("log_rest", "Enjoy the rest"), session=False),
                   has_plan=True, goal={"title": "x"}, tomorrow=tomorrow)
     assert rest["kind"] == "rest" and rest["tomorrow"]["title"] == "Long run"
-    adj = choose(card=card(tone="plan", headline="Rabbit suggests adjusting your week",
+    adj = choose(card=card(tone="plan", headline="rabbt suggests adjusting your week",
                            action=("review_adjust", "Review changes"), session=False), has_plan=True, goal=None)
     assert adj["kind"] == "today" and adj["primary"]["kind"] == "review_adjust"
     done = choose(card=card(tone="done", headline="Done for today. Nice work", action=("ask", "How did it go?")),
@@ -98,7 +98,7 @@ def test_first_visit_and_no_garmin_shapes() -> None:
     assert [i["id"] for i in fv["items"]] == ["clubs", "events", "feed", "friends"]
     assert fv["primary"]["kind"] == "connect_garmin"
     assert first_visit(garmin=True, inviter=None) | {"primary": None} == {
-        "show": False, "garmin": True, "inviter": None, "title": "Welcome to Rabbit", "items": [], "primary": None}
+        "show": False, "garmin": True, "inviter": None, "title": "Welcome to rabbt", "items": [], "primary": None}
     assert NO_GARMIN["code"] == "garmin_not_connected" and NO_GARMIN["action"]["kind"] == "connect_garmin"
 
 
@@ -145,7 +145,7 @@ def test_connect_invited_leaves_coaches_alone(soc) -> None:
 def test_friend_joined_moment_posts_once(env) -> None:
     agent, _ = env.agent([])
     m = friend_joined_moment("Sam Lee", "u_1")
-    assert m["text"].startswith("🎉 Sam Lee joined Rabbit") and len(m["text"]) <= 140
+    assert m["text"].startswith("🎉 Sam Lee joined rabbt") and len(m["text"]) <= 140
     assert m["actions"] == [{"id": "community", "label": "See friends", "view": "people"}]
     agent.moments._now = lambda uid: NOON
     assert agent.moments.friend_joined("friend", "Sam", "u_1") == "posted"

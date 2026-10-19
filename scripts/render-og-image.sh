@@ -19,7 +19,7 @@ magick -background none -density 600 "$tmp/mark.svg" -trim +repage -resize 340x3
 y=$(( (630 - $(magick identify -format %h "$tmp/mark.png")) / 2 - 10 ))
 magick -size 1200x630 xc:'#f5f0e8' \
   "$tmp/mark.png" -geometry +140+$y -composite \
-  -fill '#1a3a2a' -font "$FONT" -pointsize 176 -annotate +540+335 'Rabbit' \
+  -fill '#1a3a2a' -font "$FONT" -pointsize 176 -annotate +540+335 'rabbt' \
   -fill '#4a6355' -font "$FONT" -pointsize 50 -annotate +548+420 'Your training pacer' \
   -strip web/public/og-image.png
 echo "wrote web/public/og-image.png"

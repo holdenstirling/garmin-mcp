@@ -36,7 +36,7 @@ export function Stat({ value, label, className }: { value: ReactNode; label: Rea
 
 /** Something Rabbit says outside the chat: same tinted surface and "Rabbit" label as its chat
  *  replies, with the rabbit mark, so the voice is recognisable everywhere. */
-export function RabbitNote({ title = 'Rabbit', children, className, compact }: {
+export function RabbitNote({ title = 'rabbt', children, className, compact }: {
   title?: string; children: ReactNode; className?: string; compact?: boolean
 }) {
   return (

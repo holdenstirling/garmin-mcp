@@ -251,7 +251,7 @@ class Buddies:
 
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self._is_athlete(uid):
-            raise BuddyError("Training buddies are for athletes on Rabbit.", 403)
+            raise BuddyError("Training buddies are for athletes on rabbt.", 403)
 
     # -- where: rounded point + city, refreshed from the athlete's Local area on every save
     def _where(self, uid: str) -> dict[str, Any]:
@@ -371,7 +371,7 @@ class Buddies:
         if text is not None and not isinstance(text, str):
             raise BuddyError("bad text")
         msg = " ".join((text or "").split())[:400] or (
-            f"Hi {self._first(other)}! Rabbit matched us as training buddies ({', '.join(hit['chips'][:2]).lower()}). "
+            f"Hi {self._first(other)}! rabbt matched us as training buddies ({', '.join(hit['chips'][:2]).lower()}). "
             f"Want to {SPORT_WORD[hit['sport']]} together sometime?")
         now = self._clock()
 

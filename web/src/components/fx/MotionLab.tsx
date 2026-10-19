@@ -35,7 +35,7 @@ export function MotionLab() {
         </span>
         <button type="button" className={chip} onClick={() => setBar((b) => (b >= 100 ? 10 : Math.min(100, b + 20)))}>+20%</button>
       </Lab>
-      <Lab label="Rabbit hop (progress bar)">
+      <Lab label="rabbt hop (progress bar)">
         <span className="fx-bar mt-4 min-w-0 flex-1">
           <span className="block h-1.5 overflow-hidden rounded-full bg-(--bg-elevated)">
             <span className="block h-full rounded-full bg-(--accent) transition-[width] duration-500" style={{ width: `${bar}%` }} />
@@ -48,7 +48,7 @@ export function MotionLab() {
         <HopIn key={`h${peek}`} index={1} className="rounded-lg border border-(--border) px-3 py-2 text-[0.7059rem] text-(--text)">Card</HopIn>
         <Shake trigger={peek}><span className="rounded-lg bg-(--danger-subtle) px-3 py-2 text-[0.7059rem] text-(--danger)">Oops</span></Shake>
         <button type="button" className={chip} onClick={() => setPeek((n) => n + 1)}>Replay</button>
-        <button type="button" className={chip} onClick={signalReplyDone}>Wiggle Rabbit tab</button>
+        <button type="button" className={chip} onClick={signalReplyDone}>Wiggle rabbt tab</button>
       </Lab>
       <Lab label="Streak flame">
         <span className="text-(--accent)"><StreakFlame streak={0} atRisk={risk} replay={flame} className="size-6" /></span>

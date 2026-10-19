@@ -88,7 +88,7 @@ class FeedGroups:
 
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self._is_athlete(uid):
-            raise GroupError("Groups are for athletes on Rabbit.", 403)
+            raise GroupError("Groups are for athletes on rabbt.", 403)
 
     def mutual(self, a: str, b: str) -> bool:
         return (a != b and self._is_athlete(a) and self._is_athlete(b) and not self._blocked(a, b)

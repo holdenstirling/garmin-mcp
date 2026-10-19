@@ -165,7 +165,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
           onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />}
         <textarea
           ref={ref}
-          aria-label="Message Rabbit"
+          aria-label="Message rabbt"
           rows={1}
           value={input}
           enterKeyHint="send"

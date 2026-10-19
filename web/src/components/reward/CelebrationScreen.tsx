@@ -47,7 +47,7 @@ export function CelebrationScreen({ c, onClose }: { c: Celebration; onClose: () 
     if (!canvas.current) return
     setBusy(true); setNote(null)
     try {
-      const how = await shareImage(canvas.current, `rabbit-${c.kind}-${c.date}.png`, `${c.title} ${c.subtitle}`)
+      const how = await shareImage(canvas.current, `rabbt-${c.kind}-${c.date}.png`, `${c.title} ${c.subtitle}`)
       if (how === 'downloaded') setNote('Saved the image. Post it anywhere you like.')
       if (how !== 'cancelled') celebrate(el, 'kudos')
     } catch (e) { setNote((e as Error).message) } finally { setBusy(false) }

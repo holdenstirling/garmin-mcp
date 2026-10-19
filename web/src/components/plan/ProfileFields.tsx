@@ -21,7 +21,7 @@ export function YouFields({ a, setA }: Props) {
     <>
       <UnitsToggle a={a} setA={setA} />
       <Card>
-        <Field label="Favorite sports" hint="What you love doing. Rabbit leans your training and stats toward these.">
+        <Field label="Favorite sports" hint="What you love doing. rabbt leans your training and stats toward these.">
           <MultiChoice value={(a.favorite_sports ?? []) as typeof FAVORITE_SPORTS[number][0][]} options={FAVORITE_SPORTS}
             onChange={(v) => setA({ favorite_sports: v })} />
         </Field>
@@ -32,7 +32,7 @@ export function YouFields({ a, setA }: Props) {
         <OptionCard selected={a.level === 'advanced'} title="Experienced" description="Years of structured training; you handle big weeks." onClick={() => setA({ level: 'advanced' })} />
       </div>
       <Card>
-        <Field label="Sex" hint="Optional. Helps Rabbit read heart-rate and recovery data.">
+        <Field label="Sex" hint="Optional. Helps rabbt read heart-rate and recovery data.">
           <Choice value={a.sex ?? null} allowNone onChange={(v) => setA({ sex: v })} options={[['female', 'Female'], ['male', 'Male'], ['other', 'Other']]} />
         </Field>
         <Field label="Age">
@@ -56,7 +56,7 @@ export function YouFields({ a, setA }: Props) {
         </Field>
       </Card>
       <Card>
-        <Field label="Injuries or limits" hint="Optional. Rabbit keeps these in mind in every brief.">
+        <Field label="Injuries or limits" hint="Optional. rabbt keeps these in mind in every brief.">
           <textarea className={areaCls} value={a.injuries ?? ''} maxLength={500} onChange={(e) => setA({ injuries: e.target.value })}
             placeholder="e.g. Achilles gets cranky above 40 km a week" />
         </Field>
@@ -133,7 +133,7 @@ export function WeekFields({ a, setA, sports }: Props) {
         </Field>
       </Card>
       <Card>
-        <Field label="What do you have access to?" hint={sports.includes('swim') && !(a.equipment ?? []).some((e) => e === 'pool' || e === 'open_water') && (a.equipment ?? []).length ? 'No pool or open water selected, so Rabbit will leave out swims.' : 'Optional.'}>
+        <Field label="What do you have access to?" hint={sports.includes('swim') && !(a.equipment ?? []).some((e) => e === 'pool' || e === 'open_water') && (a.equipment ?? []).length ? 'No pool or open water selected, so rabbt will leave out swims.' : 'Optional.'}>
           <MultiChoice value={(a.equipment ?? []) as typeof EQUIPMENT[number][0][]} options={EQUIPMENT} onChange={(v) => setA({ equipment: v })} />
         </Field>
       </Card>
@@ -178,7 +178,7 @@ export function TraitsFields({ a, setA }: Props) {
         <Field label="Strengths" className="border-t border-(--border)">
           <MultiChoice value={a.strengths ?? []} options={TRAITS} onChange={(v) => setA({ strengths: v })} />
         </Field>
-        <Field label="Limiters" className="border-t border-(--border)" hint="What slows you down. Race fit and Rabbit plan around these.">
+        <Field label="Limiters" className="border-t border-(--border)" hint="What slows you down. Race fit and rabbt plan around these.">
           <MultiChoice value={a.limiters ?? []} options={TRAITS} onChange={(v) => setA({ limiters: v })} />
         </Field>
         <Field label="Heat tolerance" className="border-t border-(--border)">
@@ -192,7 +192,7 @@ export function TraitsFields({ a, setA }: Props) {
       </Card>
       <FuelFields a={a} setA={setA} />
       <Card>
-        <Field label="Why you race" hint="Rabbit reminds you of this when training gets hard.">
+        <Field label="Why you race" hint="rabbt reminds you of this when training gets hard.">
           <textarea className={areaCls} value={a.motivation ?? ''} maxLength={200} onChange={(e) => setA({ motivation: e.target.value })} />
         </Field>
       </Card>

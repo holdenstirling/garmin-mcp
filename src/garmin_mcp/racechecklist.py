@@ -191,7 +191,7 @@ def template(event: dict[str, Any], *, gear_warnings: list[dict[str, Any]] | Non
     # After
     add("after", "Eat and drink within an hour")
     add("after", "Easy days only for a few days")
-    add("after", "Log how it went in Rabbit (race debrief)")
+    add("after", "Log how it went in rabbt (race debrief)")
     add("after", "Thank your crew and support")
     return out
 

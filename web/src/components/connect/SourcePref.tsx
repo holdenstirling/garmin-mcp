@@ -60,13 +60,13 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
         <div className="flex min-h-11 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-2">
           <span className="min-w-0 flex-1">
             <span className="block text-[0.9412rem] text-(--text)">Show both in Progress</span>
-            <span className="block text-[0.7647rem] text-(--text-muted)">Garmin and Oura side by side. Rabbit still plans from one.</span>
+            <span className="block text-[0.7647rem] text-(--text-muted)">Garmin and Oura side by side. rabbt still plans from one.</span>
           </span>
           <Switch label="Show both in Progress" checked={pref.both} onChange={pref.setBoth} />
         </div>
       )}
       <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-        Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. Rabbit's coaching never uses Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
+        Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. rabbt's coaching never uses Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
       </p>
     </div>
   )

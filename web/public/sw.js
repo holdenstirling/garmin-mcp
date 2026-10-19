@@ -5,7 +5,7 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 self.addEventListener('push', (event) => {
   let data = {}
   try { data = event.data ? event.data.json() : {} } catch { data = {} }
-  const title = typeof data.title === 'string' ? data.title : 'Rabbit'
+  const title = typeof data.title === 'string' ? data.title : 'rabbt'
   const body = typeof data.body === 'string' ? data.body : ''
   const url = typeof data.url === 'string' && data.url.startsWith('/app/') ? data.url : '/app/'
   event.waitUntil(Promise.all([

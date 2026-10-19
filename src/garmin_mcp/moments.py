@@ -225,8 +225,8 @@ def friend_joined_moment(name: str, joiner: str) -> dict[str, Any]:
     """For the inviter, once per joiner: someone joined from their invite link (mutual follow)."""
     first = _name(name, 30) or "A friend"
     return {"type": "friend_joined", "key": f"joined:{joiner}",
-            "text": _clip(f"🎉 {first} joined Rabbit from your invite. You now follow each other."),
-            "push_title": "New friend on Rabbit",
+            "text": _clip(f"🎉 {first} joined rabbt from your invite. You now follow each other."),
+            "push_title": "New friend on rabbt",
             "actions": [action("community", "See friends", view="people")]}
 
 
@@ -397,7 +397,7 @@ class Moments:
             return
         try:
             body = re.sub(r"^[^\w]+", "", m["text"]).strip()  # no leading emoji in the notification
-            self.push(uid, m.get("push_title") or "Rabbit", body, "/app/?open=coach")
+            self.push(uid, m.get("push_title") or "rabbt", body, "/app/?open=coach")
         except Exception as e:  # the moment is already in the log
             log_event(logger, logging.WARNING, "moment_push_failed", user_id=uid, error=type(e).__name__)
 

@@ -65,7 +65,7 @@ export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onRe
       <section aria-label="Connect your calendar" className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
         <CalendarClock className="size-5 shrink-0 text-(--accent)" aria-hidden />
         <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          Connect Google Calendar so Rabbit plans around your week.
+          Connect Google Calendar so rabbt plans around your week.
         </p>
         <div className="flex shrink-0 flex-col gap-1">
           <Button variant="primary" className="h-9 px-3 text-[0.7059rem]" onClick={() => requestConnect('calendar')}>Connect</Button>

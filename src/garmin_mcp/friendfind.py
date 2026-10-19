@@ -34,7 +34,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 HANDLE_RE = re.compile(r"^[a-z0-9_.]{3,20}$")
-RESERVED = {"rabbit", "admin", "support", "help", "coach", "team", "everyone", "here", "all", "me",
+RESERVED = {"rabbit", "rabbt", "admin", "support", "help", "coach", "team", "everyone", "here", "all", "me",
             "you", "null", "undefined", "settings", "privacy", "app", "api", "root", "staff"}
 DEFAULT_FIND = {"name": True, "email": True, "phone": True}
 MATCH_MAX = 500
@@ -237,7 +237,7 @@ class FriendFinder:
                     m = self._mac(key, phone)
                     owner = phones.get(m)
                     if owner and owner != uid:
-                        raise FindError("That number is already on another Rabbit account.", 409)
+                        raise FindError("That number is already on another rabbt account.", 409)
                     phones[m] = uid
                     u["phone"] = phone
                 else:

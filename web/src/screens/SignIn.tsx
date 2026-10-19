@@ -31,7 +31,7 @@ export function SignIn({ error }: { error: string | null }) {
           : <RabbitLoader size={80} gentle decorative />}
       </div>
       <div>
-        <h1 className="font-display text-4xl text-(--brand)">Rabbit</h1>
+        <h1 className="font-display text-4xl text-(--brand)">rabbt</h1>
         <p className="mt-2 text-(--text-secondary)">Your training pacer. Prep, reviews, and a nudge when you need it.</p>
       </div>
       {error && (

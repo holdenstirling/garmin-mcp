@@ -230,7 +230,7 @@ def compute(event: dict[str, Any], athlete: dict[str, Any] | None, *, today: dat
         if plan and forecast:
             act = "Stick with your plan's long and steady weeks: they're what lifts your fitness"
         elif plan:
-            act = "Rebuild your plan around this race so Rabbit can ramp your training safely"
+            act = "Rebuild your plan around this race so rabbt can ramp your training safely"
         else:
             hours = max(3, round(target * 7 / 50))
             act = f"Work up to about {hours} h a week of mostly easy training"

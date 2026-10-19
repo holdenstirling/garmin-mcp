@@ -668,7 +668,7 @@ EXTRACT_TOOL: dict[str, Any] = {
 Structured = Callable[..., Awaitable[dict[str, Any]]]
 
 
-HEIC_MESSAGE = ("That's an iPhone HEIC photo, which Rabbit can't read here. Take a screenshot of it "
+HEIC_MESSAGE = ("That's an iPhone HEIC photo, which rabbt can't read here. Take a screenshot of it "
                 "(or share it as JPEG) and drop that instead.")
 FIT_MESSAGE = ("Garmin .fit workout files can't be read here. Export the workout as a Zwift "
                ".zwo (or the plan as CSV) and drop that instead.")
@@ -684,12 +684,12 @@ def link_message(text: str) -> str | None:
     if re.match(r"https?://(docs|drive|sheets)\.google\.com/", m[1], re.I):
         kind = "Sheets" if "/spreadsheets/" in m[1] else "Docs"
         what = "CSV" if kind == "Sheets" else "PDF"
-        return (f"That's a Google {kind} link, and Rabbit can't open private documents. In Google {kind} "
+        return (f"That's a Google {kind} link, and rabbt can't open private documents. In Google {kind} "
                 f"choose File → Download → {what}, then drop the file here.")
     if "trainingpeaks.com" in m[1].lower():
         return ("That's a TrainingPeaks link. Export the workouts (CSV) or save the calendar (.ics) "
                 "from TrainingPeaks, then drop the file here.")
-    return "Rabbit can't open links. Download the file and drop it here, or paste the plan's text."
+    return "rabbt can't open links. Download the file and drop it here, or paste the plan's text."
 
 
 def detect(data: bytes, name: str) -> str:
@@ -767,7 +767,7 @@ def _block(kind: str, data: bytes, name: str) -> dict[str, Any]:
                  "source": {"type": "base64", "media_type": "application/pdf", "data": b64}}
     else:
         if len(data) > MAX_TEXT:
-            raise PlanImportError("That text file is too large for Rabbit to read (max 200 KB). "
+            raise PlanImportError("That text file is too large for rabbt to read (max 200 KB). "
                                   "Use the CSV template instead.")
         block = {"type": "document", "title": name[:100] or "plan.txt",
                  "source": {"type": "text", "media_type": "text/plain",
@@ -800,7 +800,7 @@ async def extract(structured: Structured, kind: str | list[tuple[str, bytes, str
         out = {}
     sessions = out.get("sessions")
     if not isinstance(sessions, list) or not sessions:
-        raise PlanImportError("Rabbit couldn't find any sessions in that file. Try the CSV template.")
+        raise PlanImportError("rabbt couldn't find any sessions in that file. Try the CSV template.")
     rows = []
     for i, s in enumerate(sessions[:MAX_ROWS], start=1):
         if isinstance(s, dict):
@@ -1343,7 +1343,7 @@ def rows_from_file(kind: str, data: bytes, *, tz: Any = None, mapping: Any = Non
                 if isinstance(got, tuple) and got[0]:
                     return got
             if not text.strip():
-                raise PlanImportError("That document has no text Rabbit can read.")
+                raise PlanImportError("That document has no text rabbt can read.")
             return {"text": text.encode()[:MAX_TEXT]}
         if kind in ("xlsx", "ods"):
             if kind == "xlsx":

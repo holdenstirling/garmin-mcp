@@ -21,7 +21,7 @@ export function UnitsGroup({ me, onChange }: { me: Me; onChange: () => void }) {
     catch (e) { setUnits(was); setErr((e as Error).message) } finally { setBusy(false) }
   }
   return (
-    <Group label="Units" footer={err ?? 'Distances, paces and weather everywhere in Rabbit, including its replies.'}>
+    <Group label="Units" footer={err ?? 'Distances, paces and weather everywhere in rabbt, including its replies.'}>
       <div role="radiogroup" aria-label="Units" className="grid grid-cols-2 gap-1 rounded-xl bg-(--bg-inset) p-1 m-3">
         {OPTIONS.map(([v, name, hint]) => (
           <button key={v} type="button" role="radio" aria-checked={units === v} disabled={busy}

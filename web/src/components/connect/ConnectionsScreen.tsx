@@ -37,11 +37,11 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
   return (
     <Screen title="Connected apps" onClose={onClose}>
       <p className="px-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
-        Rabbit reads from these so you never log anything by hand. Tap one to connect, sync or disconnect.
+        rabbt reads from these so you never log anything by hand. Tap one to connect, sync or disconnect.
       </p>
       <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
         <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
-        Rabbit only uses what each app lists, changes nothing there unless you ask (like sending a workout to your watch), and stores sign-ins encrypted. Disconnect anytime and Rabbit deletes its access.
+        rabbt only uses what each app lists, changes nothing there unless you ask (like sending a workout to your watch), and stores sign-ins encrypted. Disconnect anytime and rabbt deletes its access.
       </p>
       {err && !data ? <ErrorState message={err} onRetry={load} />
         : !data ? <div className="flex justify-center py-8"><RabbitLoader label="Checking your apps…" /></div>

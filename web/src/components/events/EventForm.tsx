@@ -72,21 +72,21 @@ export function EventKindFields({ value, onChange }: { value: EventFields; onCha
   return (
     <Card>
       {multi && (
-        <Field label="Last day" hint={kind === 'trip' ? 'Rabbit keeps those days short and easy.' : 'Optional. Rabbit plans rest days around it.'}>
+        <Field label="Last day" hint={kind === 'trip' ? 'rabbt keeps those days short and easy.' : 'Optional. rabbt plans rest days around it.'}>
           <input type="date" className={inputCls} value={value.end_date ?? ''} min={value.date || undefined}
             onChange={(e) => onChange({ end_date: e.target.value || null })} />
         </Field>
       )}
       {(group || kind === 'other') && (
         <RepeatFields date={value.date} value={value.recurring ?? null} onChange={(r) => onChange({ recurring: r })}
-          hint={group ? 'Leagues, weekly group rides, Tuesday volleyball: Rabbit puts each date on your schedule.' : undefined} />
+          hint={group ? 'Leagues, weekly group rides, Tuesday volleyball: rabbt puts each date on your schedule.' : undefined} />
       )}
       {(group || kind === 'other') && (
         <>
           <Field label="Start time" className="border-t border-(--border)">
             <input type="time" className={inputCls} value={value.time ?? ''} onChange={(e) => onChange({ time: e.target.value || null })} />
           </Field>
-          <Field label="How long" className="border-t border-(--border)" hint={kind === 'other' ? 'Add a length and Rabbit counts it as a workout.' : undefined}>
+          <Field label="How long" className="border-t border-(--border)" hint={kind === 'other' ? 'Add a length and rabbt counts it as a workout.' : undefined}>
             <NumberStepper label="how long" value={value.duration_min ?? null} min={10} max={600} step={15} suffix="min"
               onChange={(v) => onChange({ duration_min: v })} />
           </Field>

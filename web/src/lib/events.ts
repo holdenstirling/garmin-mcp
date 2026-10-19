@@ -125,11 +125,11 @@ export const EVENT_KINDS: [EventKind, string][] = [
 export const KIND_LABEL = Object.fromEntries(EVENT_KINDS) as Record<EventKind, string>
 /** One line under each kind chip. */
 export const KIND_HINT: Record<EventKind, string> = {
-  race: 'A race with a start line. Rabbit tapers you for it.',
+  race: 'A race with a start line. rabbt tapers you for it.',
   group_activity: 'Group ride or run, a league game, Tuesday volleyball. Repeat it weekly or monthly.',
-  trip: 'Training camp, adventure or hut trip. Rabbit lightens those days.',
+  trip: 'Training camp, adventure or hut trip. rabbt lightens those days.',
   challenge: 'A 14er, an FKT attempt, a solo century. Prepped like a training race.',
-  milestone: 'Wedding, a move, a new baby. Rabbit plans rest around it.',
+  milestone: 'Wedding, a move, a new baby. rabbt plans rest around it.',
   other: 'Anything else worth having on the calendar.',
 }
 export const kindOf = (e: { kind?: EventKind | null } | null | undefined): EventKind => e?.kind ?? 'race'

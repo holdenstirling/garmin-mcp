@@ -68,7 +68,7 @@ class Going:
         """Mark/unmark Going for ``listing``'s next occurrence (``listing`` = public shape with
         ``next.date``). ``day``, when sent, must be that occurrence (else 409: it moved on)."""
         if uid.startswith("coach_"):
-            raise DirectoryError("Community is for athletes on Rabbit.", 403)
+            raise DirectoryError("Community is for athletes on rabbt.", 403)
         if not isinstance(going, bool):
             raise DirectoryError("going must be true or false")
         nxt = listing.get("next") or {}

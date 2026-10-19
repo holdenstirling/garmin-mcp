@@ -246,7 +246,7 @@ class Blocks:
     # ------------------------------------------------------------ helpers --
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self._is_athlete(uid):
-            raise BlockError("Training blocks are for athletes on Rabbit.", 403)
+            raise BlockError("Training blocks are for athletes on rabbt.", 403)
 
     def _today(self, uid: str) -> date:
         return self._now(uid).date()

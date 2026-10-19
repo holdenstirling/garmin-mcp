@@ -957,7 +957,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     else if (a.id === 'month_recap') setMonthCard(a.month ?? lastMonth().month)
     else if (a.id === 'block' || a.id === 'block_checkin') blockMomentAction(a).then((m) => { if (m) showToast(m) }, (e) => showToast((e as Error).message))
     else if (a.id === 'pace' || a.id === 'pace_accept') openPaceSuggestion({ sport: a.sport, sid: a.sid, accept: a.id === 'pace_accept' })
-    else if (a.id === 'pace_later' && a.sid) dismissPace(a.sid).then(() => showToast('Okay, Rabbit will check again later.'), (e) => showToast((e as Error).message))
+    else if (a.id === 'pace_later' && a.sid) dismissPace(a.sid).then(() => showToast('Okay, rabbt will check again later.'), (e) => showToast((e as Error).message))
   }
   // Quick replies under Rabbit's latest message when it asks something (max 3).
   const lastRow = shownRows[shownRows.length - 1]
@@ -1002,7 +1002,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
     <button type="button" className={HEADER_ICON} data-tour="chat"
-      aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with Rabbit and friends'}
+      aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with rabbt and friends'}
       onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
       <MessagesSquare className="size-5" aria-hidden />
       {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
@@ -1018,20 +1018,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     return (
       <header className="flex shrink-0 items-center gap-2 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         {!isLog && (
-          <Button variant="ghost" size="icon" className="-mr-1" aria-label="Back to Rabbit" onClick={slideBack}>
+          <Button variant="ghost" size="icon" className="-mr-1" aria-label="Back to rabbt" onClick={slideBack}>
             <ChevronLeft className="size-5" />
           </Button>
         )}
-        <h1 className="sr-only">{isLog ? 'Rabbit' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
+        <h1 className="sr-only">{isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
         <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
-          aria-label={isLog ? 'Rabbit' : 'Back to Rabbit'} onClick={isLog ? goBack : slideBack}>
+          aria-label={isLog ? 'rabbt' : 'Back to rabbt'} onClick={isLog ? goBack : slideBack}>
           {/* App-icon tile, like the Home Screen icon (hops while Rabbit is replying) */}
           <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm">
             <RabbitLogo size={32} thinking={!under && status === 'streaming'} />
           </span>
           <span className="min-w-0">
             <span className="block truncate font-display text-lg leading-tight text-(--brand)">
-              {isLog ? 'Rabbit' : pending ? 'New chat' : thread?.title || 'New chat'}
+              {isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}
             </span>
             <span className="block truncate text-[0.6471rem] leading-tight text-muted-foreground">
               {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set'}
@@ -1068,7 +1068,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       const seed = m.turnKind === 'seed'
       return (
         <div key={m.id} className={seed ? 'rounded-xl border border-dashed border-border p-2' : ''}>
-          {seed && <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From Rabbit's log</p>}
+          {seed && <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From rabbt's log</p>}
           <CoachHeader label={m.label} ts={m.ts} />
           <MessageBubble message={m} showLabel={r.showLabel} pressProps={press} />
           {inLog && m.turnKind === 'proactive' && m.turnId && coachThread && (
@@ -1101,8 +1101,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 className="mx-4 mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2 text-left active:opacity-80">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--brand)"><RabbitLogo size={20} /></span>
                 <span className="min-w-0 flex-1 text-[0.8235rem] font-medium text-(--accent)">
-                  {waiting > 0 ? `Rabbit needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
-                    : `Rabbit has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
+                  {waiting > 0 ? `rabbt needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
+                    : `rabbt has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
               </button>
@@ -1182,7 +1182,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <button type="button" onClick={askFromHome} disabled={!me.chat.available}
             className="mx-auto flex min-h-11 w-full max-w-2xl items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-4 text-left text-[0.8235rem] text-(--text-muted) active:bg-(--bg-inset) disabled:opacity-50">
             <MessageCircle className="size-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 truncate">{me.chat.available ? 'Ask Rabbit anything…' : 'Chat isn’t configured yet'}</span>
+            <span className="min-w-0 flex-1 truncate">{me.chat.available ? 'Ask rabbt anything…' : 'Chat isn’t configured yet'}</span>
           </button>
         </div>
       </div>
@@ -1262,7 +1262,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Your plan file" subtitle={planLine(week, goal)}
                 onClick={() => open('plan')} />
-              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in Rabbit"
+              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in rabbt"
                 subtitle="Editable sessions you can send to your Garmin" onClick={startSetup} />
             </Group>
           ) : (
@@ -1407,7 +1407,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {renderHeader(!pending && isCoach)}
       {atLog && !typing && (
         <div className="shrink-0 px-4 pb-1">
-          <Segmented label="Rabbit" value={homeView} onChange={setHomeView}
+          <Segmented label="rabbt" value={homeView} onChange={setHomeView}
             options={[['home', 'Home'], ['chat', logNew > 0 && !readingLog ? `Chat · ${logNew} new` : 'Chat']] as const} />
         </div>
       )}
@@ -1423,7 +1423,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
             {pending.seedMsg && (
               <div className="rounded-xl border border-dashed border-border p-2">
-                <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From Rabbit's log</p>
+                <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From rabbt's log</p>
                 <CoachHeader label={pending.seedMsg.label} ts={pending.seedMsg.ts} />
                 <MessageBubble message={pending.seedMsg} showLabel={false} />
               </div>
@@ -1463,7 +1463,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 Hi{me.profile.name ? ` ${me.profile.name.split(' ')[0]}` : ''}, let's build your plan
               </p>
               <p className="mt-2 text-[0.8235rem] leading-snug text-(--text-secondary)">
-                Tell Rabbit about your race, your goals and your week. You'll get a plan from today to race day, with workouts you can send straight to your Garmin.
+                Tell rabbt about your race, your goals and your week. You'll get a plan from today to race day, with workouts you can send straight to your Garmin.
               </p>
             </div>
             <button type="button" onClick={startSetup}
@@ -1488,7 +1488,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 className="flex w-full items-center gap-3 border-t border-(--border) px-4 py-3 text-left active:bg-(--bg-inset)">
                 <MessageCircle className="size-4 shrink-0 text-(--text-secondary)" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.8235rem] text-(--text)">Just chat with Rabbit</span>
+                  <span className="block text-[0.8235rem] text-(--text)">Just chat with rabbt</span>
                   <span className="block text-[0.6471rem] text-(--text-muted)">Describe your race and training in your own words</span>
                 </span>
               </button>
@@ -1504,7 +1504,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             ))}>
           <RabbitLogo size={80} className="mb-3 opacity-40" />
           <p className="mb-2 font-display text-2xl leading-tight text-(--brand)">
-            {isCoach ? 'Chat with Rabbit' : 'Ready when you are.'}
+            {isCoach ? 'Chat with rabbt' : 'Ready when you are.'}
           </p>
           <p className="text-[0.7647rem] text-muted-foreground">
             {isCoach ? 'Morning briefs and workout notes land here. Ask anything about your training.'
@@ -1524,7 +1524,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <ReplyChips chips={chips} disabled={busy} onPick={(t) => void (isCoach ? sendFromLog(t, []) : send(t))} />
             {thinking && (
               <div className="flex items-center gap-2 pl-1 text-sm text-muted-foreground">
-                <div className="thinking-dots flex items-center gap-[3px]" role="status" aria-label="Rabbit is thinking"><span /><span /><span /></div>
+                <div className="thinking-dots flex items-center gap-[3px]" role="status" aria-label="rabbt is thinking"><span /><span /><span /></div>
               </div>
             )}
           </div>
@@ -1543,7 +1543,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           draft={draft}
           onMic={isCoach ? () => setVoice({}) : undefined}
           placeholder={!me.chat.available ? 'Chat isn’t configured yet' : waitingOnYou ? 'Approve or decline above…'
-            : status === 'streaming' ? 'Rabbit is replying…' : status === 'busy' ? 'Rabbit is replying in another chat…' : idlePrompt}
+            : status === 'streaming' ? 'rabbt is replying…' : status === 'busy' ? 'rabbt is replying in another chat…' : idlePrompt}
         />
       </div>
         </>
@@ -1648,7 +1648,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             setCoachAsk(false); onChange(); getProgress().then(setProgress, () => {})
             if (s === 'looking') showScreen('findcoach')
             else if (s === 'have_coach') showScreen('coaches')
-            else showToast('Going solo. Rabbit has your back.')
+            else showToast('Going solo. rabbt has your back.')
           }} />
       )}
       {reward && (

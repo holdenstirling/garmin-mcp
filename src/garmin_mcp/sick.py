@@ -395,7 +395,7 @@ def checkin_moment(sick: dict[str, Any], today: date) -> dict[str, Any] | None:
     if (today - _d(sick["start"])).days < 2:
         return None
     return {"type": "sick_checkin", "key": f"sick:{sick['id']}",
-            "text": "🛌 How are you feeling? When you're better, tap and Rabbit eases you back in. No catching up needed.",
+            "text": "🛌 How are you feeling? When you're better, tap and rabbt eases you back in. No catching up needed.",
             "actions": [{"id": "sick", "label": "I feel better"}]}
 
 

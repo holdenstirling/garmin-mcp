@@ -306,7 +306,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
             title = "New follower" if res["status"] == "active" else "Follow request"
             verb = "is now following" if res["status"] == "active" else "wants to follow"
             push(res["notify"], f"social-follow:{res['notify']}:{user_id}", 86400, title,
-                 f"{first_name(user_id)} {verb} your training on Rabbit.")
+                 f"{first_name(user_id)} {verb} your training on rabbt.")
         msg = f"You're following {first_name(pid)}." if res["status"] == "active" else f"Request sent to {first_name(pid)}."
         return JSONResponse({"ok": True, "status": res["status"], "message": msg})
 
@@ -400,7 +400,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         if res["notify"]:
             name = await run(lambda: clubs.name_of(cid, user_id)) or "a club"
             push(res["notify"], f"club-invite:{res['notify']}:{cid}", 86400, "Club invite",
-                 f"{first_name(user_id)} invited you to {name} on Rabbit.")
+                 f"{first_name(user_id)} invited you to {name} on rabbt.")
         return JSONResponse({"ok": True, "message": "Invite sent."})
 
     def _respond(accept: bool) -> Handler:
@@ -416,7 +416,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
             await run(lambda: clubs.decide(user_id, cid, mid, approve))
             if approve:
                 name = await run(lambda: clubs.name_of(cid, user_id)) or "the club"
-                push(mid, f"club-approved:{mid}:{cid}", 3600, "You're in", f"Welcome to {name} on Rabbit.")
+                push(mid, f"club-approved:{mid}:{cid}", 3600, "You're in", f"Welcome to {name} on rabbt.")
             return JSONResponse({"club": await run(lambda: _club_view(user_id, cid))})
         return h
 

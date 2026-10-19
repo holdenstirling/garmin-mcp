@@ -499,7 +499,7 @@ def parse_zwo(data: bytes) -> dict[str, Any]:
         elif tag == "maxeffort":
             raw.append(_step("work", mins(dur), 1.5))
     if not raw:
-        raise FormatError("That workout file has no steps Rabbit understands.")
+        raise FormatError("That workout file has no steps rabbt understands.")
     total = sum(s["minutes"] for s in raw)
     pcts = [s.get("pct") or 0 for s in raw]
     return {"name": text("name")[:60], "description": text("description")[:400], "sport": sport,
@@ -1150,7 +1150,7 @@ def _ics_event(s: dict[str, Any], d: str, stamp: str, seq: int) -> list[str]:
     return lines
 
 
-def export_ics(plan: dict[str, Any] | None, *, name: str = "Rabbit plan", now: datetime | None = None,
+def export_ics(plan: dict[str, Any] | None, *, name: str = "rabbt plan", now: datetime | None = None,
                only: str | None = None) -> str:
     """The plan as an iCal file: one event per session (rest days left out), titled
     "Run: Easy run", with the planned time and the detail in the description. A session with a
@@ -1159,7 +1159,7 @@ def export_ics(plan: dict[str, Any] | None, *, name: str = "Rabbit plan", now: d
     time, so importing again after a move or a new time updates the same calendar event."""
     when = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     stamp, seq = when.strftime("%Y%m%dT%H%M%SZ"), int(when.timestamp() // 60) - 29_000_000
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Rabbit//Training plan//EN", "CALSCALE:GREGORIAN",
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//rabbt//Training plan//EN", "CALSCALE:GREGORIAN",
              "METHOD:PUBLISH", f"X-WR-CALNAME:{_ics_escape(name)}"]
     for _, d, s in iter_sessions(plan or {}):
         if s["sport"] == "rest" or (only is not None and s.get("id") != only):

@@ -42,7 +42,7 @@ APPS: dict[str, dict[str, Any]] = {
             "Workouts Garmin didn't record (time, sport, distance), shown in your day",
         ],
         "never": [
-            "Oura data is never used in Rabbit's coaching chat: it is only shown in the app and used by fixed rules",
+            "Oura data is never used in rabbt's coaching chat: it is only shown in the app and used by fixed rules",
             "A workout never counts twice: if Garmin has it too, only Garmin's is used",
             "Never posts or changes anything in Oura",
         ],
@@ -57,7 +57,7 @@ APPS: dict[str, dict[str, Any]] = {
             "Shared with friends as a workout card only if you share workouts",
         ],
         "never": [
-            "WHOOP data is never used in Rabbit's coaching chat: it is only shown in the app",
+            "WHOOP data is never used in rabbt's coaching chat: it is only shown in the app",
             "A workout never counts twice: if Garmin has it too, only Garmin's is used",
             "Never shares your strain, heart rate or calories, and never changes anything in WHOOP",
         ],
@@ -87,7 +87,7 @@ APPS: dict[str, dict[str, Any]] = {
         ],
         "never": [
             "Completed workouts are not imported from TrainingPeaks; they come from Garmin only",
-            "Never changes or deletes workouts it didn't create, except one you move in Rabbit",
+            "Never changes or deletes workouts it didn't create, except one you move in rabbt",
             "Never asks for your TrainingPeaks password; the sign-in you paste is stored encrypted",
         ],
     },
@@ -101,10 +101,10 @@ APPS: dict[str, dict[str, Any]] = {
             "Shown on their day and, if you share workouts, as a card for friends",
         ],
         "never": [
-            "Apple Watch data is never used in Rabbit's coaching chat: it is only shown in the app",
+            "Apple Watch data is never used in rabbt's coaching chat: it is only shown in the app",
             "Heart rate, calories and other Health data are thrown away, never stored",
             "A workout never counts twice: if Garmin has it too, only Garmin's is used",
-            "Rabbit can't read Apple Health itself: it only gets what your Shortcut sends",
+            "rabbt can't read Apple Health itself: it only gets what your Shortcut sends",
         ],
     },
 }

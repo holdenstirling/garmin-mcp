@@ -58,7 +58,7 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
       <h2 className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
         What your data says
         <InfoTip label="these insights" align="start"
-          text="Patterns Rabbit spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." />
+          text="Patterns rabbt spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." />
       </h2>
       <Card>
         <ul className="divide-y divide-(--border)">
@@ -138,7 +138,7 @@ function Row({ i, open, onToggle, onDismiss, onOpenPlan, onOpenSession, onOpenGe
           {(i.confidence === 'low' || i.uses_oura) && (
             <p className="text-[0.6471rem] text-(--text-muted)">
               {i.confidence === 'low' ? 'Early pattern: based on only a few days. ' : ''}
-              {i.uses_oura ? 'Uses your Oura data: shown here only, never sent to Rabbit or your coach.' : ''}
+              {i.uses_oura ? 'Uses your Oura data: shown here only, never sent to rabbt or your coach.' : ''}
             </p>
           )}
           {note && <p role="status" className="text-[0.7059rem] text-(--accent)">{note}</p>}

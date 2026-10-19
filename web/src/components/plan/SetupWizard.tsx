@@ -284,7 +284,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             </span>
             <h3 className="font-display text-[1.6471rem] leading-tight text-(--brand)">Let's build your plan</h3>
             <p className="mt-2 max-w-sm text-[0.8824rem] leading-snug text-(--text-secondary)">
-              A few questions about your race, your goals and your week. Rabbit turns them into a
+              A few questions about your race, your goals and your week. rabbt turns them into a
               week-by-week plan with structured workouts, and can put them on your Garmin.
             </p>
           </div>
@@ -308,7 +308,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             })}
           </Card>
           <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">
-            About 3 minutes.{me.garmin.connected ? ' Rabbit can fill in what Garmin already knows.' : ''}
+            About 3 minutes.{me.garmin.connected ? ' rabbt can fill in what Garmin already knows.' : ''}
           </p>
           <div className="flex flex-col gap-2">
             <Button variant="primary" className="h-12 text-[0.8824rem]" onClick={next}>Get started</Button>
@@ -372,7 +372,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
               </Field>
             )}
             {sports.length > 1 && (
-              <Field label="Which needs the most work?" hint="Rabbit adds a little extra time there.">
+              <Field label="Which needs the most work?" hint="rabbt adds a little extra time there.">
                 <MultiChoice value={(g.limiters ?? []) as ('swim' | 'bike' | 'run')[]}
                   options={sports.filter((s): s is 'swim' | 'bike' | 'run' => s === 'swim' || s === 'bike' || s === 'run').map((s) => [s, s[0]!.toUpperCase() + s.slice(1)] as const)}
                   onChange={(v) => setG({ limiters: v })} />
@@ -388,7 +388,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
       {step === 'you' && (
         <>
-          <StepIntro eyebrow="About you" title="Tell Rabbit about yourself">
+          <StepIntro eyebrow="About you" title="Tell rabbt about yourself">
             This sets how hard the plan ramps up. All of it is optional except your experience.
           </StepIntro>
           {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
@@ -412,7 +412,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       {step === 'week' && (
         <>
           <StepIntro eyebrow="Your week" title="When can you train?">
-            Rabbit starts close to what you do now and builds gradually from there.
+            rabbt starts close to what you do now and builds gradually from there.
           </StepIntro>
           <WeekFields a={a} setA={setA} sports={sports} />
         </>
@@ -477,7 +477,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
           <WeekPreview week={plan.weeks.find((w) => w.index === plan.current_week) ?? plan.weeks[0]!} />
 
           <Card>
-            <Field label="Put it on your watch" hint="Rabbit adds upcoming sessions to your Garmin calendar as structured workouts. Re-sync anytime from the plan.">
+            <Field label="Put it on your watch" hint="rabbt adds upcoming sessions to your Garmin calendar as structured workouts. Re-sync anytime from the plan.">
               {me.garmin.connected ? (
                 <div className="flex flex-col gap-2.5">
                   <ChipRow>

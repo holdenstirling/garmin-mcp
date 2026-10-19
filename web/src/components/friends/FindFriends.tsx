@@ -97,7 +97,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
               </ul>
             ) : (
               <EmptyState compact mode="think" title={`No one found for “${q.trim()}”`}
-                body="Try their @handle, full email or phone number. Not on Rabbit yet? Invite them."
+                body="Try their @handle, full email or phone number. Not on rabbt yet? Invite them."
                 action="Invite friends" onAction={() => setSheet('invite')} />
             )}
           </section>
@@ -168,7 +168,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
         </button>
       </div>
 
-      {sheet === 'invite' && <ShareSheet target={{ kind: 'invite', label: 'Rabbit' }} onClose={() => setSheet(null)} />}
+      {sheet === 'invite' && <ShareSheet target={{ kind: 'invite', label: 'rabbt' }} onClose={() => setSheet(null)} />}
       {sheet === 'contacts' && <ContactsSheet onClose={() => { setSheet(null); load() }} />}
       {sheet === 'qr' && <QrSheet onClose={() => setSheet(null)} onScanned={(c) => { setSheet(null); setCode(c) }} />}
       {sheet === 'me' && <FindMeSheet onClose={() => setSheet(null)} onSaved={setMe} />}

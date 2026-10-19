@@ -374,4 +374,4 @@ def test_workout_note_push_uses_headline(env) -> None:
         loop.call_soon_threadsafe(loop.stop)
         t.join(2)
     assert sent == [("Fastest 5K in 6 weeks: 24:12", "/app/?open=reward&activity=9"),
-                    ("Rabbit", "/app/?open=coach"), ("Morning brief", "/app/?open=coach")]
+                    ("rabbt", "/app/?open=coach"), ("Morning brief", "/app/?open=coach")]

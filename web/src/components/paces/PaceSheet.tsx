@@ -113,7 +113,7 @@ export function PaceSheet({ suggestion, imperial, onClose, onChanged, accepted }
               <span className="font-mono text-[1.0588rem] font-semibold tabular-nums text-(--text)">{fmtThreshold(s.sport, s.new, imperial)}</span>
             </span>
           </div>
-          {s.capped && <p className="m-0 px-1 text-[0.7059rem] text-(--text-muted)">Your efforts point even further, so Rabbit moves one safe step now and checks again in two weeks.</p>}
+          {s.capped && <p className="m-0 px-1 text-[0.7059rem] text-(--text-muted)">Your efforts point even further, so rabbt moves one safe step now and checks again in two weeks.</p>}
           <button type="button" aria-expanded={why} onClick={() => setWhy((v) => !v)}
             className="hit-44 flex min-h-11 items-center gap-1.5 self-start px-1 text-[0.7647rem] font-medium text-(--accent)">
             See why <ChevronDown className={`size-4 transition-transform ${why ? 'rotate-180' : ''}`} aria-hidden />
@@ -134,7 +134,7 @@ export function PaceSheet({ suggestion, imperial, onClose, onChanged, accepted }
                 </p>
               )}
               <p className="m-0 text-[0.7059rem] text-(--text-muted)">
-                Rabbit looks at quality efforts from the last 3 weeks (tempo and threshold laps, races, hard 20-60 min efforts) and skips hot, hilly or high-altitude ones. Only today's and future workouts change.
+                rabbt looks at quality efforts from the last 3 weeks (tempo and threshold laps, races, hard 20-60 min efforts) and skips hot, hilly or high-altitude ones. Only today's and future workouts change.
               </p>
             </div>
           )}

@@ -120,7 +120,7 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
             <CalendarPlus className="size-3.5" aria-hidden /> Add to calendar
           </a>
         )}
-        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On Rabbit</span>}
+        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On rabbt</span>}
         <button type="button" aria-expanded={more} className={cn(linkCls, 'ml-auto text-(--text-muted)')} onClick={() => setMore((v) => !v)}>
           More <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden />
         </button>
@@ -129,7 +129,7 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
         <div className="flex flex-wrap items-center gap-x-4 border-t border-(--border) pt-1">
           {!l.linked_club && (
             <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
-              <Plus className="size-3.5" aria-hidden /> Start a Rabbit group
+              <Plus className="size-3.5" aria-hidden /> Start a rabbt group
             </button>
           )}
           {onFeature && (
@@ -168,7 +168,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
   return (
     <Sheet title="Suggest a club or league" onClose={onClose}>
           <p className="text-[0.7647rem] text-(--text-secondary)">
-            Rabbit reads the club's public page on its next update for {city}, {state} and adds it here.
+            rabbt reads the club's public page on its next update for {city}, {state} and adds it here.
           </p>
           <Field label="Name"><input className={inputCls} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Sloan Lake Striders" /></Field>
           <Field label="Website" hint="The club's own site. Facebook, Meetup and Strava pages can't be read.">
@@ -222,15 +222,15 @@ function ClubSearch({ q, filters, card, onSuggest }: { q: string; filters: DirFi
       {look.busy && <RabbitLoader className="py-3" label={`Looking for “${q}” near ${res.metro?.label ?? 'you'}`} cycle={LOOKING} />}
       {!look.busy && look.out && look.out.status !== 'found' && (
         <EmptyState compact
-          title={look.out.status === 'none' ? `Rabbit couldn't find “${q}” online` : look.out.status === 'limit' ? "That's plenty of look-ups for today" : "Look-ups aren't available right now"}
-          body="Know the club's website? Send it and Rabbit adds it on the next update."
+          title={look.out.status === 'none' ? `rabbt couldn't find “${q}” online` : look.out.status === 'limit' ? "That's plenty of look-ups for today" : "Look-ups aren't available right now"}
+          body="Know the club's website? Send it and rabbt adds it on the next update."
           action="Suggest the club" onAction={onSuggest} />
       )}
       {look.err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{look.err}</p>}
       {!look.busy && !look.out && rows.length === 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-(--border-strong) p-4 text-center">
-          <p className="text-[0.8235rem] font-medium text-(--text)">No “{q}” in Rabbit's list for {res.metro?.label ?? 'your city'} yet</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">Rabbit can look it up online and add it for everyone here. Takes about 20 seconds.</p>
+          <p className="text-[0.8235rem] font-medium text-(--text)">No “{q}” in rabbt's list for {res.metro?.label ?? 'your city'} yet</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">rabbt can look it up online and add it for everyone here. Takes about 20 seconds.</p>
           {res.can_look_up ? lookUpBtn(`Look up “${q}”`) : (
             <Button variant="default" className="h-11 text-[0.8235rem]" onClick={onSuggest}>Suggest the club's website</Button>
           )}
@@ -376,7 +376,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       ) : crawling ? (
         <div className="flex flex-col gap-2">
           <RabbitLoader className="py-4" label={`Finding clubs and leagues in ${metro.label}`} cycle={CRAWLING} />
-          <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">Rabbit is reading club pages for your city. This takes a few minutes.</p>
+          <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">rabbt is reading club pages for your city. This takes a few minutes.</p>
         </div>
       ) : (
         activity || weekday || when ? (
@@ -386,7 +386,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
         ) : (
           <>
             <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
-              body="Know a club, track night or league? Search for it above, or tap Suggest one below and Rabbit checks it." />
+              body="Know a club, track night or league? Search for it above, or tap Suggest one below and rabbt checks it." />
             <SponsoredCard placement="directory_empty" />
           </>
         )

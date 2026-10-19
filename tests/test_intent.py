@@ -51,7 +51,7 @@ def test_athlete_field_validated_and_ordered(env) -> None:  # noqa: F811
 def test_context_line(env) -> None:  # noqa: F811
     assert intent.context_line([]) == ""
     line = intent.context_line(["community", "events"])
-    assert line.startswith("Uses Rabbit mainly for") and line.index("friends, clubs") < line.index("events, races")
+    assert line.startswith("Uses rabbt mainly for") and line.index("friends, clubs") < line.index("events, races")
     assert "don't push a race plan" in line
     assert "don't push" not in intent.context_line(["train", "community"])
     assert "—" not in line
@@ -59,7 +59,7 @@ def test_context_line(env) -> None:  # noqa: F811
     agent.coach.update_athlete("friend", {"intents": ["consistent"]})
     intent.save(env.store, "friend", ["consistent"])
     ctx = agent.coach.context_block("friend", agent._now("friend"), None)
-    assert ctx.count("Uses Rabbit mainly for") == 1 and "staying active and consistent" in ctx
+    assert ctx.count("Uses rabbt mainly for") == 1 and "staying active and consistent" in ctx
     assert "welcomed_at" not in ctx and "intents:" not in ctx
 
 
@@ -159,4 +159,4 @@ def test_api_first_run_existing_and_coach(env, tmp_path) -> None:  # noqa: F811
             # mutating calls need the origin
             assert (await n.post("/app/api/intent", json={"skip": True})).status_code == 403
     asyncio.run(go_())
-    assert "Uses Rabbit mainly for" in agent.coach.context_block("friend", agent._now("friend"), None)
+    assert "Uses rabbt mainly for" in agent.coach.context_block("friend", agent._now("friend"), None)

@@ -1,7 +1,7 @@
 {
-  "name": "Rabbit",
-  "short_name": "Rabbit",
-  "description": "Your training pacer: Garmin-aware prep and reviews.",
+  "name": "rabbt",
+  "short_name": "rabbt",
+  "description": "rabbt: your training plan, your coach and your crew.",
   "id": "/app/",
   "start_url": "/app/",
   "scope": "/app/",

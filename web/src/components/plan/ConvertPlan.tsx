@@ -40,7 +40,7 @@ export function ConvertPlanScreen({ onClose, onApplied, onImportOther }: {
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <RabbitLoader size={64} cycle={READING} />
           <p className="max-w-xs text-[0.8235rem] leading-snug text-(--text-secondary)">
-            Rabbit turns each day of your plan into a full workout with zones, pace and cadence. You'll check it before anything changes.
+            rabbt turns each day of your plan into a full workout with zones, pace and cadence. You'll check it before anything changes.
           </p>
         </div>
       )}

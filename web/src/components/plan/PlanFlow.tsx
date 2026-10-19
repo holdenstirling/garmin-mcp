@@ -142,7 +142,7 @@ export function LeverFields({ v, set, start, setStart, minStart, maxStart }: {
           ))}
         </ChipRow>
       </Field>
-      <Field label="Most hours a week" className="border-t border-(--border)" hint="A ceiling: Rabbit starts near what you do now and builds slowly toward it.">
+      <Field label="Most hours a week" className="border-t border-(--border)" hint="A ceiling: rabbt starts near what you do now and builds slowly toward it.">
         <NumberStepper label="hours a week" value={v.weekly_hours ?? null} min={1} max={25} step={0.5} decimals={1} suffix="h"
           typical={[3, 4, 5, 6, 8, 10, 12]} onChange={(n) => set({ weekly_hours: n })} />
       </Field>
@@ -259,7 +259,7 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
         </div>
       }>
       <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
-        Change what fits your life. Rabbit rebuilds from today, keeps the slow build, and shows what moves before anything changes. You can undo it.
+        Change what fits your life. rabbt rebuilds from today, keeps the slow build, and shows what moves before anything changes. You can undo it.
       </p>
       <LeverFields v={v} set={set} />
       {changed && !tooFew && (prev.busy && !prev.diff ? (
@@ -274,7 +274,7 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
           <MessageCircleHeart className="size-4 shrink-0 text-(--accent)" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block text-[0.8235rem] text-(--text)">Check in on my week</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">Tired, sore, busy next week? Rabbit suggests changes.</span>
+            <span className="block text-[0.7059rem] text-(--text-muted)">Tired, sore, busy next week? rabbt suggests changes.</span>
           </span>
         </button>
       )}
@@ -427,7 +427,7 @@ export function WeekCheckCard({ force, onApplied, onClose }: { force?: boolean; 
         <CalendarCheck className="size-5 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="block text-[0.8235rem] font-semibold text-(--accent)">How was this week?</span>
-          <span className="block text-[0.7059rem] text-(--text-secondary)">Three taps, and Rabbit fits next week to how you feel.</span>
+          <span className="block text-[0.7059rem] text-(--text-secondary)">Three taps, and rabbt fits next week to how you feel.</span>
         </span>
         <ArrowRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
       </button>
@@ -483,7 +483,7 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
       </Card>
       {prop && (
         <Card>
-          <Field label={prop.status === 'suggest' ? "Rabbit suggests for next week" : 'Next week'}>
+          <Field label={prop.status === 'suggest' ? "rabbt suggests for next week" : 'Next week'}>
             {(prop.reasons ?? []).map((r) => <p key={r} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{r}</p>)}
             {calHint && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)"><span className="font-semibold text-(--text)">From your calendar:</span> {calHint}</p>}
             {changes.length > 0 && (

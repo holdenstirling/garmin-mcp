@@ -143,7 +143,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
     async def template(request: Request, user_id: str) -> Response:
         aid, _, _ = await plan_call(lambda: who(request, user_id, edit=False))
         return Response(csv_template(plans.today(aid)), media_type="text/csv",
-                        headers={"Content-Disposition": 'attachment; filename="rabbit-plan-template.csv"'})
+                        headers={"Content-Disposition": 'attachment; filename="rabbt-plan-template.csv"'})
 
     def mode_of(v: Any) -> str:
         if v in (None, ""):
@@ -282,7 +282,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
         else:
             body, media = export_ics(plan, name=name), "text/calendar; charset=utf-8"
         return Response(body, media_type=media, headers={
-            "Content-Disposition": f'attachment; filename="rabbit-{slug}.{fmt}"', "Cache-Control": "no-store"})
+            "Content-Disposition": f'attachment; filename="rabbt-{slug}.{fmt}"', "Cache-Control": "no-store"})
 
     async def rows(request: Request, user_id: str) -> Response:
         raw = await read_capped(request, MAX_ROWS_BODY)
@@ -295,7 +295,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
         def run() -> dict[str, Any]:
             aid, _, _ = who(request, user_id)
             src = body.get("source") if body.get("source") in ("grid", "template") else "grid"
-            return importer.preview(aid, body["rows"], actor=user_id, source="Rabbit" if src == "grid" else "template",
+            return importer.preview(aid, body["rows"], actor=user_id, source="rabbt" if src == "grid" else "template",
                                     name=body.get("name") if isinstance(body.get("name"), str) else None, mode=mode)
         return JSONResponse({"preview": await plan_call(run)})
 
@@ -433,12 +433,12 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
                 raise user_error(str(e)) from None
             except Exception as e:  # model down, rate limited, refused
                 log_event(logger, logging.WARNING, "plan_import_model_failed", error=type(e).__name__)
-                raise user_error("Rabbit couldn't read that file just now. Try again in a minute, "
+                raise user_error("rabbt couldn't read that file just now. Try again in a minute, "
                                  "or use the CSV template.", 502) from None
             got += rows
-            label += " (read by Rabbit)"
+            label += " (read by rabbt)"
             pname = mname or pname
-            warns = ["Rabbit read this file: check the sessions before you apply."] + w2 + warns
+            warns = ["rabbt read this file: check the sessions before you apply."] + w2 + warns
         if not got:
             raise user_error("No sessions found in that file.")
         workout_only = bool(workouts) and not ai_parts and len(got) == len(workouts)
@@ -456,7 +456,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
             raise ValueError("body")
         await plan_call(lambda: who(request, user_id))
         if planlinks.google_export_url(url.strip()) is None:
-            raise user_error("Rabbit only opens Google Sheets and Docs links. Download the file and drop it "
+            raise user_error("rabbt only opens Google Sheets and Docs links. Download the file and drop it "
                              "here, or paste the plan's text.")
         try:
             pv = await preview_parts(request, user_id, [(("link"), url.strip().encode())], body=body)
@@ -609,7 +609,7 @@ def make_routes(*, importer: ImportService, plans: Any, coach: Any, links: Any, 
         except PlanImportError as e:
             raise user_error(str(e)) from None
         if "mapping" in pv:  # a sheet whose columns need picking: hand it to the upload flow
-            raise user_error("Rabbit needs you to pick the columns in that sheet. "
+            raise user_error("rabbt needs you to pick the columns in that sheet. "
                              "Import it from Schedule > Add > Import a plan.")
         return JSONResponse({"preview": pv}, status_code=201, headers={"Cache-Control": "no-store"})
 

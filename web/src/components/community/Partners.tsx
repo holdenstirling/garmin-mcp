@@ -81,7 +81,7 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
           <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
         </button>
       ))}
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Partners are local groups Rabbit works with. Shown because you're near {metro}.</p>
+      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Partners are local groups rabbt works with. Shown because you're near {metro}.</p>
       {open && <PartnerSheet p={open} onClose={() => setOpen(null)} />}
     </section>
   )
@@ -155,7 +155,7 @@ export function PartnerSheet({ p, onClose }: { p: Partner; onClose: () => void }
         </Button>
         <p className="flex items-start gap-1.5 text-[0.6471rem] leading-snug text-(--text-muted)">
           <Info className="mt-px size-3 shrink-0" aria-hidden />
-          Partners are local groups Rabbit works with. Links open their own pages; Rabbit doesn't share anything about you with them.
+          Partners are local groups rabbt works with. Links open their own pages; rabbt doesn't share anything about you with them.
         </p>
       </>
     </Sheet>
@@ -215,7 +215,7 @@ export function SponsoredCard({ placement, zip, card: given, className }: {
       </button>
       {why && (
         <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">
-          {card.why ?? `${card.name} is a Rabbit partner shown to people in its area.`} Rabbit doesn't share anything about you with partners.
+          {card.why ?? `${card.name} is a rabbt partner shown to people in its area.`} rabbt doesn't share anything about you with partners.
         </p>
       )}
       {open && <PartnerSheet p={card} onClose={() => setOpen(false)} />}

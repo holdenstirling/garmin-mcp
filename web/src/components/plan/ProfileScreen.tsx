@@ -65,7 +65,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         () => setQueued(true))
       draft.clear(); setQueued(false)
       setSaved(true)
-      setMsg({ text: 'Saved. Rabbit uses these from now on.', ok: true })
+      setMsg({ text: 'Saved. rabbt uses these from now on.', ok: true })
       onSaved()
     } catch (e) { setMsg({ text: (e as Error).message, ok: false }) }
     finally { setBusy(null) }
@@ -112,7 +112,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
           <StepIntro eyebrow="About you" title="Experience and body" />
           <YouFields a={a} setA={setA} sports={sports} />
           <Card>
-            <Field label="Background" hint="Races done, years training, anything Rabbit should know.">
+            <Field label="Background" hint="Races done, years training, anything rabbt should know.">
               <textarea className={areaCls} value={a.experience ?? ''} maxLength={300} onChange={(e) => setA({ experience: e.target.value })} />
             </Field>
             <Field label="Coaching style" className="border-t border-(--border)" hint="How you like feedback, sessions you love or hate.">

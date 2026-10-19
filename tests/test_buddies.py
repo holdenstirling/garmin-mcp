@@ -124,7 +124,7 @@ def test_blocking_hiding_say_hi_limits_and_coach(bud) -> None:
     assert e.value.status == 404  # blocked
     b.save("dan", PROFILE)
     assert b.say_hi("ann", "dan") == {"id": "c1"}
-    assert w.said[-1][:2] == ("ann", "dan") and w.said[-1][2].startswith("Hi Dan! Rabbit matched us")
+    assert w.said[-1][:2] == ("ann", "dan") and w.said[-1][2].startswith("Hi Dan! rabbt matched us")
     for _ in range(9):
         b.say_hi("ann", "dan", "again")
     with pytest.raises(BuddyError) as e:

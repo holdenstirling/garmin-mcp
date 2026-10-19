@@ -83,7 +83,7 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
               {p.city && <p className="text-[0.7647rem] text-(--text-muted)">{p.city}</p>}
               <p className="mt-1 text-[0.7647rem] text-(--text-secondary)">
                 {p.me ? 'This is you' : [p.follows_you && 'Follows you', p.following && 'You follow them',
-                  p.in_common.clubs.length > 0 && `${p.in_common.clubs.length} club${p.in_common.clubs.length === 1 ? '' : 's'} in common`].filter(Boolean).join(' · ') || 'On Rabbit'}
+                  p.in_common.clubs.length > 0 && `${p.in_common.clubs.length} club${p.in_common.clubs.length === 1 ? '' : 's'} in common`].filter(Boolean).join(' · ') || 'On rabbt'}
               </p>
             </div>
           </section>
@@ -170,7 +170,7 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
         <Sheet title={`Block ${p.person.name}?`} onClose={() => setMenu(null)} portal
           footer={<div className="flex gap-2 p-4"><Button variant="default" className="h-11 flex-1" onClick={() => setMenu(null)}>Cancel</Button>
             <Button variant="primary" className="h-11 flex-1" loading={busy} onClick={() => void doBlock()}>Block</Button></div>}>
-          <p className="p-4 text-[0.8235rem] text-(--text-secondary)">You won't see each other anywhere on Rabbit, and they can't message you. They aren't told.</p>
+          <p className="p-4 text-[0.8235rem] text-(--text-secondary)">You won't see each other anywhere on rabbt, and they can't message you. They aren't told.</p>
         </Sheet>
       )}
       {menu === 'report' && p && (

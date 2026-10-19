@@ -88,7 +88,7 @@ export async function drawMonthCard(canvas: HTMLCanvasElement, r: MonthRecap): P
   ctx.fillStyle = INK
   ctx.textBaseline = 'alphabetic'
   ctx.font = `44px ${SERIF}`
-  ctx.fillText('Rabbit', pad + 80, pad + 44)
+  ctx.fillText('rabbt', pad + 80, pad + 44)
 
   ctx.fillStyle = SOFT
   ctx.font = `500 30px ${MONO}`
@@ -134,7 +134,7 @@ export async function drawMonthCard(canvas: HTMLCanvasElement, r: MonthRecap): P
 
   ctx.fillStyle = MUTED
   ctx.font = `26px ${SANS}`
-  ctx.fillText('Trained with Rabbit', pad, CARD_H - 64)
+  ctx.fillText('Trained with rabbt', pad, CARD_H - 64)
 }
 
 export function cardBlob(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -143,7 +143,7 @@ export function cardBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 /** navigator.share with the PNG where the browser supports files, else a download. */
 export function shareCard(canvas: HTMLCanvasElement, r: MonthRecap): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  return shareImage(canvas, `rabbit-${r.label.toLowerCase()}-${r.year}.png`, `My ${r.label} on Rabbit`)
+  return shareImage(canvas, `rabbt-${r.label.toLowerCase()}-${r.year}.png`, `My ${r.label} on rabbt`)
 }
 
 /** Any card canvas: the system share sheet with the PNG where supported, else a download. */

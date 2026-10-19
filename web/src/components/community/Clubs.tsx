@@ -135,7 +135,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
       <PublicEventsNear />
 
       {near.length > 0 && (
-        <Group label={home ? `Rabbit clubs near ${home}` : 'Rabbit clubs to join'}>
+        <Group label={home ? `rabbt clubs near ${home}` : 'rabbt clubs to join'}>
           {near.map((c, i) => (
             <HopIn key={c.id} index={i} play={i < 5}>
               <Row icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={c.description || sub(c)}
@@ -300,7 +300,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           <ClubIcon c={c} size={64} />
           <p className="font-display text-[1.2941rem] text-(--brand)">{c.name}</p>
           {c.description && <p className="text-[0.8235rem] text-(--text-secondary)">{c.description}</p>}
-          <p className="text-[0.7059rem] text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on Rabbit can join.' : 'Admins approve new members.'}</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on rabbt can join.' : 'Admins approve new members.'}</p>
           {c.requested ? (
             <Button variant="default" className="h-11 px-5 text-[0.7647rem]" loading={busy}
               onClick={() => { setBusy(true); void act(() => cancelJoinRequest(c.id), 'Request withdrawn.').finally(() => setBusy(false)) }}>Requested · withdraw</Button>

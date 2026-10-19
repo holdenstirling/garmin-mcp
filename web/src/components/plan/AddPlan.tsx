@@ -192,14 +192,14 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
                 onClick={() => input.current?.click()} />
               <WayIn icon={<ClipboardPaste />} title="Paste text" text="An email, notes or a Google link"
                 selected={typing} onClick={() => setTyping((x) => !x)} />
-              <WayIn icon={<LayoutGrid />} title="Build in Rabbit" text="Week by week, with presets" onClick={onBuild} />
+              <WayIn icon={<LayoutGrid />} title="Build in rabbt" text="Week by week, with presets" onClick={onBuild} />
             </div>
             <input ref={input} type="file" multiple className="hidden" accept={ACCEPT}
               onChange={(e) => { if (e.target.files?.length) void sendFiles(e.target.files) }} />
             <p className="flex flex-wrap items-center gap-x-1 px-1 text-[0.6471rem] leading-snug text-(--text-muted)">
               <span className="hidden sm:inline">Drag files anywhere here, or press Ctrl/⌘+V to paste a screenshot or copied cells. </span>
               <span>Several photos of one plan? Pick them all at once.</span>
-              <InfoTip label="What works" text="CSV, TSV, Excel and OpenDocument sheets (any columns: Rabbit maps them, or asks; workbooks with several sheets too), week grids (weeks down, Mon–Sun across), TrainingPeaks workout CSV and calendar .ics, Zwift .zwo and .erg/.mrc workouts, Word .docx, PDFs and photos of printed plans, pasted text or email, and Google Sheets/Docs links that are published or shared with anyone. Garmin .fit files: export as .zwo instead." />
+              <InfoTip label="What works" text="CSV, TSV, Excel and OpenDocument sheets (any columns: rabbt maps them, or asks; workbooks with several sheets too), week grids (weeks down, Mon–Sun across), TrainingPeaks workout CSV and calendar .ics, Zwift .zwo and .erg/.mrc workouts, Word .docx, PDFs and photos of printed plans, pasted text or email, and Google Sheets/Docs links that are published or shared with anyone. Garmin .fit files: export as .zwo instead." />
             </p>
             <button type="button" onClick={() => setHelp(help === 'tp' ? null : 'tp')} aria-expanded={help === 'tp'}
               className="flex min-h-11 items-center gap-1.5 self-start px-1 text-[0.7647rem] font-medium text-(--accent)">
@@ -210,7 +210,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
                 <ol className="flex list-decimal flex-col gap-2 pl-5 text-[0.7647rem] leading-snug text-(--text-secondary)">
                   <li><span className="font-medium text-(--text)">Workouts (CSV).</span> In TrainingPeaks open Settings → Export Data, export workouts as CSV for the dates you want, then upload the .csv.</li>
                   <li><span className="font-medium text-(--text)">Calendar (iCal).</span> In calendar settings copy the iCal feed link, open it in a browser to save the .ics, then upload it.</li>
-                  <li><span className="font-medium text-(--text)">A training plan with weeks, not dates.</span> Upload it and choose “End on race day” in the review: Rabbit lines the last week up with your race, like applying a plan in TrainingPeaks.</li>
+                  <li><span className="font-medium text-(--text)">A training plan with weeks, not dates.</span> Upload it and choose “End on race day” in the review: rabbt lines the last week up with your race, like applying a plan in TrainingPeaks.</li>
                   <li><span className="font-medium text-(--text)">Single structured workouts.</span> Export as Zwift .zwo (or .erg/.mrc): the intervals arrive as steps that sync to Garmin.</li>
                 </ol>
               </Card>
@@ -223,11 +223,11 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
             <textarea aria-label="Plan text" className={cn(areaCls, 'min-h-36')} autoFocus value={text} onChange={(e) => setText(e.target.value)}
               placeholder={'Paste the plan: an email, notes, copied spreadsheet cells, or a Google Sheets/Docs link.\nWeek 1: Mon rest, Tue 6x400 at 5K pace, Thu 40\' easy, Sat long run 90\''} />
             {linkTyped && <LinkHint text={linkTyped} />}
-            {googleTyped && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Rabbit opens Google links that are published to the web or shared with “anyone with the link”.</p>}
+            {googleTyped && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">rabbt opens Google links that are published to the web or shared with “anyone with the link”.</p>}
             <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" disabled={!text.trim() || !!linkTyped} onClick={() => sendText(text)}>
               {googleTyped ? <><Link2 className="size-4" /> Open the link</> : <><ScanText className="size-4" aria-hidden /> Read it</>}
             </Button>
-            {status.ai_per_day > 0 && !googleTyped && <p className="text-[0.6471rem] text-(--text-muted)">Rabbit reads text, PDFs and photos: {status.ai_left} of {status.ai_per_day} reads left today. Spreadsheets and workout files don't count.</p>}
+            {status.ai_per_day > 0 && !googleTyped && <p className="text-[0.6471rem] text-(--text-muted)">rabbt reads text, PDFs and photos: {status.ai_left} of {status.ai_per_day} reads left today. Spreadsheets and workout files don't count.</p>}
           </Card>
         )}
 
@@ -258,7 +258,7 @@ function AddPlanScreen({ api, status, hasPlan, who, onClose, onPreview, onBuild 
           {help === 'csv' && (
             <div className="px-4 pb-3.5">
               <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">One row per workout with a date (or week + day), sport, title and time works best, in any column order. A week grid works too (weeks down, Monday to Sunday across, cells like “45' easy run”).</p>
-              <a href={api.templateUrl} download="rabbit-plan-template.csv"
+              <a href={api.templateUrl} download="rabbt-plan-template.csv"
                 className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text)">
                 <Download className="size-4" /> Download the CSV template
               </a>
@@ -354,7 +354,7 @@ function Templates({ tpl, busy, who, api, onPick, onMine }: {
           {more && <div className="grid grid-cols-2 gap-2">{rest.map((t) => tile(t, t.group !== 'general'))}</div>}
         </>
       )}
-      <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">Built by Rabbit's plan builder for the weekly hours and training days in the profile. Tap one to preview it.</p>
+      <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">Built by rabbt's plan builder for the weekly hours and training days in the profile. Tap one to preview it.</p>
     </section>
   )
 }
@@ -403,7 +403,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
   )
   return (
     <Screen title="Match the columns" subtitle={info.name} onBack={onBack} onClose={onBack} footer={footer}>
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">Rabbit wasn't sure about this sheet, so it guessed what each column means. Fix anything that's off: it needs a date (or week + day) and what the workout is.</p>
+      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">rabbt wasn't sure about this sheet, so it guessed what each column means. Fix anything that's off: it needs a date (or week + day) and what the workout is.</p>
       <Card>
         <p className="border-b border-(--border) px-4 py-2 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Your sheet: first 3 rows</p>
         <div className="overflow-x-auto">
@@ -452,7 +452,7 @@ function ColumnMapper({ info, aiLeft, busy, error, onBack, onUse, onAi }: {
       {error && <ErrorState compact message={error} />}
       {aiLeft > 0 && (
         <button type="button" disabled={busy} onClick={onAi} className="flex min-h-11 items-center gap-1.5 self-start px-1 text-[0.7647rem] font-medium text-(--accent) disabled:opacity-50">
-          <RabbitLogo size={16} current /> Let Rabbit read it instead
+          <RabbitLogo size={16} current /> Let rabbt read it instead
         </button>
       )}
     </Screen>

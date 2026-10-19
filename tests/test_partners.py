@@ -220,7 +220,7 @@ def test_sponsored_card_rules_disclosure_hide_and_counts(tmp_path, fernet_key) -
     p, _, t = make_partners(tmp_path, fernet_key)
     card = p.sponsored("bob", "local", "Denver", "CO")
     assert card and card["label"] == "Sponsored partner" and card["sponsored"] is True
-    assert card["why"] == "5280 Runners is a Rabbit partner shown to people near Denver, CO."
+    assert card["why"] == "5280 Runners is a rabbt partner shown to people near Denver, CO."
     # a Denver zip searched from anywhere shows it; Boston doesn't
     assert p.sponsored("cat", "search", "", "", ["80209"])["name"] == "5280 Runners"
     assert p.sponsored("cat", "search", "Boston", "MA", ["02116"]) is None

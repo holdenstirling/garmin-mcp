@@ -124,7 +124,7 @@ def test_share_routes(env, tmp_path) -> None:
             assert (await c.post("/app/api/sharelinks", headers=h, json={"kind": "invite"})).status_code == 403
             assert (await a.post("/app/api/sharelinks", json={"kind": "invite"})).status_code == 403  # no origin
             inv = await a.post("/app/api/sharelinks", headers=h, json={"kind": "invite"})
-            assert inv.status_code == 201 and "Rabbit" in inv.json()["text"]
+            assert inv.status_code == 201 and "rabbt" in inv.json()["text"]
             lst = (await a.get("/app/api/sharelinks")).json()["links"]
             assert {x["kind"] for x in lst} == {"workout", "activity", "invite"} and all("url" not in x for x in lst)
             assert (await a.request("DELETE", f"/app/api/sharelinks/{w['id']}", headers=h, json={})).status_code == 200

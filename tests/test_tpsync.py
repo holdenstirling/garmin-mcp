@@ -199,7 +199,7 @@ def test_push_creates_updates_moves_deletes_only_ours(tmp_path, fernet_key) -> N
     pushed = store.user_doc("friend", "tp_sync").load()["pushed"]
     assert set(pushed) == {"b0", "r1", "s5"}  # next 14 days only
     bike = fake.workouts[pushed["b0"]["wid"]]
-    assert bike["workoutTypeValueId"] == 2 and "structure" in bike and bike["description"].endswith("Planned in Rabbit.")
+    assert bike["workoutTypeValueId"] == 2 and "structure" in bike and bike["description"].endswith("Planned in rabbt.")
     assert json.loads(bike["structure"])["primaryIntensityMetric"] == "percentOfFtp"
     assert fake.workouts[pushed["s5"]["wid"]]["distancePlanned"] == 2000.0 and "structure" not in fake.workouts[pushed["s5"]["wid"]]
     # Rabbit is the source: our pushed run and the coach's run both match r1 -> one shown.
@@ -285,7 +285,7 @@ def test_move_syncs_date_to_trainingpeaks(tmp_path, fernet_key) -> None:
         tp.move("friend", ours, d(2))
         raise AssertionError("expected TPUserError")
     except TPUserError as e:
-        assert e.status == 409 and "Rabbit" in str(e)
+        assert e.status == 409 and "rabbt" in str(e)
 
 
 # --------------------------------------------------- expiry, 403, backoff --

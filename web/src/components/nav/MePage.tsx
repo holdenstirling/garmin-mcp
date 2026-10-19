@@ -54,7 +54,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
 
       <Group>
         {me.role === 'athlete' && (
-          <Row icon={<Icon><Compass /></Icon>} title="How you use Rabbit" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
+          <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         )}
         <Row icon={<Icon><ShieldCheck /></Icon>} title="Privacy & legal" subtitle="Privacy policy, terms, download or delete your data"
           onClick={() => onOpen('legal')} />
@@ -62,9 +62,9 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
 
       <Group label="You">
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
-        <Row icon={<Icon><RabbitLogo current /></Icon>} title="What Rabbit knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
+        <Row icon={<Icon><RabbitLogo current /></Icon>} title="What rabbt knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
         <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
-        <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; Rabbit eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
+        <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; rabbt eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
         <Row icon={<Icon><Users /></Icon>} title="Find friends" subtitle="Search, contacts, invite by text, QR code" onClick={() => openFindFriends()} />
         {me.role === 'athlete' && <ShareWorkoutsRow />}
       </Group>

@@ -161,7 +161,7 @@ function RecapBody({ r, onAsk }: { r: Recap; onAsk: (text: string) => void }) {
           ) : nw.target ? <p className="text-[0.7647rem] leading-snug text-(--text)">{nw.target}</p> : null}
           <Button variant="default" className="mt-1 h-9 gap-1.5"
             onClick={() => onAsk('About next week: ')}>
-            <MessageCircle className="size-4" /> Ask Rabbit about next week
+            <MessageCircle className="size-4" /> Ask rabbt about next week
           </Button>
         </div>
       </Card>

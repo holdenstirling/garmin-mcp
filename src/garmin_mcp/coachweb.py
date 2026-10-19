@@ -29,7 +29,7 @@ CACHE_S = 7 * 86400
 EMPTY_S = 3600   # an empty result is only trusted for an hour
 DOC_MAX = 300    # in the encrypted global doc
 CACHE_MAX = 500  # in memory
-LABEL = "From the web — not verified by Rabbit"
+LABEL = "From the web — not verified by rabbt"
 SPORT_WORDS = {"triathlon": "triathlon", "running": "running", "cycling": "cycling",
                "swimming": "swimming", "strength": "strength and conditioning for endurance athletes"}
 _CONTACT = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|\+?\d[\d\s().-]{7,}\d")

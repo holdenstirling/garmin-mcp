@@ -87,9 +87,9 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
         <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
         <span>
           Why not your password? TrainingPeaks has no public connection for apps and its sign-in uses a captcha,
-          so Rabbit can’t sign in for you. The value you paste lets Rabbit see your calendar; it’s stored encrypted
+          so rabbt can’t sign in for you. The value you paste lets rabbt see your calendar; it’s stored encrypted
           and never shown again. On a phone? Do this once on a computer. If you sign out of TrainingPeaks,
-          Rabbit asks you to reconnect.
+          rabbt asks you to reconnect.
         </span>
       </p>
     </div>
@@ -109,7 +109,7 @@ export function TPSourcePref({ source, onSaved, onToast }: {
     try {
       await setTPSource(s)
       onSaved(s); tpChanged()
-      onToast(s === 'rabbit' ? 'Rabbit plan is the source. Your next 14 days are in TrainingPeaks.' : 'TrainingPeaks plan is the source')
+      onToast(s === 'rabbit' ? 'rabbt plan is the source. Your next 14 days are in TrainingPeaks.' : 'TrainingPeaks plan is the source')
     } catch (e) { onToast((e as Error).message) } finally { setBusy(null) }
   }
   return (

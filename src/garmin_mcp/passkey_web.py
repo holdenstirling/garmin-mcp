@@ -65,7 +65,7 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
     def creation_options(challenge: str, handle: str, name: str, display: str, exclude: list[str]) -> dict[str, Any]:
         return {
             "challenge": challenge,
-            "rp": {"id": auth.rp_id, "name": "Rabbit"},
+            "rp": {"id": auth.rp_id, "name": "rabbt"},
             "user": {"id": handle, "name": name, "displayName": display},
             "pubKeyCredParams": [{"type": "public-key", "alg": a} for a in ALGS],
             "timeout": TIMEOUT_MS,
@@ -133,7 +133,7 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
             return _err(404, BAD_INVITE)
         name, email = clean_name(body.get("name")), normalize_email(body.get("email"))
         if email_taken(email):
-            raise AccessError("That email already has a Rabbit account. Sign in with your passkey instead.",
+            raise AccessError("That email already has a rabbt account. Sign in with your passkey instead.",
                               409, signin=True)
         user_id = "u_" + secrets.token_hex(8)
         handle = b64u(secrets.token_bytes(16))
@@ -187,7 +187,7 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
             raise WebAuthnError("bad credential id")
         stored = acc.credential(cred_id)
         if stored is None:
-            return _err(400, "Rabbit doesn't know that passkey. It may have been removed.")
+            return _err(400, "rabbt doesn't know that passkey. It may have been removed.")
         handle = (cred.get("response") or {}).get("userHandle")
         if handle and acc.handle_owner(handle) != stored["user_id"]:
             raise WebAuthnError("user handle mismatch")
@@ -196,7 +196,7 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
         uid = str(stored["user_id"])
         if not auth.is_athlete(uid):
             log_event(logger, logging.WARNING, "passkey_user_not_allowed", user_id=uid)
-            return _err(403, "This account no longer has access to Rabbit.")
+            return _err(403, "This account no longer has access to rabbt.")
         acc.touch_passkey(cred_id, count)
         log_event(logger, logging.INFO, "app_login_ok", user_id=uid, method="passkey")
         resp = _ok({"ok": True})
@@ -212,7 +212,7 @@ def make_routes(*, auth: WebAuth, api: Callable[..., Callable[[Request], Awaitab
 
     async def passkey_options(request: Request, user_id: str) -> Response:
         handle = acc.user_handle(user_id)
-        name = auth.profile(user_id).get("name") or "Rabbit athlete"
+        name = auth.profile(user_id).get("name") or "rabbt athlete"
         ch = acc.new_challenge(Challenge("add", acc._clock(), user_id=user_id, handle=handle))
         label = next((e for e, u in auth.athlete_emails().items() if u == user_id), name)
         return _ok({"publicKey": creation_options(ch, handle, label, name, acc.passkey_ids(user_id))})

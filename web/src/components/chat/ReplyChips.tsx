@@ -32,7 +32,7 @@ export function ReplyChips({ chips, onPick, disabled }: { chips: string[]; onPic
   )
 }
 
-export const COMPOSER_PROMPTS = ['Ask Rabbit anything…', 'How should I fuel my long run?', 'Am I ready for intervals today?']
+export const COMPOSER_PROMPTS = ['Ask rabbt anything…', 'How should I fuel my long run?', 'Am I ready for intervals today?']
 
 /** The composer's idle placeholder, gently rotating every 8 s (only while ``on``). */
 export function useRotatingPrompt(on: boolean, prompts: string[] = COMPOSER_PROMPTS): string {

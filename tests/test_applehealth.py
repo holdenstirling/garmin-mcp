@@ -165,7 +165,7 @@ def test_api_key_import_status_and_disconnect(env, tmp_path) -> None:  # noqa: F
             assert (await o.post(url, content=payload, headers={"authorization": "Bearer rbt_" + "z" * 30})).status_code == 401
             r = await o.post(url, content=payload, headers={"authorization": f"Bearer {key}"})
             assert r.status_code == 200, r.text
-            assert r.json()["received"] == 2 and r.json()["new"] == 2 and "Rabbit got 2 workouts" in r.json()["message"]
+            assert r.json()["received"] == 2 and r.json()["new"] == 2 and "rabbt got 2 workouts" in r.json()["message"]
             r = await o.post(url, content=payload, headers={"authorization": f"Bearer {key}"})
             assert r.json()["new"] == 0  # same workouts again: nothing new
             stored = [w for w in env.store.user_doc("friend", "extworkouts").load()["items"].values()]

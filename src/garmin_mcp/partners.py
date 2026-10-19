@@ -261,7 +261,7 @@ def sponsored_card(item: dict[str, Any], metro_label: str) -> dict[str, Any]:
     """A promotional card: always disclosed as sponsored, with the reason it shows."""
     near = metro_label or "your area"
     return {**public(item), "label": "Sponsored partner", "sponsored": True,
-            "why": f"{item['name']} is a Rabbit partner shown to people near {near}."}
+            "why": f"{item['name']} is a rabbt partner shown to people near {near}."}
 
 
 # -------------------------------------------------------------- service --

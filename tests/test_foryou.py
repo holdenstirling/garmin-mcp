@@ -228,6 +228,6 @@ def test_foryou_api_friends_bucket_and_quest(env, tmp_path, monkeypatch) -> None
 
 def test_interests_quest_is_optional() -> None:
     q = next(x for x in QUESTS if x[0] == "interests")
-    assert q == ("interests", "Tell Rabbit what you're into", "Personal race picks", 50, True)
+    assert q == ("interests", "Tell rabbt what you're into", "Personal race picks", 50, True)
     v = next(x for x in quests_view({"interests": True}, {}) if x["id"] == "interests")
     assert v["done"] and v["optional"]

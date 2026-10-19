@@ -67,7 +67,7 @@ function NigglesSheet({ startWithForm, affects, onClose }: { startWithForm: bool
       {data && data.proposal && <EaseCard p={data.proposal} onDone={() => { load(); try { window.dispatchEvent(new CustomEvent(PLAN_RELOAD)) } catch { /* ignore */ } }} />}
       {data && data.active.length === 0 && (
         <EmptyState compact title="Nothing's bugging you"
-          body="Log an ache or a tight spot early. Rabbit eases the plan around it and suggests prehab, so small things stay small." />
+          body="Log an ache or a tight spot early. rabbt eases the plan around it and suggests prehab, so small things stay small." />
       )}
       {data && data.active.map((n) => <NiggleCard key={n.id} n={n} onChanged={changed} />)}
       {data && data.resolved.length > 0 && (
@@ -189,7 +189,7 @@ function PainTrend({ h }: { h: Niggle['history'] }) {
         {pts.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.pain)} r="2.5" fill="var(--accent)" />)}
       </svg>
       <figcaption className="flex justify-between text-[0.6471rem] text-(--text-muted)">
-        <span>{fmtDay(first.date, { month: 'short', day: 'numeric' })}</span><span>dashed: 4/10, when Rabbit eases off</span><span>{fmtDay(last.date, { month: 'short', day: 'numeric' })}</span>
+        <span>{fmtDay(first.date, { month: 'short', day: 'numeric' })}</span><span>dashed: 4/10, when rabbt eases off</span><span>{fmtDay(last.date, { month: 'short', day: 'numeric' })}</span>
       </figcaption>
     </figure>
   )
@@ -204,7 +204,7 @@ function EaseCard({ p, onDone }: { p: NonNullable<Niggles['proposal']>; onDone: 
   }
   const SPORT = { run: 'run', bike: 'ride', swim: 'swim', brick: 'brick' } as Record<string, string>
   return (
-    <RabbitNote title="Rabbit suggests easing your plan">
+    <RabbitNote title="rabbt suggests easing your plan">
       <p className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={p.why} /></p>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         {p.changes.map((c) => (
@@ -300,7 +300,7 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
             <Stat label="Practised well" value={d.learnings.learned_rate != null ? `${d.learnings.learned_rate} g/h` : '–'} />
           </div>
           {d.learnings.lines.length > 0 && (
-            <RabbitNote title="What Rabbit's learned">
+            <RabbitNote title="What rabbt's learned">
               {d.learnings.lines.map((l) => <p key={l} className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={l} /></p>)}
             </RabbitNote>
           )}
@@ -311,7 +311,7 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
             </section>
           ) : (
             <EmptyState compact icon={<Utensils className="size-6" />} title="No fueling logged yet"
-              body="Open any session of an hour or more and tap Log fueling. After a few, Rabbit shows what works for you." />
+              body="Open any session of an hour or more and tap Log fueling. After a few, rabbt shows what works for you." />
           )}
           {d.entries.length > 0 && (
             <section aria-label="Logged sessions" className="flex flex-col gap-1.5">

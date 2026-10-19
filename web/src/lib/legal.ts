@@ -5,10 +5,10 @@ import { getJSON, postJSON } from '@/lib/api'
 
 export type LegalSlug = 'privacy' | 'terms' | 'security' | 'guidelines'
 export const LEGAL_DOCS: { slug: LegalSlug; title: string; help: string }[] = [
-  { slug: 'privacy', title: 'Privacy policy', help: 'What Rabbit collects, why, and your rights' },
-  { slug: 'terms', title: 'Terms of service', help: 'The rules for using Rabbit' },
+  { slug: 'privacy', title: 'Privacy policy', help: 'What rabbt collects, why, and your rights' },
+  { slug: 'terms', title: 'Terms of service', help: 'The rules for using rabbt' },
   { slug: 'security', title: 'Data & security', help: 'How your data is protected' },
-  { slug: 'guidelines', title: 'Community guidelines', help: 'Keeping Rabbit kind and safe' },
+  { slug: 'guidelines', title: 'Community guidelines', help: 'Keeping rabbt kind and safe' },
 ]
 export type LegalDoc = { slug: LegalSlug; title: string; version: string; updated: string; operator: string; html: string }
 export type ConsentView = {
@@ -35,7 +35,7 @@ export async function downloadMyData(): Promise<void> {
     try { msg = (await r.json()).error ?? msg } catch { /* not JSON */ }
     throw new Error(msg)
   }
-  const name = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'rabbit-data.zip'
+  const name = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'rabbt-data.zip'
   const url = URL.createObjectURL(await r.blob())
   const a = document.createElement('a')
   a.href = url; a.download = name

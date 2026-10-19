@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 type View = 'loading' | 'intro' | 'steps' | 'done' | 'manage'
 
 const NEXT = [
-  'Each time you finish a workout on your Apple Watch, your Shortcut sends it to Rabbit',
+  'Each time you finish a workout on your Apple Watch, your Shortcut sends it to rabbt',
   'It shows on its day in your plan, marked “via Apple Watch”',
   'If you share workouts with friends, it goes in their feed too',
 ]
@@ -145,7 +145,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
       if (v?.last_import && v.last_import !== before) {
         setChecking(false)
         if (view === 'steps') setView('done')
-        else onToast(`Rabbit has ${v.workouts} Apple Watch workout${v.workouts === 1 ? '' : 's'}`)
+        else onToast(`rabbt has ${v.workouts} Apple Watch workout${v.workouts === 1 ? '' : 's'}`)
         changed()
         return
       }
@@ -184,15 +184,15 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <AppTile app="apple" size={56} />
         </div>
         <div className="text-center">
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">Rabbit + Apple Watch</p>
+          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">rabbt + Apple Watch</p>
           <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
-            Apple Watch workouts live in the Health app on your iPhone. A Shortcut you set up once sends them to Rabbit after each workout.
+            Apple Watch workouts live in the Health app on your iPhone. A Shortcut you set up once sends them to rabbt after each workout.
           </p>
         </div>
         {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="ah-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="ah-reads" className="text-[0.7647rem] font-semibold text-(--text)">Rabbit will get</h3>
+            <h3 id="ah-reads" className="text-[0.7647rem] font-semibold text-(--text)">rabbt will get</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
@@ -204,7 +204,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <Bullets items={never} tone="no" />
             <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
               <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              Your Shortcut uses a personal import key. Rabbit stores only a scrambled copy of it, and the key can only add workouts, never read anything. Turn it off anytime.
+              Your Shortcut uses a personal import key. rabbt stores only a scrambled copy of it, and the key can only add workouts, never read anything. Turn it off anytime.
             </p>
           </section>
         )}
@@ -216,7 +216,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <div className="flex flex-col gap-2">
             <p className="flex items-start gap-2 text-[0.7059rem] leading-snug text-(--text-muted)">
               <Smartphone className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
-              Takes about 5 minutes on your iPhone, in the Shortcuts app. Easiest if you open Rabbit on the same iPhone so you can copy and paste.
+              Takes about 5 minutes on your iPhone, in the Shortcuts app. Easiest if you open rabbt on the same iPhone so you can copy and paste.
             </p>
             <Button variant="primary" className="h-12 w-full text-[0.8824rem]" loading={busy} onClick={() => void makeKey(true)}>Set it up</Button>
             <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={onClose}>Not now</button>
@@ -231,14 +231,14 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
           Do these on your iPhone, in the <b className="text-(--text)">Shortcuts</b> app. You only do this once.
         </p>
-        <Step n={1} title="Copy your Rabbit link and import key">
-          <CopyField label="Rabbit link" value={endpoint} onToast={onToast} />
+        <Step n={1} title="Copy your rabbt link and import key">
+          <CopyField label="rabbt link" value={endpoint} onToast={onToast} />
           {key ? (
             <>
               <CopyField label="Import key" value={key} secret onToast={onToast} />
               <p className="flex items-start gap-1.5 text-[0.7059rem] leading-snug text-(--warning-text)">
                 <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                This key shows only now. Keep it private: anyone with it can add workouts to your Rabbit.
+                This key shows only now. Keep it private: anyone with it can add workouts to your rabbt.
               </p>
             </>
           ) : (
@@ -252,24 +252,24 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         </Step>
         <Step n={2} title="Build the Shortcut">
           <Ol items={[
-            <>Open Shortcuts, tap <b className="text-(--text)">+</b> and name it <b className="text-(--text)">Send workouts to Rabbit</b>.</>,
+            <>Open Shortcuts, tap <b className="text-(--text)">+</b> and name it <b className="text-(--text)">Send workouts to rabbt</b>.</>,
             <>Add <Act>Find Health Samples</Act>. Set the type to <b className="text-(--text)">Workouts</b>, add the filter <b className="text-(--text)">Start Date is in the last 7 days</b>, sort by Start Date, latest first, limit 50.</>,
             <>Add <Act>Repeat with Each</Act> and pick the Health Samples from the step above.</>,
             <>Inside the repeat, add <Act>Text</Act> and paste the template below. Then swap each ⟨…⟩ for the matching detail: tap <b className="text-(--text)">Repeat Item</b> and choose Workout Type, Start Date, End Date, Duration or Distance.</>,
             <>After <b className="text-(--text)">End Repeat</b>, add <Act>Combine Text</Act>: Repeat Results, with New Lines.</>,
-            <>Add <Act>Get Contents of URL</Act> and paste your Rabbit link. Tap the arrow for more: Method <b className="text-(--text)">POST</b>, add a header <b className="text-(--text)">Authorization</b> with the value <b className="text-(--text)">Bearer</b>, a space, then your key. Request Body: <b className="text-(--text)">File</b>, and pick Combined Text.</>,
-            <>Optional: add <Act>Show Result</Act> to see Rabbit’s reply while you test.</>,
+            <>Add <Act>Get Contents of URL</Act> and paste your rabbt link. Tap the arrow for more: Method <b className="text-(--text)">POST</b>, add a header <b className="text-(--text)">Authorization</b> with the value <b className="text-(--text)">Bearer</b>, a space, then your key. Request Body: <b className="text-(--text)">File</b>, and pick Combined Text.</>,
+            <>Optional: add <Act>Show Result</Act> to see rabbt’s reply while you test.</>,
           ]} />
           <CopyField label="Text template" value={TEXT_TEMPLATE} onToast={onToast} />
           <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
-            Only these five details are sent. Heart rate and calories aren’t, and Rabbit would throw them away anyway.
+            Only these five details are sent. Heart rate and calories aren’t, and rabbt would throw them away anyway.
           </p>
         </Step>
         <Step n={3} title="Make it run on its own">
           <Ol items={[
             <>In Shortcuts, open <b className="text-(--text)">Automation</b> and tap <b className="text-(--text)">+</b>.</>,
             <>Choose <Act>Apple Watch Workout</Act>, then <b className="text-(--text)">Ends</b> for any workout. Don’t see it? Use <Act>Time of Day</Act>, every evening.</>,
-            <>Pick <b className="text-(--text)">Run Immediately</b>, then choose <b className="text-(--text)">Send workouts to Rabbit</b>.</>,
+            <>Pick <b className="text-(--text)">Run Immediately</b>, then choose <b className="text-(--text)">Send workouts to rabbt</b>.</>,
           ]} />
           <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
             Each run sends the last 7 days, so a missed run catches up next time. Nothing counts twice, and a workout Garmin also has counts once.
@@ -296,7 +296,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <RabbitNap size={52} mode="cheer" />
           <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
           <p className="text-[0.7647rem] text-(--text-secondary)">
-            {h ? `Rabbit got ${h.last_received ?? 0} workout${h.last_received === 1 ? '' : 's'} from your Apple Watch.` : 'Apple Watch is connected to Rabbit.'}
+            {h ? `rabbt got ${h.last_received ?? 0} workout${h.last_received === 1 ? '' : 's'} from your Apple Watch.` : 'Apple Watch is connected to rabbt.'}
           </p>
         </div>
         <section aria-labelledby="ah-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
@@ -321,7 +321,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         {waiting && (
           <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-(--warning-text)" aria-hidden />
-            Rabbit hasn’t heard from your Shortcut yet. Finish the steps, then run it once.
+            rabbt hasn’t heard from your Shortcut yet. Finish the steps, then run it once.
           </p>
         )}
         <Button variant={waiting ? 'primary' : 'default'} className="h-11 w-full text-[0.8235rem]" onClick={() => setView('steps')}>
@@ -333,7 +333,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         {reads.length > 0 && (
           <details className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
             <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What Rabbit uses, and your privacy
+              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
             </summary>
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
@@ -349,7 +349,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             {(h?.workouts ?? 0) > 0 && (
               <label className="flex min-h-11 items-center gap-2.5 text-[0.7647rem] text-(--text)">
                 <input type="checkbox" className="size-5 accent-(--danger)" checked={remove} onChange={(e) => setRemove(e.target.checked)} />
-                Also delete the {h!.workouts} workout{h!.workouts === 1 ? '' : 's'} Rabbit imported
+                Also delete the {h!.workouts} workout{h!.workouts === 1 ? '' : 's'} rabbt imported
               </label>
             )}
             <div className="flex gap-2">

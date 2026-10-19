@@ -278,7 +278,7 @@ export function RaceWeekScreen({ eventId, section, onClose, onAsk }: {
       closing={closing} onClose={close}
       footer={p ? (
         <Button variant="default" className="h-11 flex-1 gap-2 text-[0.8235rem]" onClick={() => onAsk(askText(p))}>
-          <RabbitLogo current size={16} /> Ask Rabbit about race day
+          <RabbitLogo current size={16} /> Ask rabbt about race day
         </Button>
       ) : undefined}>
       {!p && !error && <RabbitLoader className="py-16" label="Building your race week" cycle={['Splitting your pace…', 'Checking the course…', 'Packing your bag…']} />}

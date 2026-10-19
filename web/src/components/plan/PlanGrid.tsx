@@ -88,7 +88,7 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
     </>
   )
   return (
-    <Screen title="Build in Rabbit" subtitle={`${weeks.length} week${weeks.length === 1 ? '' : 's'} · ${rows.length} sessions`} onBack={close} onClose={close} closing={closing} footer={draft ? footer : undefined}>
+    <Screen title="Build in rabbt" subtitle={`${weeks.length} week${weeks.length === 1 ? '' : 's'} · ${rows.length} sessions`} onBack={close} onClose={close} closing={closing} footer={draft ? footer : undefined}>
       {!draft && !error && <RabbitLoader className="py-16" label="Getting the grid ready" cycle={['Getting the grid ready…', 'Sizing weeks to their hours…']} />}
       {error && <ErrorState compact message={error} />}
       {draft && <>

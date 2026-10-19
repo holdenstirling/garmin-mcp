@@ -19,10 +19,10 @@ function AllowLocation({ onDone, onCancel }: { onDone: () => void; onCancel: () 
   }
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-(--bg-elevated) px-3 py-3">
-      <p className="text-[0.8235rem] font-medium leading-snug text-(--text)">Allow location so Rabbit can find races, courts, tracks and group runs near you</p>
+      <p className="text-[0.8235rem] font-medium leading-snug text-(--text)">Allow location so rabbt can find races, courts, tracks and group runs near you</p>
       <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
         We keep only a rough spot (about a kilometer) and your town, state and zip, never your exact location.
-        Rabbit only ever uses your city and state, and friends never see it. Forget it any time.
+        rabbt only ever uses your city and state, and friends never see it. Forget it any time.
       </p>
       <div className="flex gap-2">
         <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void allow()}>
@@ -36,7 +36,7 @@ function AllowLocation({ onDone, onCancel }: { onDone: () => void; onCancel: () 
 }
 
 /** Inline ask when we don't know where the athlete is. */
-export function LocationPrompt({ title = 'Where should Rabbit look?', onSaveZip, onChanged, className }: {
+export function LocationPrompt({ title = 'Where should rabbt look?', onSaveZip, onChanged, className }: {
   title?: string
   onSaveZip?: (zip: string) => Promise<void>
   onChanged: () => void

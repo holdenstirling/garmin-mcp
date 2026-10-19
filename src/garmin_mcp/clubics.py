@@ -118,9 +118,9 @@ def listing_ics(listing: dict[str, Any], now_local: datetime, *, host: str = "ra
     stamp = now_local.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
     desc = " · ".join(x for x in (listing.get("kind_label"), listing.get("pace"),
                                   {"free": "Free", "paid": "Paid"}.get(listing.get("cost") or "", "")) if x)
-    note = f"From {listing.get('source') or 'the club page'} via Rabbit. Times change; check {listing.get('join_url')}"
+    note = f"From {listing.get('source') or 'the club page'} via rabbt. Times change; check {listing.get('join_url')}"
     body = f"{desc}\n{listing.get('description') or ''}".strip() + "\n" + note
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Rabbit//Club directory//EN", "CALSCALE:GREGORIAN",
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//rabbt//Club directory//EN", "CALSCALE:GREGORIAN",
              "METHOD:PUBLISH", *vtimezone(tz, now_local.year)]
     for s in sessions:
         start = _first(s["weekday"], s["time"], now_local)

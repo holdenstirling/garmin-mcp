@@ -27,7 +27,7 @@ export function PrivacyRows({ me, onChange }: { me: Me; onChange: () => void }) 
   return (
     <Group label="Feel & privacy" footer={err ?? (dnt
       ? 'Your browser asks sites not to track you, so nothing is counted on this device.'
-      : 'Rabbit counts a few anonymous taps (never health data, text or location) to see what helps. See the privacy policy.')}>
+      : 'rabbt counts a few anonymous taps (never health data, text or location) to see what helps. See the privacy policy.')}>
       {hapticsSupported() && (
         <Row icon={<Icon><Vibrate /></Icon>} title="Vibrate on success" subtitle="A light tap when something saves or sends"
           trailing={<Switch label="Vibrate on success" checked={buzz}

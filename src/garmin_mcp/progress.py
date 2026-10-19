@@ -53,7 +53,7 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
     ("coach_status", "Coaching: do you want a coach?", "Find one or go solo", 25, True),
     ("gear", "Add your shoes or bike", "Track mileage and get retirement alerts", 50, True),
     ("friend", "Follow a friend", "Cheer each other on", 50, True),
-    ("interests", "Tell Rabbit what you're into", "Personal race picks", 50, True),
+    ("interests", "Tell rabbt what you're into", "Personal race picks", 50, True),
 ]
 
 # One-word labels for the compact header progress pill (fits a 390px phone).

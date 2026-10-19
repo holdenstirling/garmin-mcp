@@ -37,7 +37,7 @@ from .appstore import AppStore
 from .progress import workout_xp
 from .stats import _rows
 
-GENERIC_SENT = "If they're on Rabbit, they'll get your request."
+GENERIC_SENT = "If they're on rabbt, they'll get your request."
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 8
 MAX_OUTGOING = 200
@@ -96,7 +96,7 @@ class Social:
 
     def require(self, uid: str) -> None:
         if not self.is_athlete(uid):
-            raise SocialError("Friends are for athletes on Rabbit.", 403)
+            raise SocialError("Friends are for athletes on rabbt.", 403)
 
     def _new_code(self, d: dict[str, Any]) -> str:
         codes = d.setdefault("codes", {})
@@ -217,7 +217,7 @@ class Social:
             c = code.strip().upper().replace("-", "").replace(" ", "")
             target = (self._doc.load().get("codes") or {}).get(c)
             if not target or not self.is_athlete(target):
-                raise SocialError("That code doesn't match anyone on Rabbit.", 404)
+                raise SocialError("That code doesn't match anyone on rabbt.", 404)
             e_addr = None
         elif isinstance(email, str) and email.strip():
             e_addr = email.strip().lower()

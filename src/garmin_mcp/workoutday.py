@@ -749,11 +749,11 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
         tone, headline = "care", "Look after that"
         lines.append("You flagged pain. **Keep the next day easy or take it off**, and stop if it gets sharper. "
                      "If it's still there in a couple of days, have it checked.")
-        lines.append("Tell Rabbit where it hurts and it will keep your next hard session light.")
+        lines.append("Tell rabbt where it hurts and it will keep your next hard session light.")
     if verdict == "short":
         if not pain:
             tone, headline = "info", "Cut short"
-        lines.append("Shorter than planned. Fine once in a while; if it keeps happening, ask Rabbit to scale the week back.")
+        lines.append("Shorter than planned. Fine once in a while; if it keeps happening, ask rabbt to scale the week back.")
     if rpe is not None:
         if rpe > hi:
             if not pain:
@@ -765,7 +765,7 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
             if not pain and tone == "good":
                 headline = "Felt easy: you're getting fitter"
             lines.append(f"You rated it **{rpe}/10**, easier than the {lo}-{hi}/10 this session aims for. "
-                         "If the next one feels the same, accept the faster paces Rabbit suggests.")
+                         "If the next one feels the same, accept the faster paces rabbt suggests.")
         elif not pain and verdict in (None, "hit", "done"):
             lines.append(f"**{rpe}/10** is right where this session should be ({lo}-{hi}/10).")
     if verdict in ("hard", "fast") and easy and (rpe is None or rpe <= hi):
@@ -778,9 +778,9 @@ def coach_feedback(session: dict[str, Any], went: dict[str, Any] | None,
         lines.append("Longer than planned. Keep the extra for easy days so it doesn't eat into recovery.")
     if feel is not None and feel <= 2 and not pain and tone == "good":
         tone, headline = "info", "Rough one"
-        lines.append("Tough day. If the next easy session also feels flat, tell Rabbit and it will lighten the week.")
+        lines.append("Tough day. If the next easy session also feels flat, tell rabbt and it will lighten the week.")
     if not lines and verdict == "hit":
         lines.append("**Right on target.** That's exactly the work the plan asked for.")
     if not lines:
-        lines.append("Logged. Add how it felt and Rabbit can tell you more.")
+        lines.append("Logged. Add how it felt and rabbt can tell you more.")
     return {"tone": tone, "headline": headline, "lines": lines[:4]}

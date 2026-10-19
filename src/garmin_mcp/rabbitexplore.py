@@ -78,7 +78,7 @@ def rank(races: list[dict[str, Any]], *, interests: dict[str, Any], events: list
         pts = s["score"] + (WEB_NUDGE if r.get("source") == "web" else 0)
         why = s["why"]
         if why == "Fits your calendar":
-            why = ("A notable race Rabbit found on the web" if r.get("source") == "web"
+            why = ("A notable race rabbt found on the web" if r.get("source") == "web"
                    else f"Coming up {'this week' if (rd - today).days < 7 else 'in ' + fy._MONTHS[rd.month - 1]}")
         out.append({**r, **s, "score": pts, "why": why, "tune_up": bool(tu)})
     out.sort(key=lambda r: (-r["score"], r["date"], r["name"].lower()))
@@ -162,8 +162,8 @@ class ScoutCache:
 def summary(n_races: int, n_places: int, n_groups: int) -> str:
     n = n_races + n_places + n_groups
     if n == 0:
-        return "Rabbit looked everywhere but came back empty-handed this time"
-    return f"Rabbit found {n} thing{'s' if n != 1 else ''} for you"
+        return "rabbt looked everywhere but came back empty-handed this time"
+    return f"rabbt found {n} thing{'s' if n != 1 else ''} for you"
 
 
 __all__ = ["ScoutCache", "dedupe", "intro", "rank", "scout_prompt", "summary"]

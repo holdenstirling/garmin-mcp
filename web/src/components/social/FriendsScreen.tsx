@@ -231,7 +231,7 @@ const PRIVACY: [keyof SocialSettings, string, string][] = [
   ['workouts', 'Workouts', 'Your recent workouts in their feed'],
   ['distance', 'Distance & climbing', 'How far you went and how much you climbed'],
   ['times', 'Times', 'How long you trained and when'],
-  ['streak', 'Streak & level', 'Your day streak and Rabbit level'],
+  ['streak', 'Streak & level', 'Your day streak and rabbt level'],
   ['races', 'Races', 'Workouts you tagged as races'],
 ]
 
@@ -265,7 +265,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
     catch { setMsg({ text: `Your code is ${code}`, ok: true }) }
   }
   async function share() {
-    try { await navigator.share({ title: 'Follow me on Rabbit', text: `Follow my training on Rabbit. My invite code: ${code}`, url: `${window.location.origin}/app/` }) }
+    try { await navigator.share({ title: 'Follow me on rabbt', text: `Follow my training on rabbt. My invite code: ${code}`, url: `${window.location.origin}/app/` }) }
     catch { /* cancelled */ }
   }
   async function setSetting(k: keyof SocialSettings, v: boolean) {
@@ -300,7 +300,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
       </Card>
 
       <Card>
-        <Field label="Add by email or code" hint="Friends need a Rabbit invite before they can join.">
+        <Field label="Add by email or code" hint="Friends need a rabbt invite before they can join.">
           <div className="flex items-center gap-2">
             <input className={inputCls} autoComplete="off" autoCapitalize="none" placeholder="friend@example.com or ABCD2345"
               value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void add() }} />

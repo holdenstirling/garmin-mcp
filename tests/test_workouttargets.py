@@ -169,14 +169,14 @@ def test_single_session_ics_is_timed_and_escaped() -> None:
     b = make_session("bike", "easy", 60)
     plan = {"weeks": [{"start": "2026-10-12", "days": {"2026-10-13": [a], "2026-10-14": [b]}}]}
     now = datetime(2026, 10, 13, 12, tzinfo=timezone.utc)
-    one = export_ics(plan, name="Rabbit", only=a["id"], now=now)
+    one = export_ics(plan, name="rabbt", only=a["id"], now=now)
     assert one.count("BEGIN:VEVENT") == 1 and f"UID:{a['id']}@rabbit" in one
     assert "DTSTART:20261013T063000" in one and "DTEND:20261013T071500" in one
     assert "Easy run\\, by the river\\; with Sam" in one
-    later = export_ics(plan, name="Rabbit", only=a["id"], now=datetime(2026, 10, 14, 12, tzinfo=timezone.utc))
+    later = export_ics(plan, name="rabbt", only=a["id"], now=datetime(2026, 10, 14, 12, tzinfo=timezone.utc))
     seq = lambda t: int(next(x for x in t.split("\r\n") if x.startswith("SEQUENCE:"))[9:])  # noqa: E731
     assert seq(later) > seq(one)  # re-import updates the same event
-    full = export_ics(plan, name="Rabbit", now=now)
+    full = export_ics(plan, name="rabbt", now=now)
     assert full.count("BEGIN:VEVENT") == 2 and "DTSTART;VALUE=DATE:20261014" in full
 
 

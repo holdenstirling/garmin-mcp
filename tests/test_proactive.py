@@ -221,7 +221,7 @@ def test_agent_delivery_runs_turn_and_pushes(env) -> None:
         deliver = AgentDelivery(runner, push, lambda: loop)
         res = deliver("friend", "workout", "New activity ...")
         assert res.outcome is FireOutcome.OK
-        assert pushes == [("friend", "Rabbit", "Strong tempo. Easy spin tomorrow.")]
+        assert pushes == [("friend", "rabbt", "Strong tempo. Easy spin tomorrow.")]
         assert urls == ["/app/?open=coach"]
         coach = agent.coach.coach_thread("friend")
         turn = agent.history("friend", coach["id"])[-1]

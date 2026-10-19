@@ -91,7 +91,7 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
           {!s && !error && <RabbitLoader className="py-6" label="Loading" />}
           {s && (
             <>
-              <Group label="Milestones Rabbit spots" footer="Rabbit offers these as drafts. Nothing is shared until you tap Share.">
+              <Group label="Milestones rabbt spots" footer="rabbt offers these as drafts. Nothing is shared until you tap Share.">
                 {TYPES.map((t) => (
                   <Row key={t} title={MILESTONE_LABEL[t]}
                     trailing={<Switch label={MILESTONE_LABEL[t]} checked={s.milestones[t]}
@@ -117,7 +117,7 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
               <Group label="Shared milestones go to" footer="Never your heart rate, health data or where you trained.">
                 <div className="px-3 py-2.5">
                   <Choice label="Default audience" value={s.audience}
-                    options={[['friends', 'Friends'], ['public', 'Everyone on Rabbit'], ['private', 'Only me']]}
+                    options={[['friends', 'Friends'], ['public', 'Everyone on rabbt'], ['private', 'Only me']]}
                     onChange={(v) => void put({ audience: v }, { ...s, audience: v })} />
                 </div>
               </Group>

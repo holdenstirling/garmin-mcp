@@ -70,7 +70,7 @@ const PROMPTS: Record<Intent, string[]> = {
   community: ['Find a group run this weekend', 'Any running clubs near me?'],
   events: ['Find a race near me next month', 'Any group rides this weekend?'],
   coach: ['What should I look for in a coach?', 'Help me find a coach for my goal'],
-  explore: ['What can Rabbit do for me?'],
+  explore: ['What can rabbt do for me?'],
 }
 const SUGGEST: Record<Intent, string[]> = {
   train: ['How did my training go this week?', 'Am I recovered enough for a hard workout today?'],
@@ -82,7 +82,7 @@ const SUGGEST: Record<Intent, string[]> = {
 }
 const promptCache = new Map<string, string[]>()
 /** The composer's rotating placeholders, leaning toward what they came for (stable per answer). */
-export function composerPrompts(intents: readonly Intent[], base = 'Ask Rabbit anything…'): string[] {
+export function composerPrompts(intents: readonly Intent[], base = 'Ask rabbt anything…'): string[] {
   const key = intents.join()
   let p = promptCache.get(key)
   if (!p) {
@@ -112,7 +112,7 @@ const BULLET: Record<Intent, string> = {
   community: "Your friends' workouts and kudos, right on your home screen",
   events: 'Races, group runs and meetups near you, picked for you',
   coach: 'Coaches who fit your goals, or invite the one you already have',
-  explore: 'Ask Rabbit anything about training, recovery or what to try next',
+  explore: 'Ask rabbt anything about training, recovery or what to try next',
 }
 
 export function welcomePlan(intents: readonly Intent[], ctx: { garmin: boolean; hasPlan: boolean }): WelcomePlan {

@@ -62,23 +62,23 @@ export const PURPOSE: Record<ConnApp, string> = {
 // comes from). `cta` is the one primary button.
 const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typeof Lock }> = {
   garmin: {
-    how: 'Sign in with your Garmin account on the next screen. Rabbit passes your password to Garmin once to sign in and never stores it.',
-    kept: 'Rabbit keeps only Garmin’s sign-in token, encrypted. Disconnect anytime and it’s deleted.',
+    how: 'Sign in with your Garmin account on the next screen. rabbt passes your password to Garmin once to sign in and never stores it.',
+    kept: 'rabbt keeps only Garmin’s sign-in token, encrypted. Disconnect anytime and it’s deleted.',
     cta: 'Continue to Garmin', icon: Lock,
   },
   oura: {
-    how: 'You’ll sign in on Oura’s own page and approve access there, then come right back. Rabbit never sees your Oura password.',
-    kept: 'The access Oura gives Rabbit is stored encrypted. Disconnect anytime and it’s deleted.',
+    how: 'You’ll sign in on Oura’s own page and approve access there, then come right back. rabbt never sees your Oura password.',
+    kept: 'The access Oura gives rabbt is stored encrypted. Disconnect anytime and it’s deleted.',
     cta: 'Continue to Oura', icon: ShieldCheck,
   },
   whoop: {
-    how: 'You’ll sign in on WHOOP’s own page and approve access to your workouts, then come right back. Rabbit never sees your WHOOP password.',
-    kept: 'The access WHOOP gives Rabbit is stored encrypted. Disconnect anytime: Rabbit deletes it and tells WHOOP to revoke it.',
+    how: 'You’ll sign in on WHOOP’s own page and approve access to your workouts, then come right back. rabbt never sees your WHOOP password.',
+    kept: 'The access WHOOP gives rabbt is stored encrypted. Disconnect anytime: rabbt deletes it and tells WHOOP to revoke it.',
     cta: 'Continue to WHOOP', icon: ShieldCheck,
   },
   calendar: {
-    how: 'You’ll sign in on Google’s own page and approve read-only access, then come right back. Rabbit never sees your Google password.',
-    kept: 'The access Google gives Rabbit is stored encrypted. Disconnect anytime: Rabbit deletes it and tells Google to revoke it.',
+    how: 'You’ll sign in on Google’s own page and approve read-only access, then come right back. rabbt never sees your Google password.',
+    kept: 'The access Google gives rabbt is stored encrypted. Disconnect anytime: rabbt deletes it and tells Google to revoke it.',
     cta: 'Continue with Google', icon: ShieldCheck,
   },
   trainingpeaks: {
@@ -88,8 +88,8 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
   },
   // Apple Watch has its own popup (ConnectAppleHealth); these keep the record complete.
   apple: {
-    how: 'You set up a Shortcut on your iPhone that sends your workouts to Rabbit.',
-    kept: 'Rabbit stores only a scrambled copy of your import key. Turn it off anytime and the key stops working.',
+    how: 'You set up a Shortcut on your iPhone that sends your workouts to rabbt.',
+    kept: 'rabbt stores only a scrambled copy of your import key. Turn it off anytime and the key stops working.',
     cta: 'Set it up', icon: KeyRound,
   },
 }
@@ -97,9 +97,9 @@ const TRUST: Record<ConnApp, { how: string; kept: string; cta: string; icon: typ
 // "You're all set": what happens now, in plain words.
 const NEXT: Record<ConnApp, string[]> = {
   garmin: ['Your recent workouts are coming in now', 'New workouts show up on their own after your watch syncs with Garmin', 'Send planned workouts to your watch from Plan'],
-  oura: ['Readiness and sleep show in Progress', 'Rabbit can ease your week after a rough night', 'Workouts Oura records that Garmin didn’t show on their day'],
+  oura: ['Readiness and sleep show in Progress', 'rabbt can ease your week after a rough night', 'Workouts Oura records that Garmin didn’t show on their day'],
   whoop: ['Workouts WHOOP records that Garmin didn’t show on their day', 'If you share workouts, friends see them in their feed', 'Strain, heart rate and calories stay private'],
-  calendar: ['Trips and busy days show next to your plan', 'Rabbit works your workouts around them'],
+  calendar: ['Trips and busy days show next to your plan', 'rabbt works your workouts around them'],
   trainingpeaks: ['Your TrainingPeaks workouts show on your plan', 'Choose below which plan leads'],
   apple: ['New Apple Watch workouts arrive each time your Shortcut runs'],
 }
@@ -238,7 +238,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
     if (view !== 'importing') return
     let off = false
     const t0 = Date.now()
-    void runImport(app).then(() => null, () => 'Rabbit will keep importing in the background.').then(async (note) => {
+    void runImport(app).then(() => null, () => 'rabbt will keep importing in the background.').then(async (note) => {
       const wait = 1200 - (Date.now() - t0)
       if (wait > 0) await new Promise((r) => window.setTimeout(r, wait))
       if (off) return
@@ -319,19 +319,19 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
       <>
         <Link app={app} />
         <div className="text-center">
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">Rabbit + {NAME[app]}</p>
+          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">rabbt + {NAME[app]}</p>
           <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
             {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
-              : app === 'oura' ? 'Your readiness and sleep show in Progress and help Rabbit ease your week after a rough night.'
+              : app === 'oura' ? 'Your readiness and sleep show in Progress and help rabbt ease your week after a rough night.'
               : app === 'whoop' ? 'Workouts you record on WHOOP show on their day and, if you share workouts, in your friends’ feed.'
-              : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your Rabbit plan, or Rabbit’s plan goes to TrainingPeaks. You choose which one leads.'
-              : 'Rabbit spots trips and busy days so your plan can work around them.'}
+              : app === 'trainingpeaks' ? 'Your coach’s TrainingPeaks workouts show on your rabbt plan, or rabbt’s plan goes to TrainingPeaks. You choose which one leads.'
+              : 'rabbt spots trips and busy days so your plan can work around them.'}
           </p>
         </div>
         {loadErr && <p role="alert" className="text-[0.7647rem] text-(--danger)">{loadErr}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="conn-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="conn-reads" className="text-[0.7647rem] font-semibold text-(--text)">Rabbit will be able to see</h3>
+            <h3 id="conn-reads" className="text-[0.7647rem] font-semibold text-(--text)">rabbt will be able to see</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
@@ -408,7 +408,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <RabbitNap size={52} mode="cheer" />
           <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
-          <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to Rabbit.`}</p>
+          <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to rabbt.`}</p>
         </div>
         <section aria-labelledby="conn-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
           <h3 id="conn-next" className="text-[0.7647rem] font-semibold text-(--text)">What happens now</h3>
@@ -487,7 +487,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         {reads.length > 0 && (
           <details className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
             <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What Rabbit uses, and your privacy
+              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
             </summary>
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
@@ -501,7 +501,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         {confirm ? (
           <div role="group" aria-label={`Disconnect ${SHORT[app]}?`} className="flex flex-col gap-2 rounded-xl border border-(--danger) p-3.5">
             <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-              Disconnect {SHORT[app]}? Rabbit stops reading from it and deletes its stored access{app === 'calendar' ? ' (and asks Google to revoke it)' : ''}. What’s already in Rabbit stays. You can connect again anytime.
+              Disconnect {SHORT[app]}? rabbt stops reading from it and deletes its stored access{app === 'calendar' ? ' (and asks Google to revoke it)' : ''}. What’s already in rabbt stays. You can connect again anytime.
             </p>
             <div className="flex gap-2">
               <Button className="h-11 flex-1" onClick={() => setConfirm(false)} disabled={busy}>Cancel</Button>

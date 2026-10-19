@@ -17,7 +17,7 @@ export function NiggleNudge({ refreshKey }: { refreshKey?: number }) {
   if (!d || (!due && !d.proposal)) return null
   const red = d.active.some((n) => n.assess?.red_flag.length)
   const text = red ? 'A niggle needs a professional look. Tap for details.'
-    : d.proposal ? `Rabbit suggests easing your plan for your ${d.active[0]?.label.toLowerCase() ?? 'niggle'}.`
+    : d.proposal ? `rabbt suggests easing your plan for your ${d.active[0]?.label.toLowerCase() ?? 'niggle'}.`
       : `How's your ${due!.label.toLowerCase()} today? Quick update.`
   return (
     <button type="button" onClick={() => openBody({ view: 'niggles' })}

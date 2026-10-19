@@ -196,7 +196,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
         Not seeing your race? Big ones like Ironman or Leadville aren't listed here.
       </p>
       <Button variant="default" className="h-9 gap-1.5 text-[0.7647rem]" loading={webBusy} onClick={() => void askWeb()}>
-        <RabbitLogo size={16} current /> Ask Rabbit to search the web
+        <RabbitLogo size={16} current /> Ask rabbt to search the web
       </Button>
       {webError && <p className="text-[0.7059rem] text-(--danger)" role="alert">{webError}</p>}
     </div>
@@ -234,8 +234,8 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
           <ErrorState message={`Couldn't load races: ${error}`} onRetry={() => filters && run(filters, 1)} />
         ) : races && races.length === 0 && !loading ? (
           <EmptyState title="No races match yet"
-            body="Try a wider radius, a longer window or fewer filters. Or let Rabbit look around the web for you."
-            action={web ? undefined : 'Ask Rabbit to search the web'} onAction={() => void askWeb()} />
+            body="Try a wider radius, a longer window or fewer filters. Or let rabbt look around the web for you."
+            action={web ? undefined : 'Ask rabbt to search the web'} onAction={() => void askWeb()} />
         ) : (
           <div className={cn('flex flex-col gap-5 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
             {capped && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
@@ -253,9 +253,9 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
         )}
         {web && (
           <section className="flex flex-col gap-2">
-            <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Found on the web by Rabbit</h2>
+            <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Found on the web by rabbt</h2>
             {web.length === 0 ? (
-              <p className="px-1 text-[0.7647rem] text-(--text-muted)">Rabbit didn't find anything else that fits. Try different filters.</p>
+              <p className="px-1 text-[0.7647rem] text-(--text-muted)">rabbt didn't find anything else that fits. Try different filters.</p>
             ) : web.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}
             {web.length > 0 && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Found online. Check dates and details on the official site.</p>}
           </section>

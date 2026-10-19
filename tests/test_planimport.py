@@ -386,7 +386,7 @@ def test_coach_import_api_end_to_end(env, tmp_path) -> None:
             r = await c.post(f"{base}/rows", headers=H, json={"rows": rows, "name": "Base block"})
             assert r.status_code == 200, r.text
             pv = r.json()["preview"]
-            assert pv["totals"]["sessions"] == 7 and pv["replaces"] is False and pv["source"] == "Rabbit"
+            assert pv["totals"]["sessions"] == 7 and pv["replaces"] is False and pv["source"] == "rabbt"
             r = await c.post(f"{base}/{pv['id']}/apply", headers=H, json={})
             assert r.status_code == 200, r.text
             body = r.json()
@@ -443,7 +443,7 @@ def test_ai_extraction_with_fake_backend(env, tmp_path) -> None:
                              content=b"%PDF-1.4 fake plan")
             assert r.status_code == 201, r.text
             pv = r.json()["preview"]
-            assert pv["source"] == "PDF (read by Rabbit)" and pv["name"] == "Ten K"
+            assert pv["source"] == "PDF (read by rabbt)" and pv["name"] == "Ten K"
             assert pv["totals"]["sessions"] == 3 and pv["first_day"] == (start + timedelta(days=1)).isoformat()
             assert any("cut off" in w for w in pv["warnings"]) and any("no duration" in w for w in pv["warnings"])
             assert seen["tool"] == "save_training_plan" and seen["kw"]["max_tokens"] > 2000

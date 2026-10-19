@@ -643,7 +643,7 @@ def plan_links(events: list[dict[str, Any]], plan: dict[str, Any] | None, today:
         if e.get("main"):
             info |= {"status": "main", "line": "Every week leads here, with a taper in the last weeks."}
         elif plan is None:
-            info |= {"status": "no_plan", "line": "You don't have a plan yet. Build one and Rabbit trains you around this.",
+            info |= {"status": "no_plan", "line": "You don't have a plan yet. Build one and rabbt trains you around this.",
                      "action": "build_plan"}
         elif last < t:
             info |= {"status": "past", "line": "This is in the past."}

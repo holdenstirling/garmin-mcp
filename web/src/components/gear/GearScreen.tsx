@@ -345,7 +345,7 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
         <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"
           onClick={() => onAsk(`My ${gearName(item)} has ${fmtDist(item.total_km, imperial)}. `
             + 'When should I replace it and what should I consider next?')}>
-          <MessageCircle className="size-4" /> Ask Rabbit
+          <MessageCircle className="size-4" /> Ask rabbt
         </Button>
       )}
       {item && (

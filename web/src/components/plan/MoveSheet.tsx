@@ -105,7 +105,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
           </p>
           {!undone && done.change.rebalanced.length > 0 && (
             <>
-              <p className="text-[0.7647rem] text-(--text-secondary)">Rabbit also re-balanced your week:</p>
+              <p className="text-[0.7647rem] text-(--text-secondary)">rabbt also re-balanced your week:</p>
               <ul className="flex list-disc flex-col gap-0.5 pl-5 text-[0.7647rem] leading-snug text-(--text)">
                 {done.change.rebalanced.map((l) => <li key={l}>{l}</li>)}
               </ul>
@@ -173,7 +173,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       <div className="flex items-center gap-3 px-1">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-4" aria-hidden /></span>
         <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. Rabbit keeps hard days apart and your weekly miles on track.
+          Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. rabbt keeps hard days apart and your weekly miles on track.
         </p>
       </div>
       <ChipRow>
@@ -204,7 +204,7 @@ export function MoveSessionSheet({ sessionId, onClose, onMoved }: { sessionId: s
   useEffect(() => {
     Promise.all([getPlan(), getCalendar()]).then(([p, c]) => {
       if (p.plan && c.cal) setData({ plan: p.plan, cal: c.cal })
-      else setErr("This workout isn't in a plan built in Rabbit, so it can't be moved here.")
+      else setErr("This workout isn't in a plan built in rabbt, so it can't be moved here.")
     }, (e: Error) => setErr(e.message))
   }, [])
   const hit = useMemo(() => {

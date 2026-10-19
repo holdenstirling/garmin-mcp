@@ -135,7 +135,7 @@ class PublicEvents:
                 "neighborhood": it.get("neighborhood") or "", "location": it.get("location") or "",
                 "url": it.get("url") or "", "city": it.get("city") or "", "state": it.get("state") or "",
                 "going": len(g), "my_going": viewer in g,
-                "host": (name(it["owner"]) if name else None) or "A Rabbit member",
+                "host": (name(it["owner"]) if name else None) or "A rabbt member",
             })
         out.sort(key=lambda x: (x["next_date"], x.get("time") or "99", x["name"] or ""))
         return out[:NEARBY_MAX]

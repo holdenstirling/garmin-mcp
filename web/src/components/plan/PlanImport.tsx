@@ -44,7 +44,7 @@ export function PlanImportHub({ api, plans, who, athleteName, onOpenPlan, onChan
         <Card className="px-4 py-3.5">
           <p className="text-[0.9412rem] font-medium text-(--text)">{plan.weeks.length} weeks · {short(plan.first_day)} – {lastWeek ? short(addDays(lastWeek.start, 6)) : ''}</p>
           <p className="mt-0.5 text-[0.7647rem] text-(--text-muted)">
-            {plan.origin ? `Loaded by ${plan.origin.kind === 'coach' ? plan.origin.by_name : `${first} (from a file)`}` : 'Built in Rabbit'}
+            {plan.origin ? `Loaded by ${plan.origin.kind === 'coach' ? plan.origin.by_name : `${first} (from a file)`}` : 'Built in rabbt'}
             {plan.current_week ? ` · week ${plan.current_week} now` : ''}
           </p>
           <Button variant="default" className="mt-3 h-11 w-full text-[0.8235rem]" onClick={onOpenPlan}>Open plan</Button>

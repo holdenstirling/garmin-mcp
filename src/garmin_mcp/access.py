@@ -236,7 +236,7 @@ class Access:
         Returns the inviter's user id (``""`` if unknown)."""
         with self._lock:
             if taken(email):
-                raise AccessError("That email already has a Rabbit account. Sign in with your passkey instead.",
+                raise AccessError("That email already has a rabbt account. Sign in with your passkey instead.",
                                   409, signin=True)
             inviter = self._use_invite(invite_id, user_id)
             now = int(self._clock())

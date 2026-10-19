@@ -168,7 +168,7 @@ def test_coming_soon_until_configured_then_connectable(env, tmp_path) -> None:  
             assert (await a.get("/app/api/me")).json()["whoop"] == {"available": False, "connected": False}
             r = (await b.get("/app/api/connections")).json()
             row = next(x for x in r["apps"] if x["id"] == "whoop")
-            assert row["state"] == "not_connected" and any("never used in Rabbit's coaching chat" in s for s in row["never"])
+            assert row["state"] == "not_connected" and any("never used in rabbt's coaching chat" in s for s in row["never"])
             assert "whoop" not in [s["id"] for s in r["soon"]]
             go = await b.get("/app/auth/whoop/start", follow_redirects=False)
             assert go.status_code == 302 and go.headers["location"].startswith("https://api.prod.whoop.com/oauth/oauth2/auth")

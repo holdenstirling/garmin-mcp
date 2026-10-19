@@ -387,7 +387,7 @@ function Composer({ clubId, clubName, groupId, groupName, groups = [], template,
                 className="h-11 w-full min-w-0 appearance-none truncate rounded-full border border-(--border) bg-(--bg-surface) pl-9 pr-7 text-[0.7647rem] font-medium text-(--text)">
                 <option value="friends">Friends</option>
                 {groups.map((g) => <option key={g.id} value={`grp:${g.id}`}>{g.emoji} {g.name}</option>)}
-                <option value="public">Everyone on Rabbit</option>
+                <option value="public">Everyone on rabbt</option>
                 {clubs.map((g) => <option key={g.id} value={`club:${g.id}`}>{g.name}</option>)}
                 <option value="private">Only me</option>
               </select>
@@ -427,7 +427,7 @@ function DraftsTray({ drafts, onShared, onDismissed }: {
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex min-h-11 w-full items-center gap-2 text-left">
         <span className="celebrate text-[1.0588rem]" aria-hidden>🎉</span>
-        <span className="flex-1 text-[0.8235rem] font-medium text-(--text)">Rabbit spotted {n} milestone{n === 1 ? '' : 's'} to share</span>
+        <span className="flex-1 text-[0.8235rem] font-medium text-(--text)">rabbt spotted {n} milestone{n === 1 ? '' : 's'} to share</span>
         <span className="text-[0.7059rem] text-(--accent)">{open ? 'Hide' : 'Show'}</span>
       </button>
       {open && (
@@ -554,13 +554,13 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
   }
   async function report() {
     setMenu(false)
-    if (!(await confirmAsk('Report this post?', { detail: 'It disappears for you and the Rabbit team takes a look.', confirm: 'Report', danger: true }))) return
+    if (!(await confirmAsk('Report this post?', { detail: 'It disappears for you and the rabbt team takes a look.', confirm: 'Report', danger: true }))) return
     try { const r = await reportPost(p.id); setNotice(r.message); window.setTimeout(onDelete, 1500) }
     catch (e) { setErr((e as Error).message) }
   }
   async function block() {
     setMenu(false)
-    if (!(await confirmAsk(`Block ${p.user?.name ?? 'this person'}?`, { detail: "You won't see each other's posts or comments anywhere on Rabbit.", confirm: 'Block', danger: true }))) return
+    if (!(await confirmAsk(`Block ${p.user?.name ?? 'this person'}?`, { detail: "You won't see each other's posts or comments anywhere on rabbt.", confirm: 'Block', danger: true }))) return
     try { await blockUser(p.author); setNotice('Blocked.'); window.setTimeout(() => (onBlocked ?? onDelete)(), 1000) }
     catch (e) { setErr((e as Error).message) }
   }

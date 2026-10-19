@@ -79,7 +79,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
             <div className="flex flex-col gap-2 px-4 py-3">
               <p className="text-[0.8235rem] font-medium text-(--text)">Your new invite link</p>
               <p className="break-all rounded-lg bg-(--bg-inset) px-3 py-2 font-mono text-[0.7059rem] text-(--text)">{newLink}</p>
-              <p className="text-[0.7059rem] text-(--text-muted)">Share it now: for safety Rabbit keeps only a fingerprint of it and can't show it again.</p>
+              <p className="text-[0.7059rem] text-(--text-muted)">Share it now: for safety rabbt keeps only a fingerprint of it and can't show it again.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'}
                   onClick={() => void shareLink(newLink).then(setCopied)}><Share2 className="size-4" aria-hidden />Share</button>

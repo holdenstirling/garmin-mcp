@@ -60,7 +60,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
 
   async function dev(name: string, label: string) {
     setBusy(true)
-    setMsg(`${label}… (Rabbit is writing it)`)
+    setMsg(`${label}… (rabbt is writing it)`)
     try {
       const r = await postJSON<{ result: unknown }>(`/api/dev/${name}`)
       setMsg(`${label}: ${JSON.stringify(r.result)}`)
@@ -78,7 +78,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
     <>
       <div className="-mb-3 flex min-h-5 justify-end px-4"><SaveStatus state={saver.state} error={saver.error} /></div>
       <Group label="Coaching messages"
-        footer={`Rabbit can message you first; these arrive as notifications. Times are ${tz} time.`}>
+        footer={`rabbt can message you first; these arrive as notifications. Times are ${tz} time.`}>
         <Row icon={<Icon><Watch /></Icon>} title="Workout feedback" subtitle="A short note after each new activity"
           trailing={<Switch label="Workout feedback" checked={s.workout_feedback} onChange={(v) => void save({ workout_feedback: v })} />} />
         <Row icon={<Icon><Sunrise /></Icon>} title="Morning brief" subtitle="Today's plan, sleep and recovery"
@@ -91,8 +91,8 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
         )}
         <Row icon={<Icon><CalendarCheck /></Icon>} title="Weekly recap (Sundays)" subtitle="Your week in review at 6 pm"
           trailing={<Switch label="Weekly recap" checked={s.recap_enabled !== false} onChange={(v) => void save({ recap_enabled: v })} />} />
-        <Row icon={<Icon><Bell /></Icon>} title="Rabbit nudges" subtitle="Streak at risk and race countdown alerts (max 2 a day, never 9 pm–7 am). Updates still show in chat."
-          trailing={<Switch label="Rabbit nudges" checked={s.moments_push !== false} onChange={(v) => void save({ moments_push: v })} />} />
+        <Row icon={<Icon><Bell /></Icon>} title="rabbt nudges" subtitle="Streak at risk and race countdown alerts (max 2 a day, never 9 pm–7 am). Updates still show in chat."
+          trailing={<Switch label="rabbt nudges" checked={s.moments_push !== false} onChange={(v) => void save({ moments_push: v })} />} />
       </Group>
       {me.dev.tools.length > 0 && (
         <Group label="Dev">

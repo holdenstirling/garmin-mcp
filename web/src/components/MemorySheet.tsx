@@ -22,7 +22,7 @@ function Section({ title, onEdit, onTell, children }: {
         <h3 className="flex-1 font-medium">{title}</h3>
         {onTell && (
           <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[0.6471rem]" onClick={onTell}>
-            <MessageCircle className="size-3.5" /> Tell Rabbit
+            <MessageCircle className="size-3.5" /> Tell rabbt
           </Button>
         )}
         {onEdit && (
@@ -75,9 +75,9 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
   const athleteRows = ATHLETE_LABELS.filter(([k]) => athlete[k] !== undefined && athlete[k] !== null && athlete[k] !== '')
 
   return (
-    <Sheet title="What Rabbit knows" onClose={onClose} closing={closing} onDismissed={onDismissed}>
+    <Sheet title="What rabbt knows" onClose={onClose} closing={closing} onDismissed={onDismissed}>
           <p className="text-xs text-(--text-muted)">
-            Rabbit fills this in as you chat. Tell it about changes anytime, or fix anything here.
+            rabbt fills this in as you chat. Tell it about changes anytime, or fix anything here.
           </p>
 
           <Section title="Goal" onTell={() => onTell(goal ? 'Update my goal: ' : "I'm training for ")}
@@ -99,7 +99,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 {goal.priorities && <p className="text-(--text-secondary)">{goal.priorities}</p>}
               </div>
             ) : (
-              <Empty>Not set yet. Tell Rabbit what you're training for.</Empty>
+              <Empty>Not set yet. Tell rabbt what you're training for.</Empty>
             )}
           </Section>
 
@@ -115,7 +115,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                   <RabbitMarkdown text={goal.plan} className="rabbit-md--doc" />
                 </div>
               ) : (
-                <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to Rabbit.</Empty>
+                <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to rabbt.</Empty>
               )}
               {goal.plan && editing !== 'plan' && goal.plan.length > 280 && (
                 <button className="hit-44 self-start text-xs text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
@@ -140,7 +140,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             </Section>
           )}
 
-          <Section title="About you" onTell={() => onTell('Something Rabbit should know about me: ')}
+          <Section title="About you" onTell={() => onTell('Something rabbt should know about me: ')}
             onEdit={() => setEditing('about')}>
             {editing === 'about' ? (
               <div className="flex flex-col gap-2">
@@ -165,7 +165,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 ))}
               </dl>
             ) : (
-              <Empty>Nothing yet. Rabbit picks this up as you chat.</Empty>
+              <Empty>Nothing yet. rabbt picks this up as you chat.</Empty>
             )}
           </Section>
 
@@ -179,7 +179,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
               ) : goal.notes ? (
                 <p className="whitespace-pre-wrap text-sm text-(--text-secondary)">{goal.notes}</p>
               ) : (
-                <Empty>What Rabbit learns during this block (how workouts felt, niggles, what works).</Empty>
+                <Empty>What rabbt learns during this block (how workouts felt, niggles, what works).</Empty>
               )}
             </Section>
           )}
@@ -188,7 +188,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
           {goal && (
             <button className="hit-44 mt-1 text-xs text-muted-foreground underline"
               onClick={() => onTell("I'm starting a new goal: ")}>
-              Training for something new? Tell Rabbit
+              Training for something new? Tell rabbt
             </button>
           )}
     </Sheet>

@@ -262,7 +262,7 @@ def test_rabbit_explore_merge_rank_and_intro() -> None:
     assert "rsu:3" not in ids and ids[0] == "rsu:1" and tunes == 1  # taper week dropped; tune-up first
     assert ranked[0]["why"].startswith("Half-marathon tune-up") and all(r["why"] for r in ranked)
     web = next(r for r in ranked if r["id"] == "web:def")
-    assert web["why"] == "A notable race Rabbit found on the web"
+    assert web["why"] == "A notable race rabbt found on the web"
     s = rabbitexplore.intro(14, zip_="80204", state="", radius=120, tunes=3, main=main)
     assert s == "Found 14 races within 120 mi in the next 6 months; 3 are great tune-ups for Leadville Trail 100 Run."
     assert rabbitexplore.intro(1, zip_="", state="CO", radius=50, tunes=1, main=main).startswith("Found 1 race in CO")
@@ -508,7 +508,7 @@ def test_let_rabbit_explore_api(env, tmp_path, monkeypatch) -> None:
         assert [g["name"] for g in body["groups"]] == ["Golden Group Run"] and body["groups"][0]["source"] == "web"
         assert body["places"] and body["places_state"] == "ok"
         assert body["count"] == len(body["races"]) + len(body["places"]) + len(body["groups"])
-        assert body["summary"] == f"Rabbit found {body['count']} things for you"
+        assert body["summary"] == f"rabbt found {body['count']} things for you"
         assert calls[0]["zipcode"] == "80401"
         # Privacy: the model sees "Golden, CO" and race interests only.
         scout = next(p for sys_, p in prompts if sys_ == explore.WEB_SYSTEM)
@@ -714,8 +714,8 @@ def test_web_scout_requires_urls_and_prompt_privacy() -> None:
     f = explore.parse_filters({"near": "80204", "radius": "50"}, TODAY)
     assert "80204" not in explore.web_prompt(f)
     assert '"Denver, CO" (within about 50 miles)' in explore.web_prompt(dict(f, area="Denver, CO"))
-    assert rabbitexplore.summary(3, 6, 3) == "Rabbit found 12 things for you"
-    assert rabbitexplore.summary(1, 0, 0) == "Rabbit found 1 thing for you"
+    assert rabbitexplore.summary(3, 6, 3) == "rabbt found 12 things for you"
+    assert rabbitexplore.summary(1, 0, 0) == "rabbt found 1 thing for you"
 
 
 def test_explore_ai_sends_city_not_zip(env, tmp_path, monkeypatch) -> None:

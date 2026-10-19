@@ -47,7 +47,7 @@ export function MonthRecapSheet({ month, onClose }: { month?: string; onClose: (
     } catch (e) { setNote((e as Error).message) } finally { setBusy(false) }
   }
 
-  const alt = r ? `Your ${r.label} on Rabbit: ${tiles(r).map(([k, v]) => `${k} ${v}`).join(', ')}.` : ''
+  const alt = r ? `Your ${r.label} on rabbt: ${tiles(r).map(([k, v]) => `${k} ${v}`).join(', ')}.` : ''
   return (
     <div className={`modal-overlay ${closing ? 'modal-overlay--exit' : ''}`} onClick={close}>
       <div className={`modal ${closing ? 'modal--exit' : ''}`} onClick={(e) => e.stopPropagation()} {...drag}

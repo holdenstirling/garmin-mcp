@@ -445,7 +445,7 @@ def test_api_link_photos_templates_and_permissions(env, tmp_path, monkeypatch) -
         if "document" in url:
             return "text", b"Week 1: Tue easy run 40'", "Google Doc.txt"
         if "private" in url:
-            raise LinkError("That document isn't public, so Rabbit can't open it.")
+            raise LinkError("That document isn't public, so rabbt can't open it.")
         return "csv", b"date,sport,title,minutes\n2026-11-03,run,Easy,40\n2026-11-05,bike,Ride,60\n", "Google Sheet.csv"
     monkeypatch.setattr(planlinks, "fetch_google", fake_fetch)
     athlete_app, coach_app = _apps(env, tmp_path, agent)
@@ -466,7 +466,7 @@ def test_api_link_photos_templates_and_permissions(env, tmp_path, monkeypatch) -
             prose = _docx(_p("Week 1") + _p("Tue: easy 40'"))
             r = await a.post(f"{own}/file?name=coach.docx", headers=H, content=prose)
             assert r.status_code == 201 and len(calls) == 2 and calls[1][0]["source"]["data"] == "Week 1\nTue: easy 40'"
-            assert r.json()["preview"]["source"] == "Word document (read by Rabbit)"
+            assert r.json()["preview"]["source"] == "Word document (read by rabbt)"
             # A workbook with two sheets says which one it read.
             book = _xlsx_book([("Notes", [["Read me first"]]), ("Plan", PLAN_SHEET)])
             r = await a.post(f"{own}/file?name=b.xlsx", headers=H, content=book)

@@ -98,9 +98,9 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
         </div>
         {view.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-[0.7647rem] leading-snug text-(--warning-text)">{view.race_note}</p>}
         <Button variant="primary" className="h-12 text-[0.8824rem]" loading={busy === 'better'}
-          onClick={() => void run('better', feelBetter, 'Welcome back. Rabbit eased the next few days.')}>I feel better</Button>
+          onClick={() => void run('better', feelBetter, 'Welcome back. rabbt eased the next few days.')}>I feel better</Button>
         <p className="-mt-2 px-1 text-center text-[0.7059rem] leading-snug text-(--text-muted)">
-          Rabbit makes the next few days easy, then your plan picks up where it is. No catching up.
+          rabbt makes the next few days easy, then your plan picks up where it is. No catching up.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="default" className="h-11 text-[0.8235rem]" loading={busy === 'extend'}
@@ -163,7 +163,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
         )}
         <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">{view?.safety}</p>
         <Button variant="primary" className="h-12 text-[0.8824rem]" disabled={!sev} loading={busy === 'start'}
-          onClick={() => body && void run('start', () => startSick(body), view?.active ? 'Sick mode updated.' : 'Rest up. Rabbit cleared the way.')}>
+          onClick={() => body && void run('start', () => startSick(body), view?.active ? 'Sick mode updated.' : 'Rest up. rabbt cleared the way.')}>
           {view?.active ? 'Save changes' : 'Turn on sick mode'}
         </Button>
         {editing && <button type="button" className="mx-auto min-h-11 px-3 text-[0.7647rem] text-(--text-secondary)" onClick={() => setEditing(false)}>Back</button>}

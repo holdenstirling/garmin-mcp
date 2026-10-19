@@ -14,7 +14,7 @@ export function CoachHeader({ label, ts }: { label: 'brief' | 'workout' | 'note'
   return (
     <div className="mb-1 flex items-center gap-1.5 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
       <span className="logo-tile flex size-5 items-center justify-center rounded-[6px] bg-(--brand)" aria-hidden><RabbitLogo size={15} /></span>
-      <span className="normal-case tracking-normal">Rabbit</span>
+      <span className="normal-case tracking-normal">rabbt</span>
       <Icon className="size-3.5" />
       {label === 'brief' ? 'Morning brief' : label === 'workout' ? 'Workout note' : 'Coach note'}
       <span className="font-normal normal-case tracking-normal text-muted-foreground">· {fmtDay(ts)}</span>

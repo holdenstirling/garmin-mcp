@@ -120,13 +120,13 @@ def choose(*, card: dict[str, Any] | None, has_plan: bool, goal: dict[str, Any] 
                      if sess["id"] and sess["syncable"] and not sess["on_watch"] and garmin else None)
         extra = ({"kind": "today", "label": action.get("label") or "Open"}
                  if action.get("kind") in ("review_adjust", "open_racepack") else None)
-        primary = ("start", "Start") if sess["id"] else ("today", action.get("label") or "Ask Rabbit")
+        primary = ("start", "Start") if sess["id"] else ("today", action.get("label") or "Ask rabbt")
         return out("session", tone or "go", f"{sess['title']}{_mins(sess['minutes'])}", str(card.get("detail") or ""),
                    primary, session=sess, secondary=secondary, extra=extra)
     # 2. Race, adjustment, rough check-in: the Today card's own call.
     if card and (tone in ("race", "plan") or (tone == "easy" and card.get("headline") == "Take it easy today")):
         return out("today", tone, str(card["headline"]), str(card.get("detail") or ""),
-                   (str(action.get("kind") or "ask"), str(action.get("label") or "Ask Rabbit")))
+                   (str(action.get("kind") or "ask"), str(action.get("label") or "Ask rabbt")))
     if has_plan:
         # 3. Rest day (plan or recovery), with tomorrow.
         if card and tone == "rest":
@@ -134,7 +134,7 @@ def choose(*, card: dict[str, Any] | None, has_plan: bool, goal: dict[str, Any] 
                        ("today", str(action.get("label") or "Enjoy the rest")), tomorrow=tomorrow)
         if card:
             return out("today", tone or "go", str(card["headline"]), str(card.get("detail") or ""),
-                       (str(action.get("kind") or "ask"), str(action.get("label") or "Ask Rabbit")),
+                       (str(action.get("kind") or "ask"), str(action.get("label") or "Ask rabbt")),
                        tomorrow=tomorrow if tone == "done" else None)
         return out("today", "plan", "Your plan", "Open your plan to see this week's sessions.", ("open_plan", "Open plan"))
     # 4. A goal, no plan.
@@ -152,7 +152,7 @@ def choose(*, card: dict[str, Any] | None, has_plan: bool, goal: dict[str, Any] 
         return out("today", "done", str(card["headline"]), str(card.get("detail") or ""), ("set_goal", "Set a goal"))
     # 6. Nothing yet.
     return out("set_goal", "plan", "Set a goal", "A race, a distance or just showing up 3x a week. "
-               "Rabbit builds the plan around it.", ("set_goal", "Set a goal"))
+               "rabbt builds the plan around it.", ("set_goal", "Set a goal"))
 
 
 # ------------------------------------------------------------ first visit --
@@ -176,7 +176,7 @@ def first_visit(*, garmin: bool, inviter: str | None) -> dict[str, Any]:
     with "Connect Garmin" as the one primary action. ``inviter``: first name, when the
     member joined from someone's invite and they follow each other."""
     return {"show": not garmin, "garmin": garmin, "inviter": inviter,
-            "title": f"Welcome! You and {inviter} are connected" if inviter else "Welcome to Rabbit",
+            "title": f"Welcome! You and {inviter} are connected" if inviter else "Welcome to rabbt",
             "items": [dict(i) for i in FIRST_VISIT_ITEMS] if not garmin else [],
             "primary": {"kind": "connect_garmin", "label": "Connect Garmin",
                         "detail": "Your workouts, streak and plan sync on their own"}}

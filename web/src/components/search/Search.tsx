@@ -110,7 +110,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
           <p role="alert" className="px-4 py-6 text-center text-[0.7647rem] text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
         ) : res && total === 0 && !busy ? (
           <EmptyState compact mode="think" title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”."
-            action="Search people on Rabbit" onAction={() => { onClose(); openFindFriends({ q: q.trim() }) }} />
+            action="Search people on rabbt" onAction={() => { onClose(); openFindFriends({ q: q.trim() }) }} />
         ) : res ? (
           <div className={busy ? 'opacity-60' : undefined}>
             {(res.partners?.length ?? 0) > 0 && (
@@ -131,7 +131,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             <div className="px-4 pt-1">
               <button type="button" onClick={() => { onClose(); openFindFriends({ q: q.trim() }) }}
                 className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[0.8235rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-                <UserPlus className="size-4 shrink-0" aria-hidden /> Find &ldquo;{q.trim()}&rdquo; on Rabbit
+                <UserPlus className="size-4 shrink-0" aria-hidden /> Find &ldquo;{q.trim()}&rdquo; on rabbt
               </button>
             </div>
             <Group title="Clubs & groups" n={res.clubs.length}>

@@ -157,7 +157,7 @@ function PlanPick({ current, value, onChange }: {
   if (!current.has_goal) {
     return (
       <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">
-        Rabbit builds your own plan for the block from your profile: your days, your paces, your volume.
+        rabbt builds your own plan for the block from your profile: your days, your paces, your volume.
       </p>
     )
   }

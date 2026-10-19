@@ -81,7 +81,7 @@ def event_lines(ev: dict[str, Any], stamp: str) -> list[str]:
     where = _where(ev)
     if where:
         lines.append(f"LOCATION:{_ics_escape(where)}")
-    desc = [str(ev.get("notes") or "").strip(), str(ev.get("url") or "").strip(), "From Rabbit"]
+    desc = [str(ev.get("notes") or "").strip(), str(ev.get("url") or "").strip(), "From rabbt"]
     lines.append(f"DESCRIPTION:{_ics_escape(chr(10).join(x for x in desc if x))}")
     url = str(ev.get("url") or "")
     if url.startswith(("https://", "http://")):
@@ -91,13 +91,13 @@ def event_lines(ev: dict[str, Any], stamp: str) -> list[str]:
 
 
 def _wrap(name: str, body: list[str]) -> str:
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Rabbit//Events//EN", "CALSCALE:GREGORIAN",
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//rabbt//Events//EN", "CALSCALE:GREGORIAN",
              "METHOD:PUBLISH", f"X-WR-CALNAME:{_ics_escape(name)}", *body, "END:VCALENDAR"]
     return "\r\n".join(_fold(x) for x in lines) + "\r\n"
 
 
 def event_ics(ev: dict[str, Any], *, now: datetime | None = None) -> str:
-    return _wrap(str(ev.get("name") or "Rabbit"), event_lines(ev, _stamp(now)))
+    return _wrap(str(ev.get("name") or "rabbt"), event_lines(ev, _stamp(now)))
 
 
 def feed_ics(events: list[dict[str, Any]], plan: dict[str, Any] | None, today: date, *,
@@ -113,7 +113,7 @@ def feed_ics(events: list[dict[str, Any]], plan: dict[str, Any] | None, today: d
     for _, d, s in iter_sessions(plan or {}):
         if s.get("sport") != "rest" and lo <= d <= hi:
             body += _ics_event(s, d, stamp, seq)
-    return _wrap("Rabbit", body)
+    return _wrap("rabbt", body)
 
 
 def google_url(ev: dict[str, Any]) -> str | None:
@@ -134,7 +134,7 @@ def google_url(ev: dict[str, Any]) -> str | None:
     else:
         dates = f"{first:%Y%m%d}/{first + timedelta(days=1):%Y%m%d}"
     q = {"action": "TEMPLATE", "text": str(ev.get("name") or "Event"), "dates": dates,
-         "details": str(ev.get("notes") or "From Rabbit")[:500], "location": _where(ev)}
+         "details": str(ev.get("notes") or "From rabbt")[:500], "location": _where(ev)}
     if rule:
         q["recur"] = f"RRULE:{recur.rrule(rule, timed=bool(hm))}"
     return "https://calendar.google.com/calendar/render?" + urlencode(q)

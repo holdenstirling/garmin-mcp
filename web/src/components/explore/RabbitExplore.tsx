@@ -4,7 +4,7 @@
 // you (places + groups). Each section shows its own loader and stage label and pops in as soon
 // as it lands (.ex-* in styles/rabbit.css; reduced motion just fades).
 import { useRef, useState } from 'react'
-import { Check, Rabbit, RefreshCw, X } from 'lucide-react'
+import { Check, Rabbit as RabbitGlyph, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -70,9 +70,9 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
     return (
       <button type="button" onClick={go}
         className="ex-cta flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2.5 text-left">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><Rabbit className="ex-hop size-5" /></span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><RabbitGlyph className="ex-hop size-5" /></span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] font-semibold leading-snug text-(--accent)">Let Rabbit explore</span>
+          <span className="block text-[0.8235rem] font-semibold leading-snug text-(--accent)">Let rabbt explore</span>
           <span className="block text-[0.6471rem] leading-snug text-(--text-muted)">Races, notable events and things to do near you · uses 1 of 5 daily searches</span>
         </span>
       </button>
@@ -90,10 +90,10 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-start gap-2 px-1">
-        <span className="ex-count flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><Rabbit className="size-5" /></span>
+        <span className="ex-count flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitGlyph className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <p className="ex-count text-[0.9412rem] font-semibold leading-snug text-(--text)">
-            {done ? (count ? `Rabbit found ${count} thing${count === 1 ? '' : 's'} for you` : 'Rabbit is back') : 'Rabbit is exploring…'}
+            {done ? (count ? `rabbt found ${count} thing${count === 1 ? '' : 's'} for you` : 'rabbt is back') : 'rabbt is exploring…'}
           </p>
           {r?.intro && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{r.intro}</p>}
         </div>
@@ -115,7 +115,7 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
           <Heading>Races</Heading>
           <CardRow>{r.races.map((x) => <PickCard key={x.id} r={x} onClick={() => onOpen(x)} className="ex-pop" style={delay()} />)}</CardRow>
           {r.races.some((x) => x.source === 'web') && (
-            <p className="px-1 text-[0.6471rem] text-(--text-muted)">Some were found on the web by Rabbit. Check dates on the official site.</p>
+            <p className="px-1 text-[0.6471rem] text-(--text-muted)">Some were found on the web by rabbt. Check dates on the official site.</p>
           )}
         </div>
       )}

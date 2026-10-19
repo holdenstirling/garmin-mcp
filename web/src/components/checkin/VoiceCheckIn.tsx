@@ -279,7 +279,7 @@ function MicStage({ listening, transcript, interim, onTap }: {
             <RabbitLoader inline label="Listening…" />
           </>
         ) : (
-          <span className="text-[0.7647rem] text-(--text-muted)">Tap and tell Rabbit how it felt</span>
+          <span className="text-[0.7647rem] text-(--text-muted)">Tap and tell rabbt how it felt</span>
         )}
       </div>
       {listening && (
@@ -355,7 +355,7 @@ function Result({ saved, onDone, onEdited }: {
         <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{c.summary || 'Checked in.'}</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">Saved. Rabbit will use it for your next days.</p>
+          <p className="text-[0.7059rem] text-(--text-muted)">Saved. rabbt will use it for your next days.</p>
         </div>
         {xp > 0 && <span className="fx-hop shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 font-mono text-[0.7059rem] font-semibold text-(--accent)">+{xp} XP</span>}
       </div>
@@ -371,7 +371,7 @@ function Result({ saved, onDone, onEdited }: {
       )}
       {c.pain_flag && (
         <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3 py-2.5 text-[0.7647rem] leading-snug text-(--text)" role="note">
-          Rabbit will ease the next few days. If pain is sharp or getting worse, check with a physio or doctor.
+          rabbt will ease the next few days. If pain is sharp or getting worse, check with a physio or doctor.
         </p>
       )}
       {editing ? (

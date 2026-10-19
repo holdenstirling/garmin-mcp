@@ -54,10 +54,10 @@ export function JoinScreen({ token }: { token: string }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto p-6">
       <RabbitLoader size={64} gentle decorative />
       <div className="text-center">
-        <h1 className="font-display text-3xl text-(--brand)">Join Rabbit</h1>
+        <h1 className="font-display text-3xl text-(--brand)">Join rabbt</h1>
         {phase.kind === 'form' && (
           <p className="mt-1.5 text-(--text-secondary)">
-            {phase.inviter ? `${phase.inviter} invited you to train with Rabbit.` : "You're invited to train with Rabbit."}
+            {phase.inviter ? `${phase.inviter} invited you to train with rabbt.` : "You're invited to train with rabbt."}
           </p>
         )}
       </div>
@@ -71,7 +71,7 @@ export function JoinScreen({ token }: { token: string }) {
 
       {phase.kind === 'form' && phase.signedIn && (
         <p className="max-w-sm text-center text-[0.8235rem] text-(--text-secondary)">
-          You're already signed in on this device. <a href="/app/" className="font-medium text-(--accent) underline">Open Rabbit</a>
+          You're already signed in on this device. <a href="/app/" className="font-medium text-(--accent) underline">Open rabbt</a>
         </p>
       )}
 

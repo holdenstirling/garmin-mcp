@@ -43,8 +43,8 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
               <Row title="Edit my plan" subtitle="Change, move, add or delete sessions"
                 trailing={<Switch label="Coach can edit my plan" checked={c.can_edit_plan} disabled={busy != null}
                   onChange={(v) => void run(c.email, () => updateCoach(c.email, { can_edit_plan: v }))} />} />
-              <Row title="See my Rabbit chats" subtitle="Read-only. Off keeps your chats with Rabbit private."
-                trailing={<Switch label="Coach can see my Rabbit chats" checked={c.can_see_rabbit_chats} disabled={busy != null}
+              <Row title="See my rabbt chats" subtitle="Read-only. Off keeps your chats with rabbt private."
+                trailing={<Switch label="Coach can see my rabbt chats" checked={c.can_see_rabbit_chats} disabled={busy != null}
                   onChange={(v) => void run(c.email, () => updateCoach(c.email, { can_see_rabbit_chats: v }))} />} />
               {confirm === c.email ? (
                 <div className="flex items-center gap-2 px-4 py-3">
@@ -63,18 +63,18 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
       )}
 
       {coaches !== null && coaches.length === 0 && onFindCoach && (
-        <Group footer="Rabbit doesn't take a cut; you contact coaches directly.">
+        <Group footer="rabbt doesn't take a cut; you contact coaches directly.">
           <Row icon={<Search className="size-5 text-(--accent)" />} title="Don't have a coach yet?" subtitle="Find one who fits your race"
             onClick={onFindCoach} />
         </Group>
       )}
       <Card>
-        <Field label="Invite a coach" hint="Use the email of their Google account. They'll see your plan, events, stats and anything you share. Your Rabbit chats stay private unless you turn that on.">
+        <Field label="Invite a coach" hint="Use the email of their Google account. They'll see your plan, events, stats and anything you share. Your rabbt chats stay private unless you turn that on.">
           <input className={inputCls} type="email" inputMode="email" autoComplete="off" placeholder="coach@example.com"
             value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Row title="Can edit my plan" trailing={<Switch label="Can edit my plan" checked={canEdit} onChange={setCanEdit} />} />
-        <Row title="Can see my Rabbit chats" trailing={<Switch label="Can see my Rabbit chats" checked={canSee} onChange={setCanSee} />} />
+        <Row title="Can see my rabbt chats" trailing={<Switch label="Can see my rabbt chats" checked={canSee} onChange={setCanSee} />} />
         <div className="px-4 pb-4 pt-1">
           <Button variant="primary" className="h-11 w-full gap-1.5 text-[0.8235rem]" loading={busy === 'invite'} disabled={!email.trim()}
             onClick={() => void run('invite', () => inviteCoach({ email: email.trim(), can_edit_plan: canEdit, can_see_rabbit_chats: canSee }),

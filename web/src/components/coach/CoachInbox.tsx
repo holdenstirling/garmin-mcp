@@ -61,7 +61,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
                 {n.pinned ? <Pin className="mt-0.5 size-3.5 shrink-0 text-(--accent)" /> : <StickyNote className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" />}
                 <span className="whitespace-pre-wrap">{n.text}</span>
               </p>
-              <p className="mt-1 text-[0.6471rem] text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)} · Rabbit follows these too</p>
+              <p className="mt-1 text-[0.6471rem] text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)} · rabbt follows these too</p>
             </Card>
           ))}
         </section>

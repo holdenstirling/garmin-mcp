@@ -42,7 +42,7 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
           </div>
 
           <Group footer={goal.plan ? 'Replaces this plan with one built from your answers. You can sync it to Garmin.' : 'Answer a few questions and get a week-by-week plan you can sync to Garmin.'}>
-            <Row icon={<Icon><RabbitLogo current /></Icon>} title="Build a plan in Rabbit" subtitle="Race, goals, you and your week" onClick={onBuild} />
+            <Row icon={<Icon><RabbitLogo current /></Icon>} title="Build a plan in rabbt" subtitle="Race, goals, you and your week" onClick={onBuild} />
           </Group>
 
           {files.length > 0 && (
@@ -58,7 +58,7 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
             </Group>
           )}
 
-          <Group label="Rabbit's summary"
+          <Group label="rabbt's summary"
             footer={<label htmlFor={ATTACH_INPUT_ID} onClick={onUploadPlan} className="cursor-pointer text-(--accent)">
               {goal.plan ? 'Send an updated plan' : 'Upload my plan'}</label>}>
             {goal.plan ? (
@@ -67,7 +67,7 @@ export function PlanSheet({ goal, week, onAsk, onUploadPlan, onEdit, onBuild, on
               </div>
             ) : (
               <p className="px-4 py-3 text-[0.8235rem] text-(--text-muted)">
-                No plan yet. Upload it (a PDF or screenshots) or describe it to Rabbit, and this week's sessions will show up on your Schedule.
+                No plan yet. Upload it (a PDF or screenshots) or describe it to rabbt, and this week's sessions will show up on your Schedule.
               </p>
             )}
           </Group>

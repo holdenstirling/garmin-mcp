@@ -242,7 +242,7 @@ class PlanService:
             try:
                 removed = self.unsync(user_id)
             except ReauthRequired:
-                raise PlanError("Reconnect Garmin in settings first, so Rabbit can remove the "
+                raise PlanError("Reconnect Garmin in settings first, so rabbt can remove the "
                                 "workouts it added, then delete the plan.") from None
             except (GarminError, PlanError):
                 pass  # Garmin not connected at all: nothing we can clean up remotely

@@ -463,7 +463,7 @@ function OuraRecovery({ loadKey = 0 }: { loadKey?: number }) {
           </div>
         ))}
       </div>
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to Rabbit.</p>
+      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to rabbt.</p>
       </>}
     </section>
   )

@@ -36,7 +36,7 @@ export async function drawCelebrationCard(canvas: HTMLCanvasElement, c: CardInpu
   ctx.fillStyle = INK
   ctx.textBaseline = 'alphabetic'
   ctx.font = `44px ${SERIF}`
-  ctx.fillText('Rabbit', pad + 80, pad + 44)
+  ctx.fillText('rabbt', pad + 80, pad + 44)
 
   ctx.fillStyle = SOFT
   ctx.font = `500 30px ${MONO}`
@@ -62,5 +62,5 @@ export async function drawCelebrationCard(canvas: HTMLCanvasElement, c: CardInpu
 
   ctx.fillStyle = MUTED
   ctx.font = `26px ${SANS}`
-  ctx.fillText('Trained with Rabbit', pad, CARD_H - 64)
+  ctx.fillText('Trained with rabbt', pad, CARD_H - 64)
 }

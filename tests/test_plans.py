@@ -104,7 +104,7 @@ def test_garmin_workout_json() -> None:
     sessions = [s for _, _, s in iter_sessions(plan)]
     thr = next(s for s in sessions if s["sport"] == "bike" and s["kind"] == "threshold")
     (wo,) = garmin_workouts(thr, {"ftp_w": 250})
-    assert wo["sportType"]["sportTypeKey"] == "cycling" and wo["workoutName"].startswith("Rabbit: ")
+    assert wo["sportType"]["sportTypeKey"] == "cycling" and wo["workoutName"].startswith("rabbt: ")
     steps = wo["workoutSegments"][0]["workoutSteps"]
     rep = next(s for s in steps if s["type"] == "RepeatGroupDTO")
     work = rep["workoutSteps"][0]

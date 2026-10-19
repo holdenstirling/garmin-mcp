@@ -101,7 +101,7 @@ function AddToCalendar({ s, date }: { s: PlanSession; date: string }) {
       {open && (
         <div className="flex flex-col gap-2 pb-2.5">
           <div className="flex gap-2">
-            <a className={link} href={sessionIcsUrl(s.id)} download="rabbit-workout.ics">Apple / Outlook</a>
+            <a className={link} href={sessionIcsUrl(s.id)} download="rabbt-workout.ics">Apple / Outlook</a>
             <a className={link} href={googleCalendarUrl(s, date)} target="_blank" rel="noopener noreferrer">Google Calendar</a>
           </div>
           {!s.time && <p className="text-[0.7059rem] text-(--text-muted)">Tip: set a start time (Edit) to block the time instead of the whole day.</p>}
@@ -170,7 +170,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       )}
       {c?.adjusted && (
         <p className="mx-3.5 mt-2 flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
-          <RabbitLogo size={14} current className="mt-0.5 shrink-0" /><span><span className="font-semibold">Rabbit adjusted this:</span> {c.adjusted}</span>
+          <RabbitLogo size={14} current className="mt-0.5 shrink-0" /><span><span className="font-semibold">rabbt adjusted this:</span> {c.adjusted}</span>
         </p>
       )}
       {status === 'done' && c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport === 'brick' ? 'run' : s.sport} />}
@@ -229,7 +229,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
         {a.onMove && <Button variant="default" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onMove!(s, 'swap')} aria-label={`Swap ${fmtDay(date, { weekday: 'long' })} with another day`}><ArrowLeftRight className="size-4" aria-hidden />Swap</Button>}
         {a.onOpenPage && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onOpenPage!(s)} aria-label={`Open ${s.title} in full`}><Maximize2 className="size-4" aria-hidden />Full workout</Button>}
         <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onEdit(s)} aria-label={`Edit ${s.title}`}><Pencil className="size-4" aria-hidden />Edit</Button>
-        {a.onAsk && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onAsk!(s)} aria-label={`Ask Rabbit about ${s.title}`}><MessageCircle className="size-4" aria-hidden />Ask Rabbit</Button>}
+        {a.onAsk && <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.8235rem]" onClick={() => a.onAsk!(s)} aria-label={`Ask rabbt about ${s.title}`}><MessageCircle className="size-4" aria-hidden />Ask rabbt</Button>}
       </div>
       {date >= today && s.kind !== 'race' && <AddToCalendar s={s} date={date} />}
       <Learn s={s} c={c} cal={cal} imperial={imperial} />

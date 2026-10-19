@@ -230,7 +230,7 @@ def test_web_results_need_https_and_carry_no_contacts() -> None:
     out = coachweb.clean(raw)
     assert [c["name"] for c in out] == ["Mile High Tri Coaching", "Call Carl"]
     assert out[0]["url"] == "https://mhtc.example.com/" and out[0]["source"] == "web"
-    assert out[0]["label"] == "From the web — not verified by Rabbit"
+    assert out[0]["label"] == "From the web — not verified by rabbt"
     assert "@" not in out[1]["specialty"] and "555" not in out[1]["name"]
     assert set(out[0]) == {"id", "name", "specialty", "area", "url", "source", "label"}
 

@@ -16,7 +16,7 @@ const COPY: Record<'progress' | 'workout' | 'today', { title: string; body: stri
     body: 'Connect Garmin to put this workout on your watch and see how it went afterwards.',
   },
   today: {
-    title: 'Rabbit reads your training from Garmin',
+    title: 'rabbt reads your training from Garmin',
     body: "Connect it and today's advice uses your real workouts, form and recovery.",
   },
 }

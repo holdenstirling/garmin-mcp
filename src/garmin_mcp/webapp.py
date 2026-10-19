@@ -327,7 +327,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if not push_allowed(f"test:{user_id}", PUSH_TEST_PER_HOUR, 3600):
             return _err(429, "Too many test notifications. Try again in an hour.")
         results = await anyio.to_thread.run_sync(
-            lambda: push.send(user_id, "Rabbit", "Notifications are working.")
+            lambda: push.send(user_id, "rabbt", "Notifications are working.")
         )
         return JSONResponse({"results": [
             {"host": r.endpoint_host, "status": r.status, "removed": r.removed} for r in results
@@ -962,7 +962,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     async def event_ics(request: Request, user_id: str) -> Response:
         ev = await _plan_call(lambda: _events().get(user_id, request.path_params["event_id"]))
         return Response(_calsub.event_ics(ev).encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
-            "Content-Disposition": 'attachment; filename="rabbit-event.ics"', "Cache-Control": "no-store"})
+            "Content-Disposition": 'attachment; filename="rabbt-event.ics"', "Cache-Control": "no-store"})
 
     def _feed_url(token: str) -> dict[str, str]:
         base = settings.public_base_url.rstrip("/")
@@ -1579,7 +1579,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         def run() -> None:
             c = coach_dir.get(str(request.path_params["coach_id"]))
             if not c.get("rabbit_user_email"):
-                raise CoachError("This coach isn't on Rabbit yet. Contact them directly.")
+                raise CoachError("This coach isn't on rabbt yet. Contact them directly.")
             links.invite(user_id, c["rabbit_user_email"], **perms)
         await _plan_call(run)
         return JSONResponse({"coaches": [_coach_view(c) for c in links.coaches_of(user_id)]}, status_code=201)
@@ -2630,12 +2630,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             today = _explore_today(user_id)
             await _plan_call(lambda: _events().take_allowance(
                 user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
-                message="That's today's Rabbit race searches used up. Try again tomorrow."))
+                message="That's today's rabbt race searches used up. Try again tomorrow."))
             try:
                 races = await finder.find(research, f, today)
             except Exception as e:
                 log_event(logger, logging.WARNING, "explore_ai_failed", user_id=user_id, error=type(e).__name__)
-                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
+                raise _UserError("rabbt's web search didn't work just now. Try again in a minute.", 502) from None
             log_event(logger, logging.INFO, "explore_ai", user_id=user_id, found=len(races))
         found = races
         hinted = await _plan_call(lambda: _explore_hinted(user_id, found))
@@ -2749,10 +2749,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if res["notify"]:
             if res["status"] == "active":
                 _social_push(res["notify"], f"social-follow:{res['notify']}:{user_id}", 86400,
-                             "New follower", f"{me_name} is now following your training on Rabbit.")
+                             "New follower", f"{me_name} is now following your training on rabbt.")
             else:
                 _social_push(res["notify"], f"social-follow:{res['notify']}:{user_id}", 86400,
-                             "Follow request", f"{me_name} wants to follow your training on Rabbit.")
+                             "Follow request", f"{me_name} wants to follow your training on rabbt.")
         if res["by_email"]:  # same answer whether or not the email has an account
             return JSONResponse({"ok": True, "message": _social.GENERIC_SENT})
         name = _soc_name(res["target"])
@@ -2937,13 +2937,13 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             today = _explore_today(user_id)
             await _plan_call(lambda: _events().take_allowance(
                 user_id, "explore_ai", today, limit=_explore.AI_PER_DAY,
-                message="That's today's Rabbit race searches used up. Try again tomorrow."))
+                message="That's today's rabbt race searches used up. Try again tomorrow."))
             try:
                 raw = await research(_explore.WEB_SYSTEM, _foryou.bucket_prompt(interests, today),
                                      max_searches=5, report_tool=_explore.WEB_TOOL)
             except Exception as e:
                 log_event(logger, logging.WARNING, "foryou_bucket_failed", user_id=user_id, error=type(e).__name__)
-                raise _UserError("Rabbit's web search didn't work just now. Try again in a minute.", 502) from None
+                raise _UserError("rabbt's web search didn't work just now. Try again in a minute.", 502) from None
             races = _foryou.clean_bucket(raw, interests, today)
             entry = {"ts": time.time(), "races": races}
 
@@ -3324,11 +3324,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             return {**base, "items": [], "groups_state": "needs_location", "needs_location": not near["places"]}
         items, gstate = await _x2_groups(user_id, city, state, today, search=search)
         if search and gstate in ("unavailable", "failed") and not near["places"]:
-            raise _UserError("Rabbit's web search didn't work just now. Try again in a minute."
+            raise _UserError("rabbt's web search didn't work just now. Try again in a minute."
                              if gstate == "failed" else "Web search isn't available on this server.",
                              502 if gstate == "failed" else 503)
         if search and gstate == "limit" and not near["places"]:
-            raise _UserError("That's today's Rabbit searches used up. Try again tomorrow.", 429)
+            raise _UserError("That's today's rabbt searches used up. Try again tomorrow.", 429)
         return {**base, "items": _local.order(items, cats), "groups_state": gstate, "needs_location": False}
 
     async def explore_local(request: Request, user_id: str) -> Response:
@@ -3477,7 +3477,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         res = await anyio.to_thread.run_sync(lambda: chal.invite(user_id, request.path_params["cid"], ids))
         for to in ids or []:
             _social_push(to, f"challenge-invite:{to}:{user_id}", 86400, "Challenge invite",
-                         f"{_soc_name(user_id)} invited you to a challenge on Rabbit.")
+                         f"{_soc_name(user_id)} invited you to a challenge on rabbt.")
         return JSONResponse(res)
 
     async def challenges_accept(request: Request, user_id: str) -> Response:
@@ -3913,7 +3913,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 title = "New follower" if res.get("status") == "active" else "Follow request"
                 verb = "is now following" if res.get("status") == "active" else "wants to follow"
                 _social_push(res["notify"], f"social-follow:{res['notify']}:{uid}", 86400, title,
-                             f"{_soc_name(uid)} {verb} your training on Rabbit.")
+                             f"{_soc_name(uid)} {verb} your training on rabbt.")
         people_svc = _ppl.People(
             store, soc=soc, feed=soc_feed, clubs=clb, dms=dms, related=cm.related, person=_soc_person,
             name=_soc_name, home=_cm_home, today=lambda u: _ag._now(u).date(),
@@ -4043,8 +4043,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             chat.agent.moments.friend_joined(inviter, first, new_uid)
             quiet = chat.agent.moments.quiet(chat.agent._now(inviter))
         if not quiet:
-            _social_push(inviter, f"invite-joined:{inviter}:{new_uid}", 86400, "New friend on Rabbit",
-                         f"{first} joined Rabbit from your invite.")
+            _social_push(inviter, f"invite-joined:{inviter}:{new_uid}", 86400, "New friend on rabbt",
+                         f"{first} joined rabbt from your invite.")
 
     # ------------------------------------------- progress trends + celebrations --
     # trends.py: Progress charts (weekly distance vs plan goal, pace at easy effort, sleep vs
@@ -4230,9 +4230,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             plan = await _plan_call(lambda: plans.get(user_id))
             if plan is None or not any(s.get("id") == sid for _, _, s in _pc.iter_sessions(plan)):
                 raise _UserError("That session isn't in your plan anymore.", 404)
-            body = _export_ics(plan, name="Rabbit", only=sid)
+            body = _export_ics(plan, name="rabbt", only=sid)
             return Response(body.encode("utf-8"), media_type="text/calendar; charset=utf-8", headers={
-                "Content-Disposition": 'attachment; filename="rabbit-workout.ics"', "Cache-Control": "no-store"})
+                "Content-Disposition": 'attachment; filename="rabbt-workout.ics"', "Cache-Control": "no-store"})
 
         async def workout_feedback_get(request: Request, user_id: str) -> Response:
             # The workout page's "Rabbit's feedback": the session's plan intent, Garmin vs targets
@@ -4395,11 +4395,11 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                     return tok, int(time.time()) + 60 * 86400
                 try:
                     tok = _slinks.invite_token(uid, make)
-                    label = "Join Rabbit" if snap.get("kind") in ("invite", "club", "event") else "Train with me on Rabbit"
+                    label = "Join rabbt" if snap.get("kind") in ("invite", "club", "event") else "Train with me on rabbt"
                     return f"{_sl_base}/app/join/{tok}", label
                 except Exception as e:  # too many invites etc.: the page still works
                     log_event(logger, logging.INFO, "share_invite_failed", error=type(e).__name__)
-            return f"{_sl_base}/app/", "Open Rabbit"
+            return f"{_sl_base}/app/", "Open rabbt"
 
         async def sharelink_create(request: Request, user_id: str) -> Response:
             body = await read_json(request)
@@ -4901,10 +4901,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         token = _ah.bearer(request.headers.get("authorization"))
         uid = await anyio.to_thread.run_sync(lambda: _ah_keys.lookup(token)) if token else None
         if not uid:
-            return no(401, "Rabbit doesn't recognise this import key. In Rabbit, open Me, Connected apps, "
+            return no(401, "rabbt doesn't recognise this import key. In rabbt, open Me, Connected apps, "
                            "Apple Watch and copy your key into the Shortcut again.")
         if not push_allowed(f"ah-user:{uid}", 30, 3600):
-            return no(429, "Rabbit already got several imports this hour. Try again later.")
+            return no(429, "rabbt already got several imports this hour. Try again later.")
         try:
             size = int(request.headers.get("content-length") or 0)
         except ValueError:
@@ -4939,12 +4939,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             r = await anyio.to_thread.run_sync(run)
         except Exception as e:
             log_event(logger, logging.WARNING, "apple_import_failed", error=type(e).__name__)
-            return no(500, "Rabbit couldn't save that just now. Try again later.")
+            return no(500, "rabbt couldn't save that just now. Try again later.")
         if r["received"] == 0:
-            msg = ("Rabbit didn't find any workouts in that. Check the Shortcut's steps in Rabbit: "
+            msg = ("rabbt didn't find any workouts in that. Check the Shortcut's steps in rabbt: "
                    "Me, Connected apps, Apple Watch.")
         else:
-            msg = (f"Rabbit got {r['received']} workout{'s' if r['received'] != 1 else ''}"
+            msg = (f"rabbt got {r['received']} workout{'s' if r['received'] != 1 else ''}"
                    f" ({r['new']} new).")
         return JSONResponse({"ok": True, **r, "message": msg}, headers={"Cache-Control": "no-store"})
 
@@ -5129,7 +5129,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         log_event(logger, logging.INFO, "account_exported", user_id=user_id)
         day = (plans.today(user_id) if plans else date.today()).isoformat()
         return Response(blob, media_type="application/zip", headers={
-            "Content-Disposition": f'attachment; filename="rabbit-data-{day}.zip"'})
+            "Content-Disposition": f'attachment; filename="rabbt-data-{day}.zip"'})
 
     async def account_delete(request: Request, user_id: str) -> Response:
         body = await read_json(request)

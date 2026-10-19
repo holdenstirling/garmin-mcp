@@ -73,12 +73,12 @@ PULL_EVERY_S = 30 * 60
 PUSH_DEBOUNCE_S = 3.0
 BACKOFF_S = (120, 300, 900, 3600)
 MAX_ITEMS = 200
-RABBIT_NOTE = "Planned in Rabbit."
+RABBIT_NOTE = "Planned in rabbt."
 # The app's HTTP transport for TrainingPeaks (None = the network). Tests set a MockTransport.
 TRANSPORT: httpx2.BaseTransport | None = None
 
 REAUTH_MSG = "Your TrainingPeaks sign-in expired. Reconnect to keep your plan in sync."
-BUSY_MSG = "TrainingPeaks is busy right now. Rabbit will try again in a few minutes."
+BUSY_MSG = "TrainingPeaks is busy right now. rabbt will try again in a few minutes."
 FORBIDDEN_MSG = ("TrainingPeaks said no to that (some calendar features need TrainingPeaks "
                  "Premium, or your coach may have locked this workout).")
 
@@ -437,7 +437,7 @@ class TPSync:
 
     def set_source(self, uid: str, source: str) -> dict[str, Any]:
         if source not in SOURCES:
-            raise TPUserError("Pick TrainingPeaks or Rabbit.")
+            raise TPUserError("Pick TrainingPeaks or rabbt.")
         self._set(uid, source=source)
         if source == "rabbit" and self.connected(uid):
             self.sync(uid)
@@ -588,7 +588,7 @@ class TPSync:
             raise TPUserError("That workout is already done, so it stays where it is.", 409)
         ours = {int(p["wid"]) for p in (st.get("pushed") or {}).values() if p.get("wid")}
         if wid in ours and self.source(uid) == "rabbit":
-            raise TPUserError("This one follows your Rabbit plan: move the session in Rabbit and "
+            raise TPUserError("This one follows your rabbt plan: move the session in rabbt and "
                               "TrainingPeaks follows.", 409)
         with self._lock(uid):
             try:

@@ -80,7 +80,7 @@ export async function* sendChat(message: string, threadId: string, attachmentIds
       body: JSON.stringify({ message, thread_id: threadId, attachments: attachmentIds }),
     })
   } catch {
-    yield errorResult("Couldn't reach Rabbit. Check your connection.", false)
+    yield errorResult("Couldn't reach rabbt. Check your connection.", false)
     return
   }
   if (response.status === 409) {

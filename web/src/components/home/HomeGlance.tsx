@@ -19,7 +19,7 @@ export function HomeGreeting({ name }: { name: string | null | undefined }) {
           {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
         <h2 className="font-display text-[1.1765rem] leading-tight text-(--brand)">{greeting(now)}{first ? `, ${first}` : ''}</h2>
-        {night && <p className="m-0 text-[0.7059rem] text-(--text-muted)">Rabbit's winding down. Sleep is training too.</p>}
+        {night && <p className="m-0 text-[0.7059rem] text-(--text-muted)">rabbt's winding down. Sleep is training too.</p>}
       </div>
       {night && <RabbitNap size={30} mode="sleep" className="mb-1 shrink-0" />}
     </div>

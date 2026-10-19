@@ -173,7 +173,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             {upcoming.length === 0 && !searching && (
               <EmptyState title="Nothing on the calendar yet"
-                body="Add races, group rides, trips and big days. Rabbit plans around all of them."
+                body="Add races, group rides, trips and big days. rabbt plans around all of them."
                 action="Add an event" onAction={() => setEditing('new')} />
             )}
             {upcoming.length > 0 && (
@@ -490,7 +490,7 @@ function DebriefCard({ event, result, notes, onSaved }: {
   }
   return (
     <Card>
-      <Field label="Race debrief" hint="Rabbit reads your race from Garmin plus your notes, then saves learnings it carries into your next plan.">
+      <Field label="Race debrief" hint="rabbt reads your race from Garmin plus your notes, then saves learnings it carries into your next plan.">
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} type="button" onClick={() => setFeel(n)} aria-pressed={feel === n}

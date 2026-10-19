@@ -86,7 +86,7 @@ export function AddToCalendar({ event }: { event: RaceEvent }) {
               <span className="ml-auto text-[0.6471rem] text-(--text-muted)">opens Google’s add page</span>
             </a>
           )}
-          <a href={eventIcsUrl(event.id)} download="rabbit-event.ics"
+          <a href={eventIcsUrl(event.id)} download="rabbt-event.ics"
             className="flex min-h-11 items-center gap-2 rounded-lg border border-(--border) px-3 text-[0.7647rem] font-medium text-(--text) active:bg-(--bg-inset)">
             <Download className="size-4" aria-hidden /> Apple Calendar or Outlook (.ics)
           </a>
@@ -214,7 +214,7 @@ export function CalendarSync() {
           </p>
         </>
       ) : feed.on ? (
-        <p className="text-[0.7059rem] text-(--text-secondary)">Your link is on. Rabbit can’t show it again; use ··· to make a new one (the old one stops working).</p>
+        <p className="text-[0.7059rem] text-(--text-secondary)">Your link is on. rabbt can’t show it again; use ··· to make a new one (the old one stops working).</p>
       ) : (
         <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy === 'make'} onClick={() => void make()}>
           Get my calendar link

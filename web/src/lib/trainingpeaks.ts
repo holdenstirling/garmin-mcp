@@ -50,11 +50,11 @@ export const moveTP = (id: number, date: string) => postJSON<TPView>(`/api/train
 
 export const TP_SOURCE_LABEL: Record<TPSource, string> = {
   trainingpeaks: 'TrainingPeaks plan (coach)',
-  rabbit: 'Rabbit plan',
+  rabbit: 'rabbt plan',
 }
 export const TP_SOURCE_HINT: Record<TPSource, string> = {
-  trainingpeaks: 'Your TrainingPeaks workouts show in Rabbit. Rabbit doesn’t write to TrainingPeaks, except when you move a workout here.',
-  rabbit: 'Rabbit adds your next 14 days to TrainingPeaks and keeps them updated when you edit, move or delete a session. It never touches workouts it didn’t create.',
+  trainingpeaks: 'Your TrainingPeaks workouts show in rabbt. rabbt doesn’t write to TrainingPeaks, except when you move a workout here.',
+  rabbit: 'rabbt adds your next 14 days to TrainingPeaks and keeps them updated when you edit, move or delete a session. It never touches workouts it didn’t create.',
 }
 
 // Plan screens re-read when something synced or the source changed.

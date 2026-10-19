@@ -119,7 +119,7 @@ def _act(kind: str, label: str, **payload: Any) -> dict[str, Any]:
 
 
 def _plan_action(plan: dict[str, Any] | None, label: str, ask: str) -> dict[str, Any]:
-    return _act("open_plan", label) if plan else _act("ask_rabbit", "Ask Rabbit", text=ask)
+    return _act("open_plan", label) if plan else _act("ask_rabbit", "Ask rabbt", text=ask)
 
 
 def _daily(load: dict[str, Any] | None, today: date) -> dict[str, float]:
@@ -513,7 +513,7 @@ def rule_soreness(*, today: date, checkins: list[dict[str, Any]] | None, plan: d
     if nxt:
         action = _act("open_session", "Open your strength session", session_id=nxt[1]["id"], date=nxt[0])
     else:
-        action = _act("ask_rabbit", "Ask Rabbit for prehab", text=f"My {name} keeps getting sore. What prehab should I add?")
+        action = _act("ask_rabbit", "Ask rabbt for prehab", text=f"My {name} keeps getting sore. What prehab should I add?")
     see = " Pain came up too: get it checked if it lingers." if area in pain else ""
     return _insight(
         f"sore:{area}", title=f"Your {name} keeps coming up",

@@ -355,7 +355,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
   return (
     <Sheet title={`Missed: ${s.title}`} onClose={onClose} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       <p className="px-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
-        {fmtDay(date, { weekday: 'long' })}: {c.missed?.why} Life happens. Pick a fix and Rabbit re-balances the rest of your week.
+        {fmtDay(date, { weekday: 'long' })}: {c.missed?.why} Life happens. Pick a fix and rabbt re-balances the rest of your week.
       </p>
       <Card>
         <Field label="Move it to another day">
@@ -636,7 +636,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
       {change && change.rebalanced.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5" role="status">
-          <p className="text-[0.7647rem] font-semibold text-(--accent)">Rabbit re-balanced your week</p>
+          <p className="text-[0.7647rem] font-semibold text-(--accent)">rabbt re-balanced your week</p>
           <ul className="flex flex-col gap-0.5 text-[0.7647rem] leading-snug text-(--text)">
             {change.rebalanced.map((l) => <li key={l}>{l}</li>)}
           </ul>
@@ -678,7 +678,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
           <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
-            {editable && cal ? (editing ? 'Press and hold a workout to drag it, or use Earlier / Later. Rabbit re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
+            {editable && cal ? (editing ? 'Press and hold a workout to drag it, or use Earlier / Later. rabbt re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
       ) : view === 'list' ? (

@@ -11,12 +11,12 @@ import { TOUR_EVENT, markTourDone, tourDone } from '@/lib/tour'
 
 type Step = { target: string; title: string; body: string }
 const STEPS: Step[] = [
-  { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask Rabbit, your coach, anything." },
+  { target: 'tab-rabbit', title: 'Home', body: "Today's workout and your week at a glance. Switch to Chat to ask rabbt, your coach, anything." },
   { target: 'tab-plan', title: 'Schedule', body: 'Your plan and your events in one place. Tap a day for the full workout; move it if life gets in the way. + Add puts in a workout, event or plan.' },
   { target: 'tab-feed', title: 'Feed', body: "What your friends and groups are up to. Make a group feed with just a few people." },
   { target: 'tab-clubs', title: 'Local', body: 'Clubs, leagues and meetups near you, from run clubs to volleyball, plus people to follow.' },
   { target: 'tab-progress', title: 'Progress', body: 'How your fitness is trending, in plain words.' },
-  { target: 'chat', title: 'Chat with Rabbit', body: 'Questions, swaps, travel weeks: Rabbit is one tap away on every screen.' },
+  { target: 'chat', title: 'Chat with rabbt', body: 'Questions, swaps, travel weeks: rabbt is one tap away on every screen.' },
   { target: 'search', title: 'Search', body: 'Find people, clubs, races and workouts (planned or done) from any screen.' },
 ]
 const PAD = 6

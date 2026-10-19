@@ -82,7 +82,7 @@ export function InterestsStrip({ interests, onEdit }: { interests: Interests | n
       <span className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto">
         {chips.length ? chips.map((c) => (
           <span key={c} className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-medium text-(--accent)">{c}</span>
-        )) : <span className="text-[0.7059rem] text-(--text-secondary)">Tell Rabbit what you're into</span>}
+        )) : <span className="text-[0.7059rem] text-(--text-secondary)">Tell rabbt what you're into</span>}
       </span>
       <Pencil className="size-3.5 shrink-0 text-(--text-muted)" aria-label="Edit" />
     </button>
@@ -148,7 +148,7 @@ export function ForYouFeedView({ state, onOpen, onEdit, onSearch, onAsk, imperia
           <span className="flex shrink-0 text-(--accent)"><RabbitLogo size={16} current /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-[0.7647rem] font-medium text-(--accent)">Find bucket-list races</span>
-            <span className="block text-[0.6471rem] text-(--text-muted)">Rabbit searches the web · uses 1 of 5 daily searches</span>
+            <span className="block text-[0.6471rem] text-(--text-muted)">rabbt searches the web · uses 1 of 5 daily searches</span>
           </span>
         </button>
       )}
@@ -197,7 +197,7 @@ function Section({ s, onOpen }: { s: ForYouSection; onOpen: (r: ForYouRace) => v
       <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">
         {s.races.map((r) => <PickCard key={r.id} r={r} onClick={() => onOpen(r)} />)}
       </div>
-      {s.source === 'web' && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Found online by Rabbit. Check dates on the official site.</p>}
+      {s.source === 'web' && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Found online by rabbt. Check dates on the official site.</p>}
       {s.source === 'curated' && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Famous races everyone talks about. Dates move each year, so check the official site.</p>}
     </section>
   )

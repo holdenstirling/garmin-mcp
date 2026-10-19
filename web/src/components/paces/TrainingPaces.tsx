@@ -12,9 +12,9 @@ import { PaceSheet, fmtThreshold } from './PaceSheet'
 
 const ORDER: PaceSport[] = ['run', 'bike', 'swim']
 const EMPTY: Record<PaceSport, string> = {
-  run: 'Add your threshold pace below, or Rabbit will suggest one after a couple of tempo runs or a race.',
-  bike: 'Add your FTP below, or Rabbit will suggest one after a couple of rides with a power meter.',
-  swim: 'Add your CSS below, or Rabbit will suggest one from your pool sets.',
+  run: 'Add your threshold pace below, or rabbt will suggest one after a couple of tempo runs or a race.',
+  bike: 'Add your FTP below, or rabbt will suggest one after a couple of rides with a power meter.',
+  swim: 'Add your CSS below, or rabbt will suggest one from your pool sets.',
 }
 
 function zoneText(sport: PaceSport, lo: number, hi: number, imperial: boolean): string {
@@ -94,7 +94,7 @@ export function TrainingPaces({ refreshKey, onChanged }: {
         <TrendingUp className="size-5 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="block text-[0.8235rem] font-medium text-(--text)">{SPORT_NAME[p.sport]}: {p.old != null ? `${fmtThreshold(p.sport, p.old, imperial)} → ` : ''}{fmtThreshold(p.sport, p.new, imperial)}</span>
-          <span className="block text-[0.6471rem] text-(--text-secondary)">Rabbit suggests an update. Tap to see why.</span>
+          <span className="block text-[0.6471rem] text-(--text-secondary)">rabbt suggests an update. Tap to see why.</span>
         </span>
       </button>
     ))}

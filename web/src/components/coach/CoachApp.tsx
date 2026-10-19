@@ -52,7 +52,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <Users className="size-8 text-(--text-muted)" />
           <p className="text-[0.8824rem] text-(--text)">No athletes yet</p>
-          <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Athletes add you from Settings › Coaches in their Rabbit app, using {me.profile.name ? 'your' : 'this'} Google email.</p>
+          <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Athletes add you from Settings › Coaches in their rabbt app, using {me.profile.name ? 'your' : 'this'} Google email.</p>
         </div>
       )}
       {(athletes ?? []).map((a) => (
@@ -81,7 +81,7 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
       <header className="flex shrink-0 items-center gap-2.5 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm"><RabbitLogo size={32} /></span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-lg leading-tight text-(--brand)">Rabbit for coaches</span>
+          <span className="block font-display text-lg leading-tight text-(--brand)">rabbt for coaches</span>
           <span className="block truncate text-[0.6471rem] text-muted-foreground">{me.profile.name || 'Coach'}</span>
         </span>
         <Button variant="ghost" className="h-8 px-2 text-[0.7059rem]" onClick={() => setLegal(true)}>Privacy</Button>
@@ -126,7 +126,7 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
   }
 
   const tabs: [Tab, string][] = [['overview', 'Overview'], ['plan', 'Plan'], ['stats', 'Stats'], ['messages', 'Messages'], ['notes', 'Notes'],
-    ...(o?.link.can_see_rabbit_chats ? [['rabbit', 'Rabbit'] as [Tab, string]] : [])]
+    ...(o?.link.can_see_rabbit_chats ? [['rabbit', 'rabbt'] as [Tab, string]] : [])]
 
   return (
     <>
@@ -295,7 +295,7 @@ function Notes({ aid, notes, events, onChanged, myEmail }: { aid: string; notes:
   return (
     <>
       <Card>
-        <Field label="Add a note" hint={shared ? 'Shared: the athlete sees it, and Rabbit follows it in briefs and chats.' : 'Private: only you see it.'}>
+        <Field label="Add a note" hint={shared ? 'Shared: the athlete sees it, and rabbt follows it in briefs and chats.' : 'Private: only you see it.'}>
           <textarea className={areaCls} value={text} maxLength={2000} onChange={(e) => setText(e.target.value)}
             placeholder="e.g. Keep long runs under 2:30 until December; HR cap 150 on easy days" />
           {upcoming.length > 0 && (
@@ -306,7 +306,7 @@ function Notes({ aid, notes, events, onChanged, myEmail }: { aid: string; notes:
           )}
           <div className="flex items-center gap-3">
             <span className="flex flex-1 items-center gap-2 text-[0.7647rem] text-(--text-secondary)">
-              <Switch label="Share with athlete and Rabbit" checked={shared} onChange={setShared} /> {shared ? 'Shared' : 'Private'}
+              <Switch label="Share with athlete and rabbt" checked={shared} onChange={setShared} /> {shared ? 'Shared' : 'Private'}
             </span>
             <Button variant="primary" className="h-9 gap-1 px-3 text-[0.7647rem]" disabled={!text.trim()} loading={busy === 'add'}
               onClick={() => void run('add', () => addNote(aid, { text: text.trim(), shared, ...(eventId ? { event_id: eventId } : {}) }).then(() => { setText(''); setEventId(null) }))}>
@@ -373,7 +373,7 @@ function RabbitChats({ aid }: { aid: string }) {
         {(threads ?? []).map((t) => (
           <button key={t.id} type="button" onClick={() => setOpen(t.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'Rabbit (briefs and notes)' : t.title || 'Chat'}</span>
+              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'rabbt (briefs and notes)' : t.title || 'Chat'}</span>
               <span className="block text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
             </span>
             <ChevronRight className="size-4 text-(--text-muted)" />

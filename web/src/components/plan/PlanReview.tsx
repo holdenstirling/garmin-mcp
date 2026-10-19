@@ -260,7 +260,7 @@ export function PlanReview({ api, initial, who, athleteName, onClose, onApplied,
 
         {(server.sheets?.length ?? 0) > 1 && onSheet && (
           <Card className="px-4 py-3">
-            <p className="mb-2 text-[0.7647rem] text-(--text-muted)">This workbook has {server.sheets!.length} sheets. Rabbit read the one that looked like a plan.</p>
+            <p className="mb-2 text-[0.7647rem] text-(--text-muted)">This workbook has {server.sheets!.length} sheets. rabbt read the one that looked like a plan.</p>
             <ChipRow>
               {server.sheets!.map((n, i) => (
                 <Chip key={i} selected={server.sheet === i} disabled={moving}

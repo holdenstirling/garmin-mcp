@@ -66,7 +66,7 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
             <div className="min-w-0">
               <p className="text-[0.8824rem] font-semibold text-(--text)">Find people your pace near you</p>
               <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
-                Rabbit matches you with runners and riders {state.area.city ? `around ${state.area.city}` : 'near you'} who train at a similar easy pace and at the same times of day.
+                rabbt matches you with runners and riders {state.area.city ? `around ${state.area.city}` : 'near you'} who train at a similar easy pace and at the same times of day.
               </p>
             </div>
           </div>
@@ -161,7 +161,7 @@ function SayHiSheet({ m, onClose }: { m: BuddyMatch; onClose: () => void }) {
       <div className="flex flex-col gap-3 p-4">
         <Field label="Message (optional)" hint={m.following && m.follows_you ? 'You\'re friends, so this goes straight to their messages.' : 'They\'ll get it as a message request they can accept or decline.'}>
           <textarea className={areaCls} maxLength={400} value={text} onChange={(e) => setText(e.target.value)}
-            placeholder={`Hi ${m.person.name}! Rabbit matched us as training buddies. Want to train together sometime?`} />
+            placeholder={`Hi ${m.person.name}! rabbt matched us as training buddies. Want to train together sometime?`} />
         </Field>
         {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
       </div>

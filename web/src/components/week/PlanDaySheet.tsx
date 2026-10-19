@@ -72,7 +72,7 @@ export function PlanDaySheet({ day, imperial, onClose, onAsk }: {
                 </Button>
               )}
               <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => { onClose(); onAsk(day, s) }}>
-                <MessageCircle className="size-4" aria-hidden /> Ask Rabbit
+                <MessageCircle className="size-4" aria-hidden /> Ask rabbt
               </Button>
             </div>
           </section>
@@ -88,7 +88,7 @@ export function PlanDaySheet({ day, imperial, onClose, onAsk }: {
         <section className="flex flex-col gap-2 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4">
           <p className="m-0 flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--accent)"><BookOpen className="size-4" aria-hidden /> Want the full workout?</p>
           <p className="m-0 text-[0.7647rem] leading-snug text-(--text-secondary)">
-            This day comes from your plan file, so Rabbit only has its description. Turn the plan into full workouts to get heart-rate zones, pace, cadence and steps for every day, plus moving days and sending to your watch.
+            This day comes from your plan file, so rabbt only has its description. Turn the plan into full workouts to get heart-rate zones, pace, cadence and steps for every day, plus moving days and sending to your watch.
           </p>
           <Button variant="primary" className="h-11 text-[0.8235rem]" onClick={() => { onClose(); startPlanConversion() }}>
             Get full workouts (zones, pace, cadence)

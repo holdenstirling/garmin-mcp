@@ -167,10 +167,10 @@ export function linkHelp(text: string): string | null {
   if (!/^https?:\/\/\S+$/i.test(t) || isGoogleDocLink(t)) return null
   if (/^https?:\/\/(docs|drive|sheets)\.google\.com\//i.test(t)) {
     const sheets = t.includes('/spreadsheets/')
-    return `That's a Google ${sheets ? 'Sheets' : 'Docs'} link, and Rabbit can't open private documents. In Google ${sheets ? 'Sheets' : 'Docs'} choose File → Download → ${sheets ? 'CSV' : 'PDF'}, then drop the file here.`
+    return `That's a Google ${sheets ? 'Sheets' : 'Docs'} link, and rabbt can't open private documents. In Google ${sheets ? 'Sheets' : 'Docs'} choose File → Download → ${sheets ? 'CSV' : 'PDF'}, then drop the file here.`
   }
   if (/trainingpeaks\.com/i.test(t)) return 'That\'s a TrainingPeaks link. Export the workouts (CSV) or save the calendar (.ics) from TrainingPeaks, then drop the file here.'
-  return 'Rabbit can\'t open links. Download the file and drop it here, or paste the plan\'s text.'
+  return 'rabbt can\'t open links. Download the file and drop it here, or paste the plan\'s text.'
 }
 /** Files Rabbit reads with the model (vs parsed instantly). */
 export const READ_BY_RABBIT = /\.(pdf|png|jpe?g|webp|gif|heic|heif|txt|md|eml|rtf|docx?|odt)$/i

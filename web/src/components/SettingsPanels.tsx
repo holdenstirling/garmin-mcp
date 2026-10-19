@@ -75,7 +75,7 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
 
 
   const pushStatus = !me.push.available ? 'Not configured on the server.'
-    : !pushSupported() ? (isStandalone() ? 'Not supported on this device.' : 'Open Rabbit from your Home Screen to turn these on.')
+    : !pushSupported() ? (isStandalone() ? 'Not supported on this device.' : 'Open rabbt from your Home Screen to turn these on.')
     : here ? `On for this device${me.push.subscriptions > 1 ? ` and ${me.push.subscriptions - 1} other` : ''}`
     : me.push.subscriptions ? `Off here, on for ${me.push.subscriptions} other device${me.push.subscriptions === 1 ? '' : 's'}` : 'Off'
   const canToggle = me.push.available && pushSupported() && here !== null
@@ -88,8 +88,8 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       </Group>
 
       {me.role === 'athlete' && (
-        <Group label="Rabbit" footer="What you came for shows up first on Rabbit's home.">
-          <Row icon={<Icon><Compass /></Icon>} title="How you use Rabbit" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
+        <Group label="rabbt" footer="What you came for shows up first on rabbt's home.">
+          <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         </Group>
       )}
 
@@ -102,7 +102,7 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       <Group label="Shared links" footer="Links you've texted to people. Anyone with a link can open it; turn one off and it stops working at once.">
         <SharedLinks />
       </Group>
-      <Group label="Share your plan" footer="Coaches see your plan, events and stats; your Rabbit chats stay private. Manage coaches under Me.">
+      <Group label="Share your plan" footer="Coaches see your plan, events and stats; your rabbt chats stay private. Manage coaches under Me.">
         <ShareRow />
       </Group>
 

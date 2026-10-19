@@ -389,7 +389,7 @@ def from_moment_text(m: dict[str, Any]) -> tuple[str, str] | None:
             n = int(key.split(":")[-1])
         except ValueError:
             return None
-        return "level", f"Reached level {n} on Rabbit: {tier_name(n)}. ⭐"
+        return "level", f"Reached level {n} on rabbt: {tier_name(n)}. ⭐"
     if t == "badge":
         mm = re.search(r"Badge earned: (.+?)\.(?: \+\d+ XP\.)?$", text)
         return "badge", f"Earned the {mm.group(1) if mm else 'new'} badge. 🏅"
@@ -452,7 +452,7 @@ class Community:
 
     def require(self, uid: str) -> None:
         if uid.startswith("coach_") or not self.social.is_athlete(uid):
-            raise CommunityError("Community is for athletes on Rabbit.", 403)
+            raise CommunityError("Community is for athletes on rabbt.", 403)
 
     # -------------------------------------------------------- settings --
     @staticmethod
@@ -608,7 +608,7 @@ class Community:
             return str(v)
         if isinstance(v, str) and v.startswith("club:") and self.clubs.is_member(v[5:], uid):
             return v
-        raise CommunityError("Pick who can see this: friends, a club you're in, everyone on Rabbit, or only you.")
+        raise CommunityError("Pick who can see this: friends, a club you're in, everyone on rabbt, or only you.")
 
     def can_see(self, viewer: str, post: dict[str, Any]) -> bool:
         author = post["author"]

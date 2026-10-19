@@ -65,7 +65,7 @@ export function PlaceCard({ p, imperial, onAsk, className, style }: {
           <MapIcon className="size-3.5" /> Open map
         </a>
         <button type="button" className={cn(linkCls, 'text-left text-(--text-secondary)')} onClick={() => onAsk(placeAsk(p, imperial))}>
-          <MessageCircle className="size-3.5" /> Ask Rabbit
+          <MessageCircle className="size-3.5" /> Ask rabbt
         </button>
       </div>
     </article>
@@ -95,7 +95,7 @@ export function GroupCard({ a, onAsk, className, style }: {
           Website <ExternalLink className="size-3.5" />
         </a>
         <button type="button" className={cn(linkCls, 'text-left text-(--text-secondary)')} onClick={() => onAsk(groupAsk(a))}>
-          <MessageCircle className="size-3.5" /> Ask Rabbit
+          <MessageCircle className="size-3.5" /> Ask rabbt
         </button>
       </div>
     </article>
@@ -176,7 +176,7 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
     )
   }
   if (res.needs_location) {
-    return <LocationPrompt title="Where are you? Rabbit will find courts, tracks, clubs and groups nearby" onChanged={() => { load(); onLocationChanged?.() }} />
+    return <LocationPrompt title="Where are you? rabbt will find courts, tracks, clubs and groups nearby" onChanged={() => { load(); onLocationChanged?.() }} />
   }
   const groups = only === 'places' ? [] : res.items.filter((a) => !only || (a.kind ?? a.category) === only)
   const places = only && only !== 'places' ? [] : res.places
@@ -215,7 +215,7 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
         </div>
       )}
       {res.groups_state === 'limit' && res.items.length === 0 && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Today's Rabbit web searches are used up. Groups and leagues show up tomorrow.</p>
+        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Today's rabbt web searches are used up. Groups and leagues show up tomorrow.</p>
       )}
       {places.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -233,7 +233,7 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
       {groups.length === 0 && places.length === 0 && res.groups_state !== 'limit' && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <RabbitLoader decorative gentle size={44} />
-          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">Rabbit didn't find anything nearby this week. Check back next week.</p>
+          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">rabbt didn't find anything nearby this week. Check back next week.</p>
         </div>
       )}
     </section>

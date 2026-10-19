@@ -176,10 +176,10 @@ function StrategyCard({ eventId, strategy, onUpdated, extra, race }: {
   ] : []
   return (
     <Card>
-      <Field label={race ? 'Race strategy' : 'Game plan'} hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : `Rabbit writes a plan for the day from your profile, this ${race ? 'race' : 'event'} and your training phase.`}>
+      <Field label={race ? 'Race strategy' : 'Game plan'} hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : `rabbt writes a plan for the day from your profile, this ${race ? 'race' : 'event'} and your training phase.`}>
         {!strategy ? (
           <Button variant="primary" className="h-10 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void run()}>
-            <RabbitLogo size={16} current /> {race ? 'Ask Rabbit for a race strategy' : 'Ask Rabbit for a game plan'}
+            <RabbitLogo size={16} current /> {race ? 'Ask rabbt for a race strategy' : 'Ask rabbt for a game plan'}
           </Button>
         ) : (
           <div className="flex flex-col gap-2.5 text-[0.7647rem] leading-snug">

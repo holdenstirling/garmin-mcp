@@ -135,7 +135,7 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
           subtitle="Your @handle; find me by name, email or phone" onClick={() => openFindFriends({ section: 'me' })} />
         </>)}
         <Row icon={<Icon tone="muted"><Mail /></Icon>} title="Contact about privacy" subtitle={PRIVACY_CONTACT}
-          onClick={() => { window.location.href = `mailto:${PRIVACY_CONTACT}?subject=${encodeURIComponent('Rabbit privacy request')}` }} />
+          onClick={() => { window.location.href = `mailto:${PRIVACY_CONTACT}?subject=${encodeURIComponent('rabbt privacy request')}` }} />
       </Group>
 
       {me.owner && (
