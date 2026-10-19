@@ -66,3 +66,10 @@ export const INTENSITY: [NonNullable<Levers['plan_intensity']>, string, string][
   ['normal', 'Normal', 'Balanced for your level'],
   ['push', 'Push', 'More hard days (still builds safely)'],
 ]
+
+/** "building from about 5h to 8h a week"; a flat or short block (peak not above the start) reads as a range. */
+export function hoursLine(start: number, peak: number): string {
+  if (peak > start) return `building from about ${start}h to ${peak}h a week`
+  const lo = Math.min(start, peak), hi = Math.max(start, peak)
+  return lo === hi ? `about ${hi}h a week` : `about ${lo}h to ${hi}h a week`
+}

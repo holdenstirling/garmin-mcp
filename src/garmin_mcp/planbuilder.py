@@ -877,7 +877,7 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
     peak_h = max(profile_peak, min(start_h, profile_peak * 1.3))
     min_weeks = MIN_WEEKS.get(inp.distance, MIN_WEEKS["other"])[0 if inp.level == "new" or not how["known"] else 1]
     if inp.no_race:
-        note = note or (f"A {n}-week block to build your fitness, no race needed. The last week "
+        note = note or (f"{'An' if n in (8, 11, 18) else 'A'} {n}-week block to build your fitness, no race needed. The last week "
                         f"is lighter so you finish fresh and ready for the next block.")
     elif n < min_weeks and note is None:
         note = (f"{n} week{'s' if n != 1 else ''} is a short runway for this race, so the plan builds "

@@ -13,7 +13,7 @@ import { SportTile } from '@/components/ui/SportTile'
 import { cn } from '@/lib/utils'
 import { GLOSSARY, KIND_GLOSSARY } from '@/lib/glossary'
 import { KIND_LABEL, PHASE_LABEL } from '@/lib/plan'
-import type { CalendarWeek, Levers, Phase, PlanSummary } from '@/lib/planflow'
+import { hoursLine, type CalendarWeek, type Levers, type Phase, type PlanSummary } from '@/lib/planflow'
 import { LeverFields } from './PlanFlow'
 
 const day = (d: string, o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }) =>
@@ -28,6 +28,9 @@ function phaseAbout(p: Phase['phase'], noRace?: boolean): string {
   return t ?? ''
 }
 const phaseName = (p: Phase['phase'], noRace?: boolean) => (p === 'race' && noRace ? 'Last week' : PHASE_LABEL[p])
+
+// The builder's focus reads "Base: build aerobic endurance..."; the sheet already names the phase.
+const focusText = (f: string) => { const s = f.replace(/^[A-Za-z ]+:\s*/, ''); return s.charAt(0).toUpperCase() + s.slice(1) }
 
 export function SetupReview({ s, levers, setLevers, start, setStart, minStart, maxStart }: {
   s: PlanSummary
@@ -46,7 +49,7 @@ export function SetupReview({ s, levers, setLevers, start, setStart, minStart, m
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5 px-1">
         <p className="text-lead font-semibold leading-snug text-(--text)">
-          {s.weeks} weeks, {s.start_hours === s.peak_hours ? `about ${s.peak_hours}h a week` : `building from about ${s.start_hours}h to ${s.peak_hours}h a week`}
+          {s.weeks} weeks, {hoursLine(s.start_hours, s.peak_hours)}
         </p>
         {s.first_session && (
           <p className="text-body text-(--text-secondary)">
@@ -141,7 +144,7 @@ function PhaseSheet({ p, noRace, onClose, levers, setLevers, start, setStart, mi
             {!!p.longest_minutes && <dd className="m-0 text-small text-(--text-secondary)">Longest workout {fmtMin(p.longest_minutes)}</dd>}
           </div>
         </dl>
-        {p.focus && <p className="m-0 text-body text-(--text-secondary)"><b className="font-semibold text-(--text)">Focus:</b> {p.focus}</p>}
+        {p.focus && <p className="m-0 text-body text-(--text-secondary)"><b className="font-semibold text-(--text)">Focus:</b> {focusText(p.focus)}</p>}
         {(p.key_kinds ?? []).length > 0 && (
           <section aria-labelledby="phase-key" className="flex flex-col gap-2">
             <h3 id="phase-key" className="m-0 text-body-lg font-semibold text-(--text)">The workouts that shape it</h3>

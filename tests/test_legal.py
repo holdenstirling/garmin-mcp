@@ -227,3 +227,9 @@ def test_sharing_consent_is_separate_optional_and_recorded(tmp_path) -> None:
     v = c.accept("u", dict(ALL, share=True))
     assert v["share"] is True and c.get("u")["share_ts"] == 1000
     assert c.accept("u", dict(ALL, share=False))["share"] is False
+
+
+def test_every_legal_page_states_the_data_promise() -> None:
+    from garmin_mcp import legal
+    for slug in legal.DOCS:
+        assert legal.DATA_PROMISE in legal.page(slug), slug

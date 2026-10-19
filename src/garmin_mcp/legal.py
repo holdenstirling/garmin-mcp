@@ -60,6 +60,7 @@ li{{margin:8px 0}}a{{color:var(--accent)}}.box{{border:1px solid var(--line);bor
 <nav aria-label="rabbt policies">{nav}</nav>
 <h1>{escape(title)}</h1><p class=sub>rabbt training coach, operated by {OPERATOR}.<br>Updated {UPDATED}, version {VERSION}.</p>
 {body.replace("{CONTACT}", _who(contact))}
+<footer class=sub style="margin-top:40px;border-top:1px solid var(--line);padding-top:16px">{escape(DATA_PROMISE)}</footer>
 </main></body></html>"""
 
 

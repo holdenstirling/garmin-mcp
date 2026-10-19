@@ -25,6 +25,7 @@ import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
 import { track } from '@/lib/usage'
 import { clearDraft, readDraft, writeDraft } from '@/lib/drafts'
+import { hoursLine } from '@/lib/planflow'
 import { RabbitNap } from '@/components/anim'
 
 const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
@@ -573,7 +574,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             <RabbitNap size={56} mode="cheer" className="mb-2" />
             <h3 className="font-display text-display-sm leading-tight text-(--brand)">Your plan is ready</h3>
             <p className="mt-1.5 text-body text-(--text-secondary)">
-              {plan.no_race ? `${plan.weeks.length} weeks of training` : `${plan.weeks.length} weeks to ${g.title || 'race day'}`}, building from about {plan.start_hours} to {plan.peak_hours} hours a week.
+              {plan.no_race ? `${plan.weeks.length} weeks of training` : `${plan.weeks.length} weeks to ${g.title || 'race day'}`}, {hoursLine(plan.start_hours, plan.peak_hours)}.
             </p>
             {plan.note && <p className="mt-1.5 text-small text-(--text-muted)">{plan.note}</p>}
           </div>

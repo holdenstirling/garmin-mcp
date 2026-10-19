@@ -23,7 +23,7 @@
       #splash .ground { width: 120px; height: 3px; border-radius: 3px; opacity: .35;
         background: repeating-linear-gradient(90deg, #f5f0e8 0 14px, transparent 14px 24px); animation: splash-ground .7s linear infinite; }
       #splash .word { font: 600 22px/1 -apple-system, system-ui, sans-serif; letter-spacing: .02em; color: #f5f0e8; opacity: .9; }
-      #splash .tag { margin-top: -8px; max-width: 18em; padding: 0 24px; text-align: center; font: 400 16px/1.4 -apple-system, system-ui, sans-serif; color: #f5f0e8; opacity: .78; }
+      #splash .tag { margin-top: -8px; max-width: 18em; text-wrap: balance; padding: 0 24px; text-align: center; font: 400 16px/1.4 -apple-system, system-ui, sans-serif; color: #f5f0e8; opacity: .78; }
       @media (prefers-color-scheme: dark) { :root:not(.light) #splash .word, :root:not(.light) #splash .tag { color: #e4e7e5; } }
       :root.dark #splash .word, :root.dark #splash .tag { color: #e4e7e5; }
       @keyframes splash-hop { 0%,100% { transform: translateY(0) rotate(0) scaleY(.94); } 40% { transform: translateY(-16px) rotate(-6deg) scaleY(1.03); } 70% { transform: translateY(-4px) rotate(2deg); } }
