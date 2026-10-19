@@ -222,9 +222,10 @@ function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPer
   return (
     <Section title="Totals">
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-(--bg-inset) p-1" role="group" aria-label="Period">
-        {([['week', 'This week'], ['month', 'Month'], ['year', '12 months']] as [Period, string][]).map(([p, l]) => (
+        {([['week', 'Week'], ['month', 'Month'], ['year', 'Year']] as [Period, string][]).map(([p, l]) => (
           <button key={p} type="button" onClick={() => setPeriod(p)} aria-pressed={period === p}
-            className={cn('min-h-11 rounded-lg px-2 text-small font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary)')}>{l}</button>
+            aria-label={p === 'year' ? 'Last 12 months' : undefined}
+            className={cn('min-h-11 whitespace-nowrap rounded-lg px-2 text-small font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary)')}>{l}</button>
         ))}
       </div>
       <Card className="grid grid-cols-1 divide-y divide-(--border) min-[400px]:grid-cols-3 min-[400px]:divide-x min-[400px]:divide-y-0">

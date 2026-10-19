@@ -120,16 +120,17 @@ function Row({ i, open, onToggle, onDismiss, onOpenPlan, onOpenSession, onOpenGe
         <span className="min-w-0 flex-1">
           <span className="sr-only">{t.label}: </span>
           <span className={cn('block text-body-lg font-semibold leading-snug', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
-          {!open && <span className="mt-1 line-clamp-3 text-small leading-snug text-(--text-secondary)">{i.explanation}</span>}
+          <span className="mt-1 block text-small leading-snug text-(--text-secondary)">{i.explanation}</span>
         </span>
         <ChevronDown className={cn('mt-2 size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
         <div className="flex flex-col gap-3 px-4 pb-4 pl-4 min-[400px]:pl-16">
-          <p className="text-body leading-snug text-(--text)">
-            {i.explanation}
-            {TERM[i.id.split(':')[0]!] && <InfoTip term={TERM[i.id.split(':')[0]!]} className="ml-1" align="end" />}
-          </p>
+          {TERM[i.id.split(':')[0]!] && (
+            <p className="flex items-center gap-1.5 text-small text-(--text-secondary)">
+              What this means <InfoTip term={TERM[i.id.split(':')[0]!]} align="end" />
+            </p>
+          )}
           {i.evidence && i.evidence.values.length > 0 && <Spark e={i.evidence} />}
           <p className="text-small leading-snug text-(--text-secondary)">
             <span className="font-semibold text-(--text)">Why it matters: </span>{i.why}

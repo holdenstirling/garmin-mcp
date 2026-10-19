@@ -87,7 +87,7 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
       <Card className="p-4">
         <p className="text-small text-(--text-secondary)">Your coach signs in here with Google:</p>
         <div className="mt-2 flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-2 py-1.5 text-small">{link}</code>
+          <code className="min-w-0 flex-1 break-all rounded-md bg-(--bg-inset) px-3 py-2.5 text-small">{link}</code>
           <Button variant="default" size="icon" className="size-9" aria-label="Copy link"
             onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMsg({ text: 'Link copied.', ok: true }), () => {}) }}>
             <Copy className="size-5" />
