@@ -92,7 +92,7 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
           {race && <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />}
           {race && <FinishEstimate eventId={eventId} />}
           <RacePeopleSection eventId={eventId} eventName={v.event.name} />
-          <h2 className="font-sans mt-1 px-1 text-caption font-semibold text-(--text-muted)">Course & conditions</h2>
+          <h2 className="section-title m-0 mt-2 px-1">Course and conditions</h2>
           <p className="px-1 text-body-lg leading-snug text-(--text)">{v.racefit.summary}</p>
           {v.racefit.factors.length > 0 && (
             <Card>
@@ -113,7 +113,7 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
                       <StickyNote className="mt-0.5 size-4 shrink-0 text-(--accent)" />
                       <div className="min-w-0">
                         <p className="whitespace-pre-wrap text-body leading-snug text-(--text)">{n.text}</p>
-                        <p className="text-caption text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)}</p>
+                        <p className="text-small text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)}</p>
                       </div>
                     </div>
                   ))}
@@ -140,11 +140,11 @@ function FactorRow({ f }: { f: FitFactor }) {
     <div>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex min-h-11 w-full items-center gap-2.5 px-4 py-3 text-left active:bg-(--bg-inset)">
-        <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center text-caption font-semibold', CHIP[f.impact])}>
+        <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-center text-meta font-semibold', CHIP[f.impact])}>
           {IMPACT_LABEL[f.impact]}
         </span>
         <span className="shrink-0 text-body-lg font-medium text-(--text)">{f.title}</span>
-        <span className="min-w-0 flex-1 truncate text-meta text-(--text-muted)">{open ? '' : f.detail}</span>
+        <span className="min-w-0 flex-1 text-small text-(--text-muted)">{open ? '' : f.detail}</span>
         <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
@@ -186,12 +186,12 @@ function StrategyCard({ eventId, strategy, onUpdated, extra, race }: {
             <p className="text-body text-(--text)">{strategy.summary}</p>
             {sections.filter(([, xs]) => xs.length > 0).map(([label, xs]) => (
               <div key={label}>
-                <p className="text-caption font-semibold text-(--text-muted)">{label}</p>
+                <p className="text-meta font-semibold text-(--text-secondary)">{label}</p>
                 <ul className="mt-0.5 flex flex-col gap-0.5 text-(--text-secondary)">{xs.map((x) => <li key={x}>• {x}</li>)}</ul>
               </div>
             ))}
             {strategy.taper_notes && <p className="text-(--text-secondary)"><b className="text-(--text)">Taper:</b> {strategy.taper_notes}</p>}
-            <Button variant="ghost" className="h-9 w-fit gap-1.5 px-2 text-meta" loading={busy} onClick={() => void run()}>
+            <Button variant="ghost" className="h-11 w-fit gap-1.5 px-3 text-body" loading={busy} onClick={() => void run()}>
               <RefreshCw className="size-4" /> Refresh strategy
             </Button>
           </div>

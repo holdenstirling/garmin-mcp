@@ -140,13 +140,13 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
             <span className={cn('block text-body font-medium', d.off ? 'text-(--text-secondary)' : 'text-(--text)')}>
               {dayLabel(d.date)}{best?.date === d.date && best.date !== tomorrow && <span className="ml-1.5 text-meta font-semibold text-(--accent)">Best fit</span>}
             </span>
-            <span className="block truncate text-meta text-(--text-muted)">
+            <span className="block text-small text-(--text-muted)">
               {d.sessions.length ? d.sessions.map((s) => s.title).join(' · ') : 'Rest day, nothing planned'}
               {d.off && ' · not a usual training day'}
             </span>
           </span>
           {d.clash && (
-            <span className="flex shrink-0 items-center gap-1 text-caption font-medium text-(--warning-text)">
+            <span className="flex shrink-0 items-center gap-1 text-meta font-medium text-(--warning-text)">
               <TriangleAlert className="size-3.5" aria-hidden />{d.clash}
             </span>
           )}
@@ -156,7 +156,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
   }
   const group = (label: string, days: DayInfo[]) => days.length > 0 && (
     <Card className="shrink-0">
-      <p className="border-b border-(--border) px-3.5 py-2 text-caption font-semibold text-(--text-muted)">{label}</p>
+      <p className="border-b border-(--border) px-4 py-2.5 text-meta font-semibold text-(--text-secondary)">{label}</p>
       <ul className="divide-y divide-(--border)">{days.map(dayRow)}</ul>
     </Card>
   )

@@ -57,10 +57,10 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
         <Option icon={<Thermometer className="size-6" />} title="I'm sick"
           sub="Rest or short easy days until you're better, then an easy return" onClick={pick(onSick)} />
       )}
-      <p className="mt-2 px-1 text-caption font-semibold text-(--text-muted)">People</p>
+      <p className="mt-3 px-1 text-body font-semibold text-(--text)">People</p>
       <Option icon={<UserPlus className="size-6" />} title="Friends"
         sub="Search, check your contacts, invite by text or share your QR code" onClick={pick(() => openFindFriends())} />
-      <p className="mt-2 px-1 text-caption font-semibold text-(--text-muted)">A plan</p>
+      <p className="mt-3 px-1 text-body font-semibold text-(--text)">A plan</p>
       <Option icon={<RabbitLogo size={20} current />} title={hasPlan ? 'Rebuild my plan' : 'Build my plan'}
         sub={hasPlan ? 'New race or new answers; your events stay' : 'Race, goals, your week: about 3 minutes'} onClick={pick(onBuildPlan)} />
       <Option icon={<FileUp className="size-6" />} title="Import a plan"

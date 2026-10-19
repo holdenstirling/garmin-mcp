@@ -97,7 +97,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     : []
 
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const section = 'text-caption font-semibold text-(--text-muted) px-1 -mb-2'
+  const section = 'text-body font-semibold text-(--text) px-1 -mb-1'
   return (
     <Sheet title={session ? session.title : 'Add a workout'} className="modal--tall" footer={!locked ? (
         // Pinned under the form so Save is always in reach (also with the keyboard open).
@@ -115,7 +115,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
         {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}{d.time ? ` at ${d.time}` : ''}
         {session?.synced && ' · on your Garmin calendar'}
       </p>
-      {meta && <p className="-mt-3 px-1 font-mono text-small tabular-nums text-(--text-secondary)">{meta}</p>}
+      {meta && <p className="-mt-2 px-1 text-body tabular-nums text-(--text-secondary)">{meta}</p>}
 
       {locked ? (
         <p className="px-1 text-small text-(--text-muted)">
@@ -325,7 +325,7 @@ export function StepItem({ s }: { s: Step }) {
   if (s.type === 'repeat') {
     return (
       <li className="rounded-lg border border-(--border) px-3 py-2">
-        <span className="text-caption font-semibold text-(--accent)">{s.reps} times</span>
+        <span className="text-meta font-semibold text-(--accent)">Repeat {s.reps} times</span>
         <ol className="mt-1 flex flex-col gap-1">{s.steps.map((x, i) => <StepItem key={i} s={x} />)}</ol>
       </li>
     )

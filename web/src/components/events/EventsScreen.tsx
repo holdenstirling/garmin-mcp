@@ -41,6 +41,7 @@ import { Related } from '@/components/nav/Related'
 import { WhoElse } from '@/components/people/WhoElse'
 import { openChecklist } from '@/lib/racechecklist'
 import { CalendarDays, ListChecks } from 'lucide-react'
+import { Section } from '@/components/ui/section'
 
 /** What an event is for (lib/activity): its words first ("Baker volleyball"), then its type. */
 function eventActivity(e: RaceEvent): ActivityId {
@@ -162,11 +163,11 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             )}
             <RaceInvitesInbox onChanged={() => { void load(); setFollowKey((k) => k + 1) }} />
             {changed && (
-              <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
-                <p className="min-w-0 flex-1 text-small text-(--accent)">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-4 py-3.5">
+                <p className="min-w-[12rem] flex-1 text-body leading-snug text-(--accent)">
                   {hasBuiltPlan ? 'Rebuild your plan to fit these changes in.' : 'Build a plan around your main event.'}
                 </p>
-                <Button variant="primary" className="h-8 px-3 text-meta" onClick={hasBuiltPlan ? onOpenPlan : onBuildPlan}>
+                <Button variant="default" className="h-11 px-4 text-body font-semibold text-(--accent)" onClick={hasBuiltPlan ? onOpenPlan : onBuildPlan}>
                   {hasBuiltPlan ? 'Open plan' : 'Build plan'}
                 </Button>
               </div>
@@ -177,7 +178,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                 action="Add an event" onAction={() => setEditing('new')} />
             )}
             {upcoming.length > 0 && (
-              <section className="flex flex-col gap-2">
+              <Section title="Coming up" description="Tap an event to see it in full or change it.">
                 {upcoming.map((e, i) => (
                   <HopIn key={e.id} index={i}>
                     <EventCard e={e} grade={grades[e.id]} people={people[e.id]} onPeople={() => setPeopleFor(e)} onClick={() => setEditing(e)}
@@ -185,14 +186,14 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
                       onPack={daysUntil(e.date) <= 21 && kindOf(e) !== 'milestone' ? () => setPack(e) : undefined} />
                   </HopIn>
                 ))}
-              </section>
+              </Section>
             )}
             <FollowingRaces refreshKey={followKey} />
             {past.length > 0 && (
-              <section className="flex flex-col gap-2">
+              <section className="flex flex-col gap-3">
                 <button type="button" onClick={() => setShowPast((v) => !v)}
-                  className="hit-44 flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
-                  Past events ({past.length}) <ChevronRight className={cn('size-4 transition-transform', showPast && 'rotate-90')} />
+                  className="flex min-h-11 items-center gap-1.5 px-1 text-body font-semibold text-(--text-secondary)">
+                  Past events ({past.length}) <ChevronRight className={cn('size-5 transition-transform', showPast && 'rotate-90')} />
                 </button>
                 {(showPast || searching) && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
@@ -462,8 +463,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {event && !event.main && (confirmDelete ? (
         <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3">
           <span className="min-w-0 flex-1 text-body">Delete {event.name}?</span>
-          <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
-          <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === 'delete'}
+          <Button variant="default" className="h-11 px-4 text-body" onClick={() => setConfirmDelete(false)}>Keep</Button>
+          <Button variant="destructive" className="h-11 px-4 text-body" loading={busy === 'delete'}
             onClick={() => void run('delete', () => deleteEvent(event.id))}>Delete</Button>
         </div>
       ) : (

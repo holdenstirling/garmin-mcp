@@ -116,8 +116,8 @@ export function RacePackScreen({ eventId, imperial, onClose, kind }: {
                   {(p.your_gear ?? []).map((g) => (
                     <div key={g.id}>
                       <p className="flex items-baseline gap-2 text-body">
-                        <span className="w-16 shrink-0 text-caption font-semibold text-(--text-muted)">{KIND_LABEL[g.kind]}</span>
-                        <span className="min-w-0 flex-1 truncate text-(--text)">{g.name}{g.nickname && g.nickname !== g.name ? <span className="text-(--text-muted)"> ({g.nickname})</span> : null}</span>
+                        <span className="w-20 shrink-0 text-meta font-semibold text-(--text-muted)">{KIND_LABEL[g.kind]}</span>
+                        <span className="min-w-0 flex-1 text-(--text)">{g.name}{g.nickname && g.nickname !== g.name ? <span className="text-(--text-muted)"> ({g.nickname})</span> : null}</span>
                         <span className={g.status === 'ok' ? 'shrink-0 text-(--text-secondary)' : 'shrink-0 font-semibold text-(--warning-text)'}>{fmtDist(g.total_km, imperial)}</span>
                       </p>
                       {g.warning && <p className="pl-18 text-meta leading-snug text-(--warning-text)">{g.warning}</p>}

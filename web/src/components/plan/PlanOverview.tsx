@@ -62,7 +62,7 @@ export function PlanOverview({ plan, onWeek, onClose, onAdjust }: { plan: BuiltP
                   <span className="flex flex-wrap items-baseline gap-x-2 text-body-lg font-semibold text-(--text)">
                     {PHASE_LABEL[b.phase]}{now && <span className="text-meta font-semibold text-(--accent)">You're here</span>}
                   </span>
-                  <span className="flex flex-wrap gap-x-2 font-mono text-meta tabular-nums text-(--text-muted)">
+                  <span className="flex flex-wrap gap-x-3 text-small tabular-nums text-(--text-muted)">
                     <span className="whitespace-nowrap">{fmtDay(b.first.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(lastDay, { month: 'short', day: 'numeric' })}</span>
                     <span className="whitespace-nowrap">· {b.weeks.length === 1 ? `week ${b.first.index}` : `weeks ${b.first.index}–${b.last.index}`}</span>
                     <span className="whitespace-nowrap">· {Math.min(...hrs) === Math.max(...hrs) ? `${hrs[0]}h` : `${Math.min(...hrs)}–${Math.max(...hrs)}h`} a week</span>
