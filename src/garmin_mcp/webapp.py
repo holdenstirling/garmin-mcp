@@ -824,7 +824,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if start is not None and not isinstance(start, str):
                 raise PlanError("start_date must be YYYY-MM-DD")
             cur = coach.active_goal(user_id)
-            new_goal = cur is None or body.get("new_goal") is True
+            # A training block never overwrites a race goal: the race stays saved and the block
+            # becomes the active goal (rebuilding an existing block still updates it in place).
+            new_goal = (cur is None or body.get("new_goal") is True
+                        or (isinstance(goal_in, dict) and goal_in.get("no_race") is True and not cur.get("no_race")))
             # Dry run first: validate everything and build the plan in memory, so a bad
             # answer saves nothing (no half-saved profile, no orphaned new goal).
             a_upd = coach.validate_athlete(athlete)

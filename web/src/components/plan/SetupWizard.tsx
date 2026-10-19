@@ -530,7 +530,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
           ) : <RabbitLoader className="py-6" label="Sketching your plan" cycle={['Mapping your weeks…', 'Placing long workouts…', 'Balancing hard and easy days…']} />}
           {preview.busy && preview.summary && <RabbitLoader inline className="px-1 text-meta" label="Updating…" />}
           <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-body font-semibold text-(--text) [&::-webkit-details-marker]:hidden">
+            <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-3 px-4 py-2 text-body font-semibold text-(--text) [&::-webkit-details-marker]:hidden">
               <span className="flex-1">Adjust your plan</span><span className="text-meta text-(--accent)">Days, hours, start</span>
             </summary>
             <div className="border-t border-(--border)">
@@ -563,7 +563,11 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             </div>
           </details>
           {me.goal?.plan && !draft.newGoal && (
-            <p className="px-1 text-small text-(--warning-text)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
+            <p className="px-1 text-small text-(--warning-text)">
+              {noRace && !me.goal.no_race
+                ? `This replaces your current plan. ${me.goal.title} stays saved in your goals, so you can build for it again later.`
+                : `This replaces the current plan for ${me.goal.title}.`} Workouts already synced to Garmin get cleaned up on the next sync.
+            </p>
           )}
         </>
       )}
