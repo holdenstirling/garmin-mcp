@@ -1,25 +1,40 @@
-// iOS-style grouped list for the Settings sheet: a small section label, a rounded group
-// of rows separated by hairlines, and an optional footnote under the group.
+// iOS-style grouped list for Me, Settings and sheets: a plain heading (sentence case, readable,
+// web/DESIGN.md "sections, not piles"), an optional one-line description, a rounded group of
+// rows separated by hairlines, and an optional footnote under the group.
+import { createContext, useContext } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function Group({ label, footer, children }: {
-  label?: string; footer?: React.ReactNode; children: React.ReactNode
+/** Wrap a full page of groups (Me, Settings) so every Group heading is a 20px section title. */
+export const LargeGroups = createContext(false)
+
+export function Group({ label, description, footer, children, large }: {
+  label?: string
+  /** one plain line under the heading: what this group is for */
+  description?: React.ReactNode
+  footer?: React.ReactNode; children: React.ReactNode
+  /** a screen-level section heading (20px) instead of the 17px group heading (sheets) */
+  large?: boolean
 }) {
+  const pageLevel = useContext(LargeGroups)
+  large = large ?? pageLevel
   return (
-    <section className="flex flex-col gap-1.5">
-      {label && (
-        <h2 className="font-sans px-4 text-caption font-semibold text-(--text-muted)">{label}</h2>
+    <section className="flex flex-col gap-2.5">
+      {(label || description) && (
+        <div className="px-1">
+          {label && <h2 className={cn('section-title m-0', !large && 'section-title--sm')}>{label}</h2>}
+          {description && <p className="m-0 mt-1 text-small leading-snug text-(--text-secondary)">{description}</p>}
+        </div>
       )}
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">{children}</div>
-      {footer && <div className="px-4 text-small leading-snug text-(--text-muted)">{footer}</div>}
+      {footer && <div className="px-1 text-small leading-snug text-(--text-secondary)">{footer}</div>}
     </section>
   )
 }
 
 export function Icon({ children, tone = 'accent' }: { children: React.ReactNode; tone?: 'accent' | 'danger' | 'muted' }) {
   return (
-    <span className={cn('flex size-[30px] shrink-0 items-center justify-center rounded-lg [&>svg]:size-[17px]',
+    <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg [&>svg]:size-5',
       tone === 'accent' ? 'bg-(--accent-subtle) text-(--accent)'
         : tone === 'danger' ? 'bg-(--danger-subtle) text-(--danger)'
         : 'bg-(--bg-inset) text-(--text-secondary)')}>
@@ -37,13 +52,13 @@ export function Row({ icon, title, subtitle, trailing, onClick, danger, disabled
     <>
       {icon}
       <span className={cn('min-w-0 flex-1', center && 'text-center')}>
-        <span className={cn('block text-lead leading-snug', danger ? 'text-(--danger)' : 'text-(--text)')}>{title}</span>
-        {subtitle && <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{subtitle}</span>}
+        <span className={cn('block text-body-lg font-medium leading-snug', danger ? 'text-(--danger)' : 'text-(--text)')}>{title}</span>
+        {subtitle && <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{subtitle}</span>}
       </span>
-      {trailing ?? (onClick && !center && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />)}
+      {trailing ?? (onClick && !center && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />)}
     </>
   )
-  const cls = 'settings-row flex w-full items-center gap-3 px-4 py-3 text-left'
+  const cls = 'settings-row flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left'
   return onClick ? (
     <button type="button" onClick={onClick} disabled={disabled}
       className={cn(cls, 'transition-colors active:bg-(--bg-inset) disabled:opacity-50')}>{body}</button>

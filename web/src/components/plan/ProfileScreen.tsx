@@ -85,19 +85,19 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
   const dirty = Object.keys(changed).length > 0 && !saved
   const guard = useUnsavedGuard(dirty && !queued, draft.discard)
   return (<>
-    <Screen title="Training profile" subtitle="Used for your plan, zones and coaching" closing={closing} onClose={guard.wrap(close)}
+    <Screen title="Training profile" subtitle="What rabbt uses for your plan, zones and coaching." closing={closing} onClose={guard.wrap(close)}
       headerExtra={
-        <div className="mx-auto mt-2.5 flex max-w-xl gap-1 rounded-lg bg-(--bg-elevated) p-1">
+        <div className="mx-auto mt-3 grid max-w-xl grid-cols-4 gap-1 rounded-xl bg-(--bg-inset) p-1" role="group" aria-label="Profile section">
           {([['you', 'You'], ['goals', 'Goals'], ['numbers', 'Zones'], ['week', 'Week']] as [Tab, string][]).map(([t, l]) => (
             <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t}
-              className={`hit-44 h-8 flex-1 rounded-md text-small font-medium transition-colors ${tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)'}`}>{l}</button>
+              className={`min-h-11 rounded-lg text-body font-medium transition-colors ${tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary)'}`}>{l}</button>
           ))}
         </div>
       }
       footer={<>
-        {saved && hasBuiltPlan && <Button variant="default" className="h-11 flex-1 text-body" onClick={onRebuild}>Rebuild plan</Button>}
-        <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'} disabled={!dirty} onClick={() => void save()}>
-          {saved ? 'Saved' : 'Save'}
+        {saved && hasBuiltPlan && <Button variant="default" className="h-12 flex-1" onClick={onRebuild}>Rebuild plan</Button>}
+        <Button variant="primary" className="flex-1" loading={busy === 'save'} disabled={!dirty} onClick={() => void save()}>
+          {saved ? 'Saved' : 'Save changes'}
         </Button>
       </>}>
       {me.garmin.connected && (tab === 'you' || tab === 'numbers') && <GarminFill busy={busy === 'garmin'} onClick={() => void fill()} />}
@@ -105,7 +105,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
       {draft.restored && <DraftRestored onDiscard={draft.discard} note="tap Save to keep it" />}
       {queued && <SaveStatus state="queued" className="px-1" />}
       {saved && !msg && <SaveStatus state="saved" className="px-1" />}
-      {msg && <p className={`px-1 text-small ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
+      {msg && <p className={`px-1 text-body ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
       {tab === 'you' && (
         <>
           <PhotoField me={me} onChanged={onSaved} />
@@ -122,21 +122,21 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
           <StepIntro eyebrow="Race fit" title="Strengths and where you train">Race fit compares these with each race.</StepIntro>
           <TraitsFields a={a} setA={setA} sports={sports} />
           <button type="button" onClick={() => setEditInterests(true)}
-            className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+            className="flex min-h-16 items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)">
             <Compass className="size-6 shrink-0 text-(--accent)" aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block text-body-lg font-medium text-(--text)">Race interests</span>
-              <span className="block truncate text-caption text-(--text-muted)">{interestsSummary(interests).join(' · ') || 'What you like to race: powers your picks in Explore'}</span>
+              <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{interestsSummary(interests).join(', ') || 'What you like to race: powers your picks in Explore'}</span>
             </span>
             <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />
           </button>
           {onOpenGear && (
             <button type="button" onClick={onOpenGear}
-              className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
-              <Footprints className="size-6 shrink-0 text-(--accent)" />
+              className="flex min-h-16 items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)">
+              <Footprints className="size-6 shrink-0 text-(--accent)" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block text-body-lg font-medium text-(--text)">Gear garage</span>
-                <span className="block text-caption text-(--text-muted)">Shoes, bikes and more: mileage and retirement alerts</span>
+                <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">Shoes, bikes and more: mileage and retirement alerts</span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />
             </button>
@@ -164,7 +164,7 @@ export function ProfileScreen({ me, hasBuiltPlan, onClose, onSaved, onRebuild, o
         </>
       )}
       {saved && hasBuiltPlan && (
-        <p className="px-1 text-small text-(--text-muted)">Your plan was built with your old answers. Rebuild it to use these (workouts you edited are replaced).</p>
+        <p className="px-1 text-body text-(--text-secondary)">Your plan was built with your old answers. Rebuild it to use these (workouts you edited are replaced).</p>
       )}
     </Screen>
     {editInterests && <InterestsSheet initial={interests} onClose={() => setEditInterests(false)} onSaved={(i) => { setInterests(i); onSaved() }} />}

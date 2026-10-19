@@ -5,6 +5,7 @@ import { confirmAsk } from '@/lib/confirm'
 import { useCallback, useEffect, useState } from 'react'
 import { Carrot, Check, ChevronDown, ChevronRight, Flame, Mountain, Plus, Target, Trophy, UserPlus, X } from 'lucide-react'
 import { Card } from '@/components/plan/ui'
+import { Section } from '@/components/ui/section'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -76,11 +77,10 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
 
   if (!v) {
     return (
-      <section className="flex flex-col gap-2">
-        <Label />
+      <Section title="Challenges">
         {error ? <ErrorState message={`Couldn't load challenges: ${error}`} onRetry={load} compact />
           : <div className="skeleton h-20" aria-hidden="true" />}
-      </section>
+      </Section>
     )
   }
 
@@ -100,54 +100,54 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
     const n = v.joined.length
     if (n === 0 && v.invites.length === 0) {
       return (
-        <section>
+        <Section title="Challenges" description="A weekly goal to chase, alone or with friends.">
           <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-            <Target className="size-5 shrink-0 text-(--accent)" aria-hidden />
-            <span className="min-w-0 flex-1 text-small font-medium text-(--accent)">Pick a challenge</span>
-            <span className="shrink-0 text-caption text-(--text-muted)">+{v.xp.week} XP</span>
+            className="flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-dashed border-(--border-strong) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)">
+            <Target className="size-6 shrink-0 text-(--accent)" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-body-lg font-semibold text-(--accent)">Pick a challenge</span>
+              <span className="block text-small text-(--text-secondary)">Earn +{v.xp.week} XP this week</span>
+            </span>
             <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
           </button>
           {sheets}
-        </section>
+        </Section>
       )
     }
     const avg = n ? Math.round(v.joined.reduce((a, c) => a + (c.done ? 100 : c.pct), 0) / n) : 0
-    const bits = [n ? `${n} active · ${avg}%` : null,
-      v.invites.length ? `${v.invites.length} invite${v.invites.length === 1 ? '' : 's'}` : null,
-      streak > 0 ? `${streak}-week streak` : null].filter(Boolean)
+    const extra = [v.invites.length ? `${v.invites.length} invite${v.invites.length === 1 ? '' : 's'} waiting` : null,
+      streak > 0 ? `${streak}-week challenge streak` : null].filter(Boolean)
     return (
-      <section>
+      <Section title="Challenges">
         <button type="button" onClick={() => setOpen(true)} aria-expanded={false}
-          className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <Trophy className="size-5 shrink-0 text-(--accent)" aria-hidden />
+          className="flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3.5 text-left active:bg-(--bg-inset)">
+          <Trophy className="size-6 shrink-0 text-(--accent)" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-small font-medium text-(--text)">Challenges</span>
-            <span className="block truncate text-meta text-(--text-muted)">{bits.join(' · ')}</span>
+            <span className="block text-body-lg font-semibold text-(--text)">{n ? `${n} active, ${avg}% done` : 'No active challenges'}</span>
+            {extra.length > 0 && <span className="block text-small leading-snug text-(--text-secondary)">{extra.join(', ')}</span>}
           </span>
-          <ChevronDown className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+          <span className="flex shrink-0 items-center gap-1 text-small font-medium text-(--accent)">Open<ChevronDown className="size-5" aria-hidden /></span>
         </button>
         {sheets}
-      </section>
+      </Section>
     )
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      {collapsible ? (
+    <Section title="Challenges" description={streak > 0 ? <span className="inline-flex items-center gap-1 text-(--accent)"><Flame className="size-4" aria-hidden /> {streak}-week challenge streak</span> : undefined}
+      action={collapsible ? (
         <button type="button" onClick={() => setOpen(false)} aria-expanded
-          className="hit-44 flex items-center justify-between text-left">
-          <Label streak={streak} />
-          <ChevronDown className="size-5 shrink-0 rotate-180 text-(--text-muted)" aria-hidden />
+          className="hit-44 inline-flex shrink-0 items-center gap-1 text-body font-semibold text-(--accent)">
+          Close<ChevronDown className="size-5 rotate-180" aria-hidden />
         </button>
-      ) : <Label streak={streak} />}
-      {error && <p className="px-1 text-meta text-(--danger)" role="alert">{error}</p>}
+      ) : undefined}>
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
       {v.invites.map((inv) => (
         <Card key={inv.id} className="flex items-center gap-3 px-4 py-3">
           <UserPlus className="size-6 shrink-0 text-(--accent)" />
           <div className="min-w-0 flex-1">
             <p className="text-body font-medium leading-snug text-(--text)">{inv.from.name} challenged you: {inv.name}</p>
-            <p className="text-meta text-(--text-muted)">{targetLine(inv, imperial)} · +{inv.xp} XP</p>
+            <p className="text-small text-(--text-secondary)">{targetLine(inv, imperial)}, +{inv.xp} XP</p>
           </div>
           <button type="button" aria-label="No thanks" disabled={busy !== null}
             onClick={() => void act(`d${inv.id}`, () => declineInvite(inv.id))}
@@ -169,30 +169,17 @@ export function ChallengesCard({ imperial = true, loadKey = 0, collapsible = fal
       )}
       {(canAdd('week') || canAdd('month')) && (
         <button type="button" onClick={() => setPicking(canAdd('week') ? 'week' : 'month')}
-          className={cn('hit-44 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-(--border) bg-(--bg-surface) py-3 text-small font-medium text-(--accent) active:bg-(--bg-inset)',
+          className={cn('hit-44 flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-(--border-strong) bg-(--bg-surface) py-3 text-body font-semibold text-(--accent) active:bg-(--bg-inset)',
             v.joined.length === 0 && v.invites.length === 0 && 'flex-col pt-4')}>
           {v.joined.length === 0 && v.invites.length === 0 && <RabbitNap size={40} mode="peek" />}
           <span className="inline-flex items-center gap-1.5">{weekly.length === 0 ? <><Target className="size-5" /> Pick this week's challenge</> : <><Plus className="size-5" /> Add a challenge</>}</span>
         </button>
       )}
       {v.recent.length > 0 && v.joined.length === 0 && (
-        <p className="px-1 text-caption text-(--text-muted)">Last done: {v.recent[0]!.name} · {new Date(v.recent[0]!.completed_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+        <p className="px-1 text-small text-(--text-secondary)">Last done: {v.recent[0]!.name}, {new Date(v.recent[0]!.completed_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
       )}
       {sheets}
-    </section>
-  )
-}
-
-function Label({ streak }: { streak?: number }) {
-  return (
-    <div className="flex items-center justify-between px-1">
-      <h2 className="font-sans text-caption font-semibold text-(--text-muted)">Challenges</h2>
-      {!!streak && streak > 0 && (
-        <span className="inline-flex items-center gap-1 text-caption font-medium text-(--accent)">
-          <Flame className="size-3.5" /> {streak}-week challenge streak
-        </span>
-      )}
-    </div>
+    </Section>
   )
 }
 
@@ -202,22 +189,22 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
 }) {
   const board = c.leaderboard && c.leaderboard.length > 1 ? c.leaderboard : null
   return (
-    <div data-challenge={c.id} className={cn('relative flex flex-col gap-2 px-4 py-3', !first && 'border-t border-(--border)')}>
+    <div data-challenge={c.id} className={cn('relative flex flex-col gap-3 px-4 py-4', !first && 'border-t border-(--border)')}>
       <div className="flex items-start gap-3">
         <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-full',
           c.done ? 'bg-(--brand) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--accent)', party && 'celebrate')}>
           {c.done ? <Check className="size-6" /> : c.metric === 'climb_m' ? <Mountain className="size-5" /> : <Target className="size-5" />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-body font-medium leading-snug text-(--text)">{c.name}</p>
-          <p className="text-meta text-(--text-muted)">{targetLine(c, imperial)}</p>
+          <p className="text-body-lg font-semibold leading-snug text-(--text)">{c.name}</p>
+          <p className="text-small text-(--text-secondary)">{targetLine(c, imperial)}</p>
         </div>
-        <span className={cn('shrink-0 text-meta font-medium', c.done ? 'text-(--brand)' : 'text-(--text-muted)')}>
+        <span className={cn('shrink-0 text-body font-semibold', c.done ? 'text-(--brand)' : 'text-(--text-secondary)')}>
           {c.done ? `+${c.xp} XP` : `${c.pct}%`}
         </span>
       </div>
       <span className="fx-bar">
-        <span className="block h-1.5 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
+        <span className="block h-2 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
           aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.pct} aria-label={`${c.name} progress`}>
           <span className={cn('block h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none', c.done ? 'bg-(--brand)' : 'bg-(--accent)')}
             style={{ width: `${Math.max(2, c.pct)}%` }} />
@@ -225,8 +212,8 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
         <HopPrints pct={c.pct} storeKey={`challenge.${c.id}`} />
         <RabbitHop pct={Math.max(2, c.pct)} value={c.pct} size={12} storeKey={`challenge.${c.id}`} />
       </span>
-      <div className="flex items-center gap-2 text-meta text-(--text-muted)">
-        <span className="min-w-0 flex-1">{c.done ? 'Done. Nice work.' : `${progressLine(c, imperial)} · ${daysLeft(c.days_left)}`}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-(--text-secondary)">
+        <span className="min-w-0 flex-1 basis-40">{c.done ? 'Done. Nice work.' : <>{progressLine(c, imperial)}<span className="block">{daysLeft(c.days_left)}</span></>}</span>
         {canInvite && (
           <button type="button" onClick={onInvite} className="hit-44 inline-flex items-center gap-1 font-medium text-(--accent)">
             <UserPlus className="size-4" /> Invite
@@ -237,15 +224,15 @@ function JoinedRow({ c, first, imperial, party, canInvite, onInvite, onLeave }: 
         )}
       </div>
       {board && (
-        <ol className="flex flex-col gap-1.5 rounded-lg bg-(--bg-inset) px-3 py-2" aria-label="Leaderboard">
+        <ol className="flex flex-col gap-2.5 rounded-lg bg-(--bg-inset) px-3.5 py-3" aria-label="Leaderboard">
           {board.map((r, i) => (
-            <li key={r.user_id} className="flex items-center gap-2 text-meta">
-              <span className="w-4 text-(--text-muted)">{i === 0 && (r.pct ?? 0) > 0 ? <Trophy className="size-4 text-(--accent)" /> : i + 1}</span>
-              <span className={cn('w-20 truncate', r.me ? 'font-semibold text-(--text)' : 'text-(--text-secondary)')}>{r.me ? 'You' : r.name}</span>
-              <span className="block h-1 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)">
+            <li key={r.user_id} className="flex items-center gap-2.5 text-small">
+              <span className="w-5 shrink-0 text-(--text-secondary)">{i === 0 && (r.pct ?? 0) > 0 ? <Trophy className="size-5 text-(--accent)" /> : i + 1}</span>
+              <span className={cn('w-24 shrink-0 truncate', r.me ? 'font-semibold text-(--text)' : 'text-(--text-secondary)')}>{r.me ? 'You' : r.name}</span>
+              <span className="block h-1.5 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)">
                 <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.max(2, r.pct ?? 0)}%` }} />
               </span>
-              <span className="w-9 text-right text-(--text-muted)">{r.pct == null ? '–' : `${r.pct}%`}</span>
+              <span className="w-11 shrink-0 text-right text-(--text-secondary)">{r.pct == null ? '–' : `${r.pct}%`}</span>
             </li>
           ))}
         </ol>
@@ -284,8 +271,8 @@ function PickSheet({ v, initial, imperial, onClose, onJoined }: {
           </button>
         ))}
       </div>
-      <p className="text-meta text-(--text-muted)">
-        {tab === 'week' ? `${daysLeft(p.days_left)} this week` : `${daysLeft(p.days_left)} this month`} · join up to {p.limit}
+      <p className="text-small leading-snug text-(--text-secondary)">
+        {tab === 'week' ? `${daysLeft(p.days_left)} this week.` : `${daysLeft(p.days_left)} this month.`} Join up to {p.limit}
         {full ? ' (you have)' : ''}. Every workout this {tab} counts, even ones before you join.
       </p>
       {p.notice && <p className="rounded-lg bg-(--bg-inset) px-3 py-2 text-small text-(--text-secondary)">{p.notice}</p>}
@@ -294,17 +281,17 @@ function PickSheet({ v, initial, imperial, onClose, onJoined }: {
         <p className="py-4 text-center text-small text-(--text-muted)">Nothing new to pick right now.</p>
       )}
       {p.suggestions.map((s) => (
-        <Card key={s.template} className="flex flex-col gap-2 px-4 py-3">
+        <Card key={s.template} className="flex flex-col gap-2.5 px-4 py-4">
           <div className="flex items-center gap-2">
-            <span className={cn('rounded-full px-2 py-0.5 text-caption font-semibold',
+            <span className={cn('rounded-full px-2.5 py-1 text-meta font-semibold',
               s.kind === 'stretch' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
               {KIND_LABEL[s.kind]}
             </span>
-            <span className="ml-auto inline-flex items-center gap-1 text-meta font-medium text-(--brand)"><Carrot className="size-3.5" aria-hidden /> +{s.xp} XP</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-small font-semibold text-(--brand)"><Carrot className="size-4" aria-hidden /> +{s.xp} XP</span>
           </div>
           <p className="text-body-lg font-semibold leading-snug text-(--text)">{s.name}</p>
-          <p className="text-small text-(--text-secondary)">{targetLine(s, imperial)}</p>
-          <p className="text-caption text-(--text-muted)">{s.why}</p>
+          <p className="text-body text-(--text-secondary)">{targetLine(s, imperial)}</p>
+          <p className="text-small leading-snug text-(--text-muted)">{s.why}</p>
           <Button className="hit-44 self-start" disabled={full || busy !== null} onClick={() => void join(s)}>
             {busy === s.template ? 'Joining…' : 'Join'}
           </Button>
@@ -347,7 +334,7 @@ function InviteSheet({ c, onClose, onSent }: { c: Joined; onClose: () => void; o
             className={cn('hit-44 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
               on ? 'border-(--accent) bg-(--bg-inset)' : 'border-(--border) bg-(--bg-surface)', inIt && 'opacity-50')}>
             <span className="min-w-0 flex-1 truncate text-body text-(--text)">{p.user!.name}</span>
-            {inIt ? <span className="text-caption text-(--text-muted)">In it</span>
+            {inIt ? <span className="text-meta text-(--text-secondary)">In it</span>
               : on && <Check className="size-5 text-(--accent)" />}
           </button>
         )

@@ -97,7 +97,7 @@ function PartnerForm({ p, kinds, onSaved, onClose }: {
       <label className="flex min-h-11 items-start gap-3 text-body text-(--text)">
         <input type="checkbox" className="mt-0.5 size-5 accent-(--accent)" checked={d.sponsored} onChange={(e) => set('sponsored', e.target.checked)} />
         <span>Sponsored placement
-          <span className="block text-meta text-(--text-muted)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
+          <span className="block text-small text-(--text-secondary)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
         </span>
       </label>
       {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
@@ -131,7 +131,7 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                       <span className="flex items-center gap-2">
                         <span className="truncate text-body-lg font-semibold text-(--text)">{p.name}</span>
                         <PartnerBadge />
-                        {p.sponsored !== false && <span className="text-caption font-semibold text-(--text-muted)">Sponsored</span>}
+                        {p.sponsored !== false && <span className="text-meta font-semibold text-(--text-secondary)">Sponsored</span>}
                       </span>
                       <span className={cn('block text-meta', p.live ? 'text-(--accent)' : 'text-(--text-muted)')}>
                         {p.live ? 'Live' : p.active ? 'Scheduled or ended' : 'Hidden'} · {p.metros.length === 1 ? `${p.metros[0]!.city}, ${p.metros[0]!.state}` : `${p.metros.length} cities`}
@@ -140,7 +140,7 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                         {p.stats.view} views · {p.stats.website + p.stats.signup + p.stats.instagram} link taps · {p.stats.interested} interested
                       </span>
                       {Object.entries(p.placements ?? {}).map(([pl, c]) => (
-                        <span key={pl} className="block font-mono text-caption tabular-nums text-(--text-muted)">
+                        <span key={pl} className="block font-mono text-meta tabular-nums text-(--text-secondary)">
                           {PLACE_LABEL[pl] ?? pl}: {c?.impression ?? 0} seen · {c?.tap ?? 0} taps · {c?.hide ?? 0} hides
                         </span>
                       ))}
@@ -150,7 +150,7 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                 </li>
               ))}
             </ul>
-            <p className="px-1 text-meta leading-snug text-(--text-muted)">
+            <p className="px-1 text-small leading-snug text-(--text-secondary)">
               Counts are anonymous, last {data.stats_days} days, each person once per day. People who turned off usage counting aren't counted.
             </p>
           </>

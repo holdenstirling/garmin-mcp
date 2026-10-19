@@ -5,11 +5,11 @@ import { openBody } from '@/lib/body'
 
 export function BodyLinks() {
   const row = (icon: React.ReactNode, title: string, sub: string, onClick: () => void) => (
-    <button type="button" onClick={onClick} className="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
+    <button type="button" onClick={onClick} className="flex min-h-16 w-full items-center gap-3.5 px-4 py-3.5 text-left active:bg-(--bg-inset)">
       <IconTile>{icon}</IconTile>
       <span className="min-w-0 flex-1">
-        <span className="block text-body font-medium text-(--text)">{title}</span>
-        <span className="block text-meta text-(--text-muted)">{sub}</span>
+        <span className="block text-body-lg font-medium leading-snug text-(--text)">{title}</span>
+        <span className="mt-0.5 block text-small leading-snug text-(--text-secondary)">{sub}</span>
       </span>
       <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>

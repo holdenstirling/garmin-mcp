@@ -70,11 +70,11 @@ export function CelebrationScreen({ c, onClose }: { c: Celebration; onClose: () 
         <p className="fx-cel-rise m-0 text-title-sm font-semibold" style={{ animationDelay: '300ms' }}>{c.subtitle}</p>
         <p id="cel-line" className="fx-cel-rise m-0 max-w-xs text-body-lg leading-snug opacity-90" style={{ animationDelay: '380ms' }}>{c.line}</p>
         {c.stats.length > 0 && (
-          <ul className="fx-cel-rise m-0 grid w-full list-none gap-2 p-0" style={{ animationDelay: '460ms', gridTemplateColumns: `repeat(${c.stats.length}, minmax(0, 1fr))` }}>
+          <ul className="fx-cel-rise m-0 grid w-full list-none gap-3 p-0" style={{ animationDelay: '460ms', gridTemplateColumns: 'repeat(auto-fit, minmax(6.5rem, 1fr))' }}>
             {c.stats.map((s) => (
-              <li key={s.label} className="flex flex-col items-center gap-0.5 rounded-xl border border-(--bg)/25 px-2 py-2.5">
-                <span className="text-caption font-semibold opacity-80">{s.label}</span>
-                <span className="font-mono text-lead font-medium tabular-nums">{s.value}</span>
+              <li key={s.label} className="flex flex-col items-center gap-0.5 rounded-xl border border-(--bg)/25 px-3 py-3">
+                <span className="text-small font-medium opacity-90">{s.label}</span>
+                <span className="text-title-sm font-semibold tabular-nums">{s.value}</span>
               </li>
             ))}
           </ul>

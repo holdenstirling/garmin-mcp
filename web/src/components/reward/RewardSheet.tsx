@@ -96,29 +96,28 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
   return (
     <>
       <div ref={hero} className="celebrate flex flex-col items-center gap-2 rounded-2xl bg-(--brand) px-4 pb-5 pt-5 text-center text-(--on-fill)">
-        <span className="flex items-center gap-1.5 text-caption font-semibold opacity-90">
-          {record ? <Award className="size-4" aria-hidden="true" /> : <RabbitLogo size={14} current />}
+        <span className="flex items-center gap-2 text-small font-semibold opacity-90">
+          {record ? <Award className="size-5" aria-hidden="true" /> : <RabbitLogo size={18} current />}
           {record ? 'New best' : 'Workout done'}
         </span>
         <p className="rb-pop m-0 max-w-sm font-display text-display leading-tight" style={{ animationDelay: '120ms' }}>{r.headline.text}</p>
-        <p className="m-0 text-small opacity-90">
-          {r.name} · {Number.isNaN(day.getTime()) ? '' : day.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-        </p>
+        <p className="m-0 text-body opacity-90">{r.name}</p>
+        {!Number.isNaN(day.getTime()) && <p className="m-0 -mt-1 text-small opacity-85">{day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}</p>}
       </div>
 
       {r.chips.length > 0 && (
-        <ul className="m-0 grid list-none gap-2 p-0" style={{ gridTemplateColumns: `repeat(${r.chips.length}, minmax(0, 1fr))` }}>
+        <ul className="m-0 grid list-none gap-3 p-0" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(6.5rem, 1fr))' }}>
           {r.chips.map((c) => (
-            <li key={c.label} className="flex flex-col items-center rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2">
-              <span className="text-caption font-semibold text-(--text-muted)">{c.label}</span>
-              <span className="font-mono text-lead font-medium tabular-nums text-(--text)">{c.value}</span>
+            <li key={c.label} className="flex flex-col items-center gap-0.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
+              <span className="text-small font-medium text-(--text-secondary)">{c.label}</span>
+              <span className="text-title-sm font-semibold tabular-nums text-(--text)">{c.value}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
-        <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className="font-display text-display-sm leading-none text-(--accent)" aria-label={`${r.xp.gained} XP earned`}>+{xp} XP</span>
           {r.streak > 0 && (
             <span className="flex items-center gap-1 text-body font-semibold text-(--accent)">
@@ -127,19 +126,19 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
           )}
         </div>
         <LevelBar before={r.level.before} after={r.level.after} levelUp={r.level.level_up} />
-        {r.xp.plan > 0 && <p className="m-0 text-meta text-(--text-muted)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
+        {r.xp.plan > 0 && <p className="m-0 text-small text-(--text-secondary)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
       </div>
 
       <Feel r={r} onCheckIn={onCheckIn} onFeel={onFeel} />
 
       <ShareWorkoutButton activityId={r.activity_id} />
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         {onBreakdown && (
-          <Button variant="default" className="h-11 flex-1 gap-1 text-body" onClick={onBreakdown}>
+          <Button variant="default" className="h-12 flex-1 gap-1" onClick={onBreakdown}>
             See breakdown <ChevronRight className="size-5" aria-hidden="true" />
           </Button>
         )}
-        <Button variant="primary" className="h-11 flex-1 text-body" onClick={onDone}>Done</Button>
+        <Button variant="primary" className="flex-1" onClick={onDone}>Done</Button>
       </div>
     </>
   )
@@ -162,11 +161,11 @@ function LevelBar({ before, after, levelUp }: { before: LevelView; after: LevelV
   const shown = stage === 'end' ? after : before
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between text-small">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-body">
         <span className={cn('font-semibold text-(--text)', stage === 'end' && levelUp && 'rb-pop')}>
-          {stage === 'end' && levelUp ? `Level up! ${after.level} · ${after.name}` : `Level ${shown.level} · ${shown.name}`}
+          {stage === 'end' && levelUp ? `Level up! ${after.level}: ${after.name}` : `Level ${shown.level}: ${shown.name}`}
         </span>
-        <span className="font-mono text-meta tabular-nums text-(--text-muted)">{after.to_next} XP to {after.level + 1}</span>
+        <span className="text-small tabular-nums text-(--text-secondary)">{after.to_next} XP to level {after.level + 1}</span>
       </div>
       <span className="block h-2 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
         aria-valuemin={0} aria-valuemax={after.level_span} aria-valuenow={after.level_xp} aria-label="XP to next level">
@@ -205,7 +204,7 @@ function Feel({ r, onCheckIn, onFeel }: { r: Reward; onCheckIn?: () => void; onF
             className={cn('flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border py-1.5 transition-colors disabled:opacity-40',
               picked === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg)')}>
             <span className="text-title-md leading-none" aria-hidden="true">{face}</span>
-            <span className="text-caption text-(--text-muted)">{label}</span>
+            <span className="text-meta text-(--text-secondary)">{label}</span>
           </button>
         ))}
       </div>

@@ -30,7 +30,7 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
   return (
     <div className="flex flex-col gap-2">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 px-1 text-caption font-semibold text-(--text-muted)">
+        <legend className="mb-1.5 px-1 text-meta font-semibold text-(--text-secondary)">
           Recovery &amp; sleep from
         </legend>
         {CHOICES.map((c) => {
@@ -65,7 +65,7 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
           <Switch label="Show both in Progress" checked={pref.both} onChange={pref.setBoth} />
         </div>
       )}
-      <p className="px-1 text-meta leading-snug text-(--text-muted)">
+      <p className="px-1 text-small leading-snug text-(--text-secondary)">
         Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. rabbt's coaching never uses Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
       </p>
     </div>

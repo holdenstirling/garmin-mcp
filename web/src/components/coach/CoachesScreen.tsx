@@ -47,10 +47,10 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
                 trailing={<Switch label="Coach can see my rabbt chats" checked={c.can_see_rabbit_chats} disabled={busy != null}
                   onChange={(v) => void run(c.email, () => updateCoach(c.email, { can_see_rabbit_chats: v }))} />} />
               {confirm === c.email ? (
-                <div className="flex items-center gap-2 px-4 py-3">
-                  <span className="min-w-0 flex-1 text-body">Remove {c.email}? They lose access right away.</span>
-                  <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirm(null)}>Keep</Button>
-                  <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === c.email}
+                <div className="flex flex-wrap items-center gap-3 px-4 py-3.5">
+                  <span className="min-w-0 basis-full break-words text-body">Remove {c.email}? They lose access right away.</span>
+                  <Button variant="default" size="sm" onClick={() => setConfirm(null)}>Keep</Button>
+                  <Button variant="destructive" size="sm" loading={busy === c.email}
                     onClick={() => void run(c.email, () => removeCoach(c.email), 'Coach removed.').then((ok) => { if (ok) setConfirm(null) })}>Remove</Button>
                 </div>
               ) : (
@@ -87,7 +87,7 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
       <Card className="p-4">
         <p className="text-small text-(--text-secondary)">Your coach signs in here with Google:</p>
         <div className="mt-2 flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-2 py-1.5 text-small">{link}</code>
+          <code className="min-w-0 flex-1 break-all rounded-md bg-(--bg-inset) px-3 py-2.5 text-small">{link}</code>
           <Button variant="default" size="icon" className="size-9" aria-label="Copy link"
             onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMsg({ text: 'Link copied.', ok: true }), () => {}) }}>
             <Copy className="size-5" />

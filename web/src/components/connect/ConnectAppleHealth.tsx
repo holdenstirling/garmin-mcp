@@ -40,7 +40,7 @@ function CopyField({ label, value, secret, onToast }: { label: string; value: st
   }
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-caption font-semibold text-(--text-muted)">{label}</span>
+      <span className="text-meta font-semibold text-(--text-secondary)">{label}</span>
       <div className="flex items-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-inset) py-1 pl-3 pr-1">
         <code className="min-w-0 flex-1 select-all break-all font-mono text-meta leading-snug text-(--text)">
           {shown ? value : `${value.slice(0, 6)}${'•'.repeat(14)}`}
@@ -192,17 +192,17 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="ah-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="ah-reads" className="text-small font-semibold text-(--text)">rabbt will get</h3>
+            <h3 id="ah-reads" className="text-body-lg font-semibold text-(--text)">rabbt will get</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
         {never.length > 0 && (
           <section aria-labelledby="ah-never" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="ah-never" className="flex items-center gap-1.5 text-small font-semibold text-(--text)">
+            <h3 id="ah-never" className="flex items-center gap-2 text-body-lg font-semibold text-(--text)">
               <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
-            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
               <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
               Your Shortcut uses a personal import key. rabbt stores only a scrambled copy of it, and the key can only add workouts, never read anything. Turn it off anytime.
             </p>
@@ -214,7 +214,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="flex items-start gap-2 text-meta leading-snug text-(--text-muted)">
+            <p className="flex items-start gap-2 text-small leading-snug text-(--text-secondary)">
               <Smartphone className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
               Takes about 5 minutes on your iPhone, in the Shortcuts app. Easiest if you open rabbt on the same iPhone so you can copy and paste.
             </p>
@@ -261,7 +261,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <>Optional: add <Act>Show Result</Act> to see rabbt’s reply while you test.</>,
           ]} />
           <CopyField label="Text template" value={TEXT_TEMPLATE} onToast={onToast} />
-          <p className="text-meta leading-snug text-(--text-muted)">
+          <p className="text-small leading-snug text-(--text-secondary)">
             Only these five details are sent. Heart rate and calories aren’t, and rabbt would throw them away anyway.
           </p>
         </Step>
@@ -271,7 +271,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <>Choose <Act>Apple Watch Workout</Act>, then <b className="text-(--text)">Ends</b> for any workout. Don’t see it? Use <Act>Time of Day</Act>, every evening.</>,
             <>Pick <b className="text-(--text)">Run Immediately</b>, then choose <b className="text-(--text)">Send workouts to rabbt</b>.</>,
           ]} />
-          <p className="text-meta leading-snug text-(--text-muted)">
+          <p className="text-small leading-snug text-(--text-secondary)">
             Each run sends the last 7 days, so a missed run catches up next time. Nothing counts twice, and a workout Garmin also has counts once.
           </p>
         </Step>
@@ -279,10 +279,10 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <p className="text-small leading-snug text-(--text-secondary)">
             Tap your Shortcut to run it and allow Health access when your iPhone asks. Then come back here.
           </p>
-          <Button variant="primary" className="h-11 w-full text-body" loading={checking} onClick={() => void check()}>
+          <Button variant="primary" className="w-full" loading={checking} onClick={() => void check()}>
             <RefreshCw className="mr-1.5 size-4" aria-hidden />Check for workouts
           </Button>
-          {checking && <p role="status" className="text-center text-meta text-(--text-muted)">Waiting for your Shortcut…</p>}
+          {checking && <p role="status" className="text-center text-small text-(--text-secondary)">Waiting for your Shortcut…</p>}
         </Step>
         <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => { void load(); setView('manage') }}>
           I’ll finish later
@@ -300,21 +300,21 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           </p>
         </div>
         <section aria-labelledby="ah-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-          <h3 id="ah-next" className="text-small font-semibold text-(--text)">What happens now</h3>
+          <h3 id="ah-next" className="text-body-lg font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT} tone="yes" />
         </section>
-        <Button variant="primary" className="h-11 w-full text-body" onClick={onClose}>Done</Button>
+        <Button variant="primary" className="w-full" onClick={onClose}>Done</Button>
       </>
     )
   } else {
     const waiting = !h?.last_import
     body = (
       <>
-        <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
           <AppTile app="apple" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-lead text-(--text)">Apple Watch</span>
-            <span className="block text-meta text-(--text-muted)">{h ? importLine(h) : ''}</span>
+            <span className="block text-lead font-semibold leading-snug text-(--text)">Apple Watch</span>
+            <span className="block text-small text-(--text-secondary)">{h ? importLine(h) : ''}</span>
           </span>
           <StateChip state={waiting ? 'attention' : 'connected'} />
         </div>

@@ -23,9 +23,9 @@ const TAB_LABEL: Record<string, string> = {
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-      <h2 className="font-sans text-caption font-semibold text-(--text-muted)">{title}</h2>
+      <h2 className="section-title m-0 px-1">{title}</h2>
       {children}
-      {note && <p className="text-meta leading-snug text-(--text-muted)">{note}</p>}
+      {note && <p className="text-small leading-snug text-(--text-secondary)">{note}</p>}
     </section>
   )
 }
@@ -47,7 +47,7 @@ function Stat({ n, label }: { n: number | string; label: string }) {
   return (
     <div className="flex flex-1 flex-col items-center rounded-xl bg-(--bg-inset) px-2 py-2.5">
       <span className="font-mono text-title-md tabular-nums text-(--text)">{n}</span>
-      <span className="text-caption text-(--text-muted)">{label}</span>
+      <span className="text-meta text-(--text-secondary)">{label}</span>
     </div>
   )
 }
@@ -67,7 +67,7 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
   const peak = s ? Math.max(1, ...s.series.map((d) => d.dau)) : 1
   const ret = (r: { pct: number | null; returned: number; cohort: number }) => (r.pct == null ? '–' : `${r.pct}%`)
   return (
-    <Screen title="Usage" subtitle="Last 30 days · anonymous counts" onBack={onClose} onClose={onClose}>
+    <Screen title="Usage" subtitle="Anonymous counts from the last 30 days." onBack={onClose} onClose={onClose}>
       {error && <ErrorState message={`Couldn't load usage: ${error}`} onRetry={load} />}
       {!s && !error && <RowsSkeleton label="Loading usage" count={6} />}
       {s && (
@@ -86,7 +86,7 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
                   style={{ height: `${d.dau ? Math.max(4, Math.round((100 * d.dau) / peak)) : 0}%` }} />
               ))}
             </div>
-            <p className="text-meta text-(--text-muted)">{s.new_users} new {s.new_users === 1 ? 'person' : 'people'} in 30 days</p>
+            <p className="text-small text-(--text-secondary)">{s.new_users} new {s.new_users === 1 ? 'person' : 'people'} in 30 days</p>
           </Section>
 
           <Section title="Coming back" note="Of people first seen in the last 30 days, the share who used rabbt again exactly 1 and 7 days later.">

@@ -31,8 +31,8 @@ export function ShareWorkoutsRow() {
   return (
     <Row icon={<Icon><Share2 /></Icon>} title="Share my workouts with friends"
       subtitle={error ?? (on
-        ? `On · ${last ? `last shared ${ago(last) === 'now' ? 'just now' : `${ago(last)} ago`}` : 'your next workout posts after it syncs'}. Followers see sport, time and distance, never heart rate or where.`
-        : 'Off · only you see your workouts. Turn on so friends see them on the Feed.')}
+        ? `On: ${last ? `last shared ${ago(last) === 'now' ? 'just now' : `${ago(last)} ago`}` : 'your next workout posts after it syncs'}. Followers see sport, time and distance, never heart rate or where.`
+        : 'Off: only you see your workouts. Turn on so friends see them on the Feed.')}
       trailing={<Switch label="Share my workouts with friends" checked={on} onChange={(v) => void change(v)} />} />
   )
 }

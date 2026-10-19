@@ -16,18 +16,18 @@ export function ShareRow() {
   }
   if (url === undefined) return null
   return url ? (
-    <div className="flex flex-col gap-2 px-4 py-3">
-      <span className="flex items-center gap-3"><Icon><Link2 /></Icon><span className="text-lead text-(--text)">Read-only plan link</span></span>
+    <div className="flex flex-col gap-3 px-4 py-4">
+      <span className="flex items-center gap-3.5"><Icon><Link2 /></Icon><span className="text-body-lg font-medium text-(--text)">Read-only plan link</span></span>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-2 py-1.5 text-meta">{url}</code>
-        <Button variant="default" size="icon" className="size-9" aria-label="Copy link"
+        <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-3 py-2.5 text-small">{url}</code>
+        <Button variant="default" size="icon" aria-label="Copy link"
           onClick={() => void navigator.clipboard?.writeText(url).then(() => setMsg('Link copied.'), () => {})}><Copy className="size-5" /></Button>
       </div>
-      <div className="flex gap-2">
-        <Button variant="default" className="h-8 px-3 text-meta" loading={busy} onClick={() => void run(createShare, 'New link made; the old one stopped working.')}>New link</Button>
-        <Button variant="ghost" className="h-8 px-3 text-meta text-(--danger)" disabled={busy} onClick={() => void run(stopShare, 'Sharing is off.')}>Turn off</Button>
+      <div className="flex flex-wrap gap-3">
+        <Button variant="default" size="sm" loading={busy} onClick={() => void run(createShare, 'New link made; the old one stopped working.')}>New link</Button>
+        <Button variant="ghost" size="sm" className="text-(--danger)" disabled={busy} onClick={() => void run(stopShare, 'Sharing is off.')}>Turn off</Button>
       </div>
-      {msg && <p className="text-meta text-(--text-muted)">{msg}</p>}
+      {msg && <p className="text-small text-(--text-secondary)">{msg}</p>}
     </div>
   ) : (
     <Row icon={<Icon><Link2 /></Icon>} title="Share my plan" subtitle="A read-only link: next two weeks and your events. No chats or health data."

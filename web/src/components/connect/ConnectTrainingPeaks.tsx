@@ -36,7 +36,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
     <div className="flex flex-col gap-3.5">
       <div>
         <Progress step={step} total={STEPS.length} />
-        <p className="mt-2 text-center text-meta text-(--text-muted)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
+        <p className="mt-2 text-center text-small text-(--text-secondary)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
       </div>
 
       {step === 0 && (
@@ -48,7 +48,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
             className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) text-body text-(--accent) active:bg-(--bg-inset)">
             Open TrainingPeaks <ExternalLink className="size-4" aria-hidden />
           </a>
-          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(1)}>I’m signed in</Button>
+          <Button variant="primary" className="w-full" onClick={() => setStep(1)}>I’m signed in</Button>
         </>
       )}
 
@@ -59,7 +59,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
             <li>Go to <b>Application</b> (Chrome, Edge) or <b>Storage</b> (Firefox, Safari), then <b>Cookies</b> → app.trainingpeaks.com.</li>
             <li>Find <b>Production_tpAuth</b> and copy its whole <b>Value</b> (a long line of letters and numbers).</li>
           </ol>
-          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(2)}>I copied it</Button>
+          <Button variant="primary" className="w-full" onClick={() => setStep(2)}>I copied it</Button>
           <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(0)}>Back</button>
         </>
       )}
@@ -74,7 +74,7 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
               placeholder="Paste the value here" aria-describedby="tp-paste-help" />
           </label>
           {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
-          <Button variant="primary" className="h-11 w-full text-body" disabled={value.trim().length < 20} onClick={() => void connect()}>
+          <Button variant="primary" className="w-full" disabled={value.trim().length < 20} onClick={() => void connect()}>
             Connect TrainingPeaks
           </Button>
           <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(1)}>Back</button>
@@ -114,7 +114,7 @@ export function TPSourcePref({ source, onSaved, onToast }: {
   }
   return (
     <fieldset role="radiogroup" aria-label="Source of truth" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <legend className="px-1 text-caption font-semibold text-(--text-muted)">Source of truth</legend>
+      <legend className="px-1 text-meta font-semibold text-(--text-secondary)">Source of truth</legend>
       {(['trainingpeaks', 'rabbit'] as const).map((s) => (
         <button key={s} type="button" role="radio" aria-checked={source === s} disabled={!!busy} onClick={() => void pick(s)}
           className={cn('flex min-h-11 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left',
@@ -122,7 +122,7 @@ export function TPSourcePref({ source, onSaved, onToast }: {
           <span className={cn('text-body', source === s ? 'text-(--accent)' : 'text-(--text)')}>
             {TP_SOURCE_LABEL[s]}{busy === s ? '…' : ''}
           </span>
-          <span className="text-meta leading-snug text-(--text-muted)">{TP_SOURCE_HINT[s]}</span>
+          <span className="text-small leading-snug text-(--text-secondary)">{TP_SOURCE_HINT[s]}</span>
         </button>
       ))}
     </fieldset>

@@ -68,7 +68,7 @@ export function MonthRecapSheet({ month, onClose }: { month?: string; onClose: (
               {img
                 ? <img src={img} alt={alt} width={CARD_W} height={CARD_H} className="mx-auto h-auto w-full max-w-sm rounded-2xl shadow-sm" />
                 : <div className="skeleton mx-auto aspect-[4/5] w-full max-w-sm rounded-2xl" aria-hidden="true" />}
-              <p className="m-0 text-center text-meta text-(--text-muted)">Totals only: no names, places or heart rate.</p>
+              <p className="m-0 text-center text-small text-(--text-secondary)">Totals only: no names, places or heart rate.</p>
               <Button variant="primary" className="h-11 gap-1.5 text-body" loading={busy} disabled={!img}
                 onClick={(e) => void share(e.currentTarget)}>
                 {canShareFiles ? <><Share2 className="size-5" aria-hidden="true" /> Share</> : <><Download className="size-5" aria-hidden="true" /> Download image</>}

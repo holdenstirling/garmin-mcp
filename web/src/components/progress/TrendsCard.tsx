@@ -7,16 +7,20 @@
 // week/day to read its value (the readout line); the latest is selected by default. Plain SVG,
 // CSS-var colors, so light and dark both work.
 import type React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Table2 } from 'lucide-react'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { cn } from '@/lib/utils'
 import { KM_PER_MI, YD_PER_M } from '@/lib/format'
 import { getTrends, type DistSport, type Trends } from '@/lib/trends'
 import { useTrackRefresh } from '@/components/stats/refresh'
+import { useWidth } from '@/components/stats/useWidth'
+import { Section } from '@/components/ui/section'
 
 type View = 'distance' | 'pace' | 'sleep'
-const W = 320, H = 140, PAD_L = 40, PAD_R = 8, PAD_T = 10, PAD_B = 24
+const H = 150, PAD_L = 46, PAD_R = 8, PAD_T = 12, PAD_B = 26
+/** The chart's width in CSS px (= SVG units, so 13px labels stay 13px). */
+const ChartW = createContext(320)
 const SPORT_LABEL = { run: 'Run', bike: 'Ride', swim: 'Swim' } as const
 
 const shortDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -46,6 +50,7 @@ function colPath(x: number, y: number, w: number, h: number): string {
 }
 
 function Grid({ max, fmt }: { max: number; fmt: (v: number) => string }) {
+  const W = useContext(ChartW)
   const ys = [0, max / 2, max]
   return (
     <g aria-hidden="true">
@@ -54,7 +59,7 @@ function Grid({ max, fmt }: { max: number; fmt: (v: number) => string }) {
         return (
           <g key={v}>
             <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={PAD_L - 4} y={y + 3} textAnchor="end" className="fill-(--text-muted) text-[12px] tabular-nums">{fmt(v)}</text>
+            <text x={PAD_L - 6} y={y + 4} textAnchor="end" className="fill-(--text-secondary) text-[13px] tabular-nums">{fmt(v)}</text>
           </g>
         )
       })}
@@ -77,13 +82,14 @@ function useSelect(n: number) {
 
 // ------------------------------------------------------------- distance --
 function DistanceChart({ s, imperial }: { s: DistSport; imperial: boolean }) {
+  const W = useContext(ChartW)
   const weeks = s.weeks
   const vals = weeks.map((w) => unitVal(w.km, imperial, s.sport))
   const goals = weeks.map((w) => (w.goal == null ? null : unitVal(w.goal, imperial, s.sport)))
   const max = niceMax(Math.max(...vals, ...goals.map((g) => g ?? 0)))
   const { sel, setSel, onKeyDown } = useSelect(weeks.length)
   const band = (W - PAD_L - PAD_R) / weeks.length
-  const bw = Math.min(14, band - 2)
+  const bw = Math.min(16, band - 3)
   const y = (v: number) => PAD_T + (H - PAD_T - PAD_B) * (1 - v / max)
   const u = unitWord(imperial, s.sport)
   const cur = weeks[sel]!
@@ -91,8 +97,8 @@ function DistanceChart({ s, imperial }: { s: DistSport; imperial: boolean }) {
   const last = weeks.length - 1
   return (
     <>
-      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
-        <span className="font-medium text-(--text)">Week of {shortDate(cur.start)}{sel === last ? ' (so far)' : ''}:</span>{' '}
+      <p className="m-0 text-body text-(--text-secondary)" aria-live="polite">
+        <span className="font-semibold text-(--text)">Week of {shortDate(cur.start)}{sel === last ? ' (so far)' : ''}:</span>{' '}
         {fmtVal(vals[sel]!, s.sport)} {u}{goals[sel] != null ? ` of ${fmtVal(goals[sel]!, s.sport)} ${u} goal` : ''}
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full touch-pan-y" role="img" tabIndex={0} onKeyDown={onKeyDown}
@@ -112,13 +118,13 @@ function DistanceChart({ s, imperial }: { s: DistSport; imperial: boolean }) {
         })}
         {[0, Math.floor(last / 2), last].map((i) => (
           <text key={i} x={PAD_L + i * band + band / 2} y={H - 6} textAnchor={i === 0 ? 'start' : i === last ? 'end' : 'middle'}
-            className="fill-(--text-muted) text-[12px]" aria-hidden="true">{i === last ? 'This week' : shortDate(weeks[i]!.start)}</text>
+            className="fill-(--text-secondary) text-[13px]" aria-hidden="true">{i === last ? 'This week' : shortDate(weeks[i]!.start)}</text>
         ))}
       </svg>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-(--text-secondary)" aria-hidden="true">
-        <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-[3px] bg-(--accent)" /> Done</span>
-        {hasGoal && <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0.5 w-3 rounded bg-(--text)" /> Plan goal</span>}
-        <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-[3px] bg-(--accent) opacity-50" /> This week so far</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-small text-(--text-secondary)" aria-hidden="true">
+        <span className="inline-flex items-center gap-2"><span className="inline-block size-3 rounded-[3px] bg-(--accent)" /> Done</span>
+        {hasGoal && <span className="inline-flex items-center gap-2"><span className="inline-block h-0.5 w-4 rounded bg-(--text)" /> Plan goal</span>}
+        <span className="inline-flex items-center gap-2"><span className="inline-block size-3 rounded-[3px] bg-(--accent) opacity-50" /> This week so far</span>
       </div>
     </>
   )
@@ -134,6 +140,7 @@ function distanceTakeaway(s: DistSport, imperial: boolean): string {
 
 // ----------------------------------------------------------------- pace --
 function PaceChart({ t }: { t: Trends['pace'] }) {
+  const W = useContext(ChartW)
   const pts = t.points
   const secs = pts.map((p) => p.sec)
   const lo = Math.floor((Math.min(...secs) - 10) / 15) * 15, hi = Math.ceil((Math.max(...secs) + 10) / 15) * 15
@@ -147,9 +154,9 @@ function PaceChart({ t }: { t: Trends['pace'] }) {
   const ticks = [lo, (lo + hi) / 2, hi]
   return (
     <>
-      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
-        <span className="font-medium text-(--text)">Week of {shortDate(cur.start)}:</span> {mmss(cur.sec)}/{u} at {t.ref_hr} bpm
-        <span className="text-(--text-muted)"> · {cur.runs} easy run{cur.runs === 1 ? '' : 's'}</span>
+      <p className="m-0 text-body text-(--text-secondary)" aria-live="polite">
+        <span className="font-semibold text-(--text)">Week of {shortDate(cur.start)}:</span> {mmss(cur.sec)}/{u} at {t.ref_hr} bpm
+        <span className="block text-small">{cur.runs} easy run{cur.runs === 1 ? '' : 's'}</span>
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full touch-pan-y" role="img" tabIndex={0} onKeyDown={onKeyDown}
         aria-label={`Easy-run pace at ${t.ref_hr} beats per minute, ${pts.length} weeks, from ${mmss(pts[0]!.sec)} to ${mmss(pts[pts.length - 1]!.sec)} per ${u === 'mi' ? 'mile' : 'kilometre'}. Faster is higher. Use left and right arrows to read each week.`}>
@@ -157,7 +164,7 @@ function PaceChart({ t }: { t: Trends['pace'] }) {
           {ticks.map((v) => (
             <g key={v}>
               <line x1={PAD_L} x2={W - PAD_R} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
-              <text x={PAD_L - 4} y={y(v) + 3} textAnchor="end" className="fill-(--text-muted) text-[12px] tabular-nums">{mmss(v)}</text>
+              <text x={PAD_L - 6} y={y(v) + 4} textAnchor="end" className="fill-(--text-secondary) text-[13px] tabular-nums">{mmss(v)}</text>
             </g>
           ))}
         </g>
@@ -172,7 +179,7 @@ function PaceChart({ t }: { t: Trends['pace'] }) {
           </g>
         ))}
         {[0, pts.length - 1].map((i) => (
-          <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : 'end'} className="fill-(--text-muted) text-[12px]" aria-hidden="true">
+          <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : 'end'} className="fill-(--text-secondary) text-[13px]" aria-hidden="true">
             {shortDate(pts[i]!.start)}
           </text>
         ))}
@@ -192,22 +199,23 @@ function paceTakeaway(t: Trends['pace']): string {
 
 // ---------------------------------------------------------------- sleep --
 function SleepCharts({ t }: { t: Trends['sleep'] }) {
+  const W = useContext(ChartW)
   const pts = t.points
   const { sel, setSel, onKeyDown } = useSelect(pts.length)
   const band = (W - PAD_L - PAD_R) / pts.length
   const bw = Math.min(8, band - 2)
   const sleepMax = niceMax(Math.max(8, ...pts.map((p) => p.sleep_h ?? 0)))
   const loadMax = niceMax(Math.max(1, ...pts.map((p) => p.load)))
-  const h2 = 76
+  const h2 = 84
   const cur = pts[sel]!
   const loadWord = t.measure === 'load' ? 'training load' : 'minutes trained'
   const mini = (vals: (number | null)[], max: number, h: number, label: string, fmt: (v: number) => string) => {
-    const y = (v: number) => 16 + (h - 16 - 6) * (1 - v / max)
+    const y = (v: number) => 20 + (h - 20 - 6) * (1 - v / max)
     return (
       <svg viewBox={`0 0 ${W} ${h}`} className="block h-auto w-full touch-pan-y" aria-hidden="true">
-        <text x={PAD_L} y={10} className="fill-(--text-muted) text-[12px]">{label}</text>
+        <text x={PAD_L} y={13} className="fill-(--text-secondary) text-[13px]">{label}</text>
         <line x1={PAD_L} x2={W - PAD_R} y1={y(0)} y2={y(0)} stroke="var(--border)" strokeWidth={1} />
-        <text x={PAD_L - 4} y={y(max) + 3} textAnchor="end" className="fill-(--text-muted) text-[12px] tabular-nums">{fmt(max)}</text>
+        <text x={PAD_L - 6} y={y(max) + 4} textAnchor="end" className="fill-(--text-secondary) text-[13px] tabular-nums">{fmt(max)}</text>
         <line x1={PAD_L} x2={W - PAD_R} y1={y(max)} y2={y(max)} stroke="var(--border)" strokeWidth={1} />
         {vals.map((v, i) => {
           const x = PAD_L + i * band + (band - bw) / 2
@@ -224,16 +232,16 @@ function SleepCharts({ t }: { t: Trends['sleep'] }) {
   }
   return (
     <>
-      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
-        <span className="font-medium text-(--text)">{shortDate(cur.date)}:</span>{' '}
+      <p className="m-0 text-body text-(--text-secondary)" aria-live="polite">
+        <span className="font-semibold text-(--text)">{shortDate(cur.date)}:</span>{' '}
         {cur.load ? `${cur.load} ${t.measure === 'load' ? 'load' : 'min'}` : 'rest day'}
-        {' · '}{cur.sleep_h != null ? `${cur.sleep_h} h sleep that night` : 'no sleep data that night'}
+        <span className="block text-small">{cur.sleep_h != null ? `${cur.sleep_h} h sleep that night` : 'No sleep data that night'}</span>
       </p>
       <div role="img" tabIndex={0} onKeyDown={onKeyDown} className="flex flex-col gap-1 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-(--accent)"
         aria-label={`Sleep each night and ${loadWord} the day before, last ${pts.length} days. Use left and right arrows to read each day.`}>
         {mini(pts.map((p) => p.sleep_h), sleepMax, h2, 'Sleep (hours)', (v) => String(v))}
         {mini(pts.map((p) => p.load), loadMax, h2, t.measure === 'load' ? 'Training load' : 'Minutes trained', compact)}
-        <div className="flex justify-between pl-[12%] text-caption text-(--text-muted)" aria-hidden="true">
+        <div className="flex justify-between text-meta text-(--text-secondary)" style={{ paddingLeft: PAD_L }} aria-hidden="true">
           <span>{shortDate(pts[0]!.date)}</span><span>Today</span>
         </div>
       </div>
@@ -253,11 +261,11 @@ function sleepTakeaway(t: Trends['sleep']): string {
 // ---------------------------------------------------------------- table --
 function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport | null }) {
   const imperial = t.units !== 'metric'
-  const cls = 'border-b border-(--border) px-2 py-1 text-left'
+  const cls = 'border-b border-(--border) px-2 py-2 text-left'
   if (view === 'distance' && sport) {
     const u = unitWord(imperial, sport.sport)
     return (
-      <table className="w-full text-meta tabular-nums text-(--text)">
+      <table className="w-full text-small tabular-nums text-(--text)">
         <caption className="sr-only">{SPORT_LABEL[sport.sport]} per week</caption>
         <thead><tr><th className={cls}>Week of</th><th className={cls}>Done ({u})</th><th className={cls}>Goal ({u})</th></tr></thead>
         <tbody>{sport.weeks.slice().reverse().map((w) => (
@@ -269,7 +277,7 @@ function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport
   }
   if (view === 'pace') {
     return (
-      <table className="w-full text-meta tabular-nums text-(--text)">
+      <table className="w-full text-small tabular-nums text-(--text)">
         <caption className="sr-only">Pace at {t.pace.ref_hr} bpm per week</caption>
         <thead><tr><th className={cls}>Week of</th><th className={cls}>Pace /{imperial ? 'mi' : 'km'}</th><th className={cls}>Easy runs</th></tr></thead>
         <tbody>{t.pace.points.slice().reverse().map((p) => (
@@ -279,7 +287,7 @@ function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport
     )
   }
   return (
-    <table className="w-full text-meta tabular-nums text-(--text)">
+    <table className="w-full text-small tabular-nums text-(--text)">
       <caption className="sr-only">Sleep and training per day</caption>
       <thead><tr><th className={cls}>Day</th><th className={cls}>{t.sleep.measure === 'load' ? 'Load' : 'Minutes'}</th><th className={cls}>Sleep that night</th></tr></thead>
       <tbody>{t.sleep.points.slice().reverse().map((p) => (
@@ -302,6 +310,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
   const [sport, setSport] = useState<string | null>(null)
   const [table, setTable] = useState(false)
   const track = useTrackRefresh()
+  const [box, chartW] = useWidth<HTMLDivElement>(300)
   useEffect(() => {
     let live = true
     const p = getTrends(loadKey > 0).then((x) => { if (live) { setT(x); setFailed(false) } }, () => { if (live) setFailed(true) })
@@ -314,7 +323,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
   const rank = (x: string) => { const i = ORDER.indexOf(x); return i < 0 ? 9 : i }
   const sports = useMemo(() => [...(t?.distance.sports ?? [])].sort((a, b) => rank(a.sport) - rank(b.sport)), [t])  // runs first
   const cur = useMemo(() => sports.find((s) => s.sport === sport) ?? sports[0] ?? null, [sports, sport])
-  if (failed || !t) return failed ? null : <div className="skeleton h-56 rounded-xl" aria-hidden="true" />
+  if (failed || !t) return failed ? null : <Section title="Trends"><div className="skeleton h-56 rounded-xl" aria-hidden="true" /></Section>
 
   const views: [View, string][] = [['distance', 'Distance'], ['pace', 'Easy pace'], ['sleep', 'Sleep']]
   const takeaway = view === 'distance' ? (cur ? distanceTakeaway(cur, imperial) : '')
@@ -323,18 +332,15 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
     : view === 'pace' ? (t.pace.points.length ? null : t.pace.reason)
     : t.sleep.reason && t.sleep.nights < 7 ? t.sleep.reason : null
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="m-0 flex items-center gap-1 text-body-lg font-semibold text-(--text)">
-          Trends <InfoTip label={views.find(([v]) => v === view)![1]} text={WHY[view]} align="start" />
-        </h3>
-        {!empty && (
-          <button type="button" onClick={() => setTable((x) => !x)} aria-pressed={table}
-            className="hit-44 inline-flex items-center gap-1 text-meta text-(--text-muted)">
-            {table ? <><ChevronRight className="size-4 rotate-180" aria-hidden /> Chart</> : <><Table2 className="size-4" aria-hidden /> Table</>}
-          </button>
-        )}
-      </div>
+    <Section title={<span className="inline-flex items-center gap-1.5">Trends <InfoTip label={views.find(([v]) => v === view)![1]} text={WHY[view]} align="start" /></span>}
+      description="Distance, easy pace and sleep."
+      action={!empty ? (
+        <button type="button" onClick={() => setTable((x) => !x)} aria-pressed={table}
+          className="hit-44 inline-flex shrink-0 items-center gap-1.5 text-body font-medium text-(--accent)">
+          {table ? <><ChevronRight className="size-5 rotate-180" aria-hidden /> Chart</> : <><Table2 className="size-5" aria-hidden /> Table</>}
+        </button>
+      ) : undefined}>
+    <div ref={box} className="flex flex-col gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div role="tablist" aria-label="Trend" className="seg flex rounded-full bg-(--bg-inset) p-0.5" style={{ '--seg-i': Math.max(0, views.findIndex(([v]) => v === view)), '--seg-n': views.length } as React.CSSProperties}>
       <span className="seg__pill" aria-hidden />
         {views.map(([v, l]) => (
@@ -344,28 +350,28 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
         ))}
       </div>
       {view === 'distance' && sports.length > 1 && (
-        <div className="flex gap-1.5" role="group" aria-label="Sport">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Sport">
           {sports.map((s) => (
             <button key={s.sport} type="button" aria-pressed={cur?.sport === s.sport} onClick={() => setSport(s.sport)}
               className={cn('plan-chip', cur?.sport === s.sport && 'plan-chip--on')}>{SPORT_LABEL[s.sport]}</button>
           ))}
         </div>
       )}
-      {takeaway && !empty && <p className="m-0 text-body font-medium leading-snug text-(--text)">{takeaway}</p>}
+      {takeaway && !empty && <p className="m-0 text-body-lg font-semibold leading-snug text-(--text)">{takeaway}</p>}
       {empty ? (
-        <p className="m-0 py-4 text-center text-small text-(--text-muted)">{empty}</p>
+        <p className="m-0 py-4 text-center text-body text-(--text-secondary)">{empty}</p>
       ) : table ? (
         <div className="max-h-64 overflow-y-auto"><DataTable view={view} t={t} sport={cur} /></div>
-      ) : view === 'distance' && cur ? (
-        <DistanceChart key={cur.sport} s={cur} imperial={imperial} />
-      ) : view === 'pace' ? (
-        <PaceChart t={t.pace} />
       ) : (
-        <SleepCharts t={t.sleep} />
+        <ChartW.Provider value={Math.max(240, chartW - 32)}>
+          {view === 'distance' && cur ? <DistanceChart key={cur.sport} s={cur} imperial={imperial} />
+            : view === 'pace' ? <PaceChart t={t.pace} /> : <SleepCharts t={t.sleep} />}
+        </ChartW.Provider>
       )}
       {view === 'sleep' && !empty && t.sleep.source && (
-        <p className="m-0 text-caption text-(--text-muted)">Sleep from {t.sleep.source === 'oura' ? 'Oura' : 'Garmin'} · only you see this</p>
+        <p className="m-0 text-small text-(--text-secondary)">Sleep from {t.sleep.source === 'oura' ? 'Oura' : 'Garmin'}. Only you see this.</p>
       )}
     </div>
+    </Section>
   )
 }
