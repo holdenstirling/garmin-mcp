@@ -25,6 +25,7 @@ import {
   INTENT_OPTIONS, intentsOf, onOpenWelcome, saveIntents, setCurrentIntents, skipWelcome, welcomeOf, welcomePlan,
   type Intent, type NextStep,
 } from '@/lib/intent'
+import { TAGLINE } from '@/lib/legal'
 
 const ICON: Record<Intent, LucideIcon> = {
   train: Target, community: Users, events: CalendarDays, consistent: Flame, coach: UserRound, explore: Compass,
@@ -88,9 +89,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       </HopIn>
       <HopIn index={2} className="flex flex-col gap-3">
         {first && <p className="text-body font-medium text-(--text-secondary)">Hi {first}, welcome to rabbt</p>}
-        <h1 className="font-display text-display leading-[1.15] text-(--brand)">
-          Train smarter. Find your people. Never miss the start line.
-        </h1>
+        <h1 className="font-display text-display leading-[1.15] text-(--brand)">{TAGLINE}</h1>
         <p className="text-lead leading-snug text-(--text-secondary)">
           rabbt is your coach, your crew and your calendar of what's next.
         </p>

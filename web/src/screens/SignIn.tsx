@@ -1,4 +1,6 @@
 import { LegalFooter } from '@/components/legal/LegalFooter'
+import { DataPromise } from '@/components/legal/DataPromise'
+import { TAGLINE } from '@/lib/legal'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
@@ -32,7 +34,7 @@ export function SignIn({ error }: { error: string | null }) {
       </div>
       <div>
         <h1 className="font-display text-display-xl text-(--brand)">rabbt</h1>
-        <p className="mt-2 text-(--text-secondary)">Your training pacer. Prep, reviews, and a nudge when you need it.</p>
+        <p className="mt-2 text-lead text-(--text-secondary)">{TAGLINE}</p>
       </div>
       {error && (
         <p role="alert" className="max-w-sm rounded-(--radius) bg-(--danger-subtle) px-3 py-2 text-body text-(--danger)">
@@ -46,6 +48,7 @@ export function SignIn({ error }: { error: string | null }) {
         }}>Sign in with Google</a>
       </Button>
       <PasskeySignIn />
+      <DataPromise center className="max-w-xs" />
       <LegalFooter />
     </div>
   )

@@ -2,7 +2,8 @@
 // and see where each privacy control lives. Server: legal.py (documents), account.py (export /
 // delete), consent.py (what you agreed to and when).
 import { useEffect, useState } from 'react'
-import { AtSign, BookOpen, Download, FileText, HeartHandshake, Mail, Plug, Settings, ShieldCheck, Trash2 } from 'lucide-react'
+import { AtSign, BookOpen, Download, FileText, HeartHandshake, HeartPulse, Mail, Plug, Settings, ShieldCheck, Trash2 } from 'lucide-react'
+import { DataPromise } from '@/components/legal/DataPromise'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, LargeGroups, Row } from '@/components/settings/Grouped'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { openFindFriends } from '@/lib/friends'
 
 const ICONS: Record<LegalSlug, React.ReactNode> = {
   privacy: <ShieldCheck />, terms: <FileText />, security: <BookOpen />, guidelines: <HeartHandshake />,
+  'health-data': <HeartPulse />,
 }
 
 export function DocScreen({ slug, onBack, onClose }: { slug: LegalSlug; onBack?: () => void; onClose: () => void }) {
@@ -112,6 +114,7 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
   return (
     <Screen title="Privacy & legal" subtitle="Policies, your data, and deleting your account." onClose={onClose}>
       <LargeGroups.Provider value>
+      <DataPromise className="rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-4 py-3 text-body text-(--text)" />
       <Group label="Policies" footer={agreed}>
         {LEGAL_DOCS.map((d) => (
           <Row key={d.slug} icon={<Icon>{ICONS[d.slug]}</Icon>} title={d.title} subtitle={d.help} onClick={() => setDoc(d.slug)} />

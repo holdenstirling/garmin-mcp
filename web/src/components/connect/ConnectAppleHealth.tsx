@@ -18,6 +18,7 @@ import {
 } from '@/lib/applehealth'
 import { connectionsChanged, getConnections, type Connection } from '@/lib/connections'
 import { cn } from '@/lib/utils'
+import { DataPromise } from '@/components/legal/DataPromise'
 
 type View = 'loading' | 'intro' | 'steps' | 'done' | 'manage'
 
@@ -202,6 +203,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
               <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
+            <DataPromise className="border-t border-(--border) pt-2" />
             <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-small leading-snug text-(--text-secondary)">
               <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
               Your Shortcut uses a personal import key. rabbt stores only a scrambled copy of it, and the key can only add workouts, never read anything. Turn it off anytime.
@@ -338,6 +340,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
               <Bullets items={never} tone="no" />
+            <DataPromise className="border-t border-(--border) pt-2" />
             </div>
           </details>
         )}

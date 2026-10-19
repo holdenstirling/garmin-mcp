@@ -132,8 +132,8 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
 }
 
 /** The one-time "Share my workouts with friends" card (Home's "next step" slot). Shown once:
- *  being shown turns the default on (server-side), "Keep private" turns it off. Changeable in
- *  Me. `onShown` tells Home whether it's up, so no other prompt stacks under it. */
+ *  nothing is shared until a clear "Share with friends" (opt-in consent to share health data);
+ *  "Keep private" or no answer keeps it off. Changeable in Me. `onShown` tells Home whether it's up, so no other prompt stacks under it. */
 // Once the question is up it stays up for this visit, even if Home moves it (remounts it) to
 // another spot: the server marks it as asked the first time it's shown.
 let askedThisVisit = false
@@ -171,7 +171,7 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
         <Share2 className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden /> Share your workouts with friends?
       </h2>
       <p className="mt-2 text-body leading-snug text-(--text-secondary)">
-        Friends who follow you see each new workout: sport, time and distance. Never heart rate, maps or where you trained. It's on unless you say no.
+        Friends who follow you see each new workout: sport, time and distance. Never heart rate, maps or where you trained. Nothing is shared until you say yes.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="default" className="min-w-36 flex-1 border-(--accent)/40 font-semibold text-(--accent)" onClick={() => void choose(true)}>Share with friends</Button>
