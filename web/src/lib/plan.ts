@@ -26,6 +26,8 @@ export type PlanWeekBuilt = {
 export type BuiltPlan = {
   start: string; first_day: string; race_date: string; distance: string; race_kind: 'tri' | 'run' | 'bike' | 'general'
   level: string; peak_hours: number; start_hours: number; note: string | null
+  /** built for a training block, not a race (no race week) */
+  no_race?: boolean
   created: number; updated: number; weeks: PlanWeekBuilt[]; current_week: number | null
   /** the athlete's local date on the server (YYYY-MM-DD); the device clock may differ */
   today?: string
@@ -78,6 +80,8 @@ export type Diet = typeof DIETS[number][0]
 export type GoalFull = Goal & {
   target_time?: string | null; goal_type?: 'finish' | 'time' | 'compete' | null
   priority?: 'A' | 'B' | 'C' | null; limiters?: string[]; course?: string; plan_source?: 'builder' | 'uploaded'
+  /** a training block with no race: ``date`` is the block's last day */
+  no_race?: boolean
 }
 
 /** Plan reads and session edits, for the athlete ('/api') or a coach ('/api/coach/athletes/{id}'). */

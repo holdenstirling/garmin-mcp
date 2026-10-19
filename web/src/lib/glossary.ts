@@ -4,6 +4,7 @@ export type Term =
   | 'form' | 'fitness' | 'fatigue' | 'readiness' | 'garmin_readiness' | 'oura_readiness'
   | 'xp' | 'streak' | 'b_race' | 'c_race' | 'phase' | 'race_fit' | 'rpe' | 'adherence'
   | 'training_load' | 'ramp_rate' | 'eighty_twenty' | 'hrv' | 'long_session'
+  | 'ftp' | 'threshold_pace' | 'css_pace' | 'threshold_hr' | 'base' | 'build' | 'peak' | 'taper' | 'zones'
 
 export const GLOSSARY: Record<Term, { title: string; text: string }> = {
   form: { title: 'Form', text: 'How fresh you are: positive = rested, negative = tired from recent training.' },
@@ -25,6 +26,15 @@ export const GLOSSARY: Record<Term, { title: string; text: string }> = {
   eighty_twenty: { title: '80/20 guideline', text: 'Endurance athletes improve most with about 80% of training time easy (you could chat) and 20% hard.' },
   hrv: { title: 'HRV', text: 'Heart rate variability: the tiny changes between heartbeats overnight. Higher than your usual usually means well recovered.' },
   long_session: { title: 'Long session', text: 'Your longest workout of the week in your race sport. It builds the endurance race day needs.' },
+  ftp: { title: 'FTP (threshold power)', text: 'The most power you could hold on the bike for about an hour, in watts. Bike workouts set their targets from it.' },
+  threshold_pace: { title: 'Threshold pace', text: 'The fastest pace you could hold for about an hour of running, close to your 10K to half marathon race pace. Run workouts set their targets from it.' },
+  css_pace: { title: 'CSS (swim threshold pace)', text: 'Critical swim speed: your steady pace per 100 m for a hard 1500 m swim. Swim sets are timed from it.' },
+  threshold_hr: { title: 'Threshold heart rate', text: 'Your average heart rate for an all-out hour. Heart-rate zones are set from it.' },
+  base: { title: 'Base', text: 'Mostly easy, steady training that builds your engine. Volume grows slowly so your body adapts without getting hurt.' },
+  build: { title: 'Build', text: 'Adds harder sessions (tempo, threshold, intervals) and longer long days, while most training stays easy.' },
+  peak: { title: 'Peak', text: 'Your biggest and most race-like weeks. Workouts look like race day.' },
+  taper: { title: 'Taper', text: 'Less training with a little intensity, so you arrive at race day fresh.' },
+  zones: { title: 'Training zones', text: 'Effort levels from 1 (very easy) to 5 (very hard). Most of your training is zone 2: you can talk in full sentences.' },
 }
 
 /** Workout types, for the plan's Day view "Learn more". Keyed like plan session kinds. */

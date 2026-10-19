@@ -1,11 +1,12 @@
 // The athlete-profile fields shared by the setup wizard and Settings > Training profile:
 // about you, training numbers, and your week.
 import { useEffect, useId, useState } from 'react'
-import { DurationInput } from '@/components/ui/DurationInput'
+import { TimeFields, partsToSeconds, secondsToTime, splitTime } from '@/components/ui/TimeFields'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { Plus, Trash2, Watch } from 'lucide-react'
 import type { Sport } from '@/lib/api'
 import {
-  DIETS, EQUIPMENT, FAVORITE_SPORTS, FUEL_STYLES, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, fmtPace, guessUnits, ftInToCm, kgToLb, lbToKg, parsePace,
+  DIETS, EQUIPMENT, FAVORITE_SPORTS, FUEL_STYLES, KM_PER_MI, M_PER_FT, TERRAIN, TRAITS, WEEKDAYS, cmToFtIn, guessUnits, ftInToCm, kgToLb, lbToKg,
   type AthleteFull, type PastRace,
 } from '@/lib/plan'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ export function YouFields({ a, setA }: Props) {
         <OptionCard selected={a.level === 'new'} title="New to this" description="First race at this distance, or under a year of steady training." onClick={() => setA({ level: 'new' })} />
         <OptionCard selected={a.level === 'intermediate'} title="A few seasons in" description="You've done races like this and train most weeks." onClick={() => setA({ level: 'intermediate' })} />
         <OptionCard selected={a.level === 'advanced'} title="Experienced" description="Years of structured training; you handle big weeks." onClick={() => setA({ level: 'advanced' })} />
+        <OptionCard selected={a.level == null} title="Not sure, or none of these" description="rabbt starts gently and adjusts as your workouts come in." onClick={() => setA({ level: null })} />
       </div>
       <Card>
         <Field label="Sex" hint="Optional. Helps rabbt read heart-rate and recovery data.">
@@ -77,26 +79,26 @@ export function NumbersFields({ a, setA, sports }: Props) {
         <Field label="Max heart rate">
           <NumberStepper label="max heart rate" value={a.max_hr} min={100} max={230} typical={[175, 180, 185, 190, 195]}  onChange={(v) => setA({ max_hr: v })} suffix="bpm" />
         </Field>
-        <Field label="Threshold heart rate" hint="Roughly your average heart rate for an all-out hour.">
+        <Field label={<>Threshold heart rate <InfoTip term="threshold_hr" /></>} hint="Roughly your average heart rate for an all-out hour.">
           <NumberStepper label="threshold heart rate" value={a.threshold_hr} min={80} max={220} typical={[155, 160, 165, 170, 175]}  onChange={(v) => setA({ threshold_hr: v })} suffix="bpm" />
         </Field>
       </Card>
       <Card>
         {sports.includes('bike') && (
-          <Field label="Cycling FTP" hint={a.weight_kg && a.ftp_w ? `${(a.ftp_w / a.weight_kg).toFixed(1)} W/kg. Bike workouts target power.` : 'Bike workouts target power when you have a power meter.'}>
+          <Field label={<>Cycling threshold power (FTP) <InfoTip term="ftp" /></>} hint={a.weight_kg && a.ftp_w ? `${(a.ftp_w / a.weight_kg).toFixed(1)} W/kg. Bike workouts target power.` : 'Optional. Bike workouts target power when you have a power meter.'}>
             <NumberStepper label="FTP" value={a.ftp_w} min={50} max={600} step={5} typical={[150, 200, 250, 300]}  onChange={(v) => setA({ ftp_w: v })} suffix="watts" />
           </Field>
         )}
         {sports.includes('run') && (
-          <Field label={`Threshold run pace (per ${imperial ? 'mile' : 'km'})`} hint="About your 10K-to-half-marathon race pace. Run workouts target pace.">
+          <Field label={<>Threshold run pace, per {imperial ? 'mile' : 'km'} <InfoTip term="threshold_pace" /></>} hint="Optional. About your 10K-to-half-marathon race pace. Run workouts target pace.">
             <PaceInput seconds={a.run_threshold_pace == null ? null : imperial ? a.run_threshold_pace * KM_PER_MI : a.run_threshold_pace}
-              placeholder={imperial ? '7:15' : '4:30'}
+              label="Threshold run pace"
               onChange={(s) => setA({ run_threshold_pace: s == null ? null : Math.round(imperial ? s / KM_PER_MI : s) })} />
           </Field>
         )}
         {sports.includes('swim') && (
-          <Field label="Swim CSS (per 100 m)" hint="Your sustainable pace for a hard 1500 m. Sets swim distances.">
-            <PaceInput seconds={a.swim_css ?? null} placeholder="1:45" onChange={(s) => setA({ swim_css: s })} />
+          <Field label={<>Swim threshold pace (CSS), per 100 m <InfoTip term="css_pace" /></>} hint="Optional. Your steady pace for a hard 1500 m swim. Sets swim distances.">
+            <PaceInput seconds={a.swim_css ?? null} label="Swim threshold pace per 100 m" onChange={(s) => setA({ swim_css: s })} />
           </Field>
         )}
       </Card>
@@ -306,21 +308,18 @@ export function HeightImperial({ cm, onChange }: { cm: number | null; onChange: 
   )
 }
 
-export function PaceInput({ seconds, onChange, placeholder }: { seconds: number | null; onChange: (s: number | null) => void; placeholder: string }) {
-  const [text, setText] = useState(seconds != null ? fmtPace(seconds) : '')
-  const [bad, setBad] = useState(false)
-  useEffect(() => { setText(seconds != null ? fmtPace(seconds) : '') }, [seconds])
+export function PaceInput({ seconds, onChange, label = 'Pace' }: { seconds: number | null; onChange: (s: number | null) => void; placeholder?: string; label?: string }) {
+  // Local text, so a unit conversion upstream (mi <-> km rounding) never rewrites the boxes
+  // while someone is typing; an outside change of more than a second still shows.
+  const [text, setText] = useState(seconds != null ? secondsToTime(Math.round(seconds), false) : '')
+  useEffect(() => {
+    const mine = partsToSeconds(splitTime(text, false))
+    if (seconds == null ? mine != null && text === '' : mine == null || Math.abs(mine - seconds) > 1.5) {
+      setText(seconds != null ? secondsToTime(Math.round(seconds), false) : '')
+    }
+  }, [seconds]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="flex flex-col gap-1">
-      <DurationInput label="Pace" withHours={false} placeholder={placeholder} value={text} onChange={setText}
-        onBlur={(v) => {
-          if (!v.trim()) { setBad(false); onChange(null); return }
-          const s = parsePace(v)
-          setBad(s == null)
-          if (s != null) onChange(s)
-        }} />
-      {bad && <span role="alert" className="text-meta text-(--danger)">Enter minutes and seconds, like {placeholder}.</span>}
-    </div>
+    <TimeFields label={label} withHours={false} value={text}
+      onChange={(v) => { setText(v); onChange(v ? partsToSeconds(splitTime(v, false)) : null) }} />
   )
 }
-
