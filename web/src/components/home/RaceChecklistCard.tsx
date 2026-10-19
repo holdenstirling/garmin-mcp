@@ -26,18 +26,18 @@ export function RaceChecklistCard({ refreshKey }: { refreshKey?: number }) {
     try { await actChecklist(n.event.id, { action: 'check', item: id }); announceChecklist() } catch { load() }
   }
   return (
-    <section aria-label={`Race checklist for ${n.event.name}`} className="mx-4 mt-3 flex shrink-0 flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
+    <section aria-label={`Race checklist for ${n.event.name}`} className="flex shrink-0 flex-col overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
       <button type="button" onClick={() => openChecklist(n.event.id)}
-        className="flex min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-(--bg-inset)">
+        className="flex min-h-14 items-center gap-3.5 p-4 text-left active:bg-(--bg-inset)">
         <ProgressRing done={n.done} total={n.total} size={44} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-caption font-semibold text-(--text-muted)">
+          <span className="flex items-center gap-1.5 text-meta font-medium text-(--text-muted)">
             <ListChecks className="size-4" aria-hidden /> Race checklist
           </span>
-          <span className="block truncate text-body-lg font-semibold text-(--text)">
+          <span className="block text-body-lg font-semibold leading-snug text-(--text)">
             {n.event.name} · {n.days_out === 0 ? 'today' : n.days_out === 1 ? 'tomorrow' : `${n.days_out} days`}
           </span>
-          <span className="block text-meta text-(--text-muted)">{w.label}: {w.done} of {w.total} done</span>
+          <span className="mt-0.5 block text-small text-(--text-muted)">{w.label}: {w.done} of {w.total} done</span>
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
@@ -47,13 +47,13 @@ export function RaceChecklistCard({ refreshKey }: { refreshKey?: number }) {
             <li key={i.id}>
               <button type="button" role="checkbox" aria-checked={i.checked} disabled={i.checked}
                 onClick={(e) => void tick(i.id, e.currentTarget)}
-                className="flex min-h-11 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)">
-                <span aria-hidden className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border-2',
+                className="flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left active:bg-(--bg-inset)">
+                <span aria-hidden className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border-2',
                   i.checked ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
                   {i.checked && <Check className="rb-tick size-3.5" strokeWidth={3} />}
                 </span>
-                <span className={cn('min-w-0 flex-1 text-small leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>
-                <span className="shrink-0 text-caption text-(--text-muted)">{dueLabel(i.due)}</span>
+                <span className={cn('min-w-0 flex-1 text-body leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>
+                <span className="shrink-0 text-meta text-(--text-muted)">{dueLabel(i.due)}</span>
               </button>
             </li>
           ))}

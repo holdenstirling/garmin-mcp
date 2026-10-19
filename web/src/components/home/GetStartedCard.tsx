@@ -54,31 +54,31 @@ export function GetStartedCard({ garmin, hasGoal, progress, onStep }: {
   const hide = () => { try { window.localStorage.setItem(HIDE, '1') } catch { /* storage off */ } setGone(true) }
 
   return (
-    <div className="px-4">
-      <section aria-label="Get started" className="mx-auto max-w-2xl rounded-2xl border border-(--border) bg-(--bg-surface) px-3 py-2">
-        <div className="flex min-h-9 items-center gap-2">
-          <h2 className="font-sans flex-1 text-caption font-semibold text-(--text-muted)">Get started · {done} of {steps.length}</h2>
-          <button type="button" onClick={hide} aria-label="Hide Get started" className="hit-44 rounded-full p-1 text-(--text-muted)"><X className="size-5" /></button>
+    <section aria-label="Get started" className="rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]">
+      <div className="px-4 pt-3">
+        <div className="flex min-h-11 items-center gap-2">
+          <h3 className="m-0 flex-1 text-body-lg font-semibold text-(--text)">Get started <span className="font-normal text-(--text-muted)">· {done} of {steps.length} done</span></h3>
+          <button type="button" onClick={hide} aria-label="Hide Get started" className="-mr-2 flex size-11 items-center justify-center rounded-full text-(--text-muted)"><X className="size-5" /></button>
         </div>
-        <div className="mb-1 h-1 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>
+        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>
           <div className="h-full rounded-full bg-(--accent) transition-[width]" style={{ width: `${(done / steps.length) * 100}%` }} />
         </div>
-        <ul className="flex flex-col">
-          {steps.map((s) => (
-            <li key={s.id} className="border-t border-(--border) first:border-t-0">
-              <button type="button" disabled={s.done} onClick={() => onStep(s.id)}
-                className="flex min-h-12 w-full items-center gap-3 py-1.5 text-left disabled:cursor-default">
-                <IconTile size={30} tone={s.done ? 'neutral' : undefined}>{s.done ? <Check className="size-5" /> : <s.icon className="size-4" />}</IconTile>
-                <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate text-small font-medium', s.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{s.label}</span>
-                  {!s.done && <span className="block truncate text-meta text-(--text-muted)">{s.sub}</span>}
-                </span>
-                {!s.done && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
+      </div>
+      <ul className="flex flex-col">
+        {steps.map((s) => (
+          <li key={s.id} className="border-t border-(--border)">
+            <button type="button" disabled={s.done} onClick={() => onStep(s.id)}
+              className="flex min-h-14 w-full items-center gap-3.5 px-4 py-2.5 text-left active:bg-(--bg-inset) disabled:cursor-default">
+              <IconTile size={36} tone={s.done ? 'neutral' : undefined}>{s.done ? <Check className="size-5" /> : <s.icon className="size-5" />}</IconTile>
+              <span className="min-w-0 flex-1">
+                <span className={cn('block text-body font-medium leading-snug', s.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{s.label}</span>
+                {!s.done && <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{s.sub}</span>}
+              </span>
+              {!s.done && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

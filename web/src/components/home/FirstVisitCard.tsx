@@ -34,36 +34,36 @@ export function FirstVisitCard({ connected, onConnect, onOpen }: {
     setGone(true)
   }
   return (
-    <section aria-labelledby="fv-title" className="relative mx-4 mt-3 shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) px-3 pb-3 pt-2.5">
+    <section aria-labelledby="fv-title" className="relative shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) p-4 shadow-[var(--shadow-sm)]">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-caption font-semibold text-(--text-muted)">What you can do now</p>
-          <h2 id="fv-title" className="text-body-lg font-semibold leading-tight text-(--text)">{fv.title}</h2>
+          <p className="m-0 text-meta font-medium text-(--text-muted)">What you can do now</p>
+          <h2 id="fv-title" className="m-0 mt-0.5 text-lead font-semibold leading-snug text-(--text)">{fv.title}</h2>
         </div>
         <button type="button" onClick={dismiss} aria-label="Not now"
-          className="hit-44 -mr-1 -mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-muted) hover:bg-(--bg-inset)">
+          className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-muted) hover:bg-(--bg-inset)">
           <X className="size-5" aria-hidden />
         </button>
       </div>
-      <ul className="mt-2 grid grid-cols-2 gap-1.5">
+      <ul className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
         {fv.items.map((it) => {
           const Icon = ICON[it.id]
           return (
             <li key={it.id}>
               <button type="button" onClick={() => onOpen(it.id)}
-                className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-(--border) px-2.5 py-2 text-left active:bg-(--bg-inset)">
+                className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-(--border) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
                 <Icon className="size-5 shrink-0 text-(--accent)" aria-hidden />
                 <span className="min-w-0">
-                  <span className="block text-small font-medium leading-tight text-(--text)">{it.title}</span>
-                  <span className="block truncate text-caption text-(--text-muted)">{it.detail}</span>
+                  <span className="block text-body font-medium leading-snug text-(--text)">{it.title}</span>
+                  <span className="block text-small leading-snug text-(--text-muted)">{it.detail}</span>
                 </span>
               </button>
             </li>
           )
         })}
       </ul>
-      <Button variant="primary" className="mt-2.5 h-11 w-full text-body" onClick={onConnect}>{fv.primary.label}</Button>
-      <p className="mt-1 text-center text-caption text-(--text-muted)">{fv.primary.detail}</p>
+      <Button variant="default" className="mt-4 w-full border-(--accent)/40 font-semibold text-(--accent)" onClick={onConnect}>{fv.primary.label}</Button>
+      <p className="mt-2 text-center text-small text-(--text-muted)">{fv.primary.detail}</p>
     </section>
   )
 }

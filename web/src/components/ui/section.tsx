@@ -9,7 +9,7 @@ import { useId, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function Section({ title, description, action, children, className, as: Tag = 'h2', id }: {
+export function Section({ title, description, action, children, className, as: Tag = 'h2', id, hideWhenEmpty }: {
   title: ReactNode
   /** one plain line under the heading: what this group is for */
   description?: ReactNode
@@ -19,11 +19,14 @@ export function Section({ title, description, action, children, className, as: T
   className?: string
   as?: 'h2' | 'h3'
   id?: string
+  /** hide the whole section (heading too) while every child renders nothing, e.g. cards that
+   *  load their own data and hide themselves when there's nothing to show */
+  hideWhenEmpty?: boolean
 }) {
   const auto = useId()
   const hid = id ?? auto
   return (
-    <section aria-labelledby={hid} className={cn('flex flex-col gap-3', className)}>
+    <section aria-labelledby={hid} className={cn('flex flex-col gap-3', hideWhenEmpty && 'section--hide-empty', className)}>
       <div className="flex items-end gap-3 px-1">
         <div className="min-w-0 flex-1">
           <Tag id={hid} className={cn('section-title m-0', Tag === 'h3' && 'section-title--sm')}>{title}</Tag>

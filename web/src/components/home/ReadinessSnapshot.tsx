@@ -19,10 +19,10 @@ type Data = { rec: RecoveryData | null; tsb: number | null; source: string | nul
 
 function Cell({ icon: Icon, value, label }: { icon: typeof Moon; value: string; label: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1">
-      <Icon className="size-4 text-(--text-muted)" aria-hidden />
-      <span className="font-mono text-body-lg font-semibold tabular-nums text-(--text)">{value}</span>
-      <span className="truncate text-caption text-(--text-muted)">{label}</span>
+    <div className="flex min-w-0 flex-col items-center gap-1 rounded-lg bg-(--bg-inset) px-2 py-3 text-center">
+      <Icon className="size-5 text-(--text-muted)" aria-hidden />
+      <span className="text-title-sm font-semibold leading-none tabular-nums text-(--text)">{value}</span>
+      <span className="text-meta leading-snug text-(--text-muted)">{label}</span>
     </div>
   )
 }
@@ -48,14 +48,14 @@ export function ReadinessSnapshot({ refreshKey, onOpen, onConnect }: {
     return () => { live = false }
   }, [refreshKey])
 
-  if (!data) return <div className="skeleton h-[118px] rounded-xl" aria-label="Loading readiness" />
+  if (!data) return <div className="skeleton h-[220px] rounded-xl min-[400px]:h-[160px]" aria-label="Loading readiness" />
   const latest = data.rec?.latest ?? null
   if (!latest && data.tsb == null) {
     return (
       <button type="button" onClick={onConnect}
-        className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-dashed border-(--border-strong) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
+        className="flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-dashed border-(--border-strong) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
         <HeartPulse className="size-6 shrink-0 text-(--accent)" aria-hidden />
-        <span className="min-w-0 flex-1 text-small text-(--text-secondary)">
+        <span className="min-w-0 flex-1 text-body leading-snug text-(--text-secondary)">
           Connect Garmin or Oura to see sleep, HRV and how ready you are today.
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
@@ -76,17 +76,17 @@ export function ReadinessSnapshot({ refreshKey, onOpen, onConnect }: {
   const label = `Readiness: ${CALL[call].label}. ${why} ${cells.map((c) => `${c.label} ${c.value}`).join(', ')}. Open Progress`
   return (
     <button type="button" onClick={onOpen} aria-label={label}
-      className="flex w-full flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
-      <span className="flex w-full items-start gap-2" aria-hidden>
+      className="flex w-full flex-col gap-4 rounded-xl border border-(--border) bg-(--bg-surface) p-4 text-left shadow-[var(--shadow-sm)] active:bg-(--bg-inset)">
+      <span className="flex w-full items-start gap-3" aria-hidden>
         <span className="min-w-0 flex-1">
-          <span className="block text-caption font-semibold text-(--text-muted)">Today's readiness</span>
-          <span className={cn('block text-lead font-semibold leading-snug', CALL[call].cls)}>{CALL[call].label}</span>
-          <span className="block text-meta leading-snug text-(--text-secondary)">{why}</span>
+          <span className="block text-meta font-medium text-(--text-muted)">Today</span>
+          <span className={cn('block text-title-sm font-semibold leading-snug', CALL[call].cls)}>{CALL[call].label}</span>
+          <span className="mt-1 block text-body leading-snug text-(--text-secondary)">{why}</span>
         </span>
         <ChevronRight className="mt-1 size-5 shrink-0 text-(--text-muted)" />
       </span>
       {cells.length > 0 && (
-        <span className="flex w-full divide-x divide-(--border) rounded-lg bg-(--bg-inset) py-2" aria-hidden>
+        <span className={cn('grid w-full gap-2', cells.length === 4 ? 'grid-cols-2 min-[400px]:grid-cols-4' : cells.length === 3 ? 'grid-cols-2 min-[400px]:grid-cols-3' : 'grid-cols-2')} aria-hidden>
           {cells.map((c) => <Cell key={c.label} {...c} />)}
         </span>
       )}

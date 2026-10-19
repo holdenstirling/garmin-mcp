@@ -88,7 +88,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       </HopIn>
       <HopIn index={2} className="flex flex-col gap-3">
         {first && <p className="text-body font-medium text-(--text-secondary)">Hi {first}, welcome to rabbt</p>}
-        <h1 className="font-display text-display-lg leading-[1.15] text-(--brand)">
+        <h1 className="font-display text-display leading-[1.15] text-(--brand)">
           Train smarter. Find your people. Never miss the start line.
         </h1>
         <p className="text-lead leading-snug text-(--text-secondary)">
@@ -97,19 +97,19 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       </HopIn>
       <HopIn index={4} className="flex flex-wrap justify-center gap-2" aria-hidden="true">
         {(['Training', 'Social support', 'Events'] as const).map((t) => (
-          <span key={t} className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-3 py-1 text-meta font-medium text-(--accent)">{t}</span>
+          <span key={t} className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-1.5 text-small font-medium text-(--accent)">{t}</span>
         ))}
       </HopIn>
     </div>
   ) : step === 'pick' ? (
-    <div className="flex flex-1 flex-col gap-3 px-4 pb-2">
+    <div className="flex flex-1 flex-col gap-4 px-5 pb-2">
       <div className="px-1">
         <h2 className="font-display text-display-sm leading-tight text-(--brand)">What brings you to rabbt?</h2>
         <p className="mt-1 text-body leading-snug text-(--text-secondary)">
           Pick all that fit. Tap the most important one first.
         </p>
       </div>
-      <div className="flex flex-col gap-2" role="group" aria-label="What brings you to rabbt">
+      <div className="flex flex-col gap-2.5" role="group" aria-label="What brings you to rabbt">
         {INTENT_OPTIONS.map((o, i) => {
           const at = picks.indexOf(o.id)
           const on = at >= 0
@@ -117,7 +117,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           return (
             <HopIn key={o.id} index={i}>
               <button type="button" aria-pressed={on} onClick={() => toggle(o.id)}
-                className={cn('flex min-h-[64px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors active:scale-[0.99]',
+                className={cn('flex min-h-[68px] w-full items-center gap-3.5 rounded-2xl border px-4 py-3.5 text-left transition-colors active:scale-[0.99]',
                   on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                 <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
                   on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
@@ -125,7 +125,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={cn('block text-lead font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{o.title}</span>
-                  <span className="block text-small leading-snug text-(--text-muted)">{o.help}</span>
+                  <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{o.help}</span>
                 </span>
                 <span aria-hidden="true" className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border text-small font-bold',
                   on ? 'rb-pop border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')} key={on ? `on${at}` : 'off'}>
@@ -136,7 +136,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           )
         })}
       </div>
-      {picks.length > 1 && <p className="px-1 text-meta text-(--text-muted)">Numbers show what matters most. Tap again to change.</p>}
+      {picks.length > 1 && <p className="px-1 text-small text-(--text-muted)">Numbers show what matters most. Tap again to change.</p>}
       {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </div>
   ) : (
@@ -150,18 +150,18 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       <p className="text-body leading-snug text-(--text-secondary)">What we'll set up next, made for how you use rabbt:</p>
       <ul className="flex flex-col gap-2.5">
         {plan.bullets.map((b, i) => (
-          <HopIn as="li" key={b} index={i + 1} className="flex items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
+          <HopIn as="li" key={b} index={i + 1} className="flex items-start gap-3.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
             <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-4" /></span>
             <span className="text-body-lg leading-snug text-(--text)">{b}</span>
           </HopIn>
         ))}
       </ul>
-      <p className="text-meta text-(--text-muted)">Change this any time in Settings, under How you use rabbt.</p>
+      <p className="text-small text-(--text-muted)">Change this any time in Settings, under How you use rabbt.</p>
     </div>
   )
 
   const footer = (
-    <div className="flex flex-col gap-1 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
+    <div className="flex flex-col gap-1 px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
       {step === 'hello' && (
         <Button variant="primary" className="h-12 w-full text-lead" onClick={() => setStep('pick')}>
           Let's go <ChevronRight className="ml-1 size-5" />
@@ -222,7 +222,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="wf-title" className="modal-title">
-            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-caption font-bold uppercase text-(--on-fill)">New</span>Tell rabbt how you use it</>
+            {mode === 'lite' ? <><span className="mr-2 rounded-full bg-(--accent) px-2 py-0.5 text-caption font-semibold text-(--on-fill)">New</span>Tell rabbt how you use it</>
               : 'How you use rabbt'}
           </h2>
           <button type="button" className="modal-close" aria-label={mode === 'edit' ? 'Close' : 'Skip for now'}
@@ -230,7 +230,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         </div>
         <div className="modal-body flex flex-col overflow-y-auto pt-3">
           {mode === 'lite' && step === 'pick' && (
-            <p className="mb-2 px-5 text-small leading-snug text-(--text-muted)">
+            <p className="mb-3 px-6 text-small leading-snug text-(--text-muted)">
               rabbt now does training, social support and finding events. Tell us what matters to you and we'll show that first.
             </p>
           )}
