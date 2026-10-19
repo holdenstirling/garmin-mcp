@@ -322,7 +322,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
             className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-5" aria-hidden /></button>
         )}
       </label>
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label="Filter by activity">
+      <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 py-1" role="group" aria-label="Filter by activity">
         <Chip selected={activity === null} onClick={() => setActivity(null)}>All</Chip>
         {(shownActs.length ? shownActs : ACTIVITIES).map(([id, label]) => (
           <Chip key={id} selected={activity === id} onClick={() => setActivity(activity === id ? null : id)}>

@@ -30,6 +30,8 @@ export function useMentionField<T extends Field>({ value, setValue, where, initi
   reset: () => void
   /** true while the suggestion list is open (an Enter picks, it doesn't send) */
   open: boolean
+  /** mention someone without typing (a reply to a reply starts with "@Name ") */
+  add: (m: Mention) => void
 } {
   const ref = useRef<T>(null)
   const [picked, setPicked] = useState<Mention[]>(initial)
@@ -126,5 +128,6 @@ export function useMentionField<T extends Field>({ value, setValue, where, initi
     ref, onKeyDown, onSelect: check, list, open,
     encode: (text = value) => encodeMentions(text, picked),
     reset: () => { setPicked([]); setQ(null); setNote(null) },
+    add: (m: Mention) => setPicked((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m])),
   }
 }

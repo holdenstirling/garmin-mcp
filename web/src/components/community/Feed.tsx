@@ -7,7 +7,7 @@
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, CalendarDays, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
+import { Ban, CalendarDays, Check, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -26,8 +26,8 @@ import { openActivity } from '@/lib/activitynav'
 import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
-  ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft,
-  getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
+  ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft, editComment, likeComment,
+  getClubs, getCommunityFeed, getDrafts, getMyMeetups, hidePost, meetupWhen, postPhotoUrls, react,
   reportPost, shareDraft, unreact, updatePost, 
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
   type ReactionKind,
@@ -41,6 +41,9 @@ import { useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import { FeedHint } from '@/components/community/FeedHint'
 import { PhotoPicker, existingPhotos, usePhotoPicker } from '@/components/community/PhotoPicker'
 import { useMentionField } from './MentionField'
+import { CommentThreads, threadsOf } from './Comments'
+import { openTarget } from '@/lib/people'
+import { haptic } from '@/lib/haptics'
 import { MentionText } from './MentionText'
 import { displayText, tokensIn } from '@/lib/mentions'
 
@@ -115,21 +118,32 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   return (
     <>
       {main && <PullToRefresh onRefresh={load} />}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3">
         <button type="button" onClick={() => setComposer('blank')}
-          className="flex min-h-12 flex-1 items-center gap-2.5 rounded-2xl border border-(--border) bg-(--bg-surface) px-4 text-left text-body-lg text-(--text-muted) active:bg-(--bg-inset)">
-          <SquarePen className="size-[18px] text-(--accent)" aria-hidden />
-          {clubName ? `Share with ${clubName}…` : groupName ? `Share with ${groupName}…` : 'Share something'}
+          className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
+            <SquarePen className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-lg font-semibold text-(--text)">
+              {clubName ? `Share with ${clubName}` : groupName ? `Share with ${groupName}` : 'Share something'}
+            </span>
+            <span className="block text-meta text-(--text-muted)">A photo, a race, a thank you</span>
+          </span>
         </button>
-        {main && onInvite && (
-          <Button variant="ghost" className="hit-44 h-11 w-11 shrink-0 p-0" aria-label="Find friends" onClick={onInvite}>
-            <UserPlus className="size-[18px]" />
-          </Button>
-        )}
-        {onSettings && (
-          <Button variant="ghost" className="hit-44 h-11 w-11 shrink-0 p-0" aria-label="Sharing settings" onClick={onSettings}>
-            <SlidersHorizontal className="size-[18px]" />
-          </Button>
+        {main && (onInvite || onSettings) && (
+          <div className="flex flex-wrap gap-2">
+            {onInvite && (
+              <Button variant="default" className="h-11 flex-1 gap-2 px-4 text-body" onClick={onInvite}>
+                <UserPlus className="size-5" aria-hidden /> Find friends
+              </Button>
+            )}
+            {onSettings && (
+              <Button variant="default" className="h-11 flex-1 gap-2 px-4 text-body" onClick={onSettings}>
+                <SlidersHorizontal className="size-5" aria-hidden /> Sharing
+              </Button>
+            )}
+          </div>
         )}
       </div>
       {drafts.length > 0 && (
@@ -138,7 +152,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
       )}
       {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
       {main && (
-        <nav aria-label="Whose feed" className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 no-scrollbar">
+        <nav aria-label="Whose feed" className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 py-0.5 no-scrollbar">
           <div role="radiogroup" aria-label="Show" className="flex items-center gap-1.5">
             {chips.map(([v, label]) => (
               <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
@@ -156,20 +170,27 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
       )}
       {main && openGroup && onOpenGroup && (
         <button type="button" onClick={() => onOpenGroup(openGroup.id)}
-          className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 text-left text-small text-(--text-secondary) active:bg-(--bg-inset)">
-          <UsersRound className="size-5 text-(--accent)" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">{openGroup.emoji} {openGroup.name} · {openGroup.count} {openGroup.count === 1 ? 'person' : 'people'} · only the group sees these</span>
-          <span className="font-semibold text-(--accent)">Members</span>
+          className="flex min-h-14 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
+          <UsersRound className="size-5 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body font-semibold text-(--text)">{openGroup.emoji} {openGroup.name}</span>
+            <span className="block text-meta text-(--text-muted)">{openGroup.count} {openGroup.count === 1 ? 'person' : 'people'}. Only the group sees these posts.</span>
+          </span>
+          <span className="shrink-0 text-body font-semibold text-(--accent)">Members</span>
         </button>
       )}
       {pinned && (
-        <section aria-label="Your workout, just synced" className="flex flex-col gap-1.5">
-          <p className="flex items-center gap-1 px-1 text-caption font-semibold text-(--accent)">
-            <Pin className="size-3.5" aria-hidden /> Just synced · pinned for an hour
-          </p>
+        <section aria-label="Your workout, just synced" className="flex flex-col gap-3">
+          <div className="flex items-start gap-2 px-1">
+            <Pin className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
+            <div className="min-w-0">
+              <h2 className="section-title m-0">Your workout just synced</h2>
+              <p className="m-0 mt-0.5 text-small text-(--text-muted)">It stays at the top of your feed for an hour.</p>
+            </div>
+          </div>
           <PostCard post={pinned} imperial={imperial} onChange={setPinned} onDelete={() => setPinned(null)} />
           {pinned.prompt && (
-            <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setCaption(true)}>
+            <Button variant="primary" className="h-12 gap-2 text-body" onClick={() => setCaption(true)}>
               <ImagePlus className="size-5" /> {pinned.prompt}
             </Button>
           )}
@@ -206,7 +227,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
                 </div>
               ) : undefined} />
           )}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-5">
             {items.map((p, i) => (
               <HopIn key={p.id} play={i < 4} index={i}>
                 <PostCard post={p} imperial={imperial} onChange={put} onDelete={() => drop(p.id)} onBlocked={() => dropAuthor(p.author)} />
@@ -214,7 +235,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
             ))}
           </div>
           {next && (
-            <Button variant="default" className="h-11 text-small" loading={more} onClick={() => void loadMore()}>Show older</Button>
+            <Button variant="default" className="h-12 text-body" loading={more} onClick={() => void loadMore()}>Show older posts</Button>
           )}
         </>
       )}
@@ -234,17 +255,20 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
 // ------------------------------------------------------------- coming up ---
 function ComingUp({ meetups, onOpenClub }: { meetups: Meetup[]; onOpenClub?: (id: string) => void }) {
   return (
-    <section aria-label="Meetups you're going to" className="flex flex-col gap-1.5">
-      <h3 className="px-1 text-caption font-semibold text-(--text-muted)">You're going</h3>
-      <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+    <section aria-labelledby="going-h" className="flex flex-col gap-3">
+      <h2 id="going-h" className="section-title m-0 px-1">You're going</h2>
+      <div className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 no-scrollbar">
         {meetups.map((m) => (
           <button key={`${m.id}-${m.next}`} type="button" onClick={() => { if (m.club) onOpenClub?.(m.club.id) }}
-            className="flex min-w-[12rem] snap-start flex-col gap-0.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-left active:bg-(--bg-inset)">
+            className="flex w-[15rem] shrink-0 snap-start flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
             <span className="text-meta font-semibold text-(--accent)">{m.next ? meetupWhen(m.next) : ''}</span>
-            <span className="truncate text-body font-medium text-(--text)">{m.title}</span>
-            <span className="flex items-center gap-1 truncate text-caption text-(--text-muted)">
-              <span aria-hidden>{m.club?.emoji}</span>{m.club?.name} · <MapPin className="size-3.5 shrink-0" />{m.where}
-            </span>
+            <span className="line-clamp-2 text-body-lg font-semibold leading-snug text-(--text)">{m.title}</span>
+            {m.club && <span className="truncate text-meta text-(--text-secondary)"><span aria-hidden>{m.club.emoji} </span>{m.club.name}</span>}
+            {m.where && (
+              <span className="flex items-center gap-1 text-meta text-(--text-muted)">
+                <MapPin className="size-4 shrink-0" aria-hidden /><span className="truncate">{m.where}</span>
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -475,7 +499,9 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
   const [editing, setEditing] = useState<null | 'edit' | 'photos'>(null)
   // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
   const [comment, setComment, commentDraft] = useDraft<string>(`comment.${p.id}`, '', { label: 'comment', isEmpty: (v) => !v.trim() })
+  // The comment box is always there (a slim field under the post); this only tracks focus/typing.
   const [showComments, setShowComments] = useState(() => !!expanded || readDraft<string>(`comment.${p.id}`) != null)
+  const [editingComment, setEditingComment] = useState<PostComment | null>(null)
   const [commentQueued, setCommentQueued] = useState(false)
   const [replyTo, setReplyTo] = useState<PostComment | null>(null)
   const [busy, setBusy] = useState(false)
@@ -504,15 +530,47 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     try { const r = was === kind ? await unreact(p.id) : await react(p.id, kind); onChange({ ...r.post, comments: latest.current.comments }) }
     catch (e) { onChange(prev); setErr((e as Error).message) }
   }
-  async function openComments() {
-    const next = !showComments
-    setShowComments(next)
-    if (next && p.comment_count > p.comments.length) {
-      try { const r = await getPost(p.id); onChange(r.post) } catch (e) { setErr((e as Error).message) }
-    }
+  function openComments() {
+    // On the feed: the whole conversation lives on the post's own page. On that page: focus the box.
+    if (!expanded) { openTarget({ k: 'post', id: p.id }); return }
+    setShowComments(true); window.setTimeout(() => input.current?.focus(), 0)
   }
-  function startReply(c: PostComment) {
-    setReplyTo(c); setShowComments(true); window.setTimeout(() => input.current?.focus(), 0)
+  /** Reply to ``c``; a reply to a reply joins the same thread and starts with "@Name". */
+  function startReply(c: PostComment, thread: PostComment) {
+    setEditingComment(null)
+    setReplyTo(thread); setShowComments(true)
+    if (c.id !== thread.id && !c.mine) {
+      const first = c.by.name.split(' ')[0]
+      mention.add({ id: c.by.id, name: first })
+      if (!comment.startsWith(`@${first}`)) setComment(`@${first} ${comment}`)
+    }
+    window.setTimeout(() => input.current?.focus(), 0)
+  }
+  function startEdit(c: PostComment) {
+    setReplyTo(null); setEditingComment(c); setShowComments(true)
+    mention.reset()
+    for (const m of c.mentions ?? []) mention.add(m)
+    setComment(displayText(c.text))
+    window.setTimeout(() => input.current?.focus(), 0)
+  }
+  function cancelCompose() {
+    setReplyTo(null)
+    if (editingComment) { setEditingComment(null); setComment(''); commentDraft.clear(); mention.reset() }
+  }
+  async function toggleLike(c: PostComment) {
+    const on = !c.liked
+    const patch = (x: PostComment): PostComment => (x.id === c.id ? { ...x, liked: on, like_count: Math.max(0, (x.like_count ?? 0) + (on ? 1 : -1)) } : x)
+    onChange({ ...latest.current, comments: latest.current.comments.map(patch) })
+    if (on) haptic()
+    try {
+      const r = await likeComment(p.id, c.id, on)
+      const now = latest.current
+      onChange({ ...now, comments: now.comments.map((x) => (x.id === c.id ? { ...x, liked: r.comment.liked, like_count: r.comment.like_count } : x)) })
+    } catch (e) {
+      const now = latest.current
+      onChange({ ...now, comments: now.comments.map((x) => (x.id === c.id ? c : x)) })
+      setErr((e as Error).message)
+    }
   }
   async function send() {
     if (busy) return  // one comment at a time; a second Enter while sending does nothing
@@ -520,6 +578,16 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     const t = mention.encode(sent).trim()
     if (!t) return
     setBusy(true); setErr(null); setCommentQueued(false)
+    if (editingComment) {
+      try {
+        const r = await editComment(p.id, editingComment.id, t)
+        const now = latest.current
+        onChange({ ...now, comments: now.comments.map((x) => (x.id === r.comment.id ? { ...x, ...r.comment } : x)) })
+        if (typed.current === sent) { setComment(''); commentDraft.clear(); mention.reset() }
+        setEditingComment(null)
+      } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+      return
+    }
     try {
       // Durable + idempotent: kept and retried when offline, never posted twice.
       const r = await saveDurably<{ comment: PostComment }>({ method: 'POST', label: 'comment',
@@ -535,6 +603,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setCommentQueued(false) }
   }
   async function removeComment(cid: string) {
+    if (!(await confirmAsk('Delete this comment?', { detail: 'Replies to it go too.', confirm: 'Delete', danger: true }))) return
     try {
       await deleteComment(p.id, cid)
       const now = latest.current
@@ -565,38 +634,45 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     catch (e) { setErr((e as Error).message) }
   }
 
-  // One-level threads: top-level comments, each with its replies under it.
-  const tops = p.comments.filter((c) => !c.parent || !p.comments.some((x) => x.id === c.parent))
-  const replies = (id: string) => p.comments.filter((c) => c.parent === id)
-  const audience = p.audience === 'public' ? <><Globe className="size-3.5" /><span>Everyone</span></>
-    : p.audience === 'private' ? <><Lock className="size-3.5" /><span>Only you</span></>
-    : p.club ? <><Users className="size-3.5" /><span className="truncate">{p.club.name}</span></>
-    : p.groups?.length ? <><UsersRound className="size-3.5" /><span className="truncate">{p.groups.map((g) => `${g.emoji} ${g.name}`).join(', ')}</span></> : null
+  const threads = threadsOf(p.comments)
+  // The feed shows the newest two conversations; the post's page shows them all.
+  const shownThreads = expanded ? threads : threads.slice(-2)
+  const shownCount = shownThreads.reduce((n, th) => n + 1 + th.replies.length, 0)
+  const commentActions = {
+    onReply: startReply, onLike: (c: PostComment) => void toggleLike(c),
+    onDelete: (c: PostComment) => void removeComment(c.id), onEdit: startEdit,
+  }
+  const audience = p.audience === 'public' ? <><Globe className="size-4" aria-hidden /><span>Everyone</span></>
+    : p.audience === 'private' ? <><Lock className="size-4" aria-hidden /><span>Only you</span></>
+    : p.club ? <><Users className="size-4" aria-hidden /><span className="truncate">{p.club.name}</span></>
+    : p.groups?.length ? <><UsersRound className="size-4" aria-hidden /><span className="truncate">{p.groups.map((g) => `${g.emoji} ${g.name}`).join(', ')}</span></>
+    : <><Users className="size-4" aria-hidden /><span>Friends</span></>
 
   return (
-    <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <header className="flex items-center gap-2.5">
-        {!p.mine && p.user ? <TapAvatar p={p.user} size={36} /> : <PersonAvatar u={p.user} />}
+    <article className="flex flex-col gap-4 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+      <header className="flex items-start gap-3">
+        {!p.mine && p.user ? <TapAvatar p={p.user} size={44} /> : <PersonAvatar u={p.user} size={44} />}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-body font-medium text-(--text)">
-            {!p.mine && p.user ? <PersonLink id={p.user.id} name={name} /> : name}{p.feeling && <span className="ml-1" aria-label={`feeling ${p.feeling}`}>{p.feeling}</span>}
+          <span className="block text-body-lg font-semibold leading-snug text-(--text)">
+            {!p.mine && p.user ? <PersonLink id={p.user.id} name={name} /> : name}{p.feeling && <span className="ml-1.5" aria-label={`feeling ${p.feeling}`}>{p.feeling}</span>}
           </span>
-          <span className="flex items-center gap-1 text-caption text-(--text-muted)" title={audienceLabel(p.audience, p.club)}>
-            {ago(p.created)}{p.edited ? ' · edited' : ''}{audience && <><span>·</span>{audience}</>}
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-meta text-(--text-muted)" title={audienceLabel(p.audience, p.club)}>
+            <span>{ago(p.created)}{p.edited ? ', edited' : ''}</span>
+            <span className="inline-flex min-w-0 items-center gap-1">{audience}</span>
           </span>
         </span>
-        <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-semibold text-(--accent)">{p.kind === 'workout' ? 'Workout' : CATEGORY_LABEL[p.category]}</span>
-        <div className="relative">
-          <Button variant="ghost" className="hit-44 h-8 w-8 p-0" aria-label="Post options" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+        <div className="relative -mr-2 -mt-1 flex shrink-0 items-center gap-1">
+          <span className="rounded-full bg-(--accent-subtle) px-2.5 py-1 text-caption font-semibold text-(--accent)">{p.kind === 'workout' ? 'Workout' : CATEGORY_LABEL[p.category]}</span>
+          <Button variant="ghost" className="size-11 p-0" aria-label="Post options" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             <Ellipsis className="size-5" />
           </Button>
           {menu && (
-            <div className="absolute right-0 top-9 z-10 flex w-44 flex-col rounded-xl border border-(--border) bg-(--bg-surface) py-1 shadow-lg" role="menu">
+            <div className="absolute right-0 top-12 z-10 flex w-52 flex-col rounded-xl border border-(--border) bg-(--bg-surface) py-1 shadow-lg" role="menu">
               {p.mine ? (
                 <>
                   <MenuItem icon={<ImagePlus className="size-5" />} label={p.photos.length ? 'Photos' : 'Add photos'} onClick={() => { setMenu(false); setEditing('photos') }} />
-                  <MenuItem icon={<Pencil className="size-5" />} label="Edit" onClick={() => { setMenu(false); setEditing('edit') }} />
-                  <MenuItem icon={<Trash2 className="size-5" />} label="Delete" danger onClick={() => void remove()} />
+                  <MenuItem icon={<Pencil className="size-5" />} label="Edit post" onClick={() => { setMenu(false); setEditing('edit') }} />
+                  <MenuItem icon={<Trash2 className="size-5" />} label="Delete post" danger onClick={() => void remove()} />
                 </>
               ) : (
                 <>
@@ -611,7 +687,7 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
       </header>
 
       {p.text ? (
-        <p className="mt-2.5 whitespace-pre-wrap break-words text-lead leading-snug text-(--text)"><MentionText text={p.text} mentions={p.mentions} /></p>
+        <p className="m-0 whitespace-pre-wrap break-words text-body-lg leading-normal text-(--text)"><MentionText text={p.text} mentions={p.mentions} /></p>
       ) : null}
       {photos.length > 0 && <PhotoGrid urls={photos} who={p.mine ? 'your' : `${p.user?.name ?? 'their'}'s`} />}
       {editing && (
@@ -625,18 +701,18 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
           onMessage={p.user ? () => { setDetails(false); messagePeople([p.user!.id]) } : undefined} />
       )}
       {p.event && <EventChip e={p.event} />}
-      {notice && <p className="mt-2 text-meta text-(--accent)" role="status">{notice}</p>}
+      {notice && <p className="m-0 text-body text-(--accent)" role="status">{notice}</p>}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-0.5">
+      <div className="-mx-1 flex flex-wrap items-center gap-1 border-t border-(--border) pt-3">
         {REACTIONS.map(([kind, emoji, label]) => {
           const n = p.reactions[kind]
           const on = p.my_reaction === kind
           return (
             <button key={kind} ref={(el) => { reactBtns.current[kind] = el }} type="button" aria-pressed={on}
               aria-label={`${label}${n ? `, ${n}` : ''}`} onClick={() => void toggle(kind)}
-              className={cn('hit-44 inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-meta font-medium transition-colors',
+              className={cn('inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2.5 text-body font-semibold transition-colors',
                 on ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary) active:bg-(--bg-inset)')}>
-              <span className={cn('text-lead', on && 'celebrate')} aria-hidden>{emoji}</span>
+              <span className={cn('text-title-sm leading-none', on && 'celebrate')} aria-hidden>{emoji}</span>
               {n > 0 && <span className="tabular-nums">{n}</span>}
             </button>
           )
@@ -644,54 +720,60 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
         <span className="flex-1" />
         {!p.mine && p.user && (
           <button type="button" onClick={() => messagePeople([p.user!.id])} aria-label={`Message ${p.user.name}`}
-            className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-meta font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-            <Send className="size-5" aria-hidden /> Message
+            className="inline-flex size-11 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)">
+            <Send className="size-5" aria-hidden />
           </button>
         )}
-        <button type="button" onClick={() => void openComments()} aria-expanded={showComments}
-          className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-meta font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-          <MessageCircle className="size-5" /> {p.comment_count > 0 ? p.comment_count : 'Comment'}
+        <button type="button" onClick={openComments} aria-label={p.comment_count ? `${p.comment_count} comments` : 'Comment'}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-body font-semibold text-(--text-secondary) active:bg-(--bg-inset)">
+          <MessageCircle className="size-5" aria-hidden /> {p.comment_count > 0 ? p.comment_count : null}
         </button>
       </div>
 
-      {(showComments || (p.comments.length > 0 && p.comment_count <= 2)) && p.comments.length > 0 && (
-        <ul className="mt-1.5 flex flex-col gap-1.5 border-t border-(--border) pt-2">
-          {tops.map((c) => (
-            <li key={c.id} id={`comment-${c.id}`} className={cn('flex scroll-mt-24 flex-col gap-1 rounded-lg', focusComment === c.id && 'comment-focus')}>
-              <CommentLine c={c} onReply={() => startReply(c)} onDelete={() => void removeComment(c.id)} />
-              {replies(c.id).length > 0 && (
-                <ul className="ml-4 flex flex-col gap-1 border-l border-(--border) pl-2.5">
-                  {replies(c.id).map((r) => (
-                    <li key={r.id} id={`comment-${r.id}`} className={cn('scroll-mt-24 rounded-lg', focusComment === r.id && 'comment-focus')}><CommentLine c={r} onReply={() => startReply(c)} onDelete={() => void removeComment(r.id)} /></li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
+      {shownThreads.length > 0 && (
+        <CommentThreads post={p} threads={shownThreads} focus={focusComment} actions={commentActions} />
       )}
-      {showComments && (
-        <div className="mt-2 flex flex-col gap-1">
-          {replyTo && (
-            <span className="flex items-center gap-1 text-caption text-(--text-muted)">
-              <Reply className="size-3.5" /> Replying to {replyTo.mine ? 'yourself' : replyTo.by.name}
-              <button type="button" className="hit-44 ml-1 underline" onClick={() => setReplyTo(null)}>cancel</button>
+      {!expanded && p.comment_count > shownCount && (
+        <button type="button" onClick={() => openTarget({ k: 'post', id: p.id })}
+          className="-mt-1 self-start rounded-full py-2 text-body font-semibold text-(--accent) active:opacity-70">
+          View all {p.comment_count} comments
+        </button>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {(replyTo || editingComment) && (
+          <span className="flex min-h-9 items-center gap-2 rounded-full bg-(--bg-inset) py-1 pl-3.5 pr-1 text-meta text-(--text-secondary)">
+            {editingComment ? <Pencil className="size-4" aria-hidden /> : <Reply className="size-4" aria-hidden />}
+            <span className="min-w-0 flex-1 truncate">
+              {editingComment ? 'Editing your comment' : <>Replying to <b className="font-semibold text-(--text)">{replyTo!.mine ? 'yourself' : replyTo!.by.name}</b></>}
             </span>
-          )}
-          <div className="relative flex items-center gap-2">
-            {mention.list}
-            <input ref={input} aria-label={replyTo ? 'Reply' : 'Comment'} className={cn(inputCls, 'h-11 text-body')} maxLength={COMMENT_LEN}
-              placeholder={replyTo ? 'Write a reply…' : 'Comment · @ to tag'} enterKeyHint="send"
-              value={comment} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
-              onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }} />
-            <Button variant="primary" className="h-11 w-11 shrink-0 p-0" aria-label="Send comment" loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
-              <Send className="size-5" />
+            <button type="button" className="flex size-9 items-center justify-center rounded-full active:bg-(--bg-surface)"
+              aria-label={editingComment ? 'Stop editing' : 'Cancel reply'} onClick={cancelCompose}>
+              <X className="size-5" aria-hidden />
+            </button>
+          </span>
+        )}
+        <div className="relative flex items-center gap-2">
+          {mention.list}
+          <input ref={input} aria-label={editingComment ? 'Edit comment' : replyTo ? 'Reply' : 'Add a comment'}
+            className={cn(inputCls, 'h-12 rounded-full px-4 text-body')} maxLength={COMMENT_LEN}
+            placeholder={editingComment ? 'Edit your comment' : replyTo ? 'Write a reply' : 'Add a comment'} enterKeyHint="send"
+            value={comment} onFocus={() => setShowComments(true)} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
+            onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }} />
+          {(comment.trim() || busy || showComments) && (
+            <Button variant="primary" className="h-12 w-12 shrink-0 rounded-full p-0" aria-label={editingComment ? 'Save comment' : 'Send comment'}
+              loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
+              {editingComment ? <Check className="size-5" /> : <Send className="size-5" />}
             </Button>
-          </div>
+          )}
         </div>
-      )}
-      {commentQueued && <SaveStatus state="queued" className="mt-1.5" />}
-      {err && <p className="mt-1.5 text-meta text-(--danger)">{err}</p>}
+        {!showComments && !comment && <span className="sr-only">Type @ to mention someone.</span>}
+        {showComments && !replyTo && !editingComment && !comment && (
+          <span className="px-4 text-caption text-(--text-muted)">Type @ to mention someone</span>
+        )}
+      </div>
+      {commentQueued && <SaveStatus state="queued" />}
+      {err && <p className="m-0 text-body text-(--danger)" role="alert">{err}</p>}
     </article>
   )
 }
@@ -699,27 +781,9 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
 function MenuItem({ icon, label, danger, onClick }: { icon: React.ReactNode; label: string; danger?: boolean; onClick: () => void }) {
   return (
     <button type="button" role="menuitem" onClick={onClick}
-      className={cn('flex min-h-11 items-center gap-2 px-3 text-left text-small', danger && 'text-(--danger)')}>
+      className={cn('flex min-h-12 items-center gap-3 px-4 text-left text-body', danger && 'text-(--danger)')}>
       {icon}<span className="truncate">{label}</span>
     </button>
-  )
-}
-
-function CommentLine({ c, onReply, onDelete }: { c: PostComment; onReply: () => void; onDelete: () => void }) {
-  return (
-    <div className="flex items-start gap-1.5 text-small leading-snug">
-      <span className="min-w-0 flex-1 break-words">
-        {c.mine ? <span className="font-medium text-(--text)">You</span> : <PersonLink id={c.by.id} name={c.by.name} className="font-medium text-(--text)" />}{' '}
-        <MentionText className="text-(--text-secondary)" text={c.text} mentions={c.mentions} />{' '}
-        <span className="whitespace-nowrap text-caption text-(--text-muted)">{ago(c.ts)}</span>
-      </span>
-      <button type="button" aria-label="Reply" onClick={onReply} className="hit-44 shrink-0 p-0.5 text-(--text-muted)"><Reply className="size-4" /></button>
-      {c.can_delete && (
-        <button type="button" aria-label="Delete comment" onClick={onDelete} className="hit-44 shrink-0 p-0.5 text-(--text-muted)">
-          <X className="size-4" />
-        </button>
-      )}
-    </div>
   )
 }
 

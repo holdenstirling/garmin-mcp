@@ -322,7 +322,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                 <MessagesSquare className="size-5" aria-hidden /> {c.kind === 'race' ? 'Crew chat' : 'Club chat'}
               </Button>
               {c.upcoming.length > 0 && (
-                <section aria-label="Upcoming races" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+                <section aria-label="Upcoming races" className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1">
                   {c.upcoming.map((u) => (
                     <div key={`${u.name}-${u.date}`} className="flex min-w-[11rem] snap-start flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
                       <span className="flex items-center gap-1 text-caption font-semibold text-(--accent)"><Flag className="size-3.5" /> Racing</span>

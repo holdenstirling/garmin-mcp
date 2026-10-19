@@ -29,7 +29,7 @@ export function FeaturedStrip({ where = 'community', items: given, onOpenClub, o
   }, [where, given])
   if (!items.length) return null
   return (
-    <section aria-label="Featured clubs" className={cn('flex gap-2', items.length > 1 && '-mx-4 snap-x overflow-x-auto px-4 pb-1')}>
+    <section aria-label="Featured clubs" className={cn('flex gap-2', items.length > 1 && '-mx-5 snap-x overflow-x-auto px-5 pb-1')}>
       {items.map((f) => (
         <FeaturedCard key={f.id} f={f} wide={items.length === 1} onOpenClub={onOpenClub} onToast={onToast}
           onChange={(nf) => setItems((xs) => xs.map((x) => (x.id === nf.id ? nf : x)))} />

@@ -103,7 +103,7 @@ export function GroupCard({ a, onAsk, className, style }: {
 }
 
 export function CardRow({ children }: { children: React.ReactNode }) {
-  return <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">{children}</div>
+  return <div className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-5 px-5 pb-1">{children}</div>
 }
 
 function Title({ children }: { children: React.ReactNode }) {
