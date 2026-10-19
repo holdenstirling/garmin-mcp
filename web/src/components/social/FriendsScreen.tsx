@@ -23,8 +23,8 @@ import {
   unblockUser, unfollow, workoutLine,
   type FeedItem, type FriendCard as FriendCardData, type People, type PersonEdge, type SocialSettings, type SocialUser,
 } from '@/lib/social'
-import { sportIcon } from '@/lib/sportIcon'
 import { openFindFriends } from '@/lib/friends'
+import { SportTile } from '@/components/ui/SportTile'
 
 const LOADING = ['Finding your crew…', 'Lacing up…', 'Checking who trained today…']
 const SEEN_EVENT = 'rabbit:social-seen'
@@ -120,7 +120,6 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
 function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
   it: FeedItem; imperial: boolean; onOpen?: (id: string) => void; onUpdate: (p: Partial<FeedItem>) => void; compact?: boolean
 }) {
-  const Icon = sportIcon(it.sport)
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
@@ -171,7 +170,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
         </button>
       )}
       <div className={cn('flex items-start gap-2.5', !compact && 'mt-2.5')}>
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-[18px]" /></span>
+        <SportTile sport={it.sport} size={36} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-lead font-medium text-(--text)">{it.title}</span>
           <span className="block text-meta text-(--text-secondary)">

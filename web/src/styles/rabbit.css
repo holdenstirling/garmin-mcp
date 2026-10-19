@@ -569,3 +569,8 @@ html.kb-open .tab-bar { display: none; }
 /* Section hideWhenEmpty (components/ui/section.tsx): a section whose only child is its heading
    (every card inside rendered nothing) takes no space at all. */
 .section--hide-empty:not(:has(> :nth-child(2))) { display: none; }
+
+/* Feed comments open inside the card (PostCard): a short unfold, so it's clear what appeared. */
+.comments-open { animation: comments-open 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: top; }
+@keyframes comments-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .comments-open { animation: none; } }

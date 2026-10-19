@@ -23,6 +23,7 @@ import { StepItem } from './SessionSheet'
 import { addDays, mondayOf } from './MoveSheet'
 import { paceText } from './PlanCalendar'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { SportTile } from '@/components/ui/SportTile'
 
 export type DayActions = {
   onEdit: (s: PlanSession) => void
@@ -128,10 +129,11 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
   return (
     <Card className={cn(status === 'missed' && 'border-(--danger)/40', status === 'skipped' && 'opacity-70')}>
       <div className="flex items-start gap-3.5 px-4 pt-4">
-        <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
-          s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
-          <Icon className="size-6" aria-hidden />
-        </span>
+        {s.kind === 'race' ? (
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--brand) text-(--on-fill)">
+            <Icon className="size-6" aria-hidden />
+          </span>
+        ) : <SportTile sport={s.sport} size={44} done={status === 'done'} />}
         <div className="min-w-0 flex-1">
           <h3 className={cn('text-title-sm font-semibold leading-snug text-(--text)', status === 'skipped' && 'line-through')}>
             {a.onOpenPage ? (

@@ -368,8 +368,8 @@ def test_no_health_data_in_posts(cx) -> None:
     acts = [act(today - timedelta(days=30), 1, km=5), act(today, 2, km=12)]
     acts[1].update(avg_power_w=230, sleep_score=80, lat=39.7, lon=-105.0)
     card = workout_card(acts, 2, today)
-    assert set(card) == {"activity_id", "source", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                         "pace_s_km"}  # pace from distance + time only
+    assert set(card) == {"activity_id", "source", "sport", "family", "kind", "title", "date", "km", "minutes",
+                         "climb_m", "highlight", "pace_s_km"}  # pace from distance + time only
     assert card["highlight"] == "New longest run this year!"
     post = cx.cm.create("ann", {"text": "Long one", "avg_hr": 150, "hrv": 70, "readiness": 80}, workout={**card, "avg_hr": 151})
     blob = json.dumps(cx.cm.get("bob", post["id"]))

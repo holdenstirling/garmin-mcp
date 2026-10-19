@@ -104,8 +104,8 @@ def test_auto_shared_card_has_no_hr_gps_or_location(fx) -> None:
     cm.put_settings("ann", {"share_workouts": True})
     pid = cm.auto_share_workouts("ann", _acts(today), today)[-1]
     post = cm.get("bob", pid)
-    assert set(post["workout"]) == {"activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
-                                    "pace_s_km", "auto", "source"}
+    assert set(post["workout"]) == {"activity_id", "sport", "family", "kind", "title", "date", "km", "minutes",
+                                    "climb_m", "highlight", "pace_s_km", "auto", "source"}
     blob = json.dumps(post).lower()
     for k in ("avg_hr", "max_hr", "151", '"lat', '"lon', "latitude", "39.7", "104.9", "denver", "power", "230"):
         assert k not in blob, k

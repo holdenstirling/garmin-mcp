@@ -18,8 +18,8 @@ import {
   MIN_QUERY, clearSearches, openSearchResult, recentSearches, rememberSearch, search,
   type SearchPick, type SearchResults,
 } from '@/lib/search'
-import { sportIcon } from '@/lib/sportIcon'
 import { openFindFriends } from '@/lib/friends'
+import { SportTile } from '@/components/ui/SportTile'
 
 export function SearchButton({ imperial }: { imperial: boolean }) {
   const [open, setOpen] = useState(false)
@@ -150,20 +150,18 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             </Group>
             <Group title="Your plan" n={res.sessions.length}>
               {res.sessions.map((s) => {
-                const Icon = sportIcon(s.sport)
                 return (
                   <Row key={s.id} onClick={() => pick({ kind: 'session', id: s.id, date: s.date })}
-                    icon={<Tile><Icon className="size-5" /></Tile>} title={s.title}
+                    icon={<SportTile sport={s.sport} size={40} />} title={s.title}
                     sub={[fmtDay(s.date), s.minutes ? fmtDuration(s.minutes) : ''].filter(Boolean).join(' · ')} />
                 )
               })}
             </Group>
             <Group title="Past workouts" n={res.workouts.length}>
               {res.workouts.map((w) => {
-                const Icon = sportIcon(w.sport)
                 return (
                   <Row key={w.id} onClick={() => pick({ kind: 'workout', id: w.id })}
-                    icon={<Tile><Icon className="size-5" /></Tile>} title={w.name}
+                    icon={<SportTile sport={w.sport} size={40} />} title={w.name}
                     sub={[fmtDay(w.date), [w.km ? fmtDist(w.km, imperial, w.sport) : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(', ')]} />
                 )
               })}

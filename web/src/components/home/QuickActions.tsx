@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button'
 import { burst } from '@/components/anim'
 import { createCheckin } from '@/lib/checkins'
 import { getCommunitySettings, putCommunitySettings, react, rsvpMeetup, type CommunitySettings } from '@/lib/community'
-import { fmtDist, fmtDuration } from '@/lib/format'
+import { fmtDuration } from '@/lib/format'
 import { hapticTap } from '@/lib/haptics'
 import { syncGarmin } from '@/lib/plan'
 import { getQuickActions, type QuickAction } from '@/lib/unread'
 import { cn } from '@/lib/utils'
+import { famDist, noDistance, sportFamily } from '@/lib/sportstats'
 
 const FACES: [number, string, string][] = [[1, '😣', 'Awful'], [2, '😕', 'Rough'], [3, '😐', 'OK'], [4, '🙂', 'Good'], [5, '😄', 'Great']]
 
@@ -32,7 +33,8 @@ const ICON = { feel: Smile, rsvp: CalendarCheck, cheer: PartyPopper, watch: Watc
 function lines(a: QuickAction, imperial: boolean): [string, string | null] {
   switch (a.kind) {
     case 'feel': {
-      const bits = [a.km ? fmtDist(a.km, imperial, a.sport) : null, a.minutes ? fmtDuration(a.minutes) : null].filter(Boolean)
+      const fam = sportFamily(a.sport)
+      const bits = [a.km && !noDistance(fam) ? famDist(a.km, fam, imperial) : null, a.minutes ? fmtDuration(a.minutes) : null].filter(Boolean)
       return [`How did your ${a.title.toLowerCase()} feel?`, bits.length ? bits.join(' · ') : null]
     }
     case 'rsvp': return [`Going to ${a.title}?`, when(a.next) || null]

@@ -3,17 +3,17 @@
 // against the goal (plan calendar, builder plans) as the "Week at a glance" header (WeekGlance). Tap a day: the Plan tab opens on that day
 // (lib/plancal openPlanDay). Data: /api/plan/week (passed in) + /api/plan/calendar for mileage.
 import { useEffect, useState } from 'react'
-import { Activity, Check, ChevronRight, X } from 'lucide-react'
+import { Check, ChevronRight, X } from 'lucide-react'
 import type { PlannedSession, PlanWeek, WeekDay } from '@/lib/api'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { getCalendar, SPORT_DIST_LABEL, type DistSport, type Mileage } from '@/lib/plancal'
-import { SPORT_ICON } from '@/components/plan/PlanParts'
 import { fmtDay } from '@/components/plan/PlanParts'
 import { cn } from '@/lib/utils'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
 import { PlanDaySheet } from '@/components/week/PlanDaySheet'
 import { RabbitNap } from '@/components/anim'
+import { SportTile } from '@/components/ui/SportTile'
 
 const STATE_WORD = { done: 'done', missed: 'missed', planned: 'planned', rest: 'rest' } as const
 
@@ -78,18 +78,17 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
           </button>
         )}
         {work.map((s, i) => {
-          const Icon = SPORT_ICON[s.sport] ?? Activity
           const line = sessionLine(s, imperial)
           return (
             <button key={s.id ?? i} type="button" onClick={() => (s.id ? openWorkout(s.id, d.date) : onSheet(d))}
               aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`} className={row}>
+              <SportTile sport={s.sport} size={36} className={s.status === 'missed' ? 'opacity-60' : undefined} />
               <span className="min-w-0 flex-1">
                 <span className={cn('block text-body leading-snug', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
                   {s.title}
                 </span>
                 <span className="mt-0.5 flex items-center gap-1.5 text-meta text-(--text-muted)">
                   <StateMark st={s.status} />
-                  <Icon className="size-4 shrink-0" aria-hidden />
                   <span>{s.status === 'done' ? 'Done' : s.status === 'missed' ? 'Missed' : 'Planned'}{line ? ` · ${line}` : ''}</span>
                 </span>
               </span>
@@ -98,15 +97,14 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
           )
         })}
         {d.extra.map((a, i) => {
-          const Icon = SPORT_ICON[a.sport] ?? Activity
           return (
             <button key={`x${i}`} type="button" onClick={() => (a.id != null ? openActivity(a.id) : onOpen(d.date))}
               aria-label={`${a.name}, done, ${dayLabel}. ${a.id != null ? 'Open the workout' : 'Open this day'}`} className={row}>
+              <SportTile sport={a.sport} size={36} />
               <span className="min-w-0 flex-1">
                 <span className="block text-body leading-snug text-(--text)">{a.name}</span>
                 <span className="mt-0.5 flex items-center gap-1.5 text-meta text-(--text-muted)">
                   <StateMark st="done" />
-                  <Icon className="size-4 shrink-0" aria-hidden />
                   <span>Done · {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}</span>
                 </span>
               </span>

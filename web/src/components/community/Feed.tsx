@@ -7,7 +7,7 @@
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, CalendarDays, Check, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
+import { Ban, CalendarDays, Check, ChevronDown, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,9 @@ import { areaCls, inputCls } from '@/components/plan/ui'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { useDialog } from '@/hooks/useDialog'
 import { listEvents, type RaceEvent } from '@/lib/events'
-import { fmtClimb, fmtDist, fmtDuration, fmtPaceKm, fmtSpeed, fmtSwim100 } from '@/lib/format'
+import { fmtDist, fmtPaceKm, fmtSwim100 } from '@/lib/format'
+import { FAMILY_NAME, famDist, legLine, sportFamily, splitsOk, statsFor } from '@/lib/sportstats'
+import { SportTile } from '@/components/ui/SportTile'
 import { listGroups, type FeedGroup } from '@/lib/community2'
 import { Sheet } from '@/components/ui/Sheet'
 import { blockUser, type SocialUser } from '@/lib/social'
@@ -27,7 +29,7 @@ import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
   ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft, editComment, likeComment,
-  getClubs, getCommunityFeed, getDrafts, getMyMeetups, hidePost, meetupWhen, postPhotoUrls, react,
+  getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
   reportPost, shareDraft, unreact, updatePost, 
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
   type ReactionKind,
@@ -43,6 +45,10 @@ import { PhotoPicker, existingPhotos, usePhotoPicker } from '@/components/commun
 import { useMentionField } from './MentionField'
 import { CommentThreads, threadsOf } from './Comments'
 import { openTarget } from '@/lib/people'
+import { RabbitLoader } from '@/components/RabbitLoader'
+
+/** Conversations shown inline on a feed card; a longer one continues on the post's own page. */
+const INLINE_THREADS = 20
 import { haptic } from '@/lib/haptics'
 import { MentionText } from './MentionText'
 import { displayText, tokensIn } from '@/lib/mentions'
@@ -504,8 +510,10 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
   const [editing, setEditing] = useState<null | 'edit' | 'photos'>(null)
   // An unsent comment is kept per post (lib/drafts); a card with one opens its comments.
   const [comment, setComment, commentDraft] = useDraft<string>(`comment.${p.id}`, '', { label: 'comment', isEmpty: (v) => !v.trim() })
-  // The comment box is always there (a slim field under the post); this only tracks focus/typing.
-  const [showComments, setShowComments] = useState(() => !!expanded || readDraft<string>(`comment.${p.id}`) != null)
+  // Comments stay folded away on the feed until someone taps "Comments"; then the whole thread
+  // opens right inside the card (no new page). The post's own page always shows them.
+  const [showComments, setShowComments] = useState(() => !!expanded || !!focusComment || readDraft<string>(`comment.${p.id}`) != null)
+  const [loadingComments, setLoadingComments] = useState(false)
   const [editingComment, setEditingComment] = useState<PostComment | null>(null)
   const [commentQueued, setCommentQueued] = useState(false)
   const [replyTo, setReplyTo] = useState<PostComment | null>(null)
@@ -535,10 +543,22 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
     try { const r = was === kind ? await unreact(p.id) : await react(p.id, kind); onChange({ ...r.post, comments: latest.current.comments }) }
     catch (e) { onChange(prev); setErr((e as Error).message) }
   }
-  function openComments() {
-    // On the feed: the whole conversation lives on the post's own page. On that page: focus the box.
-    if (!expanded) { openTarget({ k: 'post', id: p.id }); return }
-    setShowComments(true); window.setTimeout(() => input.current?.focus(), 0)
+  /** Open the thread inline (loading the whole conversation: the feed only carries a preview) and
+   * focus the box; tap again to fold it away. On the post's own page it just focuses the box. */
+  async function toggleComments() {
+    if (showComments && !expanded) { setShowComments(false); setReplyTo(null); return }
+    setShowComments(true)
+    window.setTimeout(() => input.current?.focus({ preventScroll: true }), 0)
+    const now = latest.current
+    if (expanded || now.comments.length >= now.comment_count) return
+    setLoadingComments(true)
+    try {
+      const r = await getPost(p.id)
+      const cur = latest.current
+      // Keep anything added while loading (an inline comment that landed first).
+      const extra = cur.comments.filter((c) => !r.post.comments.some((x) => x.id === c.id))
+      onChange({ ...cur, comments: [...r.post.comments, ...extra], comment_count: Math.max(r.post.comment_count, cur.comment_count) })
+    } catch (e) { setErr((e as Error).message) } finally { setLoadingComments(false) }
   }
   /** Reply to ``c``; a reply to a reply joins the same thread and starts with "@Name". */
   function startReply(c: PostComment, thread: PostComment) {
@@ -640,9 +660,9 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
   }
 
   const threads = threadsOf(p.comments)
-  // The feed shows the newest two conversations; the post's page shows them all.
-  const shownThreads = expanded ? threads : threads.slice(-2)
-  const shownCount = shownThreads.reduce((n, th) => n + 1 + th.replies.length, 0)
+  // Inline on the feed: up to the newest 20 conversations; a longer one continues on the post's page.
+  const shownThreads = expanded ? threads : threads.slice(-INLINE_THREADS)
+  const more = threads.length - shownThreads.length
   const commentActions = {
     onReply: startReply, onLike: (c: PostComment) => void toggleLike(c),
     onDelete: (c: PostComment) => void removeComment(c.id), onEdit: startEdit,
@@ -725,22 +745,31 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
             </button>
           )
         })}
-        <span className="flex-1" />
-        <button type="button" onClick={openComments} aria-label={p.comment_count ? `${p.comment_count} comments` : 'Comment'}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-body font-semibold text-(--text-secondary) active:bg-(--bg-inset)">
-          <MessageCircle className="size-5" aria-hidden /> {p.comment_count > 0 ? p.comment_count : null}
-        </button>
       </div>
+      {/* Comments stay folded on the feed: one clear row opens (and hides) the thread right here. */}
+      <button type="button" onClick={() => void toggleComments()} aria-expanded={expanded ? undefined : showComments}
+        aria-controls={`comments-${p.id}`}
+        className={cn('-mx-1 -mt-2 flex min-h-11 items-center gap-2 rounded-lg px-2 text-left text-small font-semibold active:bg-(--bg-inset)',
+          showComments && !expanded ? 'text-(--accent)' : 'text-(--text-secondary)')}>
+        <MessageCircle className="size-5 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">
+          {showComments && !expanded ? 'Hide comments'
+            : p.comment_count > 0 ? `${p.comment_count} ${p.comment_count === 1 ? 'comment' : 'comments'}` : 'Write a comment'}
+        </span>
+        {!expanded && <ChevronDown className={cn('size-5 shrink-0 transition-transform', showComments && 'rotate-180')} aria-hidden />}
+      </button>
 
-      {shownThreads.length > 0 && (
-        <CommentThreads post={p} threads={shownThreads} focus={focusComment} actions={commentActions}
-          onMore={expanded ? undefined : (top) => openTarget({ k: 'post', id: p.id, comment: top.id })} />
-      )}
-      {!expanded && p.comment_count > shownCount && (
+      {showComments && (
+      <div id={`comments-${p.id}`} className={cn('flex flex-col gap-4', !expanded && 'comments-open')}>
+      {loadingComments && shownThreads.length === 0 && <RabbitLoader inline className="py-1" label="Loading comments" />}
+      {more > 0 && (
         <button type="button" onClick={() => openTarget({ k: 'post', id: p.id })}
-          className="-mt-1 self-start rounded-full py-2 text-body font-semibold text-(--accent) active:opacity-70">
-          View all {p.comment_count} comments
+          className="self-start rounded-full py-2 text-body font-semibold text-(--accent) active:opacity-70">
+          See the {more} earlier {more === 1 ? 'conversation' : 'conversations'}
         </button>
+      )}
+      {shownThreads.length > 0 && (
+        <CommentThreads post={p} threads={shownThreads} focus={focusComment} actions={commentActions} />
       )}
 
       <div className="flex flex-col gap-2">
@@ -761,20 +790,19 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
           <input ref={input} aria-label={editingComment ? 'Edit comment' : replyTo ? 'Reply' : 'Add a comment'}
             className={cn(inputCls, 'h-12 rounded-full px-4 text-body')} maxLength={COMMENT_LEN}
             placeholder={editingComment ? 'Edit your comment' : replyTo ? 'Write a reply' : 'Add a comment'} enterKeyHint="send"
-            value={comment} onFocus={() => setShowComments(true)} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
+            value={comment} onChange={(e) => setComment(e.target.value)} onSelect={mention.onSelect}
             onKeyDown={(e) => { if (!mention.onKeyDown(e) && e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }} />
-          {(comment.trim() || busy || showComments) && (
-            <Button variant="primary" className="h-12 w-12 shrink-0 rounded-full p-0" aria-label={editingComment ? 'Save comment' : 'Send comment'}
-              loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
-              {editingComment ? <Check className="size-5" /> : <Send className="size-5" />}
-            </Button>
-          )}
+          <Button variant="primary" className="h-12 w-12 shrink-0 rounded-full p-0" aria-label={editingComment ? 'Save comment' : 'Send comment'}
+            loading={busy} disabled={!comment.trim()} onClick={() => void send()}>
+            {editingComment ? <Check className="size-5" /> : <Send className="size-5" />}
+          </Button>
         </div>
-        {!showComments && !comment && <span className="sr-only">Type @ to mention someone.</span>}
-        {showComments && !replyTo && !editingComment && !comment && (
+        {!replyTo && !editingComment && !comment && (
           <span className="px-4 text-caption text-(--text-muted)">Type @ to mention someone</span>
         )}
       </div>
+      </div>
+      )}
       {commentQueued && <SaveStatus state="queued" />}
       {err && <p className="m-0 text-body text-(--danger)" role="alert">{err}</p>}
     </article>
@@ -814,44 +842,71 @@ function PhotoGrid({ urls, who = 'the' }: { urls: string[]; who?: string }) {
   )
 }
 
-const SPORT_EMOJI: Record<string, string> = { run: '🏃', bike: '🚴', swim: '🏊', hike: '🥾', walk: '🚶', strength: '🏋️', ski: '⛷️', brick: '🔁', climb: '🧗', paddle: '🛶' }
-
 const SOURCE_LABEL: Record<string, string> = {
   garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', coros: 'COROS', strava: 'Strava', polar: 'Polar', suunto: 'Suunto', wahoo: 'Wahoo',
 }
 
-function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>; imperial: boolean; onOpen?: () => void }) {
-  const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
-    : w.pace_s_100m ? fmtSwim100(w.pace_s_100m, imperial) : null
-  const stats: [string, string][] = ([
-    ['Distance', w.km ? fmtDist(w.km, imperial, w.sport) : null], ['Time', w.minutes ? fmtDuration(w.minutes) : null],
-    [w.speed_kmh ? 'Speed' : 'Pace', pace], ['Climb', w.climb_m && w.climb_m >= 30 ? fmtClimb(w.climb_m, imperial) : null],
-  ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1])
+type CardWorkout = NonNullable<Post['workout']>
+const famOf = (w: CardWorkout) => sportFamily(w.family || w.sport, w.family ? null : w.kind)
+
+/** The numbers that fit the sport (lib/sportstats): pace for a run, speed for a ride, per 100
+ * for a swim, per 500 m for a row, vertical for a ski day, time (and sets) for the gym. */
+function StatGrid({ w, imperial, big }: { w: CardWorkout; imperial: boolean; big?: boolean }) {
+  const stats = statsFor(w, imperial)
+  if (!stats.length) return null
+  return (
+    <dl className={cn('grid grid-cols-2 gap-x-3', big ? 'gap-y-3' : 'gap-y-2 min-[400px]:grid-cols-3')}>
+      {stats.map((s) => (
+        <div key={s.label} className="min-w-0">
+          <dt className="text-caption font-semibold text-(--text-muted)">{s.label}</dt>
+          <dd className={cn('font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]', big ? 'text-title-sm' : 'text-body-lg')}>{s.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function Legs({ w, imperial }: { w: CardWorkout; imperial: boolean }) {
+  if (!w.legs?.length) return null
+  return (
+    <ul className="flex flex-col gap-2" aria-label="Legs">
+      {w.legs.map((lg, i) => {
+        const l = legLine({ ...lg, sport: lg.family ?? 'other' }, imperial)
+        return (
+          <li key={i} className="flex items-center gap-2.5">
+            <SportTile family={lg.family} size={32} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-semibold text-(--text)">{l.label}</span>
+              {l.value && <span className="block text-meta text-(--text-secondary)">{l.value}</span>}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function WorkoutCard({ w, imperial, onOpen }: { w: CardWorkout; imperial: boolean; onOpen?: () => void }) {
+  const fam = famOf(w)
   const headline = w.headline || w.highlight
   const via = SOURCE_LABEL[w.source ?? 'garmin'] ?? 'Garmin'
   return (
-    <div className="mt-2.5 rounded-xl border border-(--border) bg-(--bg-inset) px-3.5 py-3">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-title-md">{SPORT_EMOJI[w.sport] ?? '🐇'}</span>
+    <div className="mt-2.5 flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-inset) px-3.5 py-3">
+      <div className="flex items-center gap-3">
+        <SportTile sport={w.sport} family={fam} size={44} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-lead font-semibold text-(--text)">{w.title}</span>
-          <span className="block text-caption text-(--text-muted)">{w.auto ? 'Synced' : 'Shared'} via {via}</span>
+          <span className="block text-lead font-semibold leading-snug text-(--text)">{w.title}</span>
+          <span className="block text-caption text-(--text-muted)">
+            {w.title.trim().toLowerCase() === FAMILY_NAME[fam].toLowerCase() ? (w.auto ? 'Synced' : 'Shared') : `${FAMILY_NAME[fam]}, ${w.auto ? 'synced' : 'shared'}`} via {via}
+          </span>
         </span>
       </div>
-      {headline && <p className="mt-1.5 text-small font-medium text-(--accent)">{headline}</p>}
-      {stats.length > 0 && (
-        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 min-[400px]:grid-cols-3">
-          {stats.map(([k, v]) => (
-            <div key={k} className="min-w-0">
-              <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
-              <dd className="font-mono text-[clamp(0.9rem,4.4vw,1rem)] font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {w.splits && w.splits.length >= 2 && <SplitBars splits={w.splits} sport={w.sport} />}
+      {headline && <p className="m-0 text-small font-medium text-(--accent)">{headline}</p>}
+      <StatGrid w={w} imperial={imperial} />
+      <Legs w={w} imperial={imperial} />
+      {splitsOk(fam) && w.splits && w.splits.length >= 2 && <SplitBars splits={w.splits} swim={fam === 'swim'} />}
       {onOpen && (
-        <button type="button" onClick={onOpen} className="mt-2 flex min-h-11 w-full items-center justify-between border-t border-(--border) pt-1 text-small font-medium text-(--accent)">
+        <button type="button" onClick={onOpen} className="flex min-h-11 w-full items-center justify-between border-t border-(--border) pt-1 text-small font-medium text-(--accent)">
           See all the details <ChevronRight className="size-5" aria-hidden />
         </button>
       )}
@@ -859,46 +914,38 @@ function WorkoutCard({ w, imperial, onOpen }: { w: NonNullable<Post['workout']>;
   )
 }
 
-/** A friend's shared workout, read-only: exactly what they share (sport, distance, time, pace,
- *  climb, lap shape). Never heart rate, health data or where they went. */
+/** A friend's shared workout, read-only: exactly what they share (sport, distance, time, the
+ *  rate that fits the sport, climb, lap shape). Never heart rate, health data or where they went. */
 function FriendWorkoutSheet({ w, who, imperial, onClose, onMessage }: {
-  w: NonNullable<Post['workout']>; who: string; imperial: boolean; onClose: () => void; onMessage?: () => void
+  w: CardWorkout; who: string; imperial: boolean; onClose: () => void; onMessage?: () => void
 }) {
-  const pace = w.pace_s_km ? fmtPaceKm(w.pace_s_km, imperial) : w.speed_kmh ? fmtSpeed(w.speed_kmh, imperial)
-    : w.pace_s_100m ? fmtSwim100(w.pace_s_100m, imperial) : null
-  const stats: [string, string][] = ([
-    ['Distance', w.km ? fmtDist(w.km, imperial, w.sport) : null], ['Time', w.minutes ? fmtDuration(w.minutes) : null],
-    [w.speed_kmh ? 'Speed' : 'Pace', pace], ['Climb', w.climb_m ? fmtClimb(w.climb_m, imperial) : null],
-  ] as [string, string | null][]).filter((x): x is [string, string] => !!x[1])
-  const laps = (w.splits ?? []).filter((x) => x.km > 0 && x.s > 0)
+  const fam = famOf(w)
+  const laps = splitsOk(fam) ? (w.splits ?? []).filter((x) => x.km > 0 && x.s > 0) : []
+  const swim = fam === 'swim'
   return (
     <Sheet title={w.title} onClose={onClose} portal label={`${who}'s workout`}
       bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <p className="text-small text-(--text-secondary)">
-        {who} · {w.date ? new Date(`${w.date.slice(0, 10)}T12:00:00`).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : ''}
-      </p>
-      {stats.length > 0 && (
-        <dl className="grid grid-cols-2 gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
-          {stats.map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
-              <dd className="font-mono text-title-sm font-semibold tabular-nums text-(--text)">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+      <div className="flex items-center gap-3">
+        <SportTile sport={w.sport} family={fam} size={44} />
+        <p className="m-0 text-small text-(--text-secondary)">
+          <span className="block font-semibold text-(--text)">{who}, {FAMILY_NAME[fam].toLowerCase()}</span>
+          {w.date ? new Date(`${w.date.slice(0, 10)}T12:00:00`).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : ''}
+        </p>
+      </div>
+      <div className="rounded-xl border border-(--border) bg-(--bg-surface) p-4"><StatGrid w={w} imperial={imperial} big /></div>
+      {w.legs?.length ? <div className="rounded-xl border border-(--border) bg-(--bg-surface) p-4"><Legs w={w} imperial={imperial} /></div> : null}
       {laps.length >= 2 && (
         <section aria-label="Laps" className="rounded-xl border border-(--border) bg-(--bg-surface) p-4">
-          <h3 className="section-label mb-2">{w.sport === 'bike' ? 'Laps' : 'Splits'}</h3>
+          <h3 className="section-label mb-2">{swim ? 'Laps' : 'Splits'}</h3>
           <table className="w-full text-left text-small tabular-nums">
-            <thead><tr className="text-(--text-muted)"><th className="py-1 font-medium">#</th><th className="font-medium">Distance</th><th className="font-medium">Time</th><th className="font-medium">{w.sport === 'bike' ? 'Speed' : 'Pace'}</th></tr></thead>
+            <thead><tr className="text-(--text-muted)"><th className="py-1 font-medium">Lap</th><th className="font-medium">Distance</th><th className="font-medium">Time</th><th className="font-medium">{swim ? (imperial ? 'Per 100 yd' : 'Per 100 m') : 'Pace'}</th></tr></thead>
             <tbody>
               {laps.map((x, i) => (
                 <tr key={i} className="border-t border-(--border)">
                   <td className="py-1.5">{i + 1}</td>
-                  <td>{fmtDist(x.km, imperial, w.sport, { decimals: 2 })}</td>
+                  <td>{swim ? famDist(x.km, 'swim', imperial) : fmtDist(x.km, imperial, null, { decimals: 2 })}</td>
                   <td>{`${Math.floor(x.s / 60)}:${String(Math.round(x.s % 60)).padStart(2, '0')}`}</td>
-                  <td>{w.sport === 'bike' ? fmtSpeed((x.km / x.s) * 3600, imperial) : fmtPaceKm(x.s / x.km, imperial)}</td>
+                  <td>{swim ? fmtSwim100(x.s / (x.km * 10), imperial).split(' ')[0] : fmtPaceKm(x.s / x.km, imperial)}</td>
                 </tr>
               ))}
             </tbody>
@@ -915,27 +962,25 @@ function FriendWorkoutSheet({ w, who, imperial, onClose, onMessage }: {
   )
 }
 
-/** A route-less shape of the workout: one bar per lap, taller = faster (pace per km, so a
- * short last lap still compares). No map, no heart rate. */
-function SplitBars({ splits, sport }: { splits: { km: number; s: number }[]; sport: string }) {
+/** A route-less shape of a run or swim: one bar per lap, taller = faster (pace per distance, so a
+ * short last lap still compares). Rides and gym sessions don't get one. No map, no heart rate. */
+function SplitBars({ splits, swim }: { splits: { km: number; s: number }[]; swim?: boolean }) {
   const speed = splits.map((x) => (x.km > 0 && x.s > 0 ? x.km / x.s : 0))
   const max = Math.max(...speed), min = Math.min(...speed.filter((v) => v > 0))
   const fastest = speed.indexOf(max)
   return (
-    <div className="mt-2" role="img" aria-label={`${splits.length} ${sport === 'bike' ? 'laps' : 'splits'}, fastest is number ${fastest + 1}`}>
+    <div role="img" aria-label={`${splits.length} laps, fastest is lap ${fastest + 1}`}>
       <div className="flex h-10 items-end gap-[2px]" aria-hidden>
         {speed.map((v, i) => (
           <span key={i} className={cn('min-w-[3px] flex-1 rounded-t-sm', i === fastest ? 'bg-(--accent)' : 'bg-(--accent)/40')}
             style={{ height: `${max > min ? 30 + 70 * ((v - min) / (max - min)) : 70}%` }} />
         ))}
       </div>
-      <p className="mt-0.5 text-caption text-(--text-muted)">{splits.length} {sport === 'bike' ? 'laps' : 'splits'} · taller is faster</p>
+      <p className="mt-1 text-caption text-(--text-muted)">{splits.length} {swim ? 'laps' : 'splits'}, taller bars are faster</p>
     </div>
   )
 }
 
-/** "Add photos or a caption" for my own post (the pinned auto-shared workout, or any workout
- *  post from its ... menu). Keeps the photos already on it. */
 function CaptionSheet({ post, title = 'Add photos or a caption', onClose, onSaved }: {
   post: Post; title?: string; onClose: () => void; onSaved: (p: Post) => void
 }) {

@@ -29,6 +29,7 @@ import { MoveSheet, addDays, mondayOf, weekdayIdx } from './MoveSheet'
 import { PlanDay } from './PlanDay'
 import { PlanOverview } from './PlanOverview'
 import { openWorkout as openWorkoutPage } from '@/lib/workoutnav'
+import { SportTile } from '@/components/ui/SportTile'
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 type View = 'week' | 'month' | 'day' | 'list'
@@ -266,10 +267,11 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
       <button type="button" onClick={onOpen} disabled={!onOpen} {...dragProps} data-session-id={s.id}
         aria-label={`${s.title}, ${fmtDay(date, { weekday: 'long' })}${s.time ? ` at ${fmtTime(s.time)}` : ''}${meta ? `, ${meta}` : ''}${c && c.status !== 'planned' ? `, ${c.status}` : ''}. Open the full workout`}
         className={cn('flex min-w-0 flex-1 items-start gap-3 py-3 pl-3.5 text-left disabled:cursor-default', !onEdit && 'pr-3.5', grab && 'touch-manipulation select-none')}>
-        <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg',
-          s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : c?.status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
-          <Icon className="size-5" aria-hidden />
-        </span>
+        {s.kind === 'race' ? (
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-(--brand) text-(--on-fill)">
+            <Icon className="size-5" aria-hidden />
+          </span>
+        ) : <SportTile sport={s.sport} size={40} done={c?.status === 'done'} />}
         <span className="min-w-0 flex-1">
           <span className={cn('block text-body-lg font-semibold leading-snug text-(--text)', dim && 'line-through')}>
             {s.time && <span className="mr-1.5 font-medium tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}

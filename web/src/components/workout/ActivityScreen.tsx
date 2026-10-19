@@ -26,6 +26,7 @@ import { openPlanDay } from '@/lib/plancal'
 import { Related } from '@/components/nav/Related'
 import { WhoElse } from '@/components/people/WhoElse'
 import { sportIcon } from '@/lib/sportIcon'
+import { noDistance, sportFamily, type SportFamily } from '@/lib/sportstats'
 
 const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch' }
 const LOADING = ['Pulling up your workout…', 'Counting the laps…', 'Reading your heart rate…']
@@ -104,18 +105,23 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
 }) {
   const n = v.numbers
   const ds = distSport(v.sport)
+  const fam = sportFamily(v.family || v.sport)
   const metaBits = [n.km ? fmtDist(n.km, imperial, ds) : '', n.moving_s ? fmtDuration(Math.round(n.moving_s / 60)) : '', `via ${SOURCE[v.source] ?? v.source}`]
   const stats: [string, string][] = []
   if (n.km) stats.push(['Distance', fmtDist(n.km, imperial, ds)])
   if (n.moving_s) stats.push(['Moving time', hms(n.moving_s)])
   if (n.elapsed_s && n.moving_s && Math.abs(n.elapsed_s - n.moving_s) > 30) stats.push(['Elapsed', hms(n.elapsed_s)])
   if (n.pace_s_per_km) stats.push(['Avg pace', fmtPaceKm(n.pace_s_per_km, imperial)])
-  if (n.pace_s_per_100m) stats.push(['Avg pace', fmtSwim100(n.pace_s_per_100m, imperial)])
+  if (n.pace_s_per_100m) stats.push([imperial ? 'Per 100 yd' : 'Per 100 m', fmtSwim100(n.pace_s_per_100m, imperial).split(' ')[0]])
+  if (n.pace_s_per_500m) stats.push(['Per 500 m', hms(n.pace_s_per_500m)])
+  if (n.vertical_m) stats.push(['Vertical', imperial ? `${Math.round(n.vertical_m * 3.28084).toLocaleString()} ft` : `${Math.round(n.vertical_m).toLocaleString()} m`])
+  if (n.sets) stats.push(['Sets', String(n.sets)])
+  if (n.reps) stats.push(['Reps', n.reps.toLocaleString()])
   if (n.speed_kmh && !n.pace_s_per_km && !n.pace_s_per_100m) stats.push(['Avg speed', fmtSpeed(n.speed_kmh, imperial)])
   if (n.avg_hr) stats.push(['Avg HR', `${Math.round(n.avg_hr)} bpm`])
   if (n.max_hr) stats.push(['Max HR', `${Math.round(n.max_hr)} bpm`])
   if (n.cadence) stats.push(['Cadence', `${n.cadence} ${n.cadence_unit ?? ''}`.trim()])
-  if (n.elevation_gain_m) stats.push(['Climb', imperial ? `${Math.round(n.elevation_gain_m * 3.28084)} ft` : `${Math.round(n.elevation_gain_m)} m`])
+  if (n.elevation_gain_m) stats.push([fam === 'hike' ? 'Elevation gain' : 'Climb', imperial ? `${Math.round(n.elevation_gain_m * 3.28084)} ft` : `${Math.round(n.elevation_gain_m)} m`])
   if (n.avg_power_w) stats.push(['Avg power', `${Math.round(n.avg_power_w)} W`])
   if (n.norm_power_w) stats.push(['Norm. power', `${Math.round(n.norm_power_w)} W`])
   if (n.swolf) stats.push(['SWOLF', String(Math.round(n.swolf))])
@@ -127,7 +133,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
 
   return (
     <>
-      <Hero icon={sportIcon(v.sport)} title={v.name} meta={metaBits.filter(Boolean).join(' · ')}
+      <Hero icon={sportIcon(v.sport)} sport={v.sport} family={v.family} title={v.name} meta={metaBits.filter(Boolean).join(' · ')}
         line={v.planned ? `Counted for your planned ${v.planned.title}.` : n.te_label ? `Garmin training effect: ${n.te_label.charAt(0) + n.te_label.slice(1).toLowerCase().replace(/_/g, ' ')}.` : ''}
         chip={{ label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' }} />
 
@@ -155,7 +161,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       )}
 
       {v.zones && <ZonesCard z={v.zones} />}
-      {v.laps.length > 0 && <LapsCard laps={v.laps} imperial={imperial} sport={v.sport} />}
+      {v.laps.length > 0 && !noDistance(fam) && <LapsCard laps={v.laps} imperial={imperial} sport={v.sport} family={fam} />}
       <ActivityFeedback v={v} onAsk={onAsk} onSaved={onSaved} />
       {wantsFuelLog(v.numbers.moving_s ? Math.round(v.numbers.moving_s / 60) : null, v.planned?.kind, v.sport) && (
         <FuelLog fuelKey={`a:${v.key}`} minutes={Math.round((v.numbers.moving_s ?? v.numbers.elapsed_s ?? 3600) / 60)} sport={v.sport}
@@ -204,16 +210,23 @@ function ZonesCard({ z }: { z: NonNullable<ActivityView['zones']> }) {
   )
 }
 
-function LapsCard({ laps, imperial, sport }: { laps: ActivityView['laps']; imperial: boolean; sport: string }) {
+function LapsCard({ laps, imperial, sport, family }: { laps: ActivityView['laps']; imperial: boolean; sport: string; family: SportFamily }) {
   const showHr = laps.some((l) => l.hr)
-  const paced = sport === 'run' || sport === 'walk' || sport === 'hike'
+  // Each lap's rate in the family's own terms: pace for foot sports, per 100 for a swim,
+  // per 500 m for a row or paddle, speed for a ride.
+  const paced = family === 'run' || family === 'walk' || family === 'hike'
+  const rateLabel = paced ? 'Pace' : family === 'swim' ? (imperial ? 'Per 100 yd' : 'Per 100 m') : family === 'row' || family === 'paddle' ? 'Per 500 m' : 'Speed'
+  const rate = (l: ActivityView['laps'][number]) => paced ? fmtPaceKm(l.pace_s_per_km, imperial)
+    : family === 'swim' ? fmtSwim100(l.s / (l.km * 10), imperial).split(' ')[0]
+    : family === 'row' || family === 'paddle' ? hms(l.s / (l.km * 2))
+    : fmtSpeed(l.km / (l.s / 3600), imperial)
   return (
     <SectionCard title={`Laps (${laps.length})`}>
       <div className="overflow-x-auto px-4 pt-3">
         <table className="w-full text-left text-body tabular-nums">
           <thead className="text-meta text-(--text-muted) font-semibold">
             <tr><th className="py-1.5 pr-3 font-semibold">Lap</th><th className="py-1.5 pr-3 font-semibold">Distance</th><th className="py-1.5 pr-3 font-semibold">Time</th>
-              <th className="py-1.5 pr-3 font-semibold">{paced ? 'Pace' : 'Speed'}</th>{showHr && <th className="py-1.5 font-semibold">HR</th>}</tr>
+              <th className="py-1.5 pr-3 font-semibold">{rateLabel}</th>{showHr && <th className="py-1.5 font-semibold">HR</th>}</tr>
           </thead>
           <tbody>
             {laps.map((l) => (
@@ -221,7 +234,7 @@ function LapsCard({ laps, imperial, sport }: { laps: ActivityView['laps']; imper
                 <td className="py-2.5 pr-3 text-(--text-muted)">{l.n}</td>
                 <td className="py-2.5 pr-3">{fmtDist(l.km, imperial, distSport(sport))}</td>
                 <td className="py-2.5 pr-3">{hms(l.s)}</td>
-                <td className="py-2.5 pr-3">{paced ? fmtPaceKm(l.pace_s_per_km, imperial) : fmtSpeed(l.km / (l.s / 3600), imperial)}</td>
+                <td className="py-2.5 pr-3">{l.km > 0 && l.s > 0 ? rate(l) : '–'}</td>
                 {showHr && <td className="py-2.5">{l.hr ?? '–'}</td>}
               </tr>
             ))}

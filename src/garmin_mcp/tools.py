@@ -354,6 +354,10 @@ def compact_activity(a: dict[str, Any]) -> dict[str, Any]:
         "max_20min_power_w": _round(a.get("max20MinPower"), 0),
         "max_temp_c": _round(a.get("maxTemperature"), 0),
         "max_elev_m": _round(a.get("maxElevation"), 0),
+        # Workout cards (sportfamily): a ski day's vertical, a gym session's sets and reps.
+        "elevation_loss_m": _round(a.get("elevationLoss"), 0),
+        "total_sets": a.get("totalSets") if isinstance(a.get("totalSets"), int) else None,
+        "total_reps": a.get("totalReps") if isinstance(a.get("totalReps"), int) else None,
     }
     if "swim" in key:
         out["avg_pace_per_100m"] = _pace(speed, 100)

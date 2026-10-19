@@ -130,6 +130,24 @@
     --accent-hover: #2d5a3d;
     --accent-subtle: rgba(61, 122, 82, 0.08);
 
+    /* Sport tiles (SportTile): icon color on its tint, >= 4.5:1 in both themes */
+    --sport-run: #2f6b47;
+    --sport-run-bg: #e2efe5;
+    --sport-ride: #275b98;
+    --sport-ride-bg: #e1ebf7;
+    --sport-swim: #0f6773;
+    --sport-swim-bg: #d9eff1;
+    --sport-strength: #74398a;
+    --sport-strength-bg: #f0e5f4;
+    --sport-outdoor: #7d5214;
+    --sport-outdoor-bg: #f5eada;
+    --sport-winter: #3a52a0;
+    --sport-winter-bg: #e4e9f8;
+    --sport-water: #1b586f;
+    --sport-water-bg: #dcecf2;
+    --sport-other: #4f5a53;
+    --sport-other-bg: #e9e5dd;
+
     /* Message Bubbles */
     --msg-user-bg: #3d7a52;
     --msg-user-text: #ffffff;
@@ -223,6 +241,24 @@
       --accent-hover: #c8ecd4;
       --accent-subtle: rgba(168, 213, 181, 0.10);
 
+      /* Sport tiles (SportTile): icon color on its tint, >= 4.5:1 in both themes */
+      --sport-run: #93d3ab;
+      --sport-run-bg: #1d3326;
+      --sport-ride: #a0c6f4;
+      --sport-ride-bg: #1b2a3c;
+      --sport-swim: #83d8e0;
+      --sport-swim-bg: #14302f;
+      --sport-strength: #d9aeea;
+      --sport-strength-bg: #2e2035;
+      --sport-outdoor: #e8c48d;
+      --sport-outdoor-bg: #33281a;
+      --sport-winter: #b2c0f6;
+      --sport-winter-bg: #222a43;
+      --sport-water: #93cee2;
+      --sport-water-bg: #172c35;
+      --sport-other: #b4bab6;
+      --sport-other-bg: #262a28;
+
       --msg-user-bg: #2d5a3d;
       --msg-user-text: #dde6df;
 
@@ -275,6 +311,24 @@
     --accent: #a8d5b5;
     --accent-hover: #c8ecd4;
     --accent-subtle: rgba(168, 213, 181, 0.10);
+
+    /* Sport tiles (SportTile): icon color on its tint, >= 4.5:1 in both themes */
+    --sport-run: #93d3ab;
+    --sport-run-bg: #1d3326;
+    --sport-ride: #a0c6f4;
+    --sport-ride-bg: #1b2a3c;
+    --sport-swim: #83d8e0;
+    --sport-swim-bg: #14302f;
+    --sport-strength: #d9aeea;
+    --sport-strength-bg: #2e2035;
+    --sport-outdoor: #e8c48d;
+    --sport-outdoor-bg: #33281a;
+    --sport-winter: #b2c0f6;
+    --sport-winter-bg: #222a43;
+    --sport-water: #93cee2;
+    --sport-water-bg: #172c35;
+    --sport-other: #b4bab6;
+    --sport-other-bg: #262a28;
 
     --msg-user-bg: #2d5a3d;
     --msg-user-text: #dde6df;

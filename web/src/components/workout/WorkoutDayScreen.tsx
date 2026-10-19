@@ -41,6 +41,7 @@ import { CalendarDays } from 'lucide-react'
 import { sportIcon } from '@/lib/sportIcon'
 import { FuelSection } from './FuelSection'
 import { RabbitLogo } from '@/components/RabbitLogo'
+import { SportTile } from '@/components/ui/SportTile'
 
 const LOADING = ['Lacing up…', 'Loading your targets…', 'Checking the sky…', 'Stretching the hamstrings…']
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -192,8 +193,10 @@ function WorkoutSkeleton() {
   )
 }
 
-export function Hero({ icon: Icon, title, meta, line, chip }: {
+export function Hero({ icon: Icon, sport, family, title, meta, line, chip }: {
   icon: typeof Bike; title: string
+  /** a workout's sport (and family): shows the sport tile instead of the plain icon */
+  sport?: string; family?: string | null
   /** short facts ("1h 45m", "28.6 mi", "Long"); a " · " string is split into separate facts */
   meta: string | string[]
   line: string; chip?: { label: string; cls: string }
@@ -202,9 +205,11 @@ export function Hero({ icon: Icon, title, meta, line, chip }: {
   return (
     <div className="celebrate flex flex-col gap-3.5 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-5 py-5">
       <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)">
-          <Icon className="size-6" />
-        </span>
+        {sport || family ? <SportTile sport={sport} family={family} size={48} /> : (
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)">
+            <Icon className="size-6" />
+          </span>
+        )}
         {chip && (
           <span className={cn('ml-auto flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-meta font-semibold', chip.cls)}>
             {chip.label === 'Done' && <Check className="size-4" strokeWidth={3} />}{chip.label}
@@ -290,7 +295,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
   const note = c?.note
   return (
     <>
-      <Hero icon={sportIcon(s.sport)} title={s.title} meta={meta.length ? meta : ['Workout']} line={note?.why || s.purpose}
+      <Hero icon={sportIcon(s.sport)} sport={s.sport} title={s.title} meta={meta.length ? meta : ['Workout']} line={note?.why || s.purpose}
         chip={STATUS[status] ?? STATUS.planned} />
       {s.time && (
         <p className="-mt-2 flex items-center gap-2 px-1 text-body text-(--text-secondary)">
