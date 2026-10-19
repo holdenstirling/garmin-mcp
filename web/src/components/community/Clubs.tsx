@@ -85,17 +85,17 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
   const near = data.discover
   const home = where(data.home)
   const joinBtn = (c: ClubSummary) => c.requested ? (
-    <Button variant="default" className="h-11 px-3 text-[0.7059rem]" loading={busy === c.id}
+    <Button variant="default" className="h-11 px-3 text-meta" loading={busy === c.id}
       onClick={() => void run(c.id, () => cancelJoinRequest(c.id), 'Request withdrawn.')}>Requested</Button>
   ) : (
-    <Button variant="primary" className="h-11 px-3 text-[0.7059rem]" loading={busy === c.id}
+    <Button variant="primary" className="h-11 px-3 text-meta" loading={busy === c.id}
       onClick={(e) => { const el = e.currentTarget; void run(c.id, async () => { const r = await joinClub(c.id); if (!r.club.requested) burst(el, 'kudos'); return r }) }}>
       {c.privacy === 'open' ? 'Join' : 'Ask to join'}
     </Button>
   )
   return (
     <>
-      {msg && <p className={cn('px-1 text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
       {data.invites.length > 0 && (
         <Group label="Invites">
           {data.invites.map((c) => (
@@ -104,9 +104,9 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
               trailing={
                 <span className="flex shrink-0 gap-1.5">
                   <Button variant="default" className="h-11 w-11 p-0" aria-label="Decline" disabled={busy != null}
-                    onClick={() => void run(c.id, () => answerClubInvite(c.id, false))}><X className="size-4" /></Button>
+                    onClick={() => void run(c.id, () => answerClubInvite(c.id, false))}><X className="size-5" /></Button>
                   <Button variant="primary" className="h-11 gap-1 px-3" loading={busy === c.id}
-                    onClick={() => void run(c.id, () => answerClubInvite(c.id, true), `Welcome to ${c.name}!`)}><Check className="size-4" /> Join</Button>
+                    onClick={() => void run(c.id, () => answerClubInvite(c.id, true), `Welcome to ${c.name}!`)}><Check className="size-5" /> Join</Button>
                 </span>
               } />
           ))}
@@ -118,7 +118,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
           {mine.map((c) => (
             <Row key={c.id} icon={<ClubIcon c={c} size={30} />} title={c.name}
               subtitle={`${sub(c)}${c.requests ? ` · ${c.requests} waiting` : ''}`}
-              trailing={<ChevronRight className="size-4 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
+              trailing={<ChevronRight className="size-5 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
           ))}
         </Group>
       )}
@@ -126,7 +126,7 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
         <Group label="Race crews" footer="Everyone racing the same event with you.">
           {races.map((c) => (
             <Row key={c.id} icon={<ClubIcon c={c} size={30} />} title={c.name} subtitle={`${c.members} racing`}
-              trailing={<ChevronRight className="size-4 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
+              trailing={<ChevronRight className="size-5 text-(--text-muted)" />} onClick={() => onOpen(c.id)} />
           ))}
         </Group>
       )}
@@ -147,17 +147,17 @@ export function ClubsTab({ imperial, openId, onOpen }: { imperial: boolean; open
 
       <section aria-label="Your own club" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
         <div>
-          <p className="text-[0.8235rem] font-semibold text-(--text)">Have your own crew?</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">Start a club for your Saturday group, or join one with its code.</p>
+          <p className="text-body font-semibold text-(--text)">Have your own crew?</p>
+          <p className="text-meta text-(--text-muted)">Start a club for your Saturday group, or join one with its code.</p>
         </div>
-        <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setCreating(true)}>
-          <Plus className="size-4" /> Start a club
+        <Button variant="default" className="h-11 gap-1.5 text-small" onClick={() => setCreating(true)}>
+          <Plus className="size-5" /> Start a club
         </Button>
         <div className="flex items-center gap-2">
           <input className={inputCls} aria-label="Club code" autoCapitalize="characters" autoComplete="off" placeholder="Club code, like ABCD2345" value={code}
             onChange={(e) => setCode(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && code.trim()) void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!") }} />
-          <Button variant="default" className="h-11 shrink-0 px-3 text-[0.7647rem]" loading={busy === 'code'} disabled={!code.trim()}
+          <Button variant="default" className="h-11 shrink-0 px-3 text-small" loading={busy === 'code'} disabled={!code.trim()}
             onClick={() => void run('code', () => joinClubByCode(code.trim()).then((r) => { setCode(''); return r }), "You're in!")}>Join</Button>
         </div>
       </section>
@@ -202,7 +202,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
   return (
     <Sheet title={initial ? 'Edit club' : 'Start a club'} onClose={guard.wrap(onClose)} extra={guard.dialog}
       footer={
-        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy} disabled={!f.name.trim()} onClick={() => void save()}>
+        <Button variant="primary" className="h-11 w-full text-body" loading={busy} disabled={!f.name.trim()} onClick={() => void save()}>
           {!f.name.trim() ? 'Give your club a name' : initial ? 'Save changes' : 'Start club'}
         </Button>
       }>
@@ -220,12 +220,12 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
         <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Icon">
           {EMOJIS.map((e) => (
             <button key={e} type="button" role="radio" aria-checked={f.emoji === e} onClick={() => set('emoji', e)}
-              className={cn('flex size-11 items-center justify-center rounded-xl text-[1.2941rem]', f.emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
+              className={cn('flex size-11 items-center justify-center rounded-xl text-title-md', f.emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
           ))}
         </div>
       </Field>
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
-        <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Who can find and join it</h2>
+        <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Who can find and join it</h2>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
           description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"
@@ -234,7 +234,7 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
           description="Hidden from Local and search. People join with an invite or the club code." onClick={() => setF((x) => ({ ...x, visibility: 'private', privacy: 'open' }))} />
       </section>
       {queued && <SaveStatus state="queued" />}
-      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }
@@ -284,7 +284,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
       <span className="seg__pill" aria-hidden />
       {tabs.map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
+          className={cn('min-h-11 flex-1 rounded-full text-meta font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
           {label}{v === 'members' && c?.pending.length ? ` · ${c.pending.length}` : ''}
         </button>
       ))}
@@ -298,36 +298,36 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
       {c && !member && (
         <Card className="flex flex-col items-center gap-3 p-5 text-center">
           <ClubIcon c={c} size={64} />
-          <p className="font-display text-[1.2941rem] text-(--brand)">{c.name}</p>
-          {c.description && <p className="text-[0.8235rem] text-(--text-secondary)">{c.description}</p>}
-          <p className="text-[0.7059rem] text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on rabbt can join.' : 'Admins approve new members.'}</p>
+          <p className="font-display text-title-md text-(--brand)">{c.name}</p>
+          {c.description && <p className="text-body text-(--text-secondary)">{c.description}</p>}
+          <p className="text-meta text-(--text-muted)">{c.visibility === 'private' ? 'A private club: you were invited.' : c.privacy === 'open' ? 'Anyone on rabbt can join.' : 'Admins approve new members.'}</p>
           {c.requested ? (
-            <Button variant="default" className="h-11 px-5 text-[0.7647rem]" loading={busy}
+            <Button variant="default" className="h-11 px-5 text-small" loading={busy}
               onClick={() => { setBusy(true); void act(() => cancelJoinRequest(c.id), 'Request withdrawn.').finally(() => setBusy(false)) }}>Requested · withdraw</Button>
           ) : (
-            <Button variant="primary" className="h-11 px-5 text-[0.7647rem]" loading={busy}
+            <Button variant="primary" className="h-11 px-5 text-small" loading={busy}
               onClick={(e) => { const el = e.currentTarget; setBusy(true); void act(async () => { const r = await joinClub(c.id); if (!r.club.requested) burst(el, 'kudos'); setMsg({ text: r.message, ok: true }) }).finally(() => setBusy(false)) }}>
               {c.privacy === 'open' ? 'Join club' : 'Ask to join'}
             </Button>
           )}
         </Card>
       )}
-      {msg && <p className={cn('px-1 text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
       {c && c.kind === 'club' && (!member || view === 'members') && <FeatureSwitch clubId={c.id} />}
       {c && member && (
         <>
           {view === 'feed' && (
             <>
-              <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" loading={chatBusy} onClick={() => void groupChat()}>
-                <MessagesSquare className="size-4" aria-hidden /> {c.kind === 'race' ? 'Crew chat' : 'Club chat'}
+              <Button variant="default" className="h-11 gap-1.5 text-small" loading={chatBusy} onClick={() => void groupChat()}>
+                <MessagesSquare className="size-5" aria-hidden /> {c.kind === 'race' ? 'Crew chat' : 'Club chat'}
               </Button>
               {c.upcoming.length > 0 && (
                 <section aria-label="Upcoming races" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
                   {c.upcoming.map((u) => (
                     <div key={`${u.name}-${u.date}`} className="flex min-w-[11rem] snap-start flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
-                      <span className="flex items-center gap-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)"><Flag className="size-3" /> Racing</span>
-                      <span className="truncate text-[0.8235rem] font-medium text-(--text)">{u.name}</span>
-                      <span className="text-[0.7059rem] text-(--text-muted)">{new Date(`${u.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <span className="flex items-center gap-1 text-caption font-semibold text-(--accent)"><Flag className="size-3.5" /> Racing</span>
+                      <span className="truncate text-body font-medium text-(--text)">{u.name}</span>
+                      <span className="text-meta text-(--text-muted)">{new Date(`${u.date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                       <span className="flex -space-x-1.5">{u.people.slice(0, 5).map((p, i) => <PersonAvatar key={p?.id ?? i} u={p} size={22} />)}</span>
                     </div>
                   ))}
@@ -342,8 +342,8 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           {view === 'meetups' && (
             <>
               {admin && (
-                <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setSheet('meetup')}>
-                  <Plus className="size-4" /> Plan a meetup
+                <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('meetup')}>
+                  <Plus className="size-5" /> Plan a meetup
                 </Button>
               )}
               {(c.meetups ?? []).length === 0 ? (
@@ -357,8 +357,8 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           {view === 'challenges' && (
             <>
               {c.can_challenge && (
-                <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setSheet('challenge')}>
-                  <Trophy className="size-4" /> Start a club challenge
+                <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('challenge')}>
+                  <Trophy className="size-5" /> Start a club challenge
                 </Button>
               )}
               {c.challenges.length === 0 ? (
@@ -367,20 +367,20 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
               ) : c.challenges.map((ch) => (
                 <Card key={ch.id} className="flex flex-col gap-2 p-3.5">
                   <div className="flex items-start gap-2">
-                    <Trophy className="mt-0.5 size-4 shrink-0 text-(--accent)" />
+                    <Trophy className="mt-0.5 size-5 shrink-0 text-(--accent)" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[0.8824rem] font-medium text-(--text)">{ch.name}</p>
-                      <p className="text-[0.7059rem] text-(--text-muted)">{targetLine(ch, imperial)} · {ch.participants} in · +{ch.xp} XP</p>
+                      <p className="text-body-lg font-medium text-(--text)">{ch.name}</p>
+                      <p className="text-meta text-(--text-muted)">{targetLine(ch, imperial)} · {ch.participants} in · +{ch.xp} XP</p>
                     </div>
-                    {ch.joined ? <span className="text-[0.7059rem] font-medium text-(--accent)">You're in</span> : (
-                      <Button variant="primary" className="h-11 px-3 text-[0.7059rem]"
+                    {ch.joined ? <span className="text-meta font-medium text-(--accent)">You're in</span> : (
+                      <Button variant="primary" className="h-11 px-3 text-meta"
                         onClick={(e) => { const el = e.currentTarget; void act(async () => { const r = await joinClubChallenge(c.id, ch.id); burst(el, 'challenge'); return r }, "You're in. Progress counts from your Garmin.") }}>Join</Button>
                     )}
                   </div>
                   {ch.leaders.some((l) => l.pct != null) && (
                     <ol className="flex flex-col gap-1">
                       {ch.leaders.map((l, i) => (
-                        <li key={l.user_id} className="flex items-center gap-2 text-[0.7647rem]">
+                        <li key={l.user_id} className="flex items-center gap-2 text-small">
                           <span className="w-4 text-right tabular-nums text-(--text-muted)">{i + 1}</span>
                           <span className={cn('min-w-0 flex-1 truncate', l.me && 'font-semibold text-(--accent)')}>{l.me ? 'You' : l.name}</span>
                           <span className="tabular-nums text-(--text-secondary)">{l.pct != null ? `${l.pct}%` : '–'}</span>
@@ -401,9 +401,9 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                       trailing={
                         <span className="flex gap-1.5">
                           <Button variant="default" className="h-11 w-11 p-0" aria-label={`Decline ${u.name}`}
-                            onClick={() => void act(() => decideRequest(c.id, u.id, false))}><X className="size-4" /></Button>
+                            onClick={() => void act(() => decideRequest(c.id, u.id, false))}><X className="size-5" /></Button>
                           <Button variant="primary" className="h-11 gap-1 px-3" onClick={() => void act(() => decideRequest(c.id, u.id, true), `${u.name} is in.`)}>
-                            <Check className="size-4" /> Let in
+                            <Check className="size-5" /> Let in
                           </Button>
                         </span>
                       } />
@@ -413,8 +413,8 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
               {(canInvite || c.code) && c.kind === 'club' && (
                 <Card className="flex flex-col gap-2 p-3.5">
                   {canInvite && (
-                    <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setSheet('invite')}>
-                      <UserPlus className="size-4" /> Invite friends
+                    <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('invite')}>
+                      <UserPlus className="size-5" /> Invite friends
                     </Button>
                   )}
                   {(c.visibility !== 'private' || admin) && (
@@ -422,15 +422,15 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                   )}
                   {c.code && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[0.7059rem] text-(--text-muted)">Club code</span>
-                      <code className="min-w-0 flex-1 rounded-lg bg-(--bg-inset) px-3 py-2 text-center font-mono text-[1rem] tracking-[0.2em] text-(--brand)">{c.code}</code>
+                      <span className="text-meta text-(--text-muted)">Club code</span>
+                      <code className="min-w-0 flex-1 rounded-lg bg-(--bg-inset) px-3 py-2 text-center font-mono text-lead tracking-[0.2em] text-(--brand)">{c.code}</code>
                       <Button variant="default" className="h-11 w-11 p-0" aria-label="Copy code" onClick={() => void copy(c.code!)}>
-                        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                        {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
                       </Button>
                     </div>
                   )}
                   {admin && c.code && (
-                    <button type="button" className="hit-44 self-start text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline"
+                    <button type="button" className="hit-44 self-start text-caption text-(--text-muted) underline-offset-2 hover:underline"
                       onClick={() => void act(() => newClubCode(c.id), 'New code made. The old one no longer works.')}>Make a new code</button>
                   )}
                 </Card>
@@ -443,14 +443,14 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                     trailing={c.kind === 'club' && admin && p.role !== 'owner' && !(c.role === 'admin' && p.role === 'admin') ? (
                       <span className="flex gap-1">
                         {c.role === 'owner' && (
-                          <Button variant="ghost" className="h-11 px-2 text-[0.6471rem]"
+                          <Button variant="ghost" className="h-11 px-2 text-caption"
                             onClick={() => void act(() => setMemberRole(c.id, p.user_id, p.role === 'admin' ? 'member' : 'admin'))}>
                             {p.role === 'admin' ? 'Make member' : 'Make admin'}
                           </Button>
                         )}
                         <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Remove ${p.user?.name ?? 'member'}`}
                           onClick={() => { void confirmAsk(`Remove ${p.user?.name ?? 'them'} from ${c.name}?`, { confirm: 'Remove', danger: true }).then((ok) => { if (ok) void act(() => removeMember(c.id, p.user_id), 'Removed.') }) }}>
-                          <X className="size-4" />
+                          <X className="size-5" />
                         </Button>
                       </span>
                     ) : undefined} />
@@ -459,23 +459,23 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
               {c.kind === 'club' && (
                 <Group>
                   {admin && <Row title="Edit club" subtitle="Name, sport, city, who can join" onClick={() => setSheet('edit')} />}
-                  <Row icon={<LogOut className="size-4" />} title="Leave club" danger
+                  <Row icon={<LogOut className="size-5" />} title="Leave club" danger
                     onClick={() => { void confirmAsk(`Leave ${c.name}?`, { confirm: 'Leave', danger: true }).then((ok) => { if (ok) void act(() => leaveClub(c.id), undefined, close) }) }} />
                   {c.role === 'owner' && (
-                    <Row icon={<Trash2 className="size-4" />} title="Delete club" danger
+                    <Row icon={<Trash2 className="size-5" />} title="Delete club" danger
                       onClick={() => { void confirmAsk(`Delete ${c.name} for everyone?`, { detail: 'Posts stay with their authors.', confirm: 'Delete', danger: true }).then((ok) => { if (ok) void act(() => deleteClub(c.id), undefined, close) }) }} />
                   )}
                 </Group>
               )}
-              {c.kind === 'race' && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Race crews follow the race. Leave from the race's people in Events.</p>}
+              {c.kind === 'race' && <p className="px-1 text-meta text-(--text-muted)">Race crews follow the race. Leave from the race's people in Events.</p>}
             </>
           )}
         </>
       )}
       {c && member && (
         <Related items={[
-          { key: 'chat', icon: <MessagesSquare className="size-4" />, label: c.kind === 'race' ? 'Crew chat' : 'Club chat', sub: 'One group chat for everyone in it', onClick: () => void groupChat() },
-          { key: 'members', icon: <Users className="size-4" />, label: c.kind === 'race' ? 'The crew' : 'Members', sub: `${c.members} in it`, onClick: view !== 'members' ? () => setView('members') : null },
+          { key: 'chat', icon: <MessagesSquare className="size-5" />, label: c.kind === 'race' ? 'Crew chat' : 'Club chat', sub: 'One group chat for everyone in it', onClick: () => void groupChat() },
+          { key: 'members', icon: <Users className="size-5" />, label: c.kind === 'race' ? 'The crew' : 'Members', sub: `${c.members} in it`, onClick: view !== 'members' ? () => setView('members') : null },
         ]} link={{ kind: 'club', id: c.id }} />
       )}
       {sheet === 'edit' && c && <ClubSheet initial={c} onClose={() => setSheet(null)} onSaved={() => { setSheet(null); void load() }} />}
@@ -510,28 +510,28 @@ function MeetupCard({ m, clubId, admin, onChanged, onError }: {
     <Card className="flex flex-col gap-2 p-3.5">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[0.7059rem] font-semibold text-(--accent)">{mt.next ? meetupWhen(mt.next) : ''}
-            {mt.repeat === 'weekly' && <span className="ml-1.5 inline-flex items-center gap-0.5 font-normal text-(--text-muted)"><Repeat className="size-3" />weekly</span>}
+          <p className="text-meta font-semibold text-(--accent)">{mt.next ? meetupWhen(mt.next) : ''}
+            {mt.repeat === 'weekly' && <span className="ml-1.5 inline-flex items-center gap-0.5 font-normal text-(--text-muted)"><Repeat className="size-3.5" />weekly</span>}
           </p>
-          <p className="text-[0.9412rem] font-medium text-(--text)">{mt.title}</p>
-          <p className="flex items-center gap-1 text-[0.7059rem] text-(--text-secondary)"><MapPin className="size-3.5 shrink-0" />{mt.where}</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">{[LEVEL_LABEL[mt.level], mt.pace].filter(Boolean).join(' · ')}</p>
-          {mt.notes && <p className="mt-1 text-[0.7647rem] text-(--text-secondary)">{mt.notes}</p>}
+          <p className="text-lead font-medium text-(--text)">{mt.title}</p>
+          <p className="flex items-center gap-1 text-meta text-(--text-secondary)"><MapPin className="size-4 shrink-0" />{mt.where}</p>
+          <p className="text-meta text-(--text-muted)">{[LEVEL_LABEL[mt.level], mt.pace].filter(Boolean).join(' · ')}</p>
+          {mt.notes && <p className="mt-1 text-small text-(--text-secondary)">{mt.notes}</p>}
         </div>
         {(admin || mt.mine) && (
-          <Button variant="ghost" className="h-11 w-11 shrink-0 p-0" aria-label="Cancel meetup" onClick={() => void cancel()}><Trash2 className="size-4" /></Button>
+          <Button variant="ghost" className="h-11 w-11 shrink-0 p-0" aria-label="Cancel meetup" onClick={() => void cancel()}><Trash2 className="size-5" /></Button>
         )}
       </div>
       <div className="flex items-center gap-2">
         <span className="flex -space-x-1.5">{going.slice(0, 6).map((u) => <PersonAvatar key={u.id} u={u} size={24} />)}</span>
-        <span className="flex-1 text-[0.7059rem] text-(--text-muted)">
+        <span className="flex-1 text-meta text-(--text-muted)">
           {going.length ? `${going.length} going` : 'Be the first'}{mt.maybe ? ` · ${mt.maybe} maybe` : ''}
         </span>
-        <Button variant={mt.my_rsvp === 'maybe' ? 'primary' : 'default'} className="h-11 px-3 text-[0.7059rem]" disabled={busy}
+        <Button variant={mt.my_rsvp === 'maybe' ? 'primary' : 'default'} className="h-11 px-3 text-meta" disabled={busy}
           aria-pressed={mt.my_rsvp === 'maybe'} onClick={(e) => void rsvp('maybe', e.currentTarget)}>Maybe</Button>
-        <Button variant={mt.my_rsvp === 'going' ? 'primary' : 'default'} className="h-11 gap-1 px-3 text-[0.7059rem]" disabled={busy}
+        <Button variant={mt.my_rsvp === 'going' ? 'primary' : 'default'} className="h-11 gap-1 px-3 text-meta" disabled={busy}
           aria-pressed={mt.my_rsvp === 'going'} onClick={(e) => void rsvp('going', e.currentTarget)}>
-          {mt.my_rsvp === 'going' && <Check className="size-3.5" />} Going
+          {mt.my_rsvp === 'going' && <Check className="size-4" />} Going
         </Button>
       </div>
     </Card>
@@ -581,8 +581,8 @@ function MeetupSheet({ clubId, onClose, onSaved }: { clubId: string; onClose: ()
       <Field label="Pace (optional)"><input className={inputCls} maxLength={40} value={pace} onChange={(e) => setPace(e.target.value)} placeholder="9:30–10:00 /mi, no-drop" /></Field>
       <Field label="Notes (optional)"><input className={inputCls} maxLength={200} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Coffee after at Steam" /></Field>
       {queued && <SaveStatus state="queued" />}
-      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!title.trim() || !place.trim() || !start} onClick={() => void save()}>Plan it</Button>
+      {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
+      <Button variant="primary" className="h-11 text-body" loading={busy} disabled={!title.trim() || !place.trim() || !start} onClick={() => void save()}>Plan it</Button>
     </Sheet>
   )
 }
@@ -603,17 +603,17 @@ function ChallengeSheet({ clubId, imperial, onClose, onStarted }: {
   }
   return (
     <Sheet title="Club challenge" onClose={onClose}>
-      <p className="text-[0.7647rem] text-(--text-secondary)">Pick one of your challenges. You join it, and everyone in the club can join with the same target.</p>
+      <p className="text-small text-(--text-secondary)">Pick one of your challenges. You join it, and everyone in the club can join with the same target.</p>
       {err && <ErrorState compact message={err} />}
       {!items && !err && <RabbitLoader className="py-6" label="Loading challenges" />}
-      {items && items.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">No challenges on offer right now. Check back next week.</p>}
+      {items && items.length === 0 && <p className="text-small text-(--text-muted)">No challenges on offer right now. Check back next week.</p>}
       {items?.map((s) => (
         <Card key={`${s.period}-${s.template}`} className="flex items-center gap-3 p-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[0.8235rem] font-medium text-(--text)">{s.name}</p>
-            <p className="text-[0.7059rem] text-(--text-muted)">{targetLine(s, imperial)} · +{s.xp} XP</p>
+            <p className="text-body font-medium text-(--text)">{s.name}</p>
+            <p className="text-meta text-(--text-muted)">{targetLine(s, imperial)} · +{s.xp} XP</p>
           </div>
-          <Button variant="primary" className="h-11 px-3 text-[0.7059rem]" loading={busy === s.template} disabled={busy != null}
+          <Button variant="primary" className="h-11 px-3 text-meta" loading={busy === s.template} disabled={busy != null}
             onClick={(e) => void start(s, e.currentTarget)}>Start</Button>
         </Card>
       ))}
@@ -643,13 +643,13 @@ function InviteSheet({ club, onClose }: { club: ClubDetail; onClose: () => void 
     <Sheet title={`Invite to ${club.name}`} onClose={onClose}>
       {error && <ErrorState compact message={error} />}
       {!people && !error && <RabbitLoader className="py-6" label="Loading friends" />}
-      {people && people.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Everyone you follow is already here. Share the club code instead.</p>}
+      {people && people.length === 0 && <p className="text-small text-(--text-muted)">Everyone you follow is already here. Share the club code instead.</p>}
       {people && people.length > 0 && (
         <Group footer="People you follow or who follow you.">
           {people.map((u) => (
             <Row key={u.id} icon={<PersonAvatar u={u} size={30} />} title={u.name}
-              trailing={sent.has(u.id) ? <span className="text-[0.7059rem] text-(--accent)">Invited</span> : (
-                <Button variant="default" className="h-11 px-3 text-[0.7059rem]" onClick={(e) => void invite(u, e.currentTarget)}>Invite</Button>
+              trailing={sent.has(u.id) ? <span className="text-meta text-(--accent)">Invited</span> : (
+                <Button variant="default" className="h-11 px-3 text-meta" onClick={(e) => void invite(u, e.currentTarget)}>Invite</Button>
               )} />
           ))}
         </Group>

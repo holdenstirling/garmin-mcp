@@ -48,13 +48,13 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
                   onChange={(v) => void run(c.email, () => updateCoach(c.email, { can_see_rabbit_chats: v }))} />} />
               {confirm === c.email ? (
                 <div className="flex items-center gap-2 px-4 py-3">
-                  <span className="min-w-0 flex-1 text-[0.8235rem]">Remove {c.email}? They lose access right away.</span>
-                  <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setConfirm(null)}>Keep</Button>
-                  <Button variant="destructive" className="h-9 px-3 text-[0.7647rem]" loading={busy === c.email}
+                  <span className="min-w-0 flex-1 text-body">Remove {c.email}? They lose access right away.</span>
+                  <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirm(null)}>Keep</Button>
+                  <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === c.email}
                     onClick={() => void run(c.email, () => removeCoach(c.email), 'Coach removed.').then((ok) => { if (ok) setConfirm(null) })}>Remove</Button>
                 </div>
               ) : (
-                <Row title={<span className="inline-flex items-center gap-1.5"><Trash2 className="size-4" /> Remove coach</span>} danger center
+                <Row title={<span className="inline-flex items-center gap-1.5"><Trash2 className="size-5" /> Remove coach</span>} danger center
                   onClick={() => setConfirm(c.email)} />
               )}
             </Group>
@@ -64,7 +64,7 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
 
       {coaches !== null && coaches.length === 0 && onFindCoach && (
         <Group footer="rabbt doesn't take a cut; you contact coaches directly.">
-          <Row icon={<Search className="size-5 text-(--accent)" />} title="Don't have a coach yet?" subtitle="Find one who fits your race"
+          <Row icon={<Search className="size-6 text-(--accent)" />} title="Don't have a coach yet?" subtitle="Find one who fits your race"
             onClick={onFindCoach} />
         </Group>
       )}
@@ -76,21 +76,21 @@ export function CoachesScreen({ onClose, onChanged, onFindCoach }: {
         <Row title="Can edit my plan" trailing={<Switch label="Can edit my plan" checked={canEdit} onChange={setCanEdit} />} />
         <Row title="Can see my rabbt chats" trailing={<Switch label="Can see my rabbt chats" checked={canSee} onChange={setCanSee} />} />
         <div className="px-4 pb-4 pt-1">
-          <Button variant="primary" className="h-11 w-full gap-1.5 text-[0.8235rem]" loading={busy === 'invite'} disabled={!email.trim()}
+          <Button variant="primary" className="h-11 w-full gap-1.5 text-body" loading={busy === 'invite'} disabled={!email.trim()}
             onClick={() => void run('invite', () => inviteCoach({ email: email.trim(), can_edit_plan: canEdit, can_see_rabbit_chats: canSee }),
               'Invited. Send them the link below.').then((ok) => { if (ok) setEmail('') })}>
-            <UserPlus className="size-4" /> Invite coach
+            <UserPlus className="size-5" /> Invite coach
           </Button>
         </div>
       </Card>
-      {msg && <p className={`px-1 text-[0.7647rem] ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
+      {msg && <p className={`px-1 text-small ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
       <Card className="p-4">
-        <p className="text-[0.7647rem] text-(--text-secondary)">Your coach signs in here with Google:</p>
+        <p className="text-small text-(--text-secondary)">Your coach signs in here with Google:</p>
         <div className="mt-2 flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-2 py-1.5 text-[0.7647rem]">{link}</code>
+          <code className="min-w-0 flex-1 truncate rounded-md bg-(--bg-inset) px-2 py-1.5 text-small">{link}</code>
           <Button variant="default" size="icon" className="size-9" aria-label="Copy link"
             onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMsg({ text: 'Link copied.', ok: true }), () => {}) }}>
-            <Copy className="size-4" />
+            <Copy className="size-5" />
           </Button>
         </div>
       </Card>

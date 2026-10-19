@@ -22,12 +22,12 @@ export function SportPicker({ value, other, onChange, onOther, label = 'Sport' }
       <div className="relative flex items-center gap-2.5">
         <span aria-hidden className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
           Icon ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-inset) text-(--text-muted)')}>
-          {Icon ? <Icon className="size-5" /> : <span className="text-[0.8235rem]">?</span>}
+          {Icon ? <Icon className="size-6" /> : <span className="text-body">?</span>}
         </span>
         <div className="relative min-w-0 flex-1">
           <select id={id} aria-label={label} value={value ?? ''}
             onChange={(e) => e.target.value && onChange(e.target.value as SportId)}
-            className={cn(inputCls, 'h-11 w-full appearance-none pr-10 text-[0.8824rem]', !value && 'text-(--text-muted)')}>
+            className={cn(inputCls, 'h-11 w-full appearance-none pr-10 text-body-lg', !value && 'text-(--text-muted)')}>
             <option value="" disabled>Pick a sport</option>
             {SPORT_GROUPS.map((g) => (
               <optgroup key={g.group} label={g.group}>
@@ -35,7 +35,7 @@ export function SportPicker({ value, other, onChange, onOther, label = 'Sport' }
               </optgroup>
             ))}
           </select>
-          <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
+          <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
         </div>
       </div>
       {value === 'other' && (

@@ -169,11 +169,11 @@ function MileBar({ m, sport, imperial, label }: { m: Mileage; sport: DistSport; 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <div className="flex items-baseline gap-1.5">
-        {label && <span className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">{label}</span>}
-        <span className="font-mono text-[0.8235rem] font-semibold tabular-nums text-(--text)">
+        {label && <span className="text-caption text-(--text-muted) font-semibold">{label}</span>}
+        <span className="font-mono text-body font-semibold tabular-nums text-(--text)">
           {toUnit(m.done, imperial, sport).toLocaleString()} of {toUnit(m.goal, imperial, sport).toLocaleString()} {u}
         </span>
-        {m.custom && <span className="text-[0.6471rem] text-(--text-muted)">your goal</span>}
+        {m.custom && <span className="text-caption text-(--text-muted)">your goal</span>}
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar" aria-valuemin={0}
         aria-valuemax={Math.round(toUnit(m.goal, imperial, sport))} aria-valuenow={Math.round(toUnit(m.done, imperial, sport))}
@@ -209,22 +209,22 @@ function WeekMiles({ week, miles, imperial, editable, onGoal }: {
             <button type="button" className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"
               aria-label={`Change the ${SPORT_DIST_LABEL[sp].toLowerCase()} goal for this week`}
               onClick={() => { setEdit(sp); setVal(String(toUnit(m.goal, imperial, sp))) }}>
-              <Pencil className="size-3.5" />
+              <Pencil className="size-4" />
             </button>
           )}
         </div>
       ))}
       {edit && (
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
+          <label className="flex items-center gap-1.5 text-small text-(--text-secondary)">
             Weekly goal
             <input className={cn(inputCls, 'h-9 w-20')} inputMode="decimal" value={val} aria-label={`Weekly goal in ${unitWord(imperial, edit)}`}
               onChange={(e) => setVal(e.target.value)} /> {unitWord(imperial, edit)}
           </label>
-          <Button variant="primary" className="h-9 px-3 text-[0.7647rem]" loading={busy}
+          <Button variant="primary" className="h-9 px-3 text-small" loading={busy}
             disabled={!(Number(val) > 0)} onClick={() => void save(fromUnit(Number(val), imperial, edit))}>Save</Button>
-          {miles?.[edit]?.custom && <Button variant="ghost" className="h-9 px-2 text-[0.7059rem]" onClick={() => void save(null)}>Use the plan's</Button>}
-          <Button variant="ghost" className="h-9 px-2 text-[0.7059rem]" onClick={() => setEdit(null)}>Cancel</Button>
+          {miles?.[edit]?.custom && <Button variant="ghost" className="h-9 px-2 text-meta" onClick={() => void save(null)}>Use the plan's</Button>}
+          <Button variant="ghost" className="h-9 px-2 text-meta" onClick={() => setEdit(null)}>Cancel</Button>
         </div>
       )}
     </div>
@@ -233,9 +233,9 @@ function WeekMiles({ week, miles, imperial, editable, onGoal }: {
 
 function StatusChip({ c }: { c: CalSession | undefined }) {
   if (!c) return null
-  if (c.status === 'done') return <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--accent)"><Check className="size-3" aria-hidden />Done</span>
-  if (c.status === 'missed') return <span className="shrink-0 rounded-full bg-(--danger)/10 px-2 py-0.5 text-[0.6471rem] font-semibold text-(--danger)">Missed</span>
-  if (c.status === 'skipped') return <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--text-muted)">Skipped</span>
+  if (c.status === 'done') return <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-semibold text-(--accent)"><Check className="size-3.5" aria-hidden />Done</span>
+  if (c.status === 'missed') return <span className="shrink-0 rounded-full bg-(--danger)/10 px-2 py-0.5 text-caption font-semibold text-(--danger)">Missed</span>
+  if (c.status === 'skipped') return <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-muted)">Skipped</span>
   return null
 }
 
@@ -267,51 +267,51 @@ function SessionCard({ s, c, date, imperial, unread, dragging, onOpen, onEdit, o
         className={cn('flex min-w-0 flex-1 items-start gap-2.5 py-2 pl-3 text-left disabled:cursor-default', !onEdit && 'pr-3', grab && 'touch-manipulation select-none')}>
         <span className={cn('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
           s.kind === 'race' ? 'bg-(--brand) text-(--on-fill)' : c?.status === 'done' ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
-          <Icon className="size-4" aria-hidden />
+          <Icon className="size-5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            {s.time && <span className="shrink-0 font-mono text-[0.7059rem] font-semibold tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}
-            <span className={cn('min-w-0 flex-1 truncate text-[0.8235rem] font-medium text-(--text)', dim && 'line-through')}>{s.title}</span>
+            {s.time && <span className="shrink-0 font-mono text-meta font-semibold tabular-nums text-(--text-secondary)">{fmtTime(s.time)}</span>}
+            <span className={cn('min-w-0 flex-1 truncate text-body font-medium text-(--text)', dim && 'line-through')}>{s.title}</span>
             {unread && <span className="size-2 shrink-0 rounded-full bg-(--accent)" aria-label="New coach message" />}
             <StatusChip c={c} />
-            {s.synced && !c?.status.match(/done|missed/) && <span className="shrink-0 font-mono text-[0.6471rem] uppercase tracking-wider text-(--accent)">Garmin</span>}
+            {s.synced && !c?.status.match(/done|missed/) && <span className="shrink-0 text-caption text-(--accent) font-semibold">Garmin</span>}
           </span>
-          {meta && <span className="block truncate font-mono text-[0.7059rem] tabular-nums text-(--text-secondary)">{meta}</span>}
-          {!meta && s.kind !== 'race' && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{KIND_LABEL[s.kind] ?? s.kind}</span>}
-          {c?.note && c.status !== 'missed' && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{c.note.source === 'coach' ? 'Coach: ' : ''}{c.note.line}</span>}
-          {c?.missed && <span className="block text-[0.7059rem] leading-snug text-(--text-secondary)">{c.missed.why}</span>}
+          {meta && <span className="block truncate font-mono text-meta tabular-nums text-(--text-secondary)">{meta}</span>}
+          {!meta && s.kind !== 'race' && <span className="block truncate text-meta text-(--text-muted)">{KIND_LABEL[s.kind] ?? s.kind}</span>}
+          {c?.note && c.status !== 'missed' && <span className="block truncate text-meta text-(--text-muted)">{c.note.source === 'coach' ? 'Coach: ' : ''}{c.note.line}</span>}
+          {c?.missed && <span className="block text-meta leading-snug text-(--text-secondary)">{c.missed.why}</span>}
         </span>
-        {grab && editing && <GripVertical className="mt-2 size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+        {grab && editing && <GripVertical className="mt-2 size-5 shrink-0 text-(--text-muted)" aria-hidden />}
       </button>
       {onEdit && (
         <button type="button" onClick={onEdit} aria-label={`Edit ${s.title}`}
           className="flex w-11 shrink-0 items-start justify-center pt-3 text-(--text-muted) active:text-(--text)">
-          <Pencil className="size-3.5" aria-hidden />
+          <Pencil className="size-4" aria-hidden />
         </button>
       )}
       </div>
       {editing && (onMove || onShift) && (
         <div className="flex items-center gap-1 border-t border-(--border) px-1.5 py-0.5">
           <button type="button" disabled={!onShift?.[-1]} onClick={onShift?.[-1]} aria-label={`Move ${s.title} one day earlier`}
-            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
-            <ChevronLeft className="size-3.5" aria-hidden />Earlier
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-meta font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            <ChevronLeft className="size-4" aria-hidden />Earlier
           </button>
           <button type="button" disabled={!onShift?.[1]} onClick={onShift?.[1]} aria-label={`Move ${s.title} one day later`}
-            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
-            Later<ChevronRight className="size-3.5" aria-hidden />
+            className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-meta font-medium text-(--text-secondary) disabled:opacity-35 active:bg-(--bg-inset)">
+            Later<ChevronRight className="size-4" aria-hidden />
           </button>
           {onMove && (
-            <button type="button" onClick={onMove} className="ml-auto flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)" aria-label={`Move ${s.title} to any day, or swap days`}>
-              <ArrowLeftRight className="size-3.5" aria-hidden />Move
+            <button type="button" onClick={onMove} className="ml-auto flex min-h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-meta font-medium text-(--accent) active:bg-(--bg-inset)" aria-label={`Move ${s.title} to any day, or swap days`}>
+              <ArrowLeftRight className="size-4" aria-hidden />Move
             </button>
           )}
         </div>
       )}
       {onFix && (
         <div className="flex justify-end border-t border-(--border) px-2 py-1">
-          <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem] text-(--accent)" onClick={onFix}>
-            <Wrench className="size-3.5" /> Fix my week
+          <Button variant="ghost" className="h-11 gap-1.5 px-3 text-small text-(--accent)" onClick={onFix}>
+            <Wrench className="size-4" /> Fix my week
           </Button>
         </div>
       )}
@@ -354,7 +354,7 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
   const word = s.sport === 'bike' ? 'ride' : s.sport === 'swim' ? 'swim' : 'run'
   return (
     <Sheet title={`Missed: ${s.title}`} onClose={onClose} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <p className="px-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+      <p className="px-1 text-body leading-snug text-(--text-secondary)">
         {fmtDay(date, { weekday: 'long' })}: {c.missed?.why} Life happens. Pick a fix and rabbt re-balances the rest of your week.
       </p>
       <Card>
@@ -363,15 +363,15 @@ function FixSheet({ s, date, c, plan, cal, today, onClose, run }: {
             onPick={(d) => void go(d, () => fixMissed(s.id, 'move', d))} busy={busy} />
         </Field>
         <div className="flex flex-col gap-2 border-t border-(--border) p-4">
-          <Button variant="default" className="h-11 justify-start gap-2 text-[0.8235rem]" loading={busy === 'easy'} disabled={busy != null}
+          <Button variant="default" className="h-11 justify-start gap-2 text-body" loading={busy === 'easy'} disabled={busy != null}
             onClick={() => void go('easy', () => fixMissed(s.id, 'easy'))}>
             Do an easy {word} instead
           </Button>
-          <Button variant="default" className="h-11 justify-start gap-2 text-[0.8235rem]" loading={busy === 'skip'} disabled={busy != null}
+          <Button variant="default" className="h-11 justify-start gap-2 text-body" loading={busy === 'skip'} disabled={busy != null}
             onClick={() => void go('skip', () => fixMissed(s.id, 'skip'))}>
             Skip it and spread the miles
           </Button>
-          <p className="text-[0.7059rem] text-(--text-muted)">Easy {word}s stretch by at most 15% each and no hard day is added.</p>
+          <p className="text-meta text-(--text-muted)">Easy {word}s stretch by at most 15% each and no hard day is added.</p>
         </div>
       </Card>
     </Sheet>
@@ -515,9 +515,9 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   }
   const editToggle = editable && cal && (
     <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)}
-      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.7647rem] font-medium',
+      className={cn('flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-small font-medium',
         editing ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text-secondary) active:bg-(--bg-inset)')}>
-      {editing ? <><Check className="size-3.5" aria-hidden />Done</> : <><Pencil className="size-3.5" aria-hidden />Edit</>}
+      {editing ? <><Check className="size-4" aria-hidden />Done</> : <><Pencil className="size-4" aria-hidden />Edit</>}
     </button>
   )
 
@@ -539,13 +539,13 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         <span className="w-11 shrink-0 text-center leading-tight">
           <button type="button" onClick={() => openDay(d.date)} aria-label={`Open ${fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}`}
             className={cn('flex w-11 flex-col items-center justify-center rounded-lg active:bg-(--bg-inset)', quiet ? 'min-h-11 flex-row gap-1' : 'min-h-11 pt-1')}>
-            <span className={cn('block text-[0.6471rem] font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
+            <span className={cn('block text-caption font-semibold uppercase', isToday ? 'text-(--accent)' : 'text-(--text-muted)')}>
               {isToday ? 'Today' : fmtDay(d.date, { weekday: 'short' })}
             </span>
-            <span className={cn('block text-[0.7647rem]', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{fmtDay(d.date, { day: 'numeric' })}</span>
+            <span className={cn('block text-small', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{fmtDay(d.date, { day: 'numeric' })}</span>
           </button>
-          {!quiet && busyLabel(d.date) && <span className="mt-0.5 block text-[0.6471rem] leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
-          {!quiet && plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3 text-(--accent)" aria-label="Travel day" />}
+          {!quiet && busyLabel(d.date) && <span className="mt-0.5 block text-caption leading-tight text-(--warning-text)">{busyLabel(d.date)}</span>}
+          {!quiet && plan.trips.some((t) => t.start <= d.date && d.date <= t.end) && <Plane className="mx-auto mt-0.5 size-3.5 text-(--accent)" aria-label="Travel day" />}
         </span>
         <div className={cn('flex min-w-0 flex-1 flex-col gap-1.5', quiet ? 'justify-center' : 'py-0.5')}>
           {work.map((s) => {
@@ -566,18 +566,18 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           {done.map((a, i) => (
             <button key={`x${a.id ?? a.key ?? i}`} type="button" disabled={a.id == null && !a.key} onClick={() => openActivity(a.id ?? a.key!)}
               aria-label={`${a.name}, done. Open the workout`}
-              className="flex min-h-11 w-full items-center gap-1.5 rounded-lg text-left text-[0.7059rem] text-(--accent) active:bg-(--bg-inset) disabled:cursor-default">
-              <Check className="size-3.5 shrink-0" aria-hidden />
+              className="flex min-h-11 w-full items-center gap-1.5 rounded-lg text-left text-meta text-(--accent) active:bg-(--bg-inset) disabled:cursor-default">
+              <Check className="size-4 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{a.name}{a.km ? ` · ${fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run')}` : a.minutes ? ` · ${fmtDuration(a.minutes)}` : ''}</span>
-              {(a.id != null || a.key) && <ChevronRight className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />}
+              {(a.id != null || a.key) && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
             </button>
           ))}
-          {!work.length && !extra && !done.length && <p className={cn('text-[0.7647rem] text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
+          {!work.length && !extra && !done.length && <p className={cn('text-small text-(--text-muted)', !quiet && 'py-2')}>{over ? 'Drop here' : 'Rest'}</p>}
         </div>
         {canAdd && (editing || !compact) && (
           <button type="button" aria-label={`Add a workout on ${fmtDay(d.date)}`} onClick={() => onAdd!(d.date)}
             className="hit-44 mt-1.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted) active:bg-(--bg-inset)">
-            <Plus className="size-3.5" />
+            <Plus className="size-4" />
           </button>
         )}
       </div>
@@ -592,7 +592,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
     const keys = keySessions(w)
     if (!w.focus && !keys.length) return null
     return (
-      <div className="flex flex-col gap-0.5 border-b border-(--border) px-4 py-2.5 text-[0.7647rem] leading-snug">
+      <div className="flex flex-col gap-0.5 border-b border-(--border) px-4 py-2.5 text-small leading-snug">
         {w.focus && <p className="text-(--text-secondary)">{w.focus}</p>}
         {keys.length > 0 && <p className="text-(--text-muted)"><span className="font-semibold text-(--text-secondary)">Key workouts:</span> {keys.join(' · ')}</p>}
       </div>
@@ -602,18 +602,18 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
   const weekNav = (
     <div className="flex items-center gap-1 px-1">
       <button type="button" className="modal-close" aria-label="Previous week" disabled={pos <= 0}
-        onClick={() => onWeek(plan.weeks[pos - 1]!.index)}><ChevronLeft className="size-4" /></button>
+        onClick={() => onWeek(plan.weeks[pos - 1]!.index)}><ChevronLeft className="size-5" /></button>
       <div className="min-w-0 flex-1 text-center">
-        <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        <p className="text-caption font-semibold text-(--text-muted)">
           Week {week.index} of {plan.weeks.length} · {weekPhaseLabel(week)} · {week.hours}h
         </p>
-        <p className="text-[0.7059rem] text-(--text-muted)">
+        <p className="text-meta text-(--text-muted)">
           {fmtDay(week.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(week.days[week.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
           {week.index === plan.current_week ? ' · this week' : plan.current_week && <> · <button type="button" className="hit-44 text-(--accent) underline-offset-2 hover:underline" onClick={() => onWeek(plan.current_week!)}>back to this week</button></>}
         </p>
       </div>
       <button type="button" className="modal-close" aria-label="Next week" disabled={pos >= plan.weeks.length - 1}
-        onClick={() => onWeek(plan.weeks[pos + 1]!.index)}><ChevronRight className="size-4" /></button>
+        onClick={() => onWeek(plan.weeks[pos + 1]!.index)}><ChevronRight className="size-5" /></button>
     </div>
   )
 
@@ -623,11 +623,11 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
         onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : today) : setView(v)} /></div>
       <div className="flex items-center gap-2 px-1">
         <button type="button" onClick={() => setOverview(true)}
-          className="flex min-h-11 items-center gap-1.5 text-[0.7647rem] font-medium text-(--accent)">
-          <MapIcon className="size-3.5" aria-hidden />Plan overview
+          className="flex min-h-11 items-center gap-1.5 text-small font-medium text-(--accent)">
+          <MapIcon className="size-4" aria-hidden />Plan overview
         </button>
         {cal?.total.run && cal.total.run.planned > 0 && (
-          <span className="min-w-0 flex-1 truncate text-right font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
+          <span className="min-w-0 flex-1 truncate text-right font-mono text-meta tabular-nums text-(--text-muted)">
             Run {fmtDist(cal.total.run.done, imperial, 'run', { decimals: 0 })} of {fmtDist(cal.total.run.planned, imperial, 'run', { decimals: 0 })}
           </span>
         )}
@@ -636,16 +636,16 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
       {change && change.rebalanced.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5" role="status">
-          <p className="text-[0.7647rem] font-semibold text-(--accent)">rabbt re-balanced your week</p>
-          <ul className="flex flex-col gap-0.5 text-[0.7647rem] leading-snug text-(--text)">
+          <p className="text-small font-semibold text-(--accent)">rabbt re-balanced your week</p>
+          <ul className="flex flex-col gap-0.5 text-small leading-snug text-(--text)">
             {change.rebalanced.map((l) => <li key={l}>{l}</li>)}
           </ul>
           <div className="flex gap-2">
-            <Button variant="primary" className="h-9 px-4 text-[0.7647rem]" onClick={() => setChange(null)}>Accept</Button>
+            <Button variant="primary" className="h-9 px-4 text-small" onClick={() => setChange(null)}>Accept</Button>
             {change.rebalance_undo && (
-              <Button variant="default" className="h-9 gap-1 px-3 text-[0.7647rem]"
+              <Button variant="default" className="h-9 gap-1 px-3 text-small"
                 onClick={() => { const id = change.rebalance_undo!; setChange(null); void run(undoChange(id)) }}>
-                <Undo2 className="size-3.5" /> Undo
+                <Undo2 className="size-4" /> Undo
               </Button>
             )}
           </div>
@@ -677,7 +677,7 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             {prescription(week)}
             <div className="divide-y divide-(--border)">{week.days.map((d) => dayRow(d))}</div>
           </Card>
-          <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
+          <p className="px-4 text-small leading-snug text-(--text-muted)">
             {editable && cal ? (editing ? 'Press and hold a workout to drag it, or use Earlier / Later. rabbt re-balances the week.' : 'Tap a workout to see it in full. Tap Edit to move things around.') : 'Tap a workout to see it in full.'}
           </p>
         </>
@@ -689,17 +689,17 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
           onPickDay={openDay} />
       )}
 
-      {error && !toast && <p className="px-4 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && !toast && <p className="px-4 text-small text-(--danger)" role="alert">{error}</p>}
 
       {drag && (
-        <div className="pointer-events-none fixed z-(--z-popover) -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--text) px-3 py-1.5 text-[0.7647rem] text-(--bg) shadow-lg"
+        <div className="pointer-events-none fixed z-(--z-popover) -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--text) px-3 py-1.5 text-small text-(--bg) shadow-lg"
           style={{ left: drag.x, top: drag.y }} aria-hidden>
           {drag.title}{drag.over && drag.over !== drag.from ? ` → ${fmtDay(drag.over, { weekday: 'short', day: 'numeric' })}` : ''}
         </div>
       )}
       <div role="status" aria-live="polite" aria-atomic="true">
         {toast && (
-          <div key={toast.n} className="fixed left-1/2 z-(--z-toast) flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-3 rounded-full bg-(--text) py-1.5 pl-4 pr-1.5 text-[0.7647rem] text-(--bg) shadow-lg"
+          <div key={toast.n} className="fixed left-1/2 z-(--z-toast) flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-3 rounded-full bg-(--text) py-1.5 pl-4 pr-1.5 text-small text-(--bg) shadow-lg"
             style={{ bottom: 'calc(96px + env(safe-area-inset-bottom))' }}>
             <span className="min-w-0 truncate">{toast.text}</span>
             {toast.undo && (
@@ -737,11 +737,11 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
   const sessionsOf = (w: PlanWeekBuilt) => w.days.flatMap((d) => d.sessions.filter((s) => s.sport !== 'rest' && s.kind !== 'race'))
   return (
     <div className="flex flex-col gap-3">
-      <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+      <p className="px-1 text-small text-(--text-muted)">
         Weeks {plan.weeks[from]!.index}–{plan.weeks[to - 1]!.index} of {plan.weeks.length}. {editing ? 'Press and hold a workout to drag it, or use Earlier / Later.' : 'Tap a workout to see it in full.'}
       </p>
       {from > 0 && (
-        <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>
+        <Button variant="default" className="h-11 text-small" onClick={() => setFrom(Math.max(0, from - STEP))}>Show earlier weeks</Button>
       )}
       {shown.map((w) => {
         const ss = sessionsOf(w)
@@ -754,16 +754,16 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
               className="flex w-full items-center gap-2 border-b border-(--border) px-4 py-2.5 text-left active:bg-(--bg-inset)">
               <span className={cn('size-2.5 shrink-0 rounded-full', `phase-${w.recovery && w.phase !== 'taper' && w.phase !== 'race' ? 'recovery' : w.phase}`)} aria-hidden />
               <span className="min-w-0 flex-1">
-                <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                <span className="block text-caption font-semibold text-(--text-muted)">
                   Week {w.index} · {weekPhaseLabel(w)} · {w.hours}h{w.index === plan.current_week ? ' · this week' : ''}
                 </span>
-                <span className="block text-[0.7059rem] text-(--text-secondary)">
+                <span className="block text-meta text-(--text-secondary)">
                   {fmtDay(w.days[0]!.date, { month: 'short', day: 'numeric' })} – {fmtDay(w.days[w.days.length - 1]!.date, { month: 'short', day: 'numeric' })}
                   {goals.map(([sp, m]) => ` · ${SPORT_DIST_LABEL[sp]} ${fmtDist(m.goal, imperial, sp, { decimals: 0 })}`).join('')}
                   {ss.length > 0 && (done > 0 || w.days[0]!.date <= today) ? ` · ${done}/${ss.length} done` : ''}
                 </span>
               </span>
-              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </button>
             {prescription(w)}
             <div className="divide-y divide-(--border)">{w.days.map((d) => dayRow(d, true))}</div>
@@ -771,11 +771,11 @@ function PlanList({ plan, cal, imperial, today, dayRow, prescription, editing, o
         )
       })}
       {to < plan.weeks.length ? (
-        <Button variant="default" className="h-11 text-[0.7647rem]" onClick={() => setTo(Math.min(plan.weeks.length, to + STEP))}>
+        <Button variant="default" className="h-11 text-small" onClick={() => setTo(Math.min(plan.weeks.length, to + STEP))}>
           Show {Math.min(STEP, plan.weeks.length - to)} more week{plan.weeks.length - to === 1 ? '' : 's'}
         </Button>
       ) : (
-        <p className="px-4 text-center text-[0.7059rem] text-(--text-muted)">That's the whole plan, through race day.</p>
+        <p className="px-4 text-center text-meta text-(--text-muted)">That's the whole plan, through race day.</p>
       )}
     </div>
   )
@@ -806,24 +806,24 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
   return (
     <>
       <div className="flex items-center gap-1 px-1">
-        <button type="button" className="modal-close" aria-label="Previous month" disabled={month <= lo} onClick={() => shift(-1)}><ChevronLeft className="size-4" /></button>
+        <button type="button" className="modal-close" aria-label="Previous month" disabled={month <= lo} onClick={() => shift(-1)}><ChevronLeft className="size-5" /></button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</p>
+          <p className="text-caption font-semibold text-(--text-muted)">{label}</p>
           {tot && (
-            <p className="truncate font-mono text-[0.7059rem] tabular-nums text-(--text-secondary)">
+            <p className="truncate font-mono text-meta tabular-nums text-(--text-secondary)">
               {(Object.entries(tot) as [DistSport, { done: number; planned: number }][]).filter(([, v]) => v.planned > 0 || v.done > 0)
                 .map(([sp, v]) => `${SPORT_DIST_LABEL[sp]} ${fmtDist(v.done, imperial, sp, { decimals: 0 })} of ${fmtDist(v.planned, imperial, sp, { decimals: 0 })}`).join(' · ')}
             </p>
           )}
         </div>
-        <button type="button" className="modal-close" aria-label="Next month" disabled={month >= hi} onClick={() => shift(1)}><ChevronRight className="size-4" /></button>
+        <button type="button" className="modal-close" aria-label="Next month" disabled={month >= hi} onClick={() => shift(1)}><ChevronRight className="size-5" /></button>
       </div>
       <Card className="p-1">
         {/* Day buttons carry the full date in their names; the letters above are visual only. Tight
             gaps keep each day close to a 44px target on a 375px phone. */}
         <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_auto] gap-px" role="group" aria-label={label}>
-          {WD.map((w) => <span key={w} aria-hidden className="pb-1 text-center text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{w.charAt(0)}</span>)}
-          <span aria-hidden className="pb-1 pr-1 text-right text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{imperial ? 'mi' : 'km'}</span>
+          {WD.map((w) => <span key={w} aria-hidden className="pb-1 text-center text-caption font-semibold uppercase text-(--text-muted)">{w.charAt(0)}</span>)}
+          <span aria-hidden className="pb-1 pr-1 text-right text-caption font-semibold uppercase text-(--text-muted)">{imperial ? 'mi' : 'km'}</span>
           {cells.map((d, i) => {
             const ss = byDate.get(d) ?? []
             const inMonth = d.slice(0, 7) === month
@@ -835,24 +835,24 @@ function MonthView({ plan, cal, imperial, today, anchor, onPickDay }: {
                 aria-label={`${fmtDay(d, { weekday: 'long', month: 'long', day: 'numeric' })}: ${ss.length ? ss.map((s, j) => `${s.title} ${statuses[j]}`).join(', ') : 'rest'}`}
                 className={cn('flex min-h-11 flex-col items-center gap-0.5 rounded-lg py-1 disabled:cursor-default', !inMonth && 'opacity-40',
                   isToday && 'ring-1 ring-(--accent)', ss.some((s) => s.kind === 'race') && 'bg-(--brand)/10')}>
-                <span className={cn('text-[0.7059rem] tabular-nums', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{Number(d.slice(8))}</span>
+                <span className={cn('text-meta tabular-nums', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>{Number(d.slice(8))}</span>
                 <span className="flex flex-wrap justify-center gap-0.5">
                   {ss.slice(0, 3).map((s, j) => {
                     const Icon = s.kind === 'race' ? Flag : SPORT_ICON[s.sport]
                     const st = statuses[j]
-                    return <Icon key={s.id} aria-hidden className={cn('size-3', st === 'done' ? 'text-(--accent)' : st === 'missed' ? 'text-(--danger)' : st === 'skipped' ? 'text-(--text-muted) opacity-50' : 'text-(--text-muted)')} />
+                    return <Icon key={s.id} aria-hidden className={cn('size-3.5', st === 'done' ? 'text-(--accent)' : st === 'missed' ? 'text-(--danger)' : st === 'skipped' ? 'text-(--text-muted) opacity-50' : 'text-(--text-muted)')} />
                   })}
                 </span>
               </button>
             )
             return i % 7 === 6 ? [cell, (
-              <span key={`${d}-w`} className="flex min-h-11 items-center justify-end pl-1 font-mono text-[0.6471rem] tabular-nums text-(--text-muted)">
+              <span key={`${d}-w`} className="flex min-h-11 items-center justify-end pl-1 font-mono text-caption tabular-nums text-(--text-muted)">
                 {wk && wk.goal > 0 ? `${toUnit(wk.done, imperial, 'run')}/${toUnit(wk.goal, imperial, 'run')}` : ''}
               </span>)] : cell
           })}
         </div>
       </Card>
-      <p className="px-4 text-[0.7059rem] text-(--text-muted)">Tap a day to see it in full. Right column: done / goal per week.</p>
+      <p className="px-4 text-meta text-(--text-muted)">Tap a day to see it in full. Right column: done / goal per week.</p>
     </>
   )
 }

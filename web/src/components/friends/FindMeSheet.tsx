@@ -35,32 +35,32 @@ export function FindMeSheet({ onClose, onSaved }: { onClose: () => void; onSaved
     <Sheet title="How friends find you" onClose={onClose} portal>
       <div className="flex flex-col gap-5 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         <section className="flex flex-col gap-2">
-          <label htmlFor="ff-handle" className="text-[0.8235rem] font-semibold text-(--text)">Your @handle</label>
+          <label htmlFor="ff-handle" className="text-body font-semibold text-(--text)">Your @handle</label>
           <div className="flex gap-2">
             <div className="relative min-w-0 flex-1">
-              <AtSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" aria-hidden />
+              <AtSign className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" aria-hidden />
               <input id="ff-handle" className={`${inputCls} pl-9`} value={handle.replace(/^@/, '')} autoCapitalize="none" autoCorrect="off"
                 spellCheck={false} maxLength={21} inputMode="text" onChange={(e) => setHandle(e.target.value)} />
             </div>
             <Button variant="primary" className="h-11 px-4" loading={busy === 'handle'} disabled={!me || cleanHandle === me.handle || cleanHandle.length < 3}
               onClick={() => void save('handle', { handle: cleanHandle }, 'Handle saved.')}>Save</Button>
           </div>
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Friends can search for it and tag you in comments. Letters, numbers, _ and .</p>
+          <p className="text-meta leading-snug text-(--text-muted)">Friends can search for it and tag you in comments. Letters, numbers, _ and .</p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <label htmlFor="ff-phone" className="text-[0.8235rem] font-semibold text-(--text)">Phone number <span className="font-normal text-(--text-muted)">(optional)</span></label>
+          <label htmlFor="ff-phone" className="text-body font-semibold text-(--text)">Phone number <span className="font-normal text-(--text-muted)">(optional)</span></label>
           <div className="flex gap-2">
             <input id="ff-phone" className={inputCls} type="tel" inputMode="tel" autoComplete="tel" placeholder="(303) 555-1234"
               value={phone} onChange={(e) => setPhone(e.target.value)} />
             <Button variant="primary" className="h-11 px-4" loading={busy === 'phone'} disabled={!me || phone.trim() === (me.phone ?? '')}
               onClick={() => void save('phone', { phone: phone.trim() || null }, phone.trim() ? 'Number saved.' : 'Number removed.')}>Save</Button>
           </div>
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Only so friends who have your number can find you. Never shown to anyone, never texted.</p>
+          <p className="text-meta leading-snug text-(--text-muted)">Only so friends who have your number can find you. Never shown to anyone, never texted.</p>
         </section>
 
         <section className="flex flex-col gap-1">
-          <p className="text-[0.8235rem] font-semibold text-(--text)">Let people find me by</p>
+          <p className="text-body font-semibold text-(--text)">Let people find me by</p>
           {me && ([
             ['name', 'My name and @handle', 'In Find friends search'],
             ['email', 'My email', 'When someone has it in their contacts or types it'],
@@ -68,15 +68,15 @@ export function FindMeSheet({ onClose, onSaved }: { onClose: () => void; onSaved
           ] as const).map(([k, title, sub]) => (
             <div key={k} className="flex min-h-14 items-center gap-3 border-b border-(--border) py-2 last:border-0">
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.9412rem] text-(--text)">{title}</span>
-                <span className="block text-[0.7059rem] text-(--text-muted)">{sub}</span>
+                <span className="block text-lead text-(--text)">{title}</span>
+                <span className="block text-meta text-(--text-muted)">{sub}</span>
               </span>
               <Switch checked={k === 'phone' && !me.phone ? false : me.find[k]} label={title} disabled={k === 'phone' && !me.phone} onChange={(v) => toggle(k, v)} />
             </div>
           ))}
-          <p className="pt-1 text-[0.7059rem] leading-snug text-(--text-muted)">People you already follow, or who follow you, can always find you. Blocked people never can.</p>
+          <p className="pt-1 text-meta leading-snug text-(--text-muted)">People you already follow, or who follow you, can always find you. Blocked people never can.</p>
         </section>
-        {msg && <p role="status" className={msg.ok ? 'text-[0.7647rem] text-(--accent)' : 'text-[0.7647rem] text-(--danger)'}>{msg.text}</p>}
+        {msg && <p role="status" className={msg.ok ? 'text-small text-(--accent)' : 'text-small text-(--danger)'}>{msg.text}</p>}
       </div>
     </Sheet>
   )

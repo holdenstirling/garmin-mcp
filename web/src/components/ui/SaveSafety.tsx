@@ -20,14 +20,14 @@ export function OutboxPill() {
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-(--z-toast) flex justify-center px-4">
       {n > 0 ? (
         <button type="button" onClick={() => void flush()}
-          className="hit-44 pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-background px-3 py-1.5 text-[0.7647rem] text-(--warning-text) shadow-md">
-          <CloudOff className="size-3.5" aria-hidden />
+          className="hit-44 pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-(--border) bg-background px-3 py-1.5 text-small text-(--warning-text) shadow-md">
+          <CloudOff className="size-4" aria-hidden />
           {n === 1 ? '1 change' : `${n} changes`} not saved yet — we'll retry
         </button>
       ) : (
-        <p role="alert" className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-(--border) bg-background px-3 py-1.5 text-[0.7647rem] text-(--danger) shadow-md">
+        <p role="alert" className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-(--border) bg-background px-3 py-1.5 text-small text-(--danger) shadow-md">
           Couldn't save {failed}
-          <button type="button" aria-label="Dismiss" className="hit-44" onClick={() => setFailed(null)}><X className="size-3.5" /></button>
+          <button type="button" aria-label="Dismiss" className="hit-44" onClick={() => setFailed(null)}><X className="size-4" /></button>
         </p>
       )}
     </div>
@@ -46,9 +46,9 @@ export function ResumeNote({ userId }: { userId: string }) {
   if (!label) return null
   return (
     <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-(--z-toast) flex justify-center px-4">
-      <p role="status" className="inline-flex items-center gap-2 rounded-full border border-(--border) bg-background px-3 py-1.5 text-[0.7647rem] text-(--text) shadow-md">
+      <p role="status" className="inline-flex items-center gap-2 rounded-full border border-(--border) bg-background px-3 py-1.5 text-small text-(--text) shadow-md">
         Welcome back. Your unsaved {label} is kept: open it again to finish.
-        <button type="button" aria-label="Dismiss" className="hit-44" onClick={() => setLabel(null)}><X className="size-3.5" /></button>
+        <button type="button" aria-label="Dismiss" className="hit-44" onClick={() => setLabel(null)}><X className="size-4" /></button>
       </p>
     </div>
   )

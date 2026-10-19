@@ -58,11 +58,11 @@ function PartnerForm({ p, kinds, onSaved, onClose }: {
       footer={
         <div className="flex gap-2 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           {p && (
-            <Button variant="reject" className="h-11 gap-1.5 px-4 text-[0.8235rem]" loading={busy === 'delete'} onClick={() => void remove()}>
-              <Trash2 className="size-4" aria-hidden /> Remove
+            <Button variant="reject" className="h-11 gap-1.5 px-4 text-body" loading={busy === 'delete'} onClick={() => void remove()}>
+              <Trash2 className="size-5" aria-hidden /> Remove
             </Button>
           )}
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'} disabled={!d.name.trim()} onClick={() => void save()}>
+          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'} disabled={!d.name.trim()} onClick={() => void save()}>
             {p ? 'Save' : 'Add partner'}
           </Button>
         </div>
@@ -90,17 +90,17 @@ function PartnerForm({ p, kinds, onSaved, onClose }: {
         <Field label="Starts"><input type="date" className={inputCls} value={d.starts ?? ''} onChange={(e) => set('starts', e.target.value || null)} /></Field>
         <Field label="Ends"><input type="date" className={inputCls} value={d.ends ?? ''} onChange={(e) => set('ends', e.target.value || null)} /></Field>
       </div>
-      <label className="flex min-h-11 items-center gap-3 text-[0.8235rem] text-(--text)">
+      <label className="flex min-h-11 items-center gap-3 text-body text-(--text)">
         <input type="checkbox" className="size-5 accent-(--accent)" checked={d.active} onChange={(e) => set('active', e.target.checked)} />
         Show this partner
       </label>
-      <label className="flex min-h-11 items-start gap-3 text-[0.8235rem] text-(--text)">
+      <label className="flex min-h-11 items-start gap-3 text-body text-(--text)">
         <input type="checkbox" className="mt-0.5 size-5 accent-(--accent)" checked={d.sponsored} onChange={(e) => set('sponsored', e.target.checked)} />
         <span>Sponsored placement
-          <span className="block text-[0.7059rem] text-(--text-muted)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
+          <span className="block text-meta text-(--text-muted)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
         </span>
       </label>
-      {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }
@@ -117,10 +117,10 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
         : !data ? <RowsSkeleton label="Loading partners" count={3} />
         : (
           <>
-            <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => setEditing('new')}>
-              <Plus className="size-4" aria-hidden /> Add a partner
+            <Button variant="primary" className="h-11 gap-1.5 text-body" onClick={() => setEditing('new')}>
+              <Plus className="size-5" aria-hidden /> Add a partner
             </Button>
-            {data.partners.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">No partners yet.</p>}
+            {data.partners.length === 0 && <p className="px-1 text-small text-(--text-muted)">No partners yet.</p>}
             <ul className="flex flex-col gap-2">
               {data.partners.map((p) => (
                 <li key={p.id}>
@@ -129,28 +129,28 @@ export function PartnersScreen({ onClose }: { onClose: () => void }) {
                     <Monogram p={p} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="truncate text-[0.8824rem] font-semibold text-(--text)">{p.name}</span>
+                        <span className="truncate text-body-lg font-semibold text-(--text)">{p.name}</span>
                         <PartnerBadge />
-                        {p.sponsored !== false && <span className="text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-muted)">Sponsored</span>}
+                        {p.sponsored !== false && <span className="text-caption font-semibold text-(--text-muted)">Sponsored</span>}
                       </span>
-                      <span className={cn('block text-[0.7059rem]', p.live ? 'text-(--accent)' : 'text-(--text-muted)')}>
+                      <span className={cn('block text-meta', p.live ? 'text-(--accent)' : 'text-(--text-muted)')}>
                         {p.live ? 'Live' : p.active ? 'Scheduled or ended' : 'Hidden'} · {p.metros.length === 1 ? `${p.metros[0]!.city}, ${p.metros[0]!.state}` : `${p.metros.length} cities`}
                       </span>
-                      <span className="block font-mono text-[0.7059rem] tabular-nums text-(--text-secondary)">
+                      <span className="block font-mono text-meta tabular-nums text-(--text-secondary)">
                         {p.stats.view} views · {p.stats.website + p.stats.signup + p.stats.instagram} link taps · {p.stats.interested} interested
                       </span>
                       {Object.entries(p.placements ?? {}).map(([pl, c]) => (
-                        <span key={pl} className="block font-mono text-[0.6471rem] tabular-nums text-(--text-muted)">
+                        <span key={pl} className="block font-mono text-caption tabular-nums text-(--text-muted)">
                           {PLACE_LABEL[pl] ?? pl}: {c?.impression ?? 0} seen · {c?.tap ?? 0} taps · {c?.hide ?? 0} hides
                         </span>
                       ))}
                     </span>
-                    <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
                   </button>
                 </li>
               ))}
             </ul>
-            <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+            <p className="px-1 text-meta leading-snug text-(--text-muted)">
               Counts are anonymous, last {data.stats_days} days, each person once per day. People who turned off usage counting aren't counted.
             </p>
           </>

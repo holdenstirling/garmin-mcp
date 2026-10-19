@@ -34,9 +34,9 @@ export function GarminEmpty({ what, compact, onConnect, className }: {
   if (compact) {
     return (
       <div className={cn('flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5', className)}>
-        <Watch className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
-        <p className="min-w-0 flex-1 text-[0.7059rem] leading-snug text-(--text-secondary)">{c.body}</p>
-        <Button variant="primary" className="hit-44 h-9 shrink-0 px-3 text-[0.7059rem]" onClick={connect}>Connect Garmin</Button>
+        <Watch className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+        <p className="min-w-0 flex-1 text-meta leading-snug text-(--text-secondary)">{c.body}</p>
+        <Button variant="primary" className="hit-44 h-9 shrink-0 px-3 text-meta" onClick={connect}>Connect Garmin</Button>
       </div>
     )
   }
@@ -46,10 +46,10 @@ export function GarminEmpty({ what, compact, onConnect, className }: {
       <span className="flex size-12 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)">
         <Watch className="size-6" aria-hidden />
       </span>
-      <h2 className="font-display text-[1.1765rem] leading-tight text-(--brand)">{c.title}</h2>
-      <p className="max-w-sm text-[0.7647rem] leading-snug text-(--text-secondary)">{c.body}</p>
-      <Button variant="primary" className="h-11 w-full max-w-xs text-[0.8235rem]" onClick={connect}>Connect Garmin</Button>
-      <p className="text-[0.6471rem] text-(--text-muted)">Takes about a minute with your Garmin Connect sign-in.</p>
+      <h2 className="font-display text-title leading-tight text-(--brand)">{c.title}</h2>
+      <p className="max-w-sm text-small leading-snug text-(--text-secondary)">{c.body}</p>
+      <Button variant="primary" className="h-11 w-full max-w-xs text-body" onClick={connect}>Connect Garmin</Button>
+      <p className="text-caption text-(--text-muted)">Takes about a minute with your Garmin Connect sign-in.</p>
     </section>
   )
 }

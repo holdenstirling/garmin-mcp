@@ -15,7 +15,7 @@ import { getQuickActions, type QuickAction } from '@/lib/unread'
 import { cn } from '@/lib/utils'
 
 const FACES: [number, string, string][] = [[1, '😣', 'Awful'], [2, '😕', 'Rough'], [3, '😐', 'OK'], [4, '🙂', 'Good'], [5, '😄', 'Great']]
-const chip = 'hit-44 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.7647rem] font-medium transition-colors active:scale-[0.97] disabled:opacity-50'
+const chip = 'hit-44 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-small font-medium transition-colors active:scale-[0.97] disabled:opacity-50'
 
 function when(iso: string): string {
   const d = new Date(iso)
@@ -100,7 +100,7 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
                     ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)'
                     : 'border-(--border) bg-(--bg-surface) text-(--text)')}
                   onClick={(e) => a.kind === 'feel' ? setFeelOpen((v) => !v) : void run(a, e.currentTarget)}>
-                  <Icon className="size-4 shrink-0" aria-hidden />
+                  <Icon className="size-5 shrink-0" aria-hidden />
                   <span className="max-w-60 truncate">{text(a, imperial)}</span>
                 </button>
               )
@@ -111,10 +111,10 @@ export function QuickActions({ refreshKey, imperial, skipWatchFor, skipCheer, on
           <div role="group" aria-label="How did it feel?" className="mb-1 flex items-center justify-between gap-1 rounded-2xl border border-(--border) bg-(--bg-surface) px-2 py-1.5">
             {FACES.map(([n, face, label]) => (
               <button key={n} type="button" aria-label={label} disabled={busy !== null}
-                className="hit-44 flex min-h-11 min-w-11 flex-col items-center justify-center rounded-xl text-[1.2941rem] leading-none active:bg-(--bg-inset) disabled:opacity-50"
+                className="hit-44 flex min-h-11 min-w-11 flex-col items-center justify-center rounded-xl text-title-md leading-none active:bg-(--bg-inset) disabled:opacity-50"
                 onClick={() => void run(feel, null, n)}>
                 <span aria-hidden>{face}</span>
-                <span className="mt-0.5 text-[0.6471rem] text-(--text-muted)">{label}</span>
+                <span className="mt-0.5 text-caption text-(--text-muted)">{label}</span>
               </button>
             ))}
           </div>
@@ -144,7 +144,7 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
   if (hidden) return null
   if (answered !== null) {
     return (
-      <p role="status" className="py-1.5 text-[0.7059rem] text-(--text-muted)">
+      <p role="status" className="py-1.5 text-meta text-(--text-muted)">
         {answered ? 'Your workouts will show up for friends. Change it anytime in Me.' : 'Kept private. You can turn sharing on in Me.'}
       </p>
     )
@@ -155,10 +155,10 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
   }
   return (
     <section aria-labelledby="share-prompt-title" className="my-1.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h2 id="share-prompt-title" className="flex items-center gap-2 text-[0.8824rem] font-semibold text-(--text)">
-        <Share2 className="size-4 text-(--accent)" aria-hidden /> Share your workouts with friends?
+      <h2 id="share-prompt-title" className="flex items-center gap-2 text-body-lg font-semibold text-(--text)">
+        <Share2 className="size-5 text-(--accent)" aria-hidden /> Share your workouts with friends?
       </h2>
-      <p className="mt-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="mt-1 text-small leading-snug text-(--text-secondary)">
         Friends who follow you see each new workout: sport, time and distance. Never heart rate, maps or where you trained. It's on unless you say no.
       </p>
       <div className="mt-2.5 flex gap-2">

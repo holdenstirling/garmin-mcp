@@ -30,19 +30,19 @@ export function SharedLinks() {
         <div key={l.id} className="flex min-h-14 items-center gap-3 px-4 py-2">
           <Icon><Link2 /></Icon>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8824rem] text-(--text)">{l.title || SHARE_KIND_LABEL[l.kind]}</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">
+            <span className="block truncate text-body-lg text-(--text)">{l.title || SHARE_KIND_LABEL[l.kind]}</span>
+            <span className="block text-meta text-(--text-muted)">
               {SHARE_KIND_LABEL[l.kind]} · {new Date(l.created * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })} · opened {l.views} {l.views === 1 ? 'time' : 'times'}
             </span>
           </span>
-          <Button variant="ghost" className="h-11 px-3 text-[0.7647rem] text-(--danger)" loading={busy === l.id}
+          <Button variant="ghost" className="h-11 px-3 text-small text-(--danger)" loading={busy === l.id}
             aria-label={`Turn off the link to ${l.title || SHARE_KIND_LABEL[l.kind]}`} onClick={() => void off(l.id)}>Turn off</Button>
         </div>
       ))}
       {links && links.length === 0 && (
-        <p className="px-4 py-3 text-[0.7647rem] text-(--text-muted)">No shared links yet. Use Share on a workout, event or club to text it to someone.</p>
+        <p className="px-4 py-3 text-small text-(--text-muted)">No shared links yet. Use Share on a workout, event or club to text it to someone.</p>
       )}
-      {err && <p className="px-4 pb-3 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="px-4 pb-3 text-meta text-(--danger)" role="alert">{err}</p>}
       {inviting && <ShareSheet target={{ kind: 'invite', label: '' }} onClose={() => { setInviting(false); void load() }} />}
     </>
   )

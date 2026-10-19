@@ -98,24 +98,24 @@ export function Tour({ userId, auto, onStart }: {
         <div className="flex items-start gap-3">
           <span aria-hidden className="logo-tile flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--brand)"><RabbitLogo size={28} /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+            <p className="text-caption font-semibold text-(--text-muted)">
               {step + 1} of {STEPS.length}
             </p>
-            <h2 id="tour-title" className="font-display text-[1.1765rem] leading-tight text-(--text)">{s.title}</h2>
-            <p id="tour-body" className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">{s.body}</p>
+            <h2 id="tour-title" className="font-display text-title leading-tight text-(--text)">{s.title}</h2>
+            <p id="tour-body" className="mt-1 text-body leading-snug text-(--text-secondary)">{s.body}</p>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button type="button" onClick={finish} className="min-h-11 px-2 text-[0.7647rem] font-medium text-(--text-secondary)">
+          <button type="button" onClick={finish} className="min-h-11 px-2 text-small font-medium text-(--text-secondary)">
             {last ? 'Close' : 'Skip tour'}
           </button>
           <span className="flex-1" />
           {step > 0 && (
             <button type="button" onClick={() => setStep(step - 1)}
-              className="min-h-11 rounded-full border border-(--border) px-4 text-[0.7647rem] font-medium text-(--text)">Back</button>
+              className="min-h-11 rounded-full border border-(--border) px-4 text-small font-medium text-(--text)">Back</button>
           )}
           <button type="button" data-primary onClick={() => (last ? finish() : setStep(step + 1))}
-            className="min-h-11 rounded-full bg-(--accent) px-5 text-[0.7647rem] font-semibold text-(--on-fill)">
+            className="min-h-11 rounded-full bg-(--accent) px-5 text-small font-semibold text-(--on-fill)">
             {last ? 'Got it' : 'Next'}
           </button>
         </div>

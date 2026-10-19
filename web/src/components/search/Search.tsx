@@ -27,7 +27,7 @@ export function SearchButton({ imperial }: { imperial: boolean }) {
     <>
       <button type="button" data-tour="search" aria-label="Search" onClick={() => setOpen(true)}
         className="flex size-11 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)">
-        <SearchIcon className="size-5" aria-hidden />
+        <SearchIcon className="size-6" aria-hidden />
       </button>
       {open && <SearchSheet imperial={imperial} onClose={() => setOpen(false)} />}
     </>
@@ -74,14 +74,14 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
       below={
         <div className="px-4 pb-2">
           <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-inset) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
-            <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+            <SearchIcon className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             <input ref={input} type="search" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
               onKeyDown={(e) => { if (e.key === 'Enter') rememberSearch(q) }}
               placeholder="People, clubs, races, workouts…" aria-label="Search people, clubs, races, sessions and workouts"
-              className="min-w-0 flex-1 bg-transparent text-[0.9412rem] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none text-(--text) outline-none placeholder:text-(--text-muted)" />
+              className="min-w-0 flex-1 bg-transparent text-lead [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none text-(--text) outline-none placeholder:text-(--text-muted)" />
             {q && (
               <button type="button" aria-label="Clear search" onClick={() => { setQ(''); input.current?.focus() }}
-                className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>
+                className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-5" aria-hidden /></button>
             )}
           </label>
         </div>
@@ -91,14 +91,14 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
           recent.length > 0 ? (
             <section className="px-1">
               <div className="flex items-center justify-between">
-                <h3 className="px-3 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Recent</h3>
-                <button type="button" className="min-h-11 px-3 text-[0.7059rem] text-(--accent)"
+                <h3 className="px-3 text-caption font-semibold text-(--text-muted)">Recent</h3>
+                <button type="button" className="min-h-11 px-3 text-meta text-(--accent)"
                   onClick={() => { clearSearches(); setRecent([]) }}>Clear</button>
               </div>
               {recent.map((r) => (
                 <button key={r} type="button" onClick={() => setQ(r)}
-                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[0.8235rem] text-(--text) active:bg-(--bg-inset)">
-                  <Clock className="size-4 shrink-0 text-(--text-muted)" aria-hidden />{r}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-body text-(--text) active:bg-(--bg-inset)">
+                  <Clock className="size-5 shrink-0 text-(--text-muted)" aria-hidden />{r}
                 </button>
               ))}
             </section>
@@ -107,7 +107,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
               body="Friends, clubs, races, your plan's workouts (planned and done). Try “tempo”, a friend's name or your race." />
           )
         ) : error ? (
-          <p role="alert" className="px-4 py-6 text-center text-[0.7647rem] text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
+          <p role="alert" className="px-4 py-6 text-center text-small text-(--danger)">Couldn't search right now. Check your connection and try again.</p>
         ) : res && total === 0 && !busy ? (
           <EmptyState compact mode="think" title={`Nothing for “${q.trim()}”`} body="Try a shorter word, a first name, or a sport like “swim”."
             action="Search people on rabbt" onAction={() => { onClose(); openFindFriends({ q: q.trim() }) }} />
@@ -130,21 +130,21 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
             </Group>
             <div className="px-4 pt-1">
               <button type="button" onClick={() => { onClose(); openFindFriends({ q: q.trim() }) }}
-                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[0.8235rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-                <UserPlus className="size-4 shrink-0" aria-hidden /> Find &ldquo;{q.trim()}&rdquo; on rabbt
+                className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+                <UserPlus className="size-5 shrink-0" aria-hidden /> Find &ldquo;{q.trim()}&rdquo; on rabbt
               </button>
             </div>
             <Group title="Clubs & groups" n={res.clubs.length}>
               {res.clubs.map((c) => (
                 <Row key={`${c.source}:${c.id}`} onClick={() => pick({ kind: 'club', id: c.id, source: c.source })}
-                  icon={<Tile>{(() => { const I = ACTIVITY_ICON[c.activity ?? 'other'] ?? Users; return <I className="size-4" /> })()}</Tile>} title={c.name}
+                  icon={<Tile>{(() => { const I = ACTIVITY_ICON[c.activity ?? 'other'] ?? Users; return <I className="size-5" /> })()}</Tile>} title={c.name}
                   sub={[c.mine ? 'Your club' : c.kind ?? 'Club', c.city, c.members ? `${c.members} members` : ''].filter(Boolean).join(' · ')} />
               ))}
             </Group>
             <Group title="Races & events" n={res.events.length}>
               {res.events.map((e) => (
                 <Row key={e.id} onClick={() => pick(e.public ? { kind: 'club', id: '', source: 'directory' } : { kind: 'event', id: e.id })}
-                  icon={<Tile>{(() => { const I = isSport(e.activity) ? EVENT_SPORT_ICON[e.activity] : Flag; return <I className="size-4" /> })()}</Tile>} title={e.title}
+                  icon={<Tile>{(() => { const I = isSport(e.activity) ? EVENT_SPORT_ICON[e.activity] : Flag; return <I className="size-5" /> })()}</Tile>} title={e.title}
                   sub={[e.public ? 'Public, near you' : '', e.date ? fmtDay(e.date, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date to be set', e.location, e.past ? 'Done' : ''].filter(Boolean).join(' · ')} />
               ))}
             </Group>
@@ -153,7 +153,7 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
                 const Icon = sportIcon(s.sport)
                 return (
                   <Row key={s.id} onClick={() => pick({ kind: 'session', id: s.id, date: s.date })}
-                    icon={<Tile><Icon className="size-4" /></Tile>} title={s.title}
+                    icon={<Tile><Icon className="size-5" /></Tile>} title={s.title}
                     sub={[fmtDay(s.date), s.minutes ? fmtDuration(s.minutes) : ''].filter(Boolean).join(' · ')} />
                 )
               })}
@@ -163,14 +163,14 @@ export function SearchSheet({ imperial, onClose }: { imperial: boolean; onClose:
                 const Icon = sportIcon(w.sport)
                 return (
                   <Row key={w.id} onClick={() => pick({ kind: 'workout', id: w.id })}
-                    icon={<Tile><Icon className="size-4" /></Tile>} title={w.name}
+                    icon={<Tile><Icon className="size-5" /></Tile>} title={w.name}
                     sub={[fmtDay(w.date), w.km ? fmtDist(w.km, imperial, w.sport) : '', w.minutes ? fmtDuration(w.minutes) : ''].filter(Boolean).join(' · ')} />
                 )
               })}
             </Group>
           </div>
         ) : (
-          <p className="px-4 py-6 text-center text-[0.7647rem] text-(--text-muted)">Searching…</p>
+          <p className="px-4 py-6 text-center text-small text-(--text-muted)">Searching…</p>
         )}
         {partner && <PartnerSheet p={partner} onClose={() => setPartner(null)} />}
       </div>
@@ -182,7 +182,7 @@ function Group({ title, n, children }: { title: string; n: number; children: Rea
   if (!n) return null
   return (
     <section className="mt-2 px-1">
-      <h3 className="px-3 pb-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{title}</h3>
+      <h3 className="px-3 pb-1 text-caption font-semibold text-(--text-muted)">{title}</h3>
       <ul>{children}</ul>
     </section>
   )
@@ -199,8 +199,8 @@ function Row({ icon, title, sub, onClick }: { icon: React.ReactNode; title: stri
         className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left active:bg-(--bg-inset)">
         {icon}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.8235rem] text-(--text)">{title}</span>
-          {sub && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{sub}</span>}
+          <span className="block truncate text-body text-(--text)">{title}</span>
+          {sub && <span className="block truncate text-meta text-(--text-muted)">{sub}</span>}
         </span>
       </button>
     </li>

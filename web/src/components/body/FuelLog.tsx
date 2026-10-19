@@ -93,58 +93,58 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
   return (
     <section aria-label="Fueling" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
       <div className="flex items-center gap-2">
-        <Utensils className="size-4 text-(--accent)" aria-hidden />
-        <h4 className="flex-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fueling</h4>
-        {plannedGh ? <span className="text-[0.7059rem] text-(--text-muted)">Plan: {plannedGh} g/h</span> : null}
+        <Utensils className="size-5 text-(--accent)" aria-hidden />
+        <h4 className="flex-1 text-caption font-semibold text-(--text-muted)">Fueling</h4>
+        {plannedGh ? <span className="text-meta text-(--text-muted)">Plan: {plannedGh} g/h</span> : null}
       </div>
 
       {!open && entry && (
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[0.8235rem] text-(--text)">
+          <p className="m-0 text-body text-(--text)">
             <b className="font-semibold">{entry.g_per_h ?? 0} g carbs/h</b>
             {entry.ml_per_h != null && <> · {toFluidUnit(entry.ml_per_h, imperial)} {fl}/h</>}
             {entry.mg_per_h != null && <> · {entry.mg_per_h} mg sodium/h</>}
           </p>
-          <p className="m-0 text-[0.7059rem] text-(--text-muted)">
+          <p className="m-0 text-meta text-(--text-muted)">
             {[entry.carbs_g ? `${entry.carbs_g} g in ${entry.minutes} min` : '', entry.every_min ? `every ${entry.every_min} min` : '',
               entry.gi ? GI.find(([v]) => v === entry.gi)?.[1] : '', entry.energy ? ENERGY.find(([v]) => v === entry.energy)?.[1] : '']
               .filter(Boolean).join(' · ')}
           </p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="hit-44 text-[0.7647rem] font-medium text-(--accent)" onClick={startEdit}>Edit</button>
-            <button type="button" className="hit-44 text-[0.7647rem] font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>What rabbt's learned</button>
+            <button type="button" className="hit-44 text-small font-medium text-(--accent)" onClick={startEdit}>Edit</button>
+            <button type="button" className="hit-44 text-small font-medium text-(--accent)" onClick={() => openBody({ view: 'fueling' })}>What rabbt's learned</button>
           </div>
         </div>
       )}
       {!open && !entry && (
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[0.7647rem] text-(--text-secondary)">Log what you ate and drank. rabbt learns which carbs per hour work for you before race day.</p>
-          <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={startEdit}><Plus className="size-4" aria-hidden />Log fueling</Button>
+          <p className="m-0 text-small text-(--text-secondary)">Log what you ate and drank. rabbt learns which carbs per hour work for you before race day.</p>
+          <Button variant="default" className="h-11 gap-1.5 text-body" onClick={startEdit}><Plus className="size-5" aria-hidden />Log fueling</Button>
         </div>
       )}
 
       {open && (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <span className="text-[0.7647rem] text-(--text)">What you took</span>
+            <span className="text-small text-(--text)">What you took</span>
             <ul className="flex flex-col gap-1">
               {Object.entries(products).map(([id, p]) => {
                 const n = counts[id] ?? 0
                 return (
                   <li key={id} className="flex min-h-11 items-center gap-2">
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.8235rem] text-(--text)">{p.label}</span>
-                      <span className="flex items-center gap-1 text-[0.7059rem] text-(--text-muted)">
+                      <span className="block truncate text-body text-(--text)">{p.label}</span>
+                      <span className="flex items-center gap-1 text-meta text-(--text-muted)">
                         <input type="number" inputMode="numeric" min={0} max={150} aria-label={`${p.label}: grams of carbs each`}
                           value={grams[id] ?? p.g} onChange={(e) => setGrams((g) => ({ ...g, [id]: Number(e.target.value) || 0 }))}
-                          className="h-9 w-14 rounded border border-input bg-transparent px-1 text-center text-[0.7059rem] tabular-nums" />g carbs each
+                          className="h-9 w-14 rounded border border-input bg-transparent px-1 text-center text-meta tabular-nums" />g carbs each
                       </span>
                     </span>
                     <button type="button" className="flex size-11 items-center justify-center rounded-md border border-input disabled:opacity-40"
-                      aria-label={`One less ${p.label}`} disabled={!n} onClick={() => setCounts((c) => ({ ...c, [id]: Math.max(0, n - 1) }))}><Minus className="size-4" aria-hidden /></button>
-                    <span className="w-6 text-center font-mono text-[0.8235rem] tabular-nums" aria-live="polite">{n}</span>
+                      aria-label={`One less ${p.label}`} disabled={!n} onClick={() => setCounts((c) => ({ ...c, [id]: Math.max(0, n - 1) }))}><Minus className="size-5" aria-hidden /></button>
+                    <span className="w-6 text-center font-mono text-body tabular-nums" aria-live="polite">{n}</span>
                     <button type="button" className="flex size-11 items-center justify-center rounded-md border border-input"
-                      aria-label={`One more ${p.label}`} onClick={() => setCounts((c) => ({ ...c, [id]: n + 1 }))}><Plus className="size-4" aria-hidden /></button>
+                      aria-label={`One more ${p.label}`} onClick={() => setCounts((c) => ({ ...c, [id]: n + 1 }))}><Plus className="size-5" aria-hidden /></button>
                   </li>
                 )
               })}
@@ -156,7 +156,7 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
             <Num label="Sodium (mg, optional)" value={sodium} placeholder="400" onChange={setSodium} />
             <Num label="Duration (min)" value={String(mins)} onChange={(v) => setMins(Number(v) || 0)} />
           </div>
-          <p className="m-0 text-[0.7647rem] text-(--text-secondary)" aria-live="polite">
+          <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
             That's <b className="font-semibold text-(--text)">{gh} g carbs per hour</b>{plannedGh ? ` (plan: ${plannedGh} g/h)` : ''}.
           </p>
           <Chips label="How often" value={every === null ? null : String(every)} options={EVERY.map((m) => [String(m), `${m} min`] as const)}
@@ -165,19 +165,19 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
           <Chips label="Energy late on" value={energy} options={ENERGY} onChange={(v) => setEnergy(v as FuelEntry['energy'])} />
           <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} rows={2} aria-label="Fueling note"
             placeholder="Products, flavours, what you'd change (optional)"
-            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-          {err && <p className="m-0 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-body text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          {err && <p className="m-0 text-meta text-(--danger)" role="alert">{err}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} disabled={mins <= 0} onClick={() => void save()}>Save fueling</Button>
-            <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={() => setOpen(false)}>Cancel</Button>
-            {entry && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem] text-(--danger)" onClick={() => void remove()}>Delete</Button>}
+            <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={mins <= 0} onClick={() => void save()}>Save fueling</Button>
+            <Button variant="ghost" className="h-11 px-3 text-body" onClick={() => setOpen(false)}>Cancel</Button>
+            {entry && <Button variant="ghost" className="h-11 px-3 text-body text-(--danger)" onClick={() => void remove()}>Delete</Button>}
           </div>
         </div>
       )}
 
       {!open && learn && learn.lines.length > 0 && (
         <RabbitNote title="What rabbt's learned" compact>
-          {learn.lines.slice(0, 3).map((l) => <p key={l} className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+          {learn.lines.slice(0, 3).map((l) => <p key={l} className="m-0 text-small text-(--text-secondary)"><RabbitInline text={l} /></p>)}
         </RabbitNote>
       )}
     </section>
@@ -187,9 +187,9 @@ export function FuelLog({ fuelKey, minutes, sport, title, date, imperial, planne
 function Num({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[0.7059rem] text-(--text-muted)">{label}</span>
+      <span className="text-meta text-(--text-muted)">{label}</span>
       <input type="number" inputMode="numeric" min={0} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-[0.8235rem] tabular-nums text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-body tabular-nums text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
     </label>
   )
 }
@@ -199,7 +199,7 @@ export function Chips<T extends string>({ label, value, options, onChange }: {
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[0.7647rem] text-(--text)">{label}</span>
+      <span className="text-small text-(--text)">{label}</span>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
         {options.map(([v, l]) => (
           <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(value === v ? null : v)}

@@ -40,21 +40,21 @@ function CopyField({ label, value, secret, onToast }: { label: string; value: st
   }
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
+      <span className="text-caption font-semibold text-(--text-muted)">{label}</span>
       <div className="flex items-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-inset) py-1 pl-3 pr-1">
-        <code className="min-w-0 flex-1 select-all break-all font-mono text-[0.7059rem] leading-snug text-(--text)">
+        <code className="min-w-0 flex-1 select-all break-all font-mono text-meta leading-snug text-(--text)">
           {shown ? value : `${value.slice(0, 6)}${'•'.repeat(14)}`}
         </code>
         {secret && (
           <button type="button" className="flex size-11 shrink-0 items-center justify-center rounded-lg text-(--text-muted) active:bg-(--bg-surface)"
             aria-label={shown ? `Hide ${label}` : `Show ${label}`} onClick={() => setShown((s) => !s)}>
-            {shown ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            {shown ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
           </button>
         )}
         <button type="button" onClick={() => void copy()} aria-label={`Copy ${label}`}
-          className={cn('flex h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-[0.7647rem] font-semibold active:opacity-80',
+          className={cn('flex h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-small font-semibold active:opacity-80',
             done ? 'text-(--accent)' : 'bg-(--accent) text-(--on-fill)')}>
-          {done ? <><Check className="size-3.5" aria-hidden />Copied</> : <><Copy className="size-3.5" aria-hidden />Copy</>}
+          {done ? <><Check className="size-4" aria-hidden />Copied</> : <><Copy className="size-4" aria-hidden />Copy</>}
         </button>
       </div>
     </div>
@@ -64,9 +64,9 @@ function CopyField({ label, value, secret, onToast }: { label: string; value: st
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <section className="flex gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5" aria-label={`Step ${n}: ${title}`}>
-      <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-(--accent) font-mono text-[0.7647rem] font-semibold text-(--on-fill)">{n}</span>
+      <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-(--accent) font-mono text-small font-semibold text-(--on-fill)">{n}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <h3 className="text-[0.8235rem] font-semibold leading-snug text-(--text)">{title}</h3>
+        <h3 className="text-body font-semibold leading-snug text-(--text)">{title}</h3>
         {children}
       </div>
     </section>
@@ -82,7 +82,7 @@ function Ol({ items }: { items: React.ReactNode[] }) {
   return (
     <ol className="flex list-none flex-col gap-1.5 p-0">
       {items.map((it, i) => (
-        <li key={i} className="flex gap-2 text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <li key={i} className="flex gap-2 text-small leading-snug text-(--text-secondary)">
           <span aria-hidden className="w-4 shrink-0 text-right font-mono text-(--text-muted)">{String.fromCharCode(97 + i)}.</span>
           <span className="min-w-0">{it}</span>
         </li>
@@ -184,42 +184,42 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <AppTile app="apple" size={56} />
         </div>
         <div className="text-center">
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">rabbt + Apple Watch</p>
-          <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+          <p className="font-display text-title leading-tight text-(--brand)">rabbt + Apple Watch</p>
+          <p className="mt-1 text-body leading-snug text-(--text-secondary)">
             Apple Watch workouts live in the Health app on your iPhone. A Shortcut you set up once sends them to rabbt after each workout.
           </p>
         </div>
-        {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+        {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="ah-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="ah-reads" className="text-[0.7647rem] font-semibold text-(--text)">rabbt will get</h3>
+            <h3 id="ah-reads" className="text-small font-semibold text-(--text)">rabbt will get</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
         {never.length > 0 && (
           <section aria-labelledby="ah-never" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="ah-never" className="flex items-center gap-1.5 text-[0.7647rem] font-semibold text-(--text)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />Your privacy
+            <h3 id="ah-never" className="flex items-center gap-1.5 text-small font-semibold text-(--text)">
+              <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
-            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
-              <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
               Your Shortcut uses a personal import key. rabbt stores only a scrambled copy of it, and the key can only add workouts, never read anything. Turn it off anytime.
             </p>
           </section>
         )}
         {h && !h.available ? (
-          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-center text-[0.7647rem] text-(--text-secondary)">
+          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-center text-small text-(--text-secondary)">
             Apple Watch import isn’t available on this server yet.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="flex items-start gap-2 text-[0.7059rem] leading-snug text-(--text-muted)">
-              <Smartphone className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+            <p className="flex items-start gap-2 text-meta leading-snug text-(--text-muted)">
+              <Smartphone className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
               Takes about 5 minutes on your iPhone, in the Shortcuts app. Easiest if you open rabbt on the same iPhone so you can copy and paste.
             </p>
-            <Button variant="primary" className="h-12 w-full text-[0.8824rem]" loading={busy} onClick={() => void makeKey(true)}>Set it up</Button>
-            <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={onClose}>Not now</button>
+            <Button variant="primary" className="h-12 w-full text-body-lg" loading={busy} onClick={() => void makeKey(true)}>Set it up</Button>
+            <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={onClose}>Not now</button>
           </div>
         )}
       </>
@@ -228,7 +228,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
     const endpoint = h?.endpoint ?? ''
     body = (
       <>
-        <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
+        <p className="text-body leading-snug text-(--text-secondary)">
           Do these on your iPhone, in the <b className="text-(--text)">Shortcuts</b> app. You only do this once.
         </p>
         <Step n={1} title="Copy your rabbt link and import key">
@@ -236,17 +236,17 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           {key ? (
             <>
               <CopyField label="Import key" value={key} secret onToast={onToast} />
-              <p className="flex items-start gap-1.5 text-[0.7059rem] leading-snug text-(--warning-text)">
-                <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <p className="flex items-start gap-1.5 text-meta leading-snug text-(--warning-text)">
+                <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
                 This key shows only now. Keep it private: anyone with it can add workouts to your rabbt.
               </p>
             </>
           ) : (
             <div className="flex flex-col gap-2 rounded-xl bg-(--bg-inset) px-3 py-2.5">
-              <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">
+              <p className="text-meta leading-snug text-(--text-secondary)">
                 Your key is hidden for safety. Need it again? Make a new one (the old one stops working, so update your Shortcut).
               </p>
-              <Button className="h-11 text-[0.7647rem]" loading={busy} onClick={() => void makeKey(false)}>Make a new key</Button>
+              <Button className="h-11 text-small" loading={busy} onClick={() => void makeKey(false)}>Make a new key</Button>
             </div>
           )}
         </Step>
@@ -261,7 +261,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <>Optional: add <Act>Show Result</Act> to see rabbt’s reply while you test.</>,
           ]} />
           <CopyField label="Text template" value={TEXT_TEMPLATE} onToast={onToast} />
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+          <p className="text-meta leading-snug text-(--text-muted)">
             Only these five details are sent. Heart rate and calories aren’t, and rabbt would throw them away anyway.
           </p>
         </Step>
@@ -271,20 +271,20 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             <>Choose <Act>Apple Watch Workout</Act>, then <b className="text-(--text)">Ends</b> for any workout. Don’t see it? Use <Act>Time of Day</Act>, every evening.</>,
             <>Pick <b className="text-(--text)">Run Immediately</b>, then choose <b className="text-(--text)">Send workouts to rabbt</b>.</>,
           ]} />
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+          <p className="text-meta leading-snug text-(--text-muted)">
             Each run sends the last 7 days, so a missed run catches up next time. Nothing counts twice, and a workout Garmin also has counts once.
           </p>
         </Step>
         <Step n={4} title="Run it once">
-          <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+          <p className="text-small leading-snug text-(--text-secondary)">
             Tap your Shortcut to run it and allow Health access when your iPhone asks. Then come back here.
           </p>
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={checking} onClick={() => void check()}>
-            <RefreshCw className="mr-1.5 size-3.5" aria-hidden />Check for workouts
+          <Button variant="primary" className="h-11 w-full text-body" loading={checking} onClick={() => void check()}>
+            <RefreshCw className="mr-1.5 size-4" aria-hidden />Check for workouts
           </Button>
-          {checking && <p role="status" className="text-center text-[0.7059rem] text-(--text-muted)">Waiting for your Shortcut…</p>}
+          {checking && <p role="status" className="text-center text-meta text-(--text-muted)">Waiting for your Shortcut…</p>}
         </Step>
-        <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={() => { void load(); setView('manage') }}>
+        <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => { void load(); setView('manage') }}>
           I’ll finish later
         </button>
       </>
@@ -294,16 +294,16 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
       <>
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <RabbitNap size={52} mode="cheer" />
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
-          <p className="text-[0.7647rem] text-(--text-secondary)">
+          <p className="font-display text-title leading-tight text-(--brand)">You’re all set</p>
+          <p className="text-small text-(--text-secondary)">
             {h ? `rabbt got ${h.last_received ?? 0} workout${h.last_received === 1 ? '' : 's'} from your Apple Watch.` : 'Apple Watch is connected to rabbt.'}
           </p>
         </div>
         <section aria-labelledby="ah-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-          <h3 id="ah-next" className="text-[0.7647rem] font-semibold text-(--text)">What happens now</h3>
+          <h3 id="ah-next" className="text-small font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT} tone="yes" />
         </section>
-        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={onClose}>Done</Button>
+        <Button variant="primary" className="h-11 w-full text-body" onClick={onClose}>Done</Button>
       </>
     )
   } else {
@@ -313,27 +313,27 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
           <AppTile app="apple" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.9412rem] text-(--text)">Apple Watch</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">{h ? importLine(h) : ''}</span>
+            <span className="block truncate text-lead text-(--text)">Apple Watch</span>
+            <span className="block text-meta text-(--text-muted)">{h ? importLine(h) : ''}</span>
           </span>
           <StateChip state={waiting ? 'attention' : 'connected'} />
         </div>
         {waiting && (
-          <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7647rem] leading-snug text-(--text-secondary)">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-(--warning-text)" aria-hidden />
+          <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-small leading-snug text-(--text-secondary)">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-(--warning-text)" aria-hidden />
             rabbt hasn’t heard from your Shortcut yet. Finish the steps, then run it once.
           </p>
         )}
-        <Button variant={waiting ? 'primary' : 'default'} className="h-11 w-full text-[0.8235rem]" onClick={() => setView('steps')}>
-          <Watch className="mr-1.5 size-3.5" aria-hidden />{waiting ? 'Finish setting up' : 'See the setup steps'}
+        <Button variant={waiting ? 'primary' : 'default'} className="h-11 w-full text-body" onClick={() => setView('steps')}>
+          <Watch className="mr-1.5 size-4" aria-hidden />{waiting ? 'Finish setting up' : 'See the setup steps'}
         </Button>
-        <Button className="h-11 w-full text-[0.8235rem]" loading={checking} onClick={() => void check()}>
-          <RefreshCw className="mr-1.5 size-3.5" aria-hidden />Check for new workouts
+        <Button className="h-11 w-full text-body" loading={checking} onClick={() => void check()}>
+          <RefreshCw className="mr-1.5 size-4" aria-hidden />Check for new workouts
         </Button>
         {reads.length > 0 && (
           <details className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
+            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-small text-(--text-secondary)">
+              <ShieldCheck className="size-5 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
             </summary>
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
@@ -343,11 +343,11 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
         )}
         {confirm ? (
           <div role="group" aria-label="Turn off Apple Watch?" className="flex flex-col gap-2.5 rounded-xl border border-(--danger) p-3.5">
-            <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+            <p className="text-small leading-snug text-(--text-secondary)">
               Turn off Apple Watch? Your import key stops working right away, so your Shortcut can’t send anything. You can delete the Shortcut on your iPhone too.
             </p>
             {(h?.workouts ?? 0) > 0 && (
-              <label className="flex min-h-11 items-center gap-2.5 text-[0.7647rem] text-(--text)">
+              <label className="flex min-h-11 items-center gap-2.5 text-small text-(--text)">
                 <input type="checkbox" className="size-5 accent-(--danger)" checked={remove} onChange={(e) => setRemove(e.target.checked)} />
                 Also delete the {h!.workouts} workout{h!.workouts === 1 ? '' : 's'} rabbt imported
               </label>
@@ -358,7 +358,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             </div>
           </div>
         ) : (
-          <button type="button" className="min-h-11 text-[0.8235rem] text-(--danger)" onClick={() => { setRemove(false); setConfirm(true) }}>
+          <button type="button" className="min-h-11 text-body text-(--danger)" onClick={() => { setRemove(false); setConfirm(true) }}>
             Turn off Apple Watch
           </button>
         )}

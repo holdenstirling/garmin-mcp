@@ -47,7 +47,7 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
   function pick(id: string) { setSel(id === sel ? null : id); setStreet(false) }
 
   if (!pts.length) {
-    return <p className="px-1 text-[0.7059rem] text-(--text-muted)">No meet spots on the map yet. The list has every group.</p>
+    return <p className="px-1 text-meta text-(--text-muted)">No meet spots on the map yet. The list has every group.</p>
   }
   return (
     <div className="flex flex-col gap-2">
@@ -85,10 +85,10 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
             <button type="button" aria-pressed={l.id === sel} onClick={() => pick(l.id)}
               className={cn('flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left',
                 l.id === sel ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-              {(() => { const I = ACTIVITY_ICON[l.activity ?? 'other']; return <I className="size-4 shrink-0 text-(--accent)" aria-hidden /> })()}
+              {(() => { const I = ACTIVITY_ICON[l.activity ?? 'other']; return <I className="size-5 shrink-0 text-(--accent)" aria-hidden /> })()}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8235rem] text-(--text)">{l.name}</span>
-                <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+                <span className="block truncate text-body text-(--text)">{l.name}</span>
+                <span className="block truncate text-meta text-(--text-muted)">
                   {[nextLabel(l.next), l.meet_spot].filter(Boolean).join(' · ')}
                 </span>
               </span>
@@ -97,7 +97,7 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
         ))}
       </ul>
       {unmapped > 0 && (
-        <p className="px-1 text-[0.6471rem] text-(--text-muted)">
+        <p className="px-1 text-caption text-(--text-muted)">
           {unmapped} more {unmapped === 1 ? 'group has' : 'groups have'} no mapped meet spot. They're in the list.
         </p>
       )}
@@ -110,15 +110,15 @@ export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
               className="h-56 w-full rounded-2xl border border-(--border)" />
           ) : (
             <button type="button" onClick={() => setStreet(true)}
-              className="inline-flex min-h-11 items-center gap-1.5 self-start text-[0.7647rem] font-medium text-(--accent)">
-              <MapIcon className="size-3.5" aria-hidden /> Show street map
+              className="inline-flex min-h-11 items-center gap-1.5 self-start text-small font-medium text-(--accent)">
+              <MapIcon className="size-4" aria-hidden /> Show street map
             </button>
           )}
           <a href={osmLink(picked.lat, picked.lon)} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-[0.7059rem] text-(--text-secondary)">
-            Open in OpenStreetMap <ExternalLink className="size-3.5" aria-hidden />
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-meta text-(--text-secondary)">
+            Open in OpenStreetMap <ExternalLink className="size-4" aria-hidden />
           </a>
-          <p className="text-[0.6471rem] text-(--text-muted)">Map © OpenStreetMap contributors. Meet spots are approximate.</p>
+          <p className="text-caption text-(--text-muted)">Map © OpenStreetMap contributors. Meet spots are approximate.</p>
         </div>
       )}
     </div>

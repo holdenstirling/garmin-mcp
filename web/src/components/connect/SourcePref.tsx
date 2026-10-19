@@ -30,7 +30,7 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
   return (
     <div className="flex flex-col gap-2">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        <legend className="mb-1.5 px-1 text-caption font-semibold text-(--text-muted)">
           Recovery &amp; sleep from
         </legend>
         {CHOICES.map((c) => {
@@ -44,13 +44,13 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
               <input type="radio" name="ds-recovery" value={c.id} checked={on} disabled={disabled}
                 onChange={() => pref.setRecovery(c.id)} className="sr-only" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.9412rem] text-(--text)">{c.title}</span>
-                <span className="block text-[0.7647rem] text-(--text-muted)">{disabled ? 'Connect Oura to use it' : c.sub}</span>
+                <span className="block text-lead text-(--text)">{c.title}</span>
+                <span className="block text-small text-(--text-muted)">{disabled ? 'Connect Oura to use it' : c.sub}</span>
               </span>
               <span aria-hidden="true"
                 className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border',
                   on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                {on && <Check className="size-3" />}
+                {on && <Check className="size-3.5" />}
               </span>
             </label>
           )
@@ -59,13 +59,13 @@ export function SourcePref({ pref, ouraOn }: { pref: ReturnType<typeof useSource
       {ouraOn && (
         <div className="flex min-h-11 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-2">
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.9412rem] text-(--text)">Show both in Progress</span>
-            <span className="block text-[0.7647rem] text-(--text-muted)">Garmin and Oura side by side. rabbt still plans from one.</span>
+            <span className="block text-lead text-(--text)">Show both in Progress</span>
+            <span className="block text-small text-(--text-muted)">Garmin and Oura side by side. rabbt still plans from one.</span>
           </span>
           <Switch label="Show both in Progress" checked={pref.both} onChange={pref.setBoth} />
         </div>
       )}
-      <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+      <p className="px-1 text-meta leading-snug text-(--text-muted)">
         Stats and plan matching count Garmin workouts; Oura workouts Garmin missed only show on their day. rabbt's coaching never uses Oura numbers; it only knows which one you read, so it won't quote a score that disagrees.
       </p>
     </div>

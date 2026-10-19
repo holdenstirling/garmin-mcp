@@ -95,7 +95,7 @@ export function Sheet({
           <div className="sheet-actions">
             {actions}
             <button type="button" className="modal-close" aria-label={closeLabel} onClick={requestClose} disabled={!dismissible}>
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
         </div>

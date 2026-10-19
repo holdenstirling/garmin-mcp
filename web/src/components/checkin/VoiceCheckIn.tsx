@@ -197,7 +197,7 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 className="modal-title">{heading}</h2>
-          <button className="modal-close" aria-label="Close" onClick={close}><X className="size-4" /></button>
+          <button className="modal-close" aria-label="Close" onClick={close}><X className="size-5" /></button>
         </div>
         <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {phase === 'done' && saved ? (
@@ -211,42 +211,42 @@ function VoiceSheet({ onClose, sessionId, activityId, title, onSaved }: VoiceChe
                 <MicStage listening={phase === 'listening'} transcript={text} interim={interim}
                   onTap={() => (phase === 'listening' ? stop() : listen())} />
               )}
-              {notice && <p className="px-1 text-center text-[0.7059rem] text-(--warning-text)" role="status">{notice}</p>}
+              {notice && <p className="px-1 text-center text-meta text-(--warning-text)" role="status">{notice}</p>}
 
               {(typing || phase === 'review') && (
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="checkin-text" className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+                  <label htmlFor="checkin-text" className="px-1 text-caption font-semibold text-(--text-muted)">
                     {typing && phase !== 'review' ? 'How did it go?' : 'What you said (edit if needed)'}
                   </label>
                   <textarea id="checkin-text" rows={3} maxLength={TEXT_MAX} value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="e.g. felt heavy, left calf a bit tight, slept badly, legs 6 out of 10"
-                    className="w-full resize-none rounded-xl border border-(--border-strong) bg-(--bg-surface) px-3 py-2.5 text-[0.8824rem] leading-snug text-(--text) placeholder:text-(--text-muted) focus:border-(--accent) focus:outline-none" />
+                    className="w-full resize-none rounded-xl border border-(--border-strong) bg-(--bg-surface) px-3 py-2.5 text-body-lg leading-snug text-(--text) placeholder:text-(--text-muted) focus:border-(--accent) focus:outline-none" />
                 </div>
               )}
 
               <QuickChips feel={feel} onFeel={(v) => setFeel((f) => (f === v ? null : v))} onPhrase={addPhrase} />
 
               {queued && <SaveStatus state="queued" className="px-1" />}
-              {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+              {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
 
               <div className="flex flex-wrap items-center gap-2">
                 {supported && typing && (
-                  <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => { setTyping(false); listen() }}>
-                    <Mic className="size-4" /> Talk
+                  <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={() => { setTyping(false); listen() }}>
+                    <Mic className="size-5" /> Talk
                   </Button>
                 )}
                 {supported && !typing && phase === 'idle' && (
-                  <Button variant="ghost" className="h-11 gap-1.5 px-3 text-[0.7647rem]" onClick={() => setTyping(true)}>
-                    <Keyboard className="size-4" /> Type instead
+                  <Button variant="ghost" className="h-11 gap-1.5 px-3 text-small" onClick={() => setTyping(true)}>
+                    <Keyboard className="size-5" /> Type instead
                   </Button>
                 )}
                 {supported && !typing && phase === 'review' && (
-                  <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={listen}>
-                    <Mic className="size-4" /> Add more
+                  <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={listen}>
+                    <Mic className="size-5" /> Add more
                   </Button>
                 )}
-                <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" disabled={!canSave || phase === 'listening' || queued}
+                <Button variant="primary" className="h-11 flex-1 text-body" disabled={!canSave || phase === 'listening' || queued}
                   onClick={() => void save()}>
                   Save check-in
                 </Button>
@@ -279,11 +279,11 @@ function MicStage({ listening, transcript, interim, onTap }: {
             <RabbitLoader inline label="Listening…" />
           </>
         ) : (
-          <span className="text-[0.7647rem] text-(--text-muted)">Tap and tell rabbt how it felt</span>
+          <span className="text-small text-(--text-muted)">Tap and tell rabbt how it felt</span>
         )}
       </div>
       {listening && (
-        <p className="min-h-[3.2em] w-full rounded-xl bg-(--bg-inset) px-3 py-2 text-center text-[0.8824rem] leading-snug text-(--text)" aria-live="polite">
+        <p className="min-h-[3.2em] w-full rounded-xl bg-(--bg-inset) px-3 py-2 text-center text-body-lg leading-snug text-(--text)" aria-live="polite">
           {shown || <span className="text-(--text-muted)">Legs, sleep, anything tight or sore…</span>}
         </p>
       )}
@@ -303,8 +303,8 @@ function QuickChips({ feel, onFeel, onPhrase }: {
           <button key={v} type="button" onClick={() => onFeel(v)} aria-pressed={feel === v} aria-label={`Feel ${v} of 5: ${label}`}
             className={cn('flex flex-1 flex-col items-center gap-0.5 rounded-xl border py-1.5 transition-colors',
               feel === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-            <span className="text-[1.4118rem] leading-none" aria-hidden="true">{face}</span>
-            <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
+            <span className="text-title-lg leading-none" aria-hidden="true">{face}</span>
+            <span className="text-caption text-(--text-muted)">{label}</span>
           </button>
         ))}
       </div>
@@ -352,17 +352,17 @@ function Result({ saved, onDone, onEdited }: {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-5" /></span>
+        <span ref={mark} className="celebrate flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-6" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{c.summary || 'Checked in.'}</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">Saved. rabbt will use it for your next days.</p>
+          <p className="text-lead font-medium leading-snug text-(--text)">{c.summary || 'Checked in.'}</p>
+          <p className="text-meta text-(--text-muted)">Saved. rabbt will use it for your next days.</p>
         </div>
-        {xp > 0 && <span className="fx-hop shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 font-mono text-[0.7059rem] font-semibold text-(--accent)">+{xp} XP</span>}
+        {xp > 0 && <span className="fx-hop shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 font-mono text-meta font-semibold text-(--accent)">+{xp} XP</span>}
       </div>
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {chips.map((ch) => (
-            <span key={ch.label} className={cn('rounded-full border px-2.5 py-1 text-[0.7059rem] font-medium',
+            <span key={ch.label} className={cn('rounded-full border px-2.5 py-1 text-meta font-medium',
               ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
               {ch.label}
             </span>
@@ -370,7 +370,7 @@ function Result({ saved, onDone, onEdited }: {
         </div>
       )}
       {c.pain_flag && (
-        <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3 py-2.5 text-[0.7647rem] leading-snug text-(--text)" role="note">
+        <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3 py-2.5 text-small leading-snug text-(--text)" role="note">
           rabbt will ease the next few days. If pain is sharp or getting worse, check with a physio or doctor.
         </p>
       )}
@@ -378,10 +378,10 @@ function Result({ saved, onDone, onEdited }: {
         <EditCheckin c={c} onCancel={() => setEditing(false)} onSaved={(n) => { onEdited(n); setEditing(false) }} />
       ) : (
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => setEditing(true)}>
-            <Pencil className="size-4" /> Edit
+          <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={() => setEditing(true)}>
+            <Pencil className="size-5" /> Edit
           </Button>
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={onDone}>Looks right</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" onClick={onDone}>Looks right</Button>
         </div>
       )}
     </div>
@@ -399,7 +399,7 @@ export function EditCheckin({ c, onCancel, onSaved }: { c: Checkin; onCancel: ()
     setBusy(true); setError(null)
     try { onSaved((await updateCheckin(c.id, d)).checkin) } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
-  const label = 'font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)'
+  const label = 'text-caption font-semibold text-(--text-muted)'
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3">
       <span className={label}>Feel</span>
@@ -425,19 +425,19 @@ export function EditCheckin({ c, onCancel, onSaved }: { c: Checkin; onCancel: ()
         <ChipRow>
           {d.soreness.map((s, i) => (
             <Chip key={`${s.area}-${s.side}`} selected onClick={() => setD((x) => ({ ...x, soreness: x.soreness.filter((_, j) => j !== i) }))}>
-              {sorenessLabel(s)} <X className="ml-1 inline size-3" />
+              {sorenessLabel(s)} <X className="ml-1 inline size-3.5" />
             </Chip>
           ))}
         </ChipRow>
       </>}
-      <label className="flex items-center gap-2 text-[0.7647rem] text-(--text)">
+      <label className="flex items-center gap-2 text-small text-(--text)">
         <input type="checkbox" checked={d.pain_flag} onChange={(e) => setD((x) => ({ ...x, pain_flag: e.target.checked }))} />
         Real pain (sharp, getting worse, or limping)
       </label>
-      {error && <p className="text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="text-small text-(--danger)" role="alert">{error}</p>}
       <div className="flex gap-2">
-        <Button variant="ghost" className="h-10 px-3 text-[0.7647rem]" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" className="h-10 flex-1 text-[0.7647rem]" loading={busy} onClick={() => void save()}>Save changes</Button>
+        <Button variant="ghost" className="h-10 px-3 text-small" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" className="h-10 flex-1 text-small" loading={busy} onClick={() => void save()}>Save changes</Button>
       </div>
     </div>
   )
@@ -446,11 +446,11 @@ export function EditCheckin({ c, onCancel, onSaved }: { c: Checkin; onCancel: ()
 /** Compact chips for a check-in (SessionSheet, lists). */
 export function CheckinChips({ c, className }: { c: Checkin; className?: string }) {
   const chips = checkinChips(c)
-  if (!chips.length) return <p className={cn('text-[0.7647rem] text-(--text-secondary)', className)}>{c.summary}</p>
+  if (!chips.length) return <p className={cn('text-small text-(--text-secondary)', className)}>{c.summary}</p>
   return (
     <div className={cn('flex flex-wrap gap-1.5', className)}>
       {chips.map((ch) => (
-        <span key={ch.label} className={cn('rounded-full border px-2 py-0.5 text-[0.6471rem] font-medium',
+        <span key={ch.label} className={cn('rounded-full border px-2 py-0.5 text-caption font-medium',
           ch.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)')}>
           {ch.label}
         </span>

@@ -16,7 +16,7 @@ import { markProgressSeen, nextQuest, type Progress, type Quest, type QuestId } 
 
 /** Round level badge. */
 export function LevelBadge({ level, size = 'md' }: { level: number; size?: 'sm' | 'md' | 'lg' }) {
-  const cls = size === 'lg' ? 'size-16 text-[1.6471rem]' : size === 'sm' ? 'size-7 text-[0.8235rem]' : 'size-11 text-[1.1765rem]'
+  const cls = size === 'lg' ? 'size-16 text-display' : size === 'sm' ? 'size-7 text-body' : 'size-11 text-title'
   return (
     <span className={cn('relative flex shrink-0 items-center justify-center rounded-full bg-(--brand) font-display leading-none text-(--on-fill) shadow-sm', cls)}
       aria-label={`Level ${level}`}>
@@ -53,7 +53,7 @@ export function WeekRing({ done, target, size = 40 }: { done: number; target: nu
           className={cn('rb-ring', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
           strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="text-[0.6471rem] font-semibold text-(--text)">{pct >= 1 ? <Check className="size-3.5" /> : `${done}/${target}`}</span>
+      <span className="text-caption font-semibold text-(--text)">{pct >= 1 ? <Check className="size-4" /> : `${done}/${target}`}</span>
     </span>
   )
 }
@@ -70,10 +70,10 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
     <>
       <WeekRing done={p.week.done} target={p.week.target} />
       <span className="min-w-0">
-        <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">This week</span>
-        <span className="block text-[0.8235rem] font-medium leading-tight text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
-        {planTime && <span className="block text-[0.6471rem] leading-tight text-(--text-muted)">{planTime} planned</span>}
-        {onOpenPlan && <span className="block text-[0.6471rem] font-medium leading-tight text-(--accent)">Open plan</span>}
+        <span className="block text-caption leading-tight text-(--text-muted)">This week</span>
+        <span className="block text-body font-medium leading-tight text-(--text)">{p.week.done} of {p.week.target} {p.week.label}</span>
+        {planTime && <span className="block text-caption leading-tight text-(--text-muted)">{planTime} planned</span>}
+        {onOpenPlan && <span className="block text-caption font-medium leading-tight text-(--accent)">Open plan</span>}
       </span>
     </>
   )
@@ -82,10 +82,10 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
       <div className="flex items-center gap-3">
         <LevelBadge level={p.level} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">{p.name}</p>
-          <p className="text-[0.6471rem] text-(--text-muted)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
+          <p className="font-display text-title-md leading-tight text-(--brand)">{p.name}</p>
+          <p className="text-caption text-(--text-muted)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
           <XpBar p={p} className="mt-3" rabbit />
-          <p className="mt-1 text-[0.6471rem] text-(--text-muted)">
+          <p className="mt-1 text-caption text-(--text-muted)">
             {p.to_next.toLocaleString()} XP to level {p.level + 1}{p.next_name ? ` (${p.next_name})` : ''}
           </p>
         </div>
@@ -99,11 +99,11 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
           </span>
           <span className="min-w-0">
             <span className="flex items-baseline gap-1">
-              <CountUp value={s.current} storeKey="streak" className="font-display text-[1.2941rem] leading-none text-(--text)" />
-              <span className="text-[0.7059rem] text-(--text-secondary)">day streak</span>
+              <CountUp value={s.current} storeKey="streak" className="font-display text-title-md leading-none text-(--text)" />
+              <span className="text-meta text-(--text-secondary)">day streak</span>
             </span>
-            <span className="block text-[0.6471rem] text-(--text-muted)">Best {s.best}</span>
-            {s.at_risk && <span className="block text-[0.6471rem] font-medium text-(--warning-text)">At risk today</span>}
+            <span className="block text-caption text-(--text-muted)">Best {s.best}</span>
+            {s.at_risk && <span className="block text-caption font-medium text-(--warning-text)">At risk today</span>}
           </span>
           <span className="absolute right-1 top-1"><InfoTip term="streak" align="end" /></span>
         </div>
@@ -114,17 +114,17 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
           <div className="flex items-center gap-2.5 rounded-xl bg-(--bg-inset) px-3 py-2.5">{week}</div>
         )}
       </div>
-      <p className="text-[0.8235rem] leading-snug text-(--text)">{headline}</p>
-      {!s.grace_left && <p className="-mt-2 text-[0.6471rem] text-(--text-muted)">This week's free rest day is used.</p>}
+      <p className="text-body leading-snug text-(--text)">{headline}</p>
+      {!s.grace_left && <p className="-mt-2 text-caption text-(--text-muted)">This week's free rest day is used.</p>}
       {q && onOpenSetup && (
         <button type="button" onClick={onOpenSetup}
           className="-mt-1 flex min-h-11 items-center gap-2 border-t border-(--border) pt-3 text-left active:opacity-80">
-          <ListChecks className="size-4 shrink-0 text-(--accent)" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-secondary)">
+          <ListChecks className="size-5 shrink-0 text-(--accent)" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-meta text-(--text-secondary)">
             <span className="font-semibold text-(--accent)">Setup {p.setup.done}/{p.setup.total}</span> · Next: {q.title}
           </span>
-          <span className="shrink-0 text-[0.6471rem] font-semibold text-(--accent)">+{q.xp} XP</span>
-          <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span className="shrink-0 text-caption font-semibold text-(--accent)">+{q.xp} XP</span>
+          <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
         </button>
       )}
     </div>
@@ -145,7 +145,7 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
   return (
     <Screen title="Get set up" subtitle={`${p.setup.done} of ${p.setup.total} done · earn XP for each step`} closing={closing} onClose={close}>
       <div className="flex flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-        <div className="mb-1 flex items-center justify-between text-[0.7059rem]">
+        <div className="mb-1 flex items-center justify-between text-meta">
           <span className="font-medium text-(--text)">{pct === 100 ? 'All set. Nice work!' : 'Your setup'}</span>
           <span className="text-(--text-muted)">{pct}%</span>
         </div>
@@ -159,7 +159,7 @@ export function SetupScreen({ p, onClose, onAction }: { p: Progress; onClose: ()
       </div>
       <QuestList quests={core} onAction={(q) => { onAction(q); onClose() }} />
       {extra.length > 0 && <>
-        <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Bonus</h2>
+        <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Bonus</h2>
         <QuestList quests={extra} onAction={(q) => { onAction(q); onClose() }} />
       </>}
     </Screen>
@@ -204,14 +204,14 @@ function QuestList({ quests, onAction }: { quests: Quest[]; onAction: (q: QuestI
             className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border',
               q.done ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong) text-transparent',
               fresh.has(q.id) && 'rb-pop rb-check-draw')}>
-            <Check className="size-4" />
+            <Check className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className={cn('block text-[0.8235rem]', q.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{q.title}</span>
-            <span className="block text-[0.6471rem] text-(--text-muted)">{q.hint} · +{q.xp} XP</span>
+            <span className={cn('block text-body', q.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{q.title}</span>
+            <span className="block text-caption text-(--text-muted)">{q.hint} · +{q.xp} XP</span>
           </span>
           {!q.done && (
-            <Button variant="default" className="h-8 shrink-0 px-3 text-[0.7059rem]" onClick={() => onAction(q.id)}>{ACTION_LABEL[q.id]}</Button>
+            <Button variant="default" className="h-8 shrink-0 px-3 text-meta" onClick={() => onAction(q.id)}>{ACTION_LABEL[q.id]}</Button>
           )}
         </div>
       ))}
@@ -242,27 +242,27 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
       <div ref={card} role="dialog" aria-modal="true" aria-label="Achievement"
         className="celebrate relative mx-auto mt-[20dvh] flex w-[min(92vw,360px)] flex-col items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6 text-center shadow-xl"
         onClick={(e) => e.stopPropagation()}>
-        <button type="button" autoFocus className="hit-44 absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-4" /></button>
+        <button type="button" autoFocus className="hit-44 absolute right-3 top-3 text-(--text-muted)" aria-label="Close" onClick={finish}><X className="size-5" /></button>
         <span className="fx-leap-lane" aria-hidden="true"><span className="fx-leap"><RabbitLogo size={34} /></span></span>
         {p.level_up ? (
           <>
-            <span className="flex items-center gap-1 text-(--accent)" aria-hidden="true"><PartyPopper className="size-4" /><Star className="size-5" /><PartyPopper className="size-4 -scale-x-100" /></span>
+            <span className="flex items-center gap-1 text-(--accent)" aria-hidden="true"><PartyPopper className="size-5" /><Star className="size-6" /><PartyPopper className="size-5 -scale-x-100" /></span>
             <LevelBadge level={p.level} size="lg" />
-            <p className="font-display text-[1.4118rem] leading-tight text-(--brand)">Level {p.level}!</p>
-            <p className="text-[0.8235rem] text-(--text-secondary)">You're a {p.name}. Every workout counts toward the next one.</p>
+            <p className="font-display text-title-lg leading-tight text-(--brand)">Level {p.level}!</p>
+            <p className="text-body text-(--text-secondary)">You're a {p.name}. Every workout counts toward the next one.</p>
           </>
         ) : (
-          <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">New badge{p.new_badges.length > 1 ? 's' : ''}!</p>
+          <p className="font-display text-title-md leading-tight text-(--brand)">New badge{p.new_badges.length > 1 ? 's' : ''}!</p>
         )}
         {p.new_badges.length > 0 && (
           <div className="flex w-full flex-col gap-2">
             {p.new_badges.slice(0, 4).map((b, i) => (
               <div key={b.id} className="flex items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3 py-2 text-left">
                 <span className="fx-medal flex size-8 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"
-                  style={{ animationDelay: `${250 + i * 120}ms` }}><Award className="size-4" /></span>
+                  style={{ animationDelay: `${250 + i * 120}ms` }}><Award className="size-5" /></span>
                 <span className="min-w-0">
-                  <span className="block text-[0.8235rem] font-medium text-(--accent)">{b.title}</span>
-                  <span className="block text-[0.6471rem] text-(--text-muted)">{b.description} · +100 XP</span>
+                  <span className="block text-body font-medium text-(--accent)">{b.title}</span>
+                  <span className="block text-caption text-(--text-muted)">{b.description} · +100 XP</span>
                 </span>
               </div>
             ))}

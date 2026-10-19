@@ -18,7 +18,7 @@ import type { ActivityId } from '@/lib/activity'
 const PARTNER_ACTIVITY: Record<string, ActivityId> = { run_club: 'run', tri_club: 'tri', ride: 'ride', swim: 'swim', trail: 'trail', store: 'run' }
 function KindIcon({ p }: { p: Partner }) {
   const I = ACTIVITY_ICON[PARTNER_ACTIVITY[p.kind] ?? 'other']
-  return <I className="mr-1 inline size-3.5 align-[-2px] text-(--accent)" aria-hidden />
+  return <I className="mr-1 inline size-4 align-[-2px] text-(--accent)" aria-hidden />
 }
 
 const SAVED = 'rabbit.partners.interested'
@@ -43,7 +43,7 @@ export function track(p: Partner, what: PartnerCount) {
 export function Monogram({ p, size = 44 }: { p: Partner; size?: number }) {
   return (
     <span aria-hidden style={{ width: size, height: size }}
-      className="flex shrink-0 items-center justify-center rounded-xl bg-(--brand) font-display text-[0.9412rem] leading-none text-(--bg)">
+      className="flex shrink-0 items-center justify-center rounded-xl bg-(--brand) font-display text-lead leading-none text-(--bg)">
       {p.monogram}
     </span>
   )
@@ -51,7 +51,7 @@ export function Monogram({ p, size = 44 }: { p: Partner; size?: number }) {
 
 export function PartnerBadge({ className }: { className?: string }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full border border-(--border-strong) px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)', className)}>
+    <span className={cn('inline-flex items-center rounded-full border border-(--border-strong) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)', className)}>
       Partner
     </span>
   )
@@ -63,7 +63,7 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
   if (!partners.length) return null
   return (
     <section aria-label="Partners near you" className="flex flex-col gap-1.5">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Partners near you</h2>
+      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Partners near you</h2>
       {partners.map((p) => (
         <button key={p.id} type="button" onClick={() => setOpen(p)}
           aria-label={`Partner: ${p.name}${p.tagline ? `, ${p.tagline}` : ''}. Open details`}
@@ -71,17 +71,17 @@ export function PartnersNearYou({ partners, metro }: { partners: Partner[]; metr
           <Monogram p={p} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2">
-              <span className="truncate text-[0.8824rem] font-semibold text-(--text)">{p.name}</span>
+              <span className="truncate text-body-lg font-semibold text-(--text)">{p.name}</span>
               <PartnerBadge />
             </span>
-            <span className="block truncate text-[0.7059rem] text-(--text-secondary)">
+            <span className="block truncate text-meta text-(--text-secondary)">
               <KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}
             </span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         </button>
       ))}
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Partners are local groups rabbt works with. Shown because you're near {metro}.</p>
+      <p className="px-1 text-caption text-(--text-muted)">Partners are local groups rabbt works with. Shown because you're near {metro}.</p>
       {open && <PartnerSheet p={open} onClose={() => setOpen(null)} />}
     </section>
   )
@@ -95,17 +95,17 @@ export function PartnerRow({ p, onOpen }: { p: Partner; onOpen: () => void }) {
       <Monogram p={p} size={36} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-[0.8235rem] font-semibold text-(--text)">{p.name}</span>
+          <span className="truncate text-body font-semibold text-(--text)">{p.name}</span>
           <PartnerBadge />
         </span>
-        <span className="block truncate text-[0.7059rem] text-(--text-secondary)"><KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}</span>
+        <span className="block truncate text-meta text-(--text-secondary)"><KindIcon p={p} />{[p.kind_label, p.tagline].filter(Boolean).join(' · ')}</span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }
 
-const linkBtn = 'flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 text-[0.8235rem] font-medium text-(--text) active:bg-(--bg-inset)'
+const linkBtn = 'flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 text-body font-medium text-(--text) active:bg-(--bg-inset)'
 
 export function PartnerSheet({ p, onClose }: { p: Partner; onClose: () => void }) {
   const [saved, setSavedState] = useState(() => savedIds().includes(p.id))
@@ -123,38 +123,38 @@ export function PartnerSheet({ p, onClose }: { p: Partner; onClose: () => void }
         <div className="flex items-center gap-3">
           <Monogram p={p} size={56} />
           <div className="min-w-0">
-            <div className="flex items-center gap-2"><PartnerBadge /><span className="text-[0.7059rem] text-(--text-muted)"><KindIcon p={p} />{p.kind_label}</span></div>
-            {p.tagline && <p className="mt-1 font-display text-[1.0588rem] leading-tight text-(--brand)">{p.tagline}</p>}
+            <div className="flex items-center gap-2"><PartnerBadge /><span className="text-meta text-(--text-muted)"><KindIcon p={p} />{p.kind_label}</span></div>
+            {p.tagline && <p className="mt-1 font-display text-title-sm leading-tight text-(--brand)">{p.tagline}</p>}
           </div>
         </div>
-        {p.description && <p className="text-[0.8235rem] leading-relaxed text-(--text)">{p.description}</p>}
+        {p.description && <p className="text-body leading-relaxed text-(--text)">{p.description}</p>}
         {p.schedule ? (
-          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7647rem] text-(--text)">{p.schedule}</p>
+          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-small text-(--text)">{p.schedule}</p>
         ) : (
-          <p className="text-[0.7059rem] text-(--text-muted)">Check their site for this week's runs and how to join.</p>
+          <p className="text-meta text-(--text-muted)">Check their site for this week's runs and how to join.</p>
         )}
         <div className="flex flex-col gap-2">
           {p.website && (
             <a href={p.website} target="_blank" rel="noopener noreferrer" className={linkBtn} onClick={() => track(p, 'website')}>
-              <span>Visit website <span className="text-(--text-muted)">· {host(p.website)}</span></span><ExternalLink className="size-4 text-(--text-muted)" aria-hidden />
+              <span>Visit website <span className="text-(--text-muted)">· {host(p.website)}</span></span><ExternalLink className="size-5 text-(--text-muted)" aria-hidden />
             </a>
           )}
           {p.signup && (
             <a href={p.signup} target="_blank" rel="noopener noreferrer" className={linkBtn} onClick={() => track(p, 'signup')}>
-              <span>Join or sign up <span className="text-(--text-muted)">· {host(p.signup)}</span></span><ExternalLink className="size-4 text-(--text-muted)" aria-hidden />
+              <span>Join or sign up <span className="text-(--text-muted)">· {host(p.signup)}</span></span><ExternalLink className="size-5 text-(--text-muted)" aria-hidden />
             </a>
           )}
           {p.instagram && (
             <a href={p.instagram} target="_blank" rel="noopener noreferrer" className={linkBtn} onClick={() => track(p, 'instagram')}>
-              <span>Instagram</span><ExternalLink className="size-4 text-(--text-muted)" aria-hidden />
+              <span>Instagram</span><ExternalLink className="size-5 text-(--text-muted)" aria-hidden />
             </a>
           )}
         </div>
-        <Button variant={saved ? 'default' : 'primary'} className="h-11 gap-1.5 text-[0.8235rem]" aria-pressed={saved} onClick={toggle}>
-          {saved ? <><Check className="size-4" aria-hidden /> Saved to your interests</> : <><Heart className="size-4" aria-hidden /> I'm interested</>}
+        <Button variant={saved ? 'default' : 'primary'} className="h-11 gap-1.5 text-body" aria-pressed={saved} onClick={toggle}>
+          {saved ? <><Check className="size-5" aria-hidden /> Saved to your interests</> : <><Heart className="size-5" aria-hidden /> I'm interested</>}
         </Button>
-        <p className="flex items-start gap-1.5 text-[0.6471rem] leading-snug text-(--text-muted)">
-          <Info className="mt-px size-3 shrink-0" aria-hidden />
+        <p className="flex items-start gap-1.5 text-caption leading-snug text-(--text-muted)">
+          <Info className="mt-px size-3.5 shrink-0" aria-hidden />
           Partners are local groups rabbt works with. Links open their own pages; rabbt doesn't share anything about you with them.
         </p>
       </>
@@ -187,11 +187,11 @@ export function SponsoredCard({ placement, zip, card: given, className }: {
   return (
     <section aria-label={`Sponsored partner: ${card.name}`} className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-center gap-1 pl-1">
-        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Sponsored partner</span>
+        <span className="text-caption font-semibold text-(--text-muted)">Sponsored partner</span>
         <span className="flex-1" />
         <button type="button" onClick={hide} aria-label={`Hide ${card.name} here`}
-          className="hit-44 flex items-center gap-1 rounded-full px-2 text-[0.6471rem] text-(--text-muted)">
-          <X className="size-3.5" aria-hidden /> Hide
+          className="hit-44 flex items-center gap-1 rounded-full px-2 text-caption text-(--text-muted)">
+          <X className="size-4" aria-hidden /> Hide
         </button>
       </div>
       <button type="button" onClick={tap} aria-label={`Sponsored: ${card.name}${card.tagline ? `, ${card.tagline}` : ''}. Open details`}
@@ -199,22 +199,22 @@ export function SponsoredCard({ placement, zip, card: given, className }: {
         <Monogram p={card} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="truncate text-[0.8824rem] font-semibold text-(--text)">{card.name}</span>
-            <span className="inline-flex items-center rounded-full bg-(--bg-surface) px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">Sponsored</span>
+            <span className="truncate text-body-lg font-semibold text-(--text)">{card.name}</span>
+            <span className="inline-flex items-center rounded-full bg-(--bg-surface) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">Sponsored</span>
           </span>
-          <span className="block truncate text-[0.7059rem] text-(--text-secondary)">
+          <span className="block truncate text-meta text-(--text-secondary)">
             <KindIcon p={card} />{[card.kind_label, card.tagline].filter(Boolean).join(' · ')}
           </span>
         </span>
-        <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+        <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       <button type="button" aria-expanded={why} onClick={() => setWhy((v) => !v)}
-        className="hit-44 flex items-center gap-1 self-start px-1 text-[0.6471rem] text-(--text-muted)">
-        <Info className="size-3" aria-hidden /> Why am I seeing this?
-        <ChevronDown className={cn('size-3 transition-transform', why && 'rotate-180')} aria-hidden />
+        className="hit-44 flex items-center gap-1 self-start px-1 text-caption text-(--text-muted)">
+        <Info className="size-3.5" aria-hidden /> Why am I seeing this?
+        <ChevronDown className={cn('size-3.5 transition-transform', why && 'rotate-180')} aria-hidden />
       </button>
       {why && (
-        <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">
+        <p className="px-1 text-caption leading-snug text-(--text-muted)">
           {card.why ?? `${card.name} is a rabbt partner shown to people in its area.`} rabbt doesn't share anything about you with partners.
         </p>
       )}

@@ -43,29 +43,29 @@ export function QrSheet({ onClose, onScanned }: { onClose: () => void; onScanned
           <>
             {me ? <QrCode text={me.invite_link} size={232} label={`QR code to follow @${me.handle} on rabbt`} />
               : <div className="size-[232px] animate-pulse rounded-xl bg-(--bg-inset)" />}
-            {me && <p className="font-mono text-[0.9412rem] font-semibold text-(--brand)">@{me.handle}</p>}
-            <p className="max-w-xs text-center text-[0.7647rem] leading-snug text-(--text-secondary)">
+            {me && <p className="font-mono text-lead font-semibold text-(--brand)">@{me.handle}</p>}
+            <p className="max-w-xs text-center text-small leading-snug text-(--text-secondary)">
               A friend points their phone camera at this to follow you. It works for people already on rabbt.
             </p>
             <div className="flex w-full gap-2">
               <Button variant="default" className="h-11 flex-1 gap-1.5" disabled={!me} onClick={() => void copy()}>
-                {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} {copied ? 'Copied' : 'Copy link'}
+                {copied ? <Check className="size-5" aria-hidden /> : <Copy className="size-5" aria-hidden />} {copied ? 'Copied' : 'Copy link'}
               </Button>
               {canNativeShare() && (
                 <Button variant="default" className="h-11 flex-1 gap-1.5" disabled={!me}
                   onClick={() => me && void nativeShare('Follow me on rabbt', `Follow me on rabbt: @${me.handle}`, me.invite_link)}>
-                  <Share2 className="size-4" aria-hidden /> Share
+                  <Share2 className="size-5" aria-hidden /> Share
                 </Button>
               )}
             </div>
             {canScan && (
               <Button variant="primary" className="h-12 w-full gap-2" onClick={() => { setErr(null); setScan(true) }}>
-                <ScanLine className="size-5" aria-hidden /> Scan a friend&rsquo;s code
+                <ScanLine className="size-6" aria-hidden /> Scan a friend&rsquo;s code
               </Button>
             )}
           </>
         )}
-        {err && <p role="alert" className="text-center text-[0.7647rem] text-(--danger)">{err}</p>}
+        {err && <p role="alert" className="text-center text-small text-(--danger)">{err}</p>}
       </div>
     </Sheet>
   )
@@ -103,7 +103,7 @@ function Scanner({ onCode, onError }: { onCode: (code: string) => void; onError:
     <div className="relative w-full overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: '1 / 1' }}>
       <video ref={video} muted playsInline className="size-full object-cover" aria-label="Camera" />
       <span aria-hidden className="pointer-events-none absolute inset-[18%] rounded-2xl border-2 border-white/80" />
-      <p className="absolute inset-x-0 bottom-3 text-center text-[0.7647rem] font-medium text-white">Point at a rabbt QR code</p>
+      <p className="absolute inset-x-0 bottom-3 text-center text-small font-medium text-white">Point at a rabbt QR code</p>
     </div>
   )
 }

@@ -22,7 +22,7 @@ export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inb
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
-    <span className="min-w-5 rounded-full bg-(--accent) px-1.5 text-center text-[0.7059rem] font-semibold leading-5 text-(--on-fill)" aria-label={label}>{n}</span>
+    <span className="min-w-5 rounded-full bg-(--accent) px-1.5 text-center text-meta font-semibold leading-5 text-(--on-fill)" aria-label={label}>{n}</span>
   </span>
 )
 
@@ -39,15 +39,15 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         className="flex items-center gap-3.5 rounded-2xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
         <Avatar name={name} picture={me.profile.picture} photo={photoUrl(me.photo)} size={56} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-display text-[1.2941rem] leading-tight text-(--brand)">{name}</span>
-          <span className="block truncate text-[0.7647rem] text-(--text-muted)">
+          <span className="block truncate font-display text-title-md leading-tight text-(--brand)">{name}</span>
+          <span className="block truncate text-small text-(--text-muted)">
             {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set yet'}
           </span>
         </span>
         {progress && (
           <span className="flex shrink-0 flex-col items-center gap-0.5">
             <LevelBadge level={progress.level} size="md" />
-            <span className="max-w-20 truncate text-[0.6471rem] text-(--text-muted)">{progress.name}</span>
+            <span className="max-w-20 truncate text-caption text-(--text-muted)">{progress.name}</span>
           </span>
         )}
       </button>
@@ -112,7 +112,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
       </Group>
 
-      <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-1 pb-2 text-[0.7647rem] text-(--text-muted)">
+      <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-1 pb-2 text-small text-(--text-muted)">
         {([['privacy', 'Privacy'], ['terms', 'Terms'], ['security', 'Data & security']] as const).map(([slug, label], i) => (
           <span key={slug} className="flex items-center gap-1">
             {i > 0 && <span aria-hidden>·</span>}

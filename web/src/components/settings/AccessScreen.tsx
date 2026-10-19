@@ -16,7 +16,7 @@ const day = (t: number | null | undefined) =>
 
 const STATUS: Record<Invite['status'], string> = { active: 'Open', expired: 'Expired', full: 'Used up', revoked: 'Revoked' }
 
-const btn = 'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-[0.7647rem] font-medium'
+const btn = 'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-small font-medium'
 
 export function AccessScreen({ onClose }: { onClose: () => void }) {
   const [info, setInfo] = useState<AccessInfo | null>(null)
@@ -51,7 +51,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
   const onlyKey = !info.google && info.passkeys.length <= 1
   return (
     <Screen title="Sign-in and invites" onClose={onClose}>
-      {error && <p role="alert" className="rounded-xl bg-(--danger-subtle) px-3 py-2 text-[0.7647rem] text-(--danger)">{error}</p>}
+      {error && <p role="alert" className="rounded-xl bg-(--danger-subtle) px-3 py-2 text-small text-(--danger)">{error}</p>}
 
       <Group label="Passkeys" footer={info.google
         ? 'Add a passkey and you can sign in with your face, fingerprint or device PIN instead of Google.'
@@ -64,7 +64,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                 onClick={() => void run(p.id, () => removePasskey(p.id))}>Remove</button>
             ) : (
               <button type="button" className={btn + ' text-(--text-muted)'} aria-label={`Remove passkey ${p.name}`}
-                onClick={() => setConfirm(p.id)}><Trash2 className="size-4" aria-hidden /></button>
+                onClick={() => setConfirm(p.id)}><Trash2 className="size-5" aria-hidden /></button>
             )} />
         ))}
         {supportsPasskeys()
@@ -77,44 +77,44 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
         <Group label="Invite links" footer="Anyone with an open link can join until it expires or is used up. Revoke a link to close it.">
           {newLink ? (
             <div className="flex flex-col gap-2 px-4 py-3">
-              <p className="text-[0.8235rem] font-medium text-(--text)">Your new invite link</p>
-              <p className="break-all rounded-lg bg-(--bg-inset) px-3 py-2 font-mono text-[0.7059rem] text-(--text)">{newLink}</p>
-              <p className="text-[0.7059rem] text-(--text-muted)">Share it now: for safety rabbt keeps only a fingerprint of it and can't show it again.</p>
+              <p className="text-body font-medium text-(--text)">Your new invite link</p>
+              <p className="break-all rounded-lg bg-(--bg-inset) px-3 py-2 font-mono text-meta text-(--text)">{newLink}</p>
+              <p className="text-meta text-(--text-muted)">Share it now: for safety rabbt keeps only a fingerprint of it and can't show it again.</p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'}
-                  onClick={() => void shareLink(newLink).then(setCopied)}><Share2 className="size-4" aria-hidden />Share</button>
+                  onClick={() => void shareLink(newLink).then(setCopied)}><Share2 className="size-5" aria-hidden />Share</button>
                 <button type="button" className={btn + ' border border-(--border) text-(--text)'}
                   onClick={() => void copyLink(newLink).then(setCopied)}>
-                  {copied === 'copied' ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                  {copied === 'copied' ? <Check className="size-5" aria-hidden /> : <Copy className="size-5" aria-hidden />}
                   {copied === 'copied' ? 'Copied' : 'Copy'}
                 </button>
                 <button type="button" className={btn + ' text-(--text-muted)'} onClick={() => { setNewLink(null); setCopied(null) }}>Done</button>
               </div>
-              <p aria-live="polite" className="text-[0.7059rem] text-(--text-muted)">
+              <p aria-live="polite" className="text-meta text-(--text-muted)">
                 {copied === 'failed' ? "Couldn't copy. Press and hold the link to copy it." : copied === 'shared' ? 'Shared.' : ''}
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3 px-4 py-3">
               <div className="flex gap-3">
-                <label htmlFor={usesId} className="flex flex-1 flex-col gap-1 text-[0.7059rem] text-(--text-muted)">
+                <label htmlFor={usesId} className="flex flex-1 flex-col gap-1 text-meta text-(--text-muted)">
                   People who can join
                   <select id={usesId} value={uses} onChange={(e) => setUses(Number(e.target.value))}
-                    className="h-11 rounded-md border border-input bg-transparent px-2 text-base text-(--text)">
+                    className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">
                     {[1, 5, 10, 25].map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </label>
-                <label htmlFor={daysId} className="flex flex-1 flex-col gap-1 text-[0.7059rem] text-(--text-muted)">
+                <label htmlFor={daysId} className="flex flex-1 flex-col gap-1 text-meta text-(--text-muted)">
                   Open for
                   <select id={daysId} value={days} onChange={(e) => setDays(Number(e.target.value))}
-                    className="h-11 rounded-md border border-input bg-transparent px-2 text-base text-(--text)">
+                    className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">
                     {[1, 7, 14, 30].map((n) => <option key={n} value={n}>{n} day{n === 1 ? '' : 's'}</option>)}
                   </select>
                 </label>
               </div>
               <button type="button" className={btn + ' bg-(--accent) text-(--on-fill)'} disabled={!!busy}
                 onClick={() => void run('invite', async () => { const r = await createInvite(uses, days); setNewLink(r.url); setCopied(null) })}>
-                <UserPlus className="size-4" aria-hidden />{busy === 'invite' ? 'Creating…' : 'Create invite link'}
+                <UserPlus className="size-5" aria-hidden />{busy === 'invite' ? 'Creating…' : 'Create invite link'}
               </button>
             </div>
           )}
@@ -125,7 +125,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                 + (inv.joined.length ? ` · ${inv.joined.map((j) => j.name || 'someone').join(', ')}` : '')}
               trailing={inv.status === 'active' ? (
                 <button type="button" className={btn + ' text-(--danger)'} disabled={!!busy} aria-label="Revoke this invite link"
-                  onClick={() => void run(inv.id, () => revokeInvite(inv.id))}><Ban className="size-4" aria-hidden />Revoke</button>
+                  onClick={() => void run(inv.id, () => revokeInvite(inv.id))}><Ban className="size-5" aria-hidden />Revoke</button>
               ) : undefined} />
           ))}
         </Group>
@@ -142,7 +142,7 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                   onClick={() => void run(m.user_id, () => removeMember(m.user_id))}>Remove</button>
               ) : (
                 <button type="button" className={btn + ' text-(--text-muted)'} aria-label={`Remove ${m.name || 'member'}`}
-                  onClick={() => setConfirm(m.user_id)}><UserMinus className="size-4" aria-hidden /></button>
+                  onClick={() => setConfirm(m.user_id)}><UserMinus className="size-5" aria-hidden /></button>
               )} />
           ))}
         </Group>

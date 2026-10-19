@@ -37,11 +37,11 @@ export function DocScreen({ slug, onBack, onClose }: { slug: LegalSlug; onBack?:
         : !doc ? <RowsSkeleton label="Loading" count={6} />
         : (
           <article className="rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
-            <p className="mb-3 text-[0.7647rem] text-(--text-muted)">
+            <p className="mb-3 text-small text-(--text-muted)">
               Operated by {doc.operator} · updated {doc.updated} · version {doc.version}
             </p>
             <LegalDocBody html={doc.html} />
-            <p className="mt-4 text-[0.7647rem]">
+            <p className="mt-4 text-small">
               <a className="underline" href={`/app/${slug}`} target="_blank" rel="noopener">Open the printable page</a>
             </p>
           </article>
@@ -63,20 +63,20 @@ function DeleteAccount({ onCancel }: { onCancel: () => void }) {
   }
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-(--danger) bg-(--bg-surface) p-4" aria-labelledby="del-h">
-      <h2 id="del-h" className="text-[1rem] font-semibold text-(--danger)">Delete your account</h2>
-      <ul className="list-disc pl-5 text-[0.8235rem] leading-snug text-(--text-secondary)">
+      <h2 id="del-h" className="text-lead font-semibold text-(--danger)">Delete your account</h2>
+      <ul className="list-disc pl-5 text-body leading-snug text-(--text-secondary)">
         <li>Everything in your account is deleted: profile, plan, events, chats, workouts feedback, posts, photos and settings.</li>
         <li>Garmin, Oura, Google Calendar and TrainingPeaks are disconnected (their own copies stay with them).</li>
         <li>Follows, clubs, buddy profile and share links are removed. Messages you sent stay in other people's chats, without your name or photo.</li>
         <li>Encrypted backups expire on their own within 12 months. This can't be undone.</li>
       </ul>
-      <label className="flex flex-col gap-1 text-[0.8235rem] text-(--text)">
+      <label className="flex flex-col gap-1 text-body text-(--text)">
         Type DELETE to confirm
         <input value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="characters" autoComplete="off"
           spellCheck={false} aria-describedby={err ? 'del-err' : undefined}
-          className="min-h-11 rounded-lg border border-(--border) bg-(--bg) px-3 text-[1rem]" />
+          className="min-h-11 rounded-lg border border-(--border) bg-(--bg) px-3 text-lead" />
       </label>
-      {err && <p id="del-err" role="alert" className="text-[0.8235rem] text-(--danger)">{err}</p>}
+      {err && <p id="del-err" role="alert" className="text-body text-(--danger)">{err}</p>}
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
         <Button variant="destructive" className="flex-1" disabled={typed.trim() !== 'DELETE' || busy} onClick={() => void go()}>
@@ -139,7 +139,7 @@ export function PrivacyLegalScreen({ me, onClose, onOpenSettings, onOpenConnecti
       </Group>
 
       {me.owner && (
-        <p className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">
+        <p className="px-4 text-small leading-snug text-(--text-muted)">
           Owner only: these pages were written from what the code does. Have a lawyer review them before a public launch.
           The owner account can't be deleted from the app.
         </p>

@@ -23,15 +23,15 @@ function ActivityRow({ a, imperial }: { a: DoneActivity; imperial: boolean }) {
   const Icon = SPORT_ICON[a.sport] ?? Check
   const body = (
     <>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-4" aria-hidden /></span>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" aria-hidden /></span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{a.name}</span>
-        <span className="block text-[0.7059rem] text-(--text-muted)">
+        <span className="block truncate text-body font-medium text-(--text)">{a.name}</span>
+        <span className="block text-meta text-(--text-muted)">
           {[a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : '', a.minutes ? fmtMinutes(a.minutes) : ''].filter(Boolean).join(' · ')}
           {a.id != null && ' · see every detail'}
         </span>
       </span>
-      {a.id != null && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+      {a.id != null && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
     </>
   )
   return a.id != null ? (
@@ -49,30 +49,30 @@ export function PlanDaySheet({ day, imperial, onClose, onAsk }: {
   return (
     <Sheet title={fmtDay(day.date, { weekday: 'long', month: 'long', day: 'numeric' })} onClose={onClose} portal
       bodyClassName="settings flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-      {!work.length && !day.extra.length && <p className="text-[0.8235rem] text-(--text-secondary)">Rest day. Nothing planned.</p>}
+      {!work.length && !day.extra.length && <p className="text-body text-(--text-secondary)">Rest day. Nothing planned.</p>}
       {work.map((s, i) => {
         const Icon = SPORT_ICON[s.sport] ?? Check
         const st = STATUS[s.status] ?? STATUS.planned!
         return (
           <section key={i} aria-label={s.title} className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
             <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" aria-hidden /></span>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-6" aria-hidden /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.9412rem] font-semibold leading-snug text-(--text)">{s.title}</span>
-                {s.minutes ? <span className="block text-[0.7647rem] text-(--text-muted)">{fmtMinutes(s.minutes)}</span> : null}
+                <span className="block text-lead font-semibold leading-snug text-(--text)">{s.title}</span>
+                {s.minutes ? <span className="block text-small text-(--text-muted)">{fmtMinutes(s.minutes)}</span> : null}
               </span>
-              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[0.6471rem] font-semibold', st.cls)}>{st.label}</span>
+              <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold', st.cls)}>{st.label}</span>
             </div>
-            {s.detail && <p className="m-0 whitespace-pre-line text-[0.8235rem] leading-relaxed text-(--text-secondary)">{s.detail}</p>}
+            {s.detail && <p className="m-0 whitespace-pre-line text-body leading-relaxed text-(--text-secondary)">{s.detail}</p>}
             {s.activity && <ActivityRow a={s.activity} imperial={imperial} />}
             <div className="flex flex-wrap gap-2">
               {s.id && (
-                <Button variant="primary" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => { onClose(); openWorkout(s.id!, day.date) }}>
+                <Button variant="primary" className="h-11 gap-1.5 px-4 text-body" onClick={() => { onClose(); openWorkout(s.id!, day.date) }}>
                   Open full workout
                 </Button>
               )}
-              <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={() => { onClose(); onAsk(day, s) }}>
-                <MessageCircle className="size-4" aria-hidden /> Ask rabbt
+              <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={() => { onClose(); onAsk(day, s) }}>
+                <MessageCircle className="size-5" aria-hidden /> Ask rabbt
               </Button>
             </div>
           </section>
@@ -80,17 +80,17 @@ export function PlanDaySheet({ day, imperial, onClose, onAsk }: {
       })}
       {day.extra.length > 0 && (
         <section aria-label="Also from Garmin" className="flex flex-col gap-2">
-          <p className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Also from Garmin</p>
+          <p className="px-1 text-caption font-semibold text-(--text-muted)">Also from Garmin</p>
           {day.extra.map((a, i) => <ActivityRow key={a.id ?? i} a={a} imperial={imperial} />)}
         </section>
       )}
       {fromFile && (
         <section className="flex flex-col gap-2 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) p-4">
-          <p className="m-0 flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--accent)"><BookOpen className="size-4" aria-hidden /> Want the full workout?</p>
-          <p className="m-0 text-[0.7647rem] leading-snug text-(--text-secondary)">
+          <p className="m-0 flex items-center gap-1.5 text-body font-semibold text-(--accent)"><BookOpen className="size-5" aria-hidden /> Want the full workout?</p>
+          <p className="m-0 text-small leading-snug text-(--text-secondary)">
             This day comes from your plan file, so rabbt only has its description. Turn the plan into full workouts to get heart-rate zones, pace, cadence and steps for every day, plus moving days and sending to your watch.
           </p>
-          <Button variant="primary" className="h-11 text-[0.8235rem]" onClick={() => { onClose(); startPlanConversion() }}>
+          <Button variant="primary" className="h-11 text-body" onClick={() => { onClose(); startPlanConversion() }}>
             Get full workouts (zones, pace, cadence)
           </Button>
         </section>

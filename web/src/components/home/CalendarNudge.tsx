@@ -23,9 +23,9 @@ export function CalendarNudge({ refreshKey }: { refreshKey?: number }) {
   return (
     <button type="button" onClick={() => openPlanDay(rec.date)}
       className="mx-4 mt-3 flex min-h-12 w-[calc(100%-2rem)] shrink-0 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:opacity-80">
-      <CalendarClock className="size-4 shrink-0 text-(--accent)" aria-hidden />
-      <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text)">{rec.title}</span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <CalendarClock className="size-5 shrink-0 text-(--accent)" aria-hidden />
+      <span className="min-w-0 flex-1 text-body text-(--text)">{rec.title}</span>
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }

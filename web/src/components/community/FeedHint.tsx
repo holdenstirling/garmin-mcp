@@ -38,23 +38,23 @@ export function FeedHint({ onInvite, onShared }: { onInvite?: () => void; onShar
   const Icon = why === 'no_watch' ? Watch : why === 'private' ? Share2 : Info
   return (
     <div role="note" className="flex items-start gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
-      <Icon className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
+      <Icon className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">{line}</p>
+        <p className="text-small leading-snug text-(--text-secondary)">{line}</p>
         <div className="flex flex-wrap gap-x-4">
           {why === 'no_watch' && (
-            <button type="button" onClick={() => requestConnect('garmin')} className="min-h-11 text-[0.7647rem] font-semibold text-(--accent)">
+            <button type="button" onClick={() => requestConnect('garmin')} className="min-h-11 text-small font-semibold text-(--accent)">
               Connect your watch
             </button>
           )}
           {why === 'private' && (
-            <button type="button" disabled={busy} onClick={() => void turnOn()} className="min-h-11 text-[0.7647rem] font-semibold text-(--accent) disabled:opacity-60">
+            <button type="button" disabled={busy} onClick={() => void turnOn()} className="min-h-11 text-small font-semibold text-(--accent) disabled:opacity-60">
               Share my workouts
             </button>
           )}
           {onInvite && (
-            <button type="button" onClick={onInvite} className="inline-flex min-h-11 items-center gap-1 text-[0.7647rem] font-semibold text-(--accent)">
-              <UserPlus className="size-3.5" aria-hidden /> Find friends
+            <button type="button" onClick={onInvite} className="inline-flex min-h-11 items-center gap-1 text-small font-semibold text-(--accent)">
+              <UserPlus className="size-4" aria-hidden /> Find friends
             </button>
           )}
         </div>

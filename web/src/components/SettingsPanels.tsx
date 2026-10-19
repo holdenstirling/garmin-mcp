@@ -125,7 +125,7 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
       <Group label="Account">
         <Row icon={<Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />}
           title={me.profile.name || me.user_id} subtitle="Signed in with Google" />
-        <Row title={<span className="inline-flex items-center gap-1.5"><LogOut className="size-4" /> Sign out</span>}
+        <Row title={<span className="inline-flex items-center gap-1.5"><LogOut className="size-5" /> Sign out</span>}
           danger center onClick={() => void signOut().finally(onChange)} />
       </Group>
     </div>

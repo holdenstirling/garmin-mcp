@@ -53,38 +53,38 @@ export function ThreadView({ api, threadId, me, otherName, draft }: {
   return (
     <div className="flex flex-col gap-3">
       {(t?.session_id || t?.event_id) && (
-        <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-[0.7647rem] text-(--text-secondary)">
-          {t.event_id ? <Flag className="size-4 text-(--accent)" /> : <Dumbbell className="size-4 text-(--accent)" />} About: {t.title}
+        <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2 text-small text-(--text-secondary)">
+          {t.event_id ? <Flag className="size-5 text-(--accent)" /> : <Dumbbell className="size-5 text-(--accent)" />} About: {t.title}
         </div>
       )}
       <div className="flex min-h-[200px] flex-col gap-2">
         {!t && !pollError && <RabbitLoader className="py-12" label="Loading messages…" />}
         {t && t.messages.length === 0 && (
-          <p className="py-8 text-center text-[0.7647rem] text-(--text-muted)">No messages yet. Say hi to {otherName}.</p>
+          <p className="py-8 text-center text-small text-(--text-muted)">No messages yet. Say hi to {otherName}.</p>
         )}
         {t?.messages.map((m) => {
           const mine = m.from === me
           return (
             <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
-              <div className={cn('max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[0.8824rem] leading-snug',
+              <div className={cn('max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-body-lg leading-snug',
                 mine ? 'rounded-br-sm bg-(--accent) text-(--on-fill) dark:bg-(--accent-subtle) dark:text-(--text)' : 'rounded-bl-sm border border-(--border) bg-(--bg-surface) text-(--text)')}>
                 {m.text}
               </div>
-              <span className="mt-0.5 px-1 text-[0.6471rem] text-(--text-muted)">{mine ? 'You' : otherName} · {timeAgo(m.ts)}</span>
+              <span className="mt-0.5 px-1 text-caption text-(--text-muted)">{mine ? 'You' : otherName} · {timeAgo(m.ts)}</span>
             </div>
           )
         })}
         <div ref={end} />
       </div>
       {queued && <SaveStatus state="queued" />}
-      {(error ?? pollError) && <p className="text-[0.7647rem] text-(--danger)" role="alert">{error ?? pollError}</p>}
+      {(error ?? pollError) && <p className="text-small text-(--danger)" role="alert">{error ?? pollError}</p>}
       <div className="sticky bottom-0 flex items-end gap-2 bg-(--bg) pb-1 pt-1">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={4000}
           placeholder={`Message ${otherName}`} aria-label="Message"
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void send() }}
-          className="min-h-[44px] flex-1 resize-none rounded-xl border border-input bg-transparent px-3 py-2 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          className="min-h-[44px] flex-1 resize-none rounded-xl border border-input bg-transparent px-3 py-2 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
         <Button variant="primary" size="icon" className="size-11 shrink-0" aria-label="Send" loading={busy}
-          disabled={!text.trim()} onClick={() => void send()}><Send className="size-4" /></Button>
+          disabled={!text.trim()} onClick={() => void send()}><Send className="size-5" /></Button>
       </div>
     </div>
   )

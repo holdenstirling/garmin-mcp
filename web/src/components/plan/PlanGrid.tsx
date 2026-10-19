@@ -82,9 +82,9 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
 
   const footer = (
     <>
-      <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={weeks.length >= 60}
-        onClick={() => update((ws) => [...ws, newWeek()])}><Plus className="size-4" /> Add week</Button>
-      <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} disabled={!rows.length} onClick={() => void preview()}>Preview</Button>
+      <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" disabled={weeks.length >= 60}
+        onClick={() => update((ws) => [...ws, newWeek()])}><Plus className="size-5" /> Add week</Button>
+      <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={!rows.length} onClick={() => void preview()}>Preview</Button>
     </>
   )
   return (
@@ -97,7 +97,7 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
             <input type="date" className={inputCls} value={start} onChange={(e) => e.target.value && setStart(mondayOf(e.target.value))} />
           </Field>
         </Card>
-        <p className="-mt-2 px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="-mt-2 px-1 text-meta leading-snug text-(--text-muted)">
           Templates are sized to about {draft.templates.hours} h a week (their usual hours).
           <InfoTip label="Templates" text="Base: mostly easy with one long session per sport. Build: adds threshold work, about 10% more time. Recovery: about two thirds of the time, all easy." />
         </p>
@@ -108,8 +108,8 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
             <Card key={w.key}>
               <div className="flex items-center gap-2 border-b border-(--border) px-4 py-2">
                 <span className="min-w-0 flex-1">
-                  <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Week {wi + 1} · {fmtDuration(weekMinutes(w)) || 'empty'}</span>
-                  <span className="block text-[0.7059rem] text-(--text-muted)">{short(ws)} – {short(addDays(ws, 6))}</span>
+                  <span className="block text-caption font-semibold text-(--text-muted)">Week {wi + 1} · {fmtDuration(weekMinutes(w)) || 'empty'}</span>
+                  <span className="block text-meta text-(--text-muted)">{short(ws)} – {short(addDays(ws, 6))}</span>
                 </span>
                 <IconBtn label="Move week up" disabled={wi === 0} onClick={() => update((xs) => { [xs[wi - 1], xs[wi]] = [xs[wi]!, xs[wi - 1]!]; return xs })}><ArrowUp /></IconBtn>
                 <IconBtn label="Move week down" disabled={wi === weeks.length - 1} onClick={() => update((xs) => { [xs[wi], xs[wi + 1]] = [xs[wi + 1]!, xs[wi]!]; return xs })}><ArrowDown /></IconBtn>
@@ -123,17 +123,17 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-1.5 border-b border-(--border) px-3 py-2">
-                <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" onClick={() => setClip(cloneDays(w))}><Copy className="size-3.5" /> Copy</Button>
-                <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" disabled={!clip}
-                  onClick={() => clip && update((xs) => { xs[wi] = { ...xs[wi]!, days: clip.map((d) => d.map((s) => ({ ...s }))) }; return xs })}><ClipboardPaste className="size-3.5" /> Paste</Button>
+                <Button variant="ghost" className="h-11 gap-1 px-2 text-meta" onClick={() => setClip(cloneDays(w))}><Copy className="size-4" /> Copy</Button>
+                <Button variant="ghost" className="h-11 gap-1 px-2 text-meta" disabled={!clip}
+                  onClick={() => clip && update((xs) => { xs[wi] = { ...xs[wi]!, days: clip.map((d) => d.map((s) => ({ ...s }))) }; return xs })}><ClipboardPaste className="size-4" /> Paste</Button>
                 <span className="ml-auto flex items-center gap-1">
-                  <button type="button" className="hit-44 rounded px-1.5 text-[0.7647rem] text-(--text-muted)" aria-label="Fewer repeats"
+                  <button type="button" className="hit-44 rounded px-1.5 text-small text-(--text-muted)" aria-label="Fewer repeats"
                     onClick={() => setRepeat((r) => ({ ...r, [w.key]: Math.max(1, n - 1) }))}>−</button>
-                  <Button variant="default" className="h-11 gap-1 px-2.5 text-[0.7059rem]" disabled={weeks.length + n > 60}
+                  <Button variant="default" className="h-11 gap-1 px-2.5 text-meta" disabled={weeks.length + n > 60}
                     onClick={() => update((xs) => [...xs.slice(0, wi + 1), ...Array.from({ length: n }, () => newWeek(cloneDays(w))), ...xs.slice(wi + 1)])}>
-                    <Repeat className="size-3.5" /> Repeat ×{n}
+                    <Repeat className="size-4" /> Repeat ×{n}
                   </Button>
-                  <button type="button" className="hit-44 rounded px-1.5 text-[0.7647rem] text-(--text-muted)" aria-label="More repeats"
+                  <button type="button" className="hit-44 rounded px-1.5 text-small text-(--text-muted)" aria-label="More repeats"
                     onClick={() => setRepeat((r) => ({ ...r, [w.key]: Math.min(12, n + 1) }))}>+</button>
                 </span>
               </div>
@@ -142,28 +142,28 @@ export function GridBuilder({ api, onClose, onPreview }: { api: ImportApi; onClo
                   <div key={di} className="px-3 py-1.5">
                     <div className="flex items-center gap-2">
                       <span className="w-10 shrink-0 text-center leading-tight">
-                        <span className="block text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{DAY_NAMES[di]}</span>
-                        <span className="block text-[0.7059rem] text-(--text-secondary)">{fmtDay(addDays(ws, di), { day: 'numeric' })}</span>
+                        <span className="block text-caption font-semibold uppercase text-(--text-muted)">{DAY_NAMES[di]}</span>
+                        <span className="block text-meta text-(--text-secondary)">{fmtDay(addDays(ws, di), { day: 'numeric' })}</span>
                       </span>
                       <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 py-1">
                         {d.map((s, i) => {
                           const Icon = SPORT_ICON[s.sport]
                           return (
                             <button key={i} type="button" onClick={() => setEditing({ w: wi, d: di, i })}
-                              className={cn('flex min-h-11 items-center gap-1.5 rounded-lg border px-2 text-left text-[0.7059rem]',
+                              className={cn('flex min-h-11 items-center gap-1.5 rounded-lg border px-2 text-left text-meta',
                                 editing?.w === wi && editing.d === di && editing.i === i ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-elevated)')}>
-                              <Icon className="size-3.5 shrink-0 text-(--accent)" />
+                              <Icon className="size-4 shrink-0 text-(--accent)" />
                               <span className="max-w-[9rem] truncate text-(--text)">{s.title || SPORT_LABEL[s.sport]}</span>
                               {s.minutes ? <span className="text-(--text-muted)">{fmtDuration(s.minutes)}</span> : null}
                             </button>
                           )
                         })}
-                        {!d.length && <span className="self-center text-[0.7059rem] text-(--text-muted)">Rest</span>}
+                        {!d.length && <span className="self-center text-meta text-(--text-muted)">Rest</span>}
                       </div>
                       {d.length < 4 && (
                         <button type="button" aria-label={`Add a workout on ${DAY_NAMES[di]}`} onClick={() => setEditing({ w: wi, d: di, i: null })}
                           className="hit-44 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-(--border-strong) text-(--text-muted)">
-                          <Plus className="size-3.5" />
+                          <Plus className="size-4" />
                         </button>
                       )}
                     </div>
@@ -214,11 +214,11 @@ function QuickAdd({ sports, initial, onSave, onCancel, onDelete }: {
       <input className={inputCls} aria-label="Notes" placeholder="Notes (optional): intervals, targets, cues" maxLength={400}
         value={s.notes} onChange={(e) => setS({ ...s, notes: e.target.value })} />
       <div className="flex gap-2">
-        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-[0.7647rem]" aria-label="Delete workout" onClick={onDelete}><Trash2 className="size-4" /></Button>}
-        <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" className="h-11 flex-1 gap-1 text-[0.7647rem]" disabled={!isRace && !s.minutes}
+        {onDelete && <Button variant="ghostDanger" className="h-11 px-3 text-small" aria-label="Delete workout" onClick={onDelete}><Trash2 className="size-5" /></Button>}
+        <Button variant="default" className="h-11 flex-1 text-small" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" className="h-11 flex-1 gap-1 text-small" disabled={!isRace && !s.minutes}
           onClick={() => onSave({ ...s, title: s.title.trim(), minutes: isRace ? null : s.minutes })}>
-          {initial ? <><Pencil className="size-3.5" /> Save</> : <><Check className="size-3.5" /> Add</>}
+          {initial ? <><Pencil className="size-4" /> Save</> : <><Check className="size-4" /> Add</>}
         </Button>
       </div>
     </div>

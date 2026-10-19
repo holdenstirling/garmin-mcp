@@ -145,7 +145,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
     <div role="tablist" aria-label="Explore view" className="mx-auto mt-1.5 flex w-full max-w-xl gap-4 px-1">
       {([['foryou', 'For you'], ['search', 'Search']] as const).map(([m, l]) => (
         <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-          className={cn('min-h-11 border-b-2 text-[0.8235rem] font-medium transition-colors',
+          className={cn('min-h-11 border-b-2 text-body font-medium transition-colors',
             mode === m ? 'border-(--accent) text-(--text)' : 'border-transparent text-(--text-muted)')}>{l}</button>
       ))}
     </div>
@@ -154,11 +154,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
   const bar = (
     <div className="mx-auto mt-2.5 flex w-full max-w-xl flex-col gap-2">
       <div className="flex gap-2">
-        <input className={cn(inputCls, 'h-9 min-w-0 flex-1 text-[0.8235rem]')} value={f.near} maxLength={5}
+        <input className={cn(inputCls, 'h-9 min-w-0 flex-1 text-body')} value={f.near} maxLength={5}
           inputMode="text" autoComplete="postal-code" aria-label="Zip code or state" placeholder="Zip or state (e.g. 80204, CO)"
           onChange={(e) => set({ near: e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 5) })} />
         <select aria-label="Radius" disabled={!zip} value={f.radius}
-          className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-[0.8235rem] text-(--text) disabled:opacity-45"
+          className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text) disabled:opacity-45"
           onChange={(e) => set({ radius: Number(e.target.value) })}>
           {RADII.map((r) => <option key={r} value={r}>{r} mi</option>)}
         </select>
@@ -174,7 +174,7 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
           const on = f.types.includes(c)
           return (
             <Chip key={c} selected={on} onClick={() => set({ types: on ? f.types.filter((x) => x !== c) : [...f.types, c] })}>
-              <span className="inline-flex items-center gap-1 whitespace-nowrap"><Icon className="size-3.5" />{CATEGORY_LABEL[c]}</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap"><Icon className="size-4" />{CATEGORY_LABEL[c]}</span>
             </Chip>
           )
         })}
@@ -192,13 +192,13 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
 
   const askCta = (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-(--border) px-4 py-4 text-center">
-      <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="text-small leading-snug text-(--text-secondary)">
         Not seeing your race? Big ones like Ironman or Leadville aren't listed here.
       </p>
-      <Button variant="default" className="h-9 gap-1.5 text-[0.7647rem]" loading={webBusy} onClick={() => void askWeb()}>
+      <Button variant="default" className="h-9 gap-1.5 text-small" loading={webBusy} onClick={() => void askWeb()}>
         <RabbitLogo size={16} current /> Ask rabbt to search the web
       </Button>
-      {webError && <p className="text-[0.7059rem] text-(--danger)" role="alert">{webError}</p>}
+      {webError && <p className="text-meta text-(--danger)" role="alert">{webError}</p>}
     </div>
   )
 
@@ -215,11 +215,11 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             explore={<LetRabbitExplore onOpen={(r) => setDetail(r)} onAsk={onAsk} imperial={imperial} />} />
         ) : <>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
           <input className={cn(inputCls, 'pl-9')} value={f.q} maxLength={60} placeholder="Search by race name"
             aria-label="Search by race name" onChange={(e) => set({ q: e.target.value })} />
         </div>
-        {!nearOk(f.near) && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
+        {!nearOk(f.near) && <p className="px-1 text-meta text-(--text-muted)">Enter a 5-digit zip code or a two-letter state.</p>}
         {wide !== null && !f.near.trim() && (
           <LocationPrompt title={wide || 'Upcoming races across the US'} onChanged={() => {
             exploreDefaults().then((d) => { setHome(d.near); if (d.near) set({ near: d.near }) }, () => {})
@@ -238,26 +238,26 @@ export function ExploreScreen({ onClose, onAsk, onChanged, imperial = true }: {
             action={web ? undefined : 'Ask rabbt to search the web'} onAction={() => void askWeb()} />
         ) : (
           <div className={cn('flex flex-col gap-5 transition-opacity', loading && 'opacity-50')} aria-busy={loading}>
-            {capped && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
+            {capped && <p className="px-1 text-meta text-(--text-muted)">Showing the first few kinds you picked. Pick fewer for a complete list.</p>}
             {groups.map((g) => (
               <section key={g.month} className="flex flex-col gap-2">
-                <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{g.month}</h2>
+                <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{g.month}</h2>
                 {g.races.map((r, i) => <HopIn key={r.id} index={i}><RaceCard r={r} onClick={() => setDetail(r)} /></HopIn>)}
               </section>
             ))}
             {hasMore && (
-              <Button variant="default" className="h-10 text-[0.7647rem]" loading={loadingMore}
+              <Button variant="default" className="h-10 text-small" loading={loadingMore}
                 onClick={() => filters && run(filters, page + 1)}>Load more</Button>
             )}
           </div>
         )}
         {web && (
           <section className="flex flex-col gap-2">
-            <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Found on the web by rabbt</h2>
+            <h2 className="px-1 text-caption font-semibold text-(--accent)">Found on the web by rabbt</h2>
             {web.length === 0 ? (
-              <p className="px-1 text-[0.7647rem] text-(--text-muted)">rabbt didn't find anything else that fits. Try different filters.</p>
+              <p className="px-1 text-small text-(--text-muted)">rabbt didn't find anything else that fits. Try different filters.</p>
             ) : web.map((r) => <RaceCard key={r.id} r={r} onClick={() => setDetail(r)} />)}
-            {web.length > 0 && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Found online. Check dates and details on the official site.</p>}
+            {web.length > 0 && <p className="px-1 text-caption text-(--text-muted)">Found online. Check dates and details on the official site.</p>}
           </section>
         )}
         {filters !== null && askCta}
@@ -288,27 +288,27 @@ function RaceCard({ r, onClick }: { r: ExploreRace; onClick: () => void }) {
           className="size-11 shrink-0 rounded-xl border border-(--border) bg-white object-contain p-0.5" />
       ) : (
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)">
-          <Icon className="size-5" />
+          <Icon className="size-6" />
         </span>
       )}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="line-clamp-2 text-[0.9412rem] font-medium leading-snug text-(--text)">{r.name}</span>
-        <span className="truncate text-[0.7059rem] text-(--text-muted)">
+        <span className="line-clamp-2 text-lead font-medium leading-snug text-(--text)">{r.name}</span>
+        <span className="truncate text-meta text-(--text-muted)">
           {r.ongoing ? `Ongoing${r.end_date ? ` · through ${raceDate(r.end_date)}` : ''}` : raceDate(r.date)}{placeOf(r) ? ` · ${placeOf(r)}` : ''}
         </span>
         {(dists.length > 0 || r.registration_open || fee || hint) && (
           <span className="flex flex-wrap items-center gap-1">
             {dists.map((d) => (
-              <span key={d} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">{d}</span>
+              <span key={d} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">{d}</span>
             ))}
-            {more > 0 && <span className="text-[0.6471rem] text-(--text-muted)">+{more}</span>}
-            {hint && <span className={cn('rounded-full px-2 py-0.5 text-[0.6471rem] font-medium', HINT_CLS[hint.tone])}>{hint.label}</span>}
+            {more > 0 && <span className="text-caption text-(--text-muted)">+{more}</span>}
+            {hint && <span className={cn('rounded-full px-2 py-0.5 text-caption font-medium', HINT_CLS[hint.tone])}>{hint.label}</span>}
           </span>
         )}
         {(r as RaceX).estimate && <EstimateLine e={(r as RaceX).estimate!} />}
         {(r.registration_open || fee) && (
-          <span className="flex items-center gap-2 text-[0.6471rem]">
-            {r.registration_open && <span className="font-semibold uppercase tracking-wider text-(--accent)">Registration open</span>}
+          <span className="flex items-center gap-2 text-caption">
+            {r.registration_open && <span className="font-semibold text-(--accent)">Registration open</span>}
             {fee && <span className="text-(--text-muted)">from {fee}</span>}
           </span>
         )}

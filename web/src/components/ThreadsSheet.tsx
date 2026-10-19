@@ -38,7 +38,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       header={
         <div className="min-w-0">
           <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with rabbt'}</h2>
-          <button type="button" className="hit-44 max-w-full truncate text-left text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
+          <button type="button" className="hit-44 max-w-full truncate text-left text-meta text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
             {goal ? `Training for ${goal.title}${goalCountdown(goal) ? ` · ${goalCountdown(goal)}` : ''}` : 'Set what you’re training for'}
           </button>
         </div>
@@ -46,7 +46,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       actions={
         <button className="modal-close" aria-label={people ? 'New message' : 'New chat with rabbt'} title={people ? 'New message' : 'New chat'}
           onClick={people ? onNewDm : onNew}>
-          <MessageSquarePlus className="size-4" />
+          <MessageSquarePlus className="size-5" />
         </button>
       }
       below={onView && (
@@ -63,12 +63,12 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
             <div key={t.id} role="button" tabIndex={0} onClick={() => onSelect(t.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(t.id) } }}
               className={`group flex w-full cursor-pointer items-start gap-2 border-b border-border/40 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${activeId === t.id ? 'bg-muted' : ''}`}>
-              {t.kind === 'coach' && <Pin className="mt-0.5 size-3.5 shrink-0 text-(--accent)" />}
+              {t.kind === 'coach' && <Pin className="mt-0.5 size-4 shrink-0 text-(--accent)" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
+                <p className="truncate text-body font-medium">
                   {t.kind === 'coach' ? 'rabbt' : t.title || 'New chat'}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-meta text-muted-foreground">
                   {t.kind === 'coach' ? 'Briefs, workout notes and chats you started' : formatRelativeTime(t.updated)}
                 </p>
               </div>
@@ -76,7 +76,7 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
                 <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t) }}
                   className="hit-44 mt-0.5 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
                   title="Delete" aria-label="Delete chat">
-                  <Trash2 className="size-3.5" />
+                  <Trash2 className="size-4" />
                 </button>
               )}
             </div>
@@ -94,8 +94,8 @@ function ConfirmDelete({ title, onCancel, onConfirm }: { title: string; onCancel
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
       <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="del-chat-title" aria-describedby="del-chat-desc"
         className="relative z-10 mx-4 w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">
-        <h3 id="del-chat-title" className="text-sm font-semibold text-foreground">Delete chat?</h3>
-        <p id="del-chat-desc" className="mt-1.5 text-sm text-muted-foreground">
+        <h3 id="del-chat-title" className="text-body font-semibold text-foreground">Delete chat?</h3>
+        <p id="del-chat-desc" className="mt-1.5 text-body text-muted-foreground">
           <span className="font-medium text-foreground">{title}</span> will be permanently deleted.
         </p>
         <div className="mt-4 flex justify-end gap-2">

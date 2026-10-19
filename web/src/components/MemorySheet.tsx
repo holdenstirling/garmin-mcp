@@ -11,7 +11,7 @@ import { attachmentUrl, formatFileSize } from '@/lib/attachments'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import { Sheet } from '@/components/ui/Sheet'
 
-const area = 'min-h-[96px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+const area = 'min-h-[96px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-lead focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 function Section({ title, onEdit, onTell, children }: {
   title: string; onEdit?: () => void; onTell?: () => void; children: React.ReactNode
@@ -21,13 +21,13 @@ function Section({ title, onEdit, onTell, children }: {
       <div className="flex items-center gap-1">
         <h3 className="flex-1 font-medium">{title}</h3>
         {onTell && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[0.6471rem]" onClick={onTell}>
-            <MessageCircle className="size-3.5" /> Tell rabbt
+          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-caption" onClick={onTell}>
+            <MessageCircle className="size-4" /> Tell rabbt
           </Button>
         )}
         {onEdit && (
           <Button variant="ghost" size="icon" className="size-7" aria-label={`Edit ${title}`} onClick={onEdit}>
-            <Pencil className="size-3.5" />
+            <Pencil className="size-4" />
           </Button>
         )}
       </div>
@@ -37,7 +37,7 @@ function Section({ title, onEdit, onTell, children }: {
 }
 
 const Empty = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-sm text-(--text-muted)">{children}</p>
+  <p className="text-body text-(--text-muted)">{children}</p>
 )
 
 const ATHLETE_LABELS: [keyof Athlete, string][] = [
@@ -76,7 +76,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
 
   return (
     <Sheet title="What rabbt knows" onClose={onClose} closing={closing} onDismissed={onDismissed}>
-          <p className="text-xs text-(--text-muted)">
+          <p className="text-meta text-(--text-muted)">
             rabbt fills this in as you chat. Tell it about changes anytime, or fix anything here.
           </p>
 
@@ -84,14 +84,14 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             onEdit={goal ? () => setEditing('goal') : undefined}>
             {editing === 'goal' && goal ? (
               <div className="flex flex-col gap-2">
-                <Input aria-label="Title" className="text-base" placeholder="Title" value={g.title} onChange={(e) => setG({ ...g, title: e.target.value })} />
-                <Input aria-label="Race date" className="text-base" type="date" value={g.date ?? ''} onChange={(e) => setG({ ...g, date: e.target.value })} />
-                <Input aria-label="Target" className="text-base" placeholder="Target" value={g.target} onChange={(e) => setG({ ...g, target: e.target.value })} />
+                <Input aria-label="Title" className="text-lead" placeholder="Title" value={g.title} onChange={(e) => setG({ ...g, title: e.target.value })} />
+                <Input aria-label="Race date" className="text-lead" type="date" value={g.date ?? ''} onChange={(e) => setG({ ...g, date: e.target.value })} />
+                <Input aria-label="Target" className="text-lead" placeholder="Target" value={g.target} onChange={(e) => setG({ ...g, target: e.target.value })} />
                 <textarea aria-label="Priorities or worries" className={area} placeholder="Priorities or worries" value={g.priorities} onChange={(e) => setG({ ...g, priorities: e.target.value })} />
                 {saveBar(() => void save(() => updateGoal(goal.id, { ...g, date: g.date || null })))}
               </div>
             ) : goal ? (
-              <div className="text-sm">
+              <div className="text-body">
                 <p className="font-medium">{goal.title}</p>
                 {(goal.event || goal.distance) && goal.event !== goal.title && <p className="text-(--text-secondary)">{[goal.event, goal.distance].filter(Boolean).join(' · ')}</p>}
                 {goal.date && <p className="text-(--text-secondary)">{new Date(`${goal.date}T12:00:00`).toLocaleDateString([], { dateStyle: 'medium' })}{countdown ? ` · ${countdown}` : ''}</p>}
@@ -107,7 +107,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             <Section title="Your plan" onEdit={goal.plan ? () => setEditing('plan') : undefined}>
               {editing === 'plan' ? (
                 <>
-                  <textarea aria-label="Your plan" className={`${area} min-h-[220px] font-mono text-[0.7647rem]`} value={plan} onChange={(e) => setPlan(e.target.value)} />
+                  <textarea aria-label="Your plan" className={`${area} min-h-[220px] font-mono text-small`} value={plan} onChange={(e) => setPlan(e.target.value)} />
                   {saveBar(() => void save(() => updateGoal(goal.id, { plan })))}
                 </>
               ) : goal.plan ? (
@@ -118,7 +118,7 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <Empty>No plan yet. Upload it (a PDF or screenshots) or just describe it to rabbt.</Empty>
               )}
               {goal.plan && editing !== 'plan' && goal.plan.length > 280 && (
-                <button className="hit-44 self-start text-xs text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
+                <button className="hit-44 self-start text-meta text-(--accent)" onClick={() => setShowFullPlan((v) => !v)}>
                   {showFullPlan ? 'Show less' : 'Show all'}
                 </button>
               )}
@@ -126,10 +126,10 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                 <div className="flex flex-wrap gap-1.5">
                   {goal.plan_files!.map((f) => (
                     <a key={f.id} href={attachmentUrl(f.id)} target="_blank" rel="noopener"
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary px-2 py-1 text-xs">
-                      <FileText className="size-3 text-accent" />
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-secondary px-2 py-1 text-meta">
+                      <FileText className="size-3.5 text-accent" />
                       <span className="max-w-[140px] truncate">{f.name}</span>
-                      <span className="font-mono text-[0.6471rem] text-muted-foreground">{formatFileSize(f.size)}</span>
+                      <span className="font-mono text-caption text-muted-foreground">{formatFileSize(f.size)}</span>
                     </a>
                   ))}
                 </div>
@@ -144,20 +144,20 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
             onEdit={() => setEditing('about')}>
             {editing === 'about' ? (
               <div className="flex flex-col gap-2">
-                <Input aria-label="Experience" className="text-base" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
+                <Input aria-label="Experience" className="text-lead" placeholder="Experience" value={a.experience ?? ''} onChange={(e) => setA({ ...a, experience: e.target.value })} />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input aria-label="Hours / week" className="text-base" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
-                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-base" value={a.units ?? 'imperial'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
+                  <Input aria-label="Hours / week" className="text-lead" type="number" inputMode="decimal" placeholder="Hours / week" value={a.weekly_hours ?? ''} onChange={(e) => setA({ ...a, weekly_hours: e.target.value === '' ? null : Number(e.target.value) })} />
+                  <select aria-label="Units" className="h-9 rounded-md border border-input bg-transparent px-2 text-lead" value={a.units ?? 'imperial'} onChange={(e) => setA({ ...a, units: e.target.value as Athlete['units'] })}>
                     <option value="metric">Metric</option><option value="imperial">Imperial</option>
                   </select>
                 </div>
-                <Input aria-label="Training days" className="text-base" placeholder="Training days" value={a.training_days ?? ''} onChange={(e) => setA({ ...a, training_days: e.target.value })} />
+                <Input aria-label="Training days" className="text-lead" placeholder="Training days" value={a.training_days ?? ''} onChange={(e) => setA({ ...a, training_days: e.target.value })} />
                 <textarea aria-label="Injuries or limits" className={area} placeholder="Injuries or limits" value={a.injuries ?? ''} onChange={(e) => setA({ ...a, injuries: e.target.value })} />
                 <textarea aria-label="Preferences" className={area} placeholder="Preferences" value={a.preferences ?? ''} onChange={(e) => setA({ ...a, preferences: e.target.value })} />
                 {saveBar(() => void save(() => putAthlete(a)))}
               </div>
             ) : athleteRows.length ? (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-body">
                 {athleteRows.map(([k, label]) => (
                   <div key={k} className="contents">
                     <dt className="text-(--text-muted)">{label}</dt><dd className="text-(--text-secondary)">{String(athlete[k])}</dd>
@@ -177,16 +177,16 @@ export function MemorySheet({ goal, athlete, onChanged, onTell, onUploadPlan, on
                   {saveBar(() => void save(() => updateGoal(goal.id, { notes })))}
                 </>
               ) : goal.notes ? (
-                <p className="whitespace-pre-wrap text-sm text-(--text-secondary)">{goal.notes}</p>
+                <p className="whitespace-pre-wrap text-body text-(--text-secondary)">{goal.notes}</p>
               ) : (
                 <Empty>What rabbt learns during this block (how workouts felt, niggles, what works).</Empty>
               )}
             </Section>
           )}
 
-          {msg && <p className="text-xs text-(--danger)">{msg}</p>}
+          {msg && <p className="text-meta text-(--danger)">{msg}</p>}
           {goal && (
-            <button className="hit-44 mt-1 text-xs text-muted-foreground underline"
+            <button className="hit-44 mt-1 text-meta text-muted-foreground underline"
               onClick={() => onTell("I'm starting a new goal: ")}>
               Training for something new? Tell rabbt
             </button>

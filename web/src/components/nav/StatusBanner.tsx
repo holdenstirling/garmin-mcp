@@ -41,7 +41,7 @@ function SetupRing({ done, total }: { done: number; total: number }) {
         <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
           className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - frac)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="font-mono text-[0.6471rem] font-medium leading-none tabular-nums">{done}/{total}</span>
+      <span className="font-mono text-caption font-medium leading-none tabular-nums">{done}/{total}</span>
     </span>
   )
 }
@@ -54,13 +54,13 @@ export function StatusBanner({ banner, onTap, onDismiss }: { banner: Banner; onT
       role={banner.kind === 'error' ? 'alert' : undefined}>
       <button type="button" onClick={onTap} className="flex h-full min-w-0 flex-1 items-center gap-2 pl-3 pr-2 text-left"
         aria-label={banner.kind === 'quest' ? `Setup ${banner.done} of ${banner.total}. Next: ${banner.title}` : undefined}>
-        {banner.kind === 'quest' ? <SetupRing done={banner.done} total={banner.total} /> : <Icon className="size-4 shrink-0" />}
-        <span className="min-w-0 flex-1 truncate text-[0.7647rem] font-medium">{text(banner)}</span>
-        {!onDismiss && <ChevronRight className="size-4 shrink-0" />}
+        {banner.kind === 'quest' ? <SetupRing done={banner.done} total={banner.total} /> : <Icon className="size-5 shrink-0" />}
+        <span className="min-w-0 flex-1 truncate text-small font-medium">{text(banner)}</span>
+        {!onDismiss && <ChevronRight className="size-5 shrink-0" />}
       </button>
       {onDismiss && (
         <button type="button" onClick={onDismiss} aria-label="Dismiss" className="flex size-11 shrink-0 items-center justify-center opacity-70">
-          <X className="size-4" />
+          <X className="size-5" />
         </button>
       )}
     </div>

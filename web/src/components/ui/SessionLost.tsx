@@ -58,14 +58,14 @@ export function SessionLost({ userId, onBack }: { userId: string; onBack: () => 
       <div className="absolute inset-0 bg-black/50" />
       <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="session-lost-title"
         className="relative z-10 mx-4 flex w-full max-w-sm flex-col items-center gap-3 rounded-lg border bg-background p-5 text-center shadow-lg">
-        <h3 id="session-lost-title" className="text-[0.9412rem] font-semibold text-(--text)">Sign in again to keep going</h3>
-        <p className="text-[0.8235rem] text-(--text-muted)">
+        <h3 id="session-lost-title" className="text-lead font-semibold text-(--text)">Sign in again to keep going</h3>
+        <p className="text-body text-(--text-muted)">
           You were signed out. What you typed is still here, and anything not saved yet goes through once you're back.
         </p>
         <Button variant="primary" className="h-11 min-w-[200px]" onClick={google} loading={checking}>Sign in with Google</Button>
         <PasskeySignIn onSignedIn={() => void check()} />
-        {msg && <p role="status" className="text-[0.7647rem] text-(--text-muted)">{msg}</p>}
-        <button type="button" className="hit-44 text-[0.7647rem] underline text-(--text-muted)" onClick={() => void check()}>
+        {msg && <p role="status" className="text-small text-(--text-muted)">{msg}</p>}
+        <button type="button" className="hit-44 text-small underline text-(--text-muted)" onClick={() => void check()}>
           I've signed in
         </button>
       </div>

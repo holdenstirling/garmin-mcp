@@ -122,10 +122,10 @@
 .fx-today__nap { position: absolute; right: 38px; top: 6px; display: flex; align-items: flex-end; color: var(--text-muted); }
 .fx-today__curl { display: block; transform-origin: 50% 100%; animation: fx-curl 1200ms ease-in-out both; }
 .fx-today__curl .rabbit-logo { color: var(--text-muted); }
-.fx-today__z { display: block; font-size: 0.7059rem; font-weight: 600; line-height: 1; opacity: 0;
+.fx-today__z { display: block; font-size: 12px; font-weight: 600; line-height: 1; opacity: 0;
   animation: fx-z 900ms ease-out both; }
-.fx-today__z--2 { font-size: 0.6471rem; }
-.fx-today__z--3 { font-size: 0.6471rem; }
+.fx-today__z--2 { font-size: 11px; }
+.fx-today__z--3 { font-size: 11px; }
 @keyframes fx-curl {
   0% { transform: scale(0.6, 0.6) rotate(-20deg); opacity: 0; }
   25% { transform: scale(0.95, 0.85) rotate(-8deg); opacity: 1; }

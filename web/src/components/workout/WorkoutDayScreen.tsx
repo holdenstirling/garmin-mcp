@@ -92,13 +92,13 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
       footer={s ? (
         <>
           {s.id && ahead && status !== 'done' && (
-            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" onClick={() => setMoving(s.id)}>
-              <CalendarClock className="size-4" aria-hidden /> Move
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={() => setMoving(s.id)}>
+              <CalendarClock className="size-5" aria-hidden /> Move
             </Button>
           )}
           {s.id && (
-            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" onClick={edit} aria-label="Edit this workout in your schedule">
-              <Pencil className="size-4" aria-hidden /> Edit
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" onClick={edit} aria-label="Edit this workout in your schedule">
+              <Pencil className="size-5" aria-hidden /> Edit
             </Button>
           )}
           {s.id && data && (
@@ -106,14 +106,14 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
               onSendInRabbit={() => shareToFriends({ type: 'workout', ref: { kind: 'session', id: s.id!, date: data.date }, label: s.title })} />
           )}
           {s.id && status === 'done' ? (
-            <Button variant="primary" className="h-11 min-w-0 flex-1 px-2 text-[0.8235rem]"
+            <Button variant="primary" className="h-11 min-w-0 flex-1 px-2 text-body"
               onClick={() => feedbackRef.current?.scrollIntoView({ behavior: smooth(), block: 'start' })}>
               How did it go?
             </Button>
           ) : onAsk && (
-            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-[0.8235rem]" aria-label="Ask rabbt"
+            <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" aria-label="Ask rabbt"
               onClick={() => onAsk(`About my ${s.title} on ${when}: `)}>
-              <MessageCircle className="size-4 shrink-0" aria-hidden /><span className="max-[359px]:hidden">Ask rabbt</span><span className="min-[360px]:hidden">Ask</span>
+              <MessageCircle className="size-5 shrink-0" aria-hidden /><span className="max-[359px]:hidden">Ask rabbt</span><span className="min-[360px]:hidden">Ask</span>
             </Button>
           )}
         </>
@@ -121,7 +121,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
       {!data && !error && <WorkoutSkeleton />}
       {error && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <p className="text-[0.8235rem] text-(--text-muted)">{error}</p>
+          <p className="text-body text-(--text-muted)">{error}</p>
           <Button variant="default" onClick={load}>Try again</Button>
         </div>
       )}
@@ -133,7 +133,7 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
             return (
               <button key={o.id ?? o.title} type="button" role="tab" aria-selected={on} disabled={!o.id}
                 onClick={() => o.id && setSid(o.id)} className={cn('plan-chip shrink-0 gap-1.5', on && 'plan-chip--on')}>
-                <I className="size-3.5" />{o.title}{o.status === 'done' && <Check className="size-3.5" />}
+                <I className="size-4" />{o.title}{o.status === 'done' && <Check className="size-4" />}
               </button>
             )
           })}
@@ -153,11 +153,11 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
       )}
       {data && (
         <Related items={[
-          { key: 'day', icon: <CalendarDays className="size-4" />, label: 'This day in your plan', sub: fmtDay(data.date, { weekday: 'long', month: 'short', day: 'numeric' }),
+          { key: 'day', icon: <CalendarDays className="size-5" />, label: 'This day in your plan', sub: fmtDay(data.date, { weekday: 'long', month: 'short', day: 'numeric' }),
             onClick: () => { close(); window.setTimeout(() => openPlanDay(data.date), 220) } },
-          { key: 'act', icon: <Activity className="size-4" />, label: 'The recorded workout', sub: s?.activity?.name,
+          { key: 'act', icon: <Activity className="size-5" />, label: 'The recorded workout', sub: s?.activity?.name,
             onClick: (s?.activity?.id ?? c?.activity?.id) ? () => openActivity(String(s?.activity?.id ?? c?.activity?.id)) : null },
-          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask rabbt about it',
+          { key: 'ask', icon: <MessageCircle className="size-5" />, label: 'Ask rabbt about it',
             onClick: onAsk && s ? () => onAsk(`About my ${s.title} on ${when}: `) : null },
         ]} link={s?.id ? { kind: 'workout', id: s.id, date: data.date } : undefined} />
       )}
@@ -200,16 +200,16 @@ export function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bik
           <Icon className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-[1.4118rem] leading-tight text-(--brand)">{title}</h3>
-          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{meta}</p>
+          <h3 className="font-display text-title-lg leading-tight text-(--brand)">{title}</h3>
+          <p className="text-caption font-semibold text-(--accent)">{meta}</p>
         </div>
         {chip && (
-          <span className={cn('flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.6471rem] font-semibold', chip.cls)}>
-            {chip.label === 'Done' && <Check className="size-3.5" strokeWidth={3} />}{chip.label}
+          <span className={cn('flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-caption font-semibold', chip.cls)}>
+            {chip.label === 'Done' && <Check className="size-4" strokeWidth={3} />}{chip.label}
           </span>
         )}
       </div>
-      {line && <p className="text-[0.8824rem] leading-snug text-(--text)">{line}</p>}
+      {line && <p className="text-body-lg leading-snug text-(--text)">{line}</p>}
     </div>
   )
 }
@@ -217,8 +217,8 @@ export function Hero({ icon: Icon, title, meta, line, chip }: { icon: typeof Bik
 export function SectionCard({ title, icon: Icon, children }: { title: string; icon?: typeof Bike; children: React.ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface) pb-3">
-      <h4 className="flex items-center gap-1.5 px-3.5 pt-3 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-        {Icon && <Icon className="size-3.5" aria-hidden />}{title}
+      <h4 className="flex items-center gap-1.5 px-3.5 pt-3 text-caption font-semibold text-(--text-muted)">
+        {Icon && <Icon className="size-4" aria-hidden />}{title}
       </h4>
       {children}
     </section>
@@ -240,12 +240,12 @@ function LearnMore({ s }: { s: WorkoutSession }) {
   return (
     <div className="rounded-xl border border-(--border) bg-(--bg-surface)">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex min-h-12 w-full items-center gap-2 px-3.5 text-left text-[0.7647rem] font-medium text-(--accent)">
-        <BookOpen className="size-4" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
-        <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
+        className="flex min-h-12 w-full items-center gap-2 px-3.5 text-left text-small font-medium text-(--accent)">
+        <BookOpen className="size-5" aria-hidden /> <span className="flex-1">Learn more about this workout</span>
+        <ChevronDown className={cn('size-5 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
-        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 text-[0.7647rem] leading-snug">
+        <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 text-small leading-snug">
           {k && (
             <dl className="flex flex-col gap-1.5">
               <div><dt className="font-semibold text-(--text)">What it is</dt><dd className="text-(--text-secondary)">{k.what}</dd></div>
@@ -283,17 +283,17 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       <Hero icon={sportIcon(s.sport)} title={s.title} meta={meta || 'Workout'} line={note?.why || s.purpose}
         chip={STATUS[status] ?? STATUS.planned} />
       {s.time && (
-        <p className="-mt-1 flex items-center gap-1.5 px-1 text-[0.7647rem] text-(--text-secondary)">
-          <Clock className="size-3.5" aria-hidden /> Starts at {fmtTime(s.time)}
+        <p className="-mt-1 flex items-center gap-1.5 px-1 text-small text-(--text-secondary)">
+          <Clock className="size-4" aria-hidden /> Starts at {fmtTime(s.time)}
         </p>
       )}
       {c?.adjusted && (
-        <p className="flex items-start gap-2 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-3 py-2 text-[0.7647rem] leading-snug text-(--accent)">
+        <p className="flex items-start gap-2 rounded-xl border border-(--accent)/25 bg-(--accent-subtle) px-3 py-2 text-small leading-snug text-(--accent)">
           <RabbitLogo size={14} current className="mt-0.5 shrink-0" /> {c.adjusted}
         </p>
       )}
       {isToday && d.readiness && (
-        <p className={cn('rounded-xl border px-3 py-2 text-[0.7647rem] leading-snug',
+        <p className={cn('rounded-xl border px-3 py-2 text-small leading-snug',
           d.readiness.tone === 'easy' || d.readiness.tone === 'rest'
             ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)'
             : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)')}>
@@ -302,19 +302,19 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       )}
       {status === 'missed' && (
         <div className="flex flex-col gap-2 rounded-xl border border-(--danger)/25 bg-(--danger)/5 px-3.5 py-3">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--danger)"><TriangleAlert className="size-4" aria-hidden /> Missed</p>
-          {c?.missed?.why && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">{c.missed.why}</p>}
+          <p className="flex items-center gap-1.5 text-body font-semibold text-(--danger)"><TriangleAlert className="size-5" aria-hidden /> Missed</p>
+          {c?.missed?.why && <p className="text-small leading-snug text-(--text-secondary)">{c.missed.why}</p>}
           {s.id && c?.missed?.this_week && (
-            <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-[0.8235rem]" onClick={onFix}>
-              <Wrench className="size-4" aria-hidden /> Fix my week
+            <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-body" onClick={onFix}>
+              <Wrench className="size-5" aria-hidden /> Fix my week
             </Button>
           )}
         </div>
       )}
       {c?.went && <HowItWent w={c.went} imperial={imperial} sport={s.sport} />}
       {c?.activity?.id != null && (
-        <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-[0.8235rem]" onClick={() => openActivity(c.activity!.id!)}>
-          <Activity className="size-4" aria-hidden /> See your recorded workout
+        <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-body" onClick={() => openActivity(c.activity!.id!)}>
+          <Activity className="size-5" aria-hidden /> See your recorded workout
         </Button>
       )}
 
@@ -330,7 +330,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         <>
           {s.main_targets.length > 0 && <TargetChips targets={s.main_targets} label="Main target" />}
           {s.sections.length > 0 && <Timeline sections={s.sections} />}
-          {s.sections.length === 0 && s.detail && <Card><Field label="The workout"><p className="text-[0.8235rem] text-(--text)">{s.detail}</p></Field></Card>}
+          {s.sections.length === 0 && s.detail && <Card><Field label="The workout"><p className="text-body text-(--text)">{s.detail}</p></Field></Card>}
         </>
       )}
       {s.exercises.length > 0 && (
@@ -338,7 +338,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
           <Field label="Exercises">
             <ul className="flex flex-col gap-1.5">
               {[...s.exercises, ...s.prehab].map((e) => (
-                <li key={e.name} className="flex gap-2 text-[0.8235rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+                <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
               ))}
             </ul>
           </Field>
@@ -346,15 +346,15 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       )}
       {note && (note.how || note.cues) ? (note.source === 'coach' ? (
         <SectionCard title="From your coach" icon={Lightbulb}>
-          <div className="flex flex-col gap-1.5 px-3.5 pt-2 text-[0.8235rem] leading-snug">
+          <div className="flex flex-col gap-1.5 px-3.5 pt-2 text-body leading-snug">
             {note.how && <p className="text-(--text)">{note.how}</p>}
             {note.cues && <p className="text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
           </div>
         </SectionCard>
       ) : (
         <RabbitNote title="How to do it">
-          {note.how && <p className="m-0 text-[0.8235rem] text-(--text)">{note.how}</p>}
-          {note.cues && <p className="m-0 text-[0.8235rem] text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
+          {note.how && <p className="m-0 text-body text-(--text)">{note.how}</p>}
+          {note.cues && <p className="m-0 text-body text-(--text-secondary)"><b className="font-semibold">Cues:</b> {note.cues}</p>}
         </RabbitNote>
       )) : <CueCard cue={s.cue} />}
       {s.id && ahead && status !== 'done' && <WeatherSection sessionId={s.id} imperial={imperial} onShown={setWxShown} />}
@@ -364,10 +364,10 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
           {s.gear.map((g) => (
             <div key={g.id} className={cn('flex items-center gap-3 rounded-xl border px-3 py-2.5',
               g.warning ? 'border-(--warning)/30 bg-(--warning-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-              {g.kind === 'bike' ? <Bike className="size-4 shrink-0 text-(--accent)" /> : <Footprints className="size-4 shrink-0 text-(--accent)" />}
+              {g.kind === 'bike' ? <Bike className="size-5 shrink-0 text-(--accent)" /> : <Footprints className="size-5 shrink-0 text-(--accent)" />}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{g.name}</span>
-                <span className={cn('block text-[0.6471rem]', g.warning ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
+                <span className="block truncate text-body font-medium text-(--text)">{g.name}</span>
+                <span className={cn('block text-caption', g.warning ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
                   {g.warning ?? `${g.total_label} so far`}
                 </span>
               </span>
@@ -381,7 +381,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
         : <WatchRow s={s} onSynced={onSynced} />)}
       <LearnMore s={s} />
       {cal?.pace_source === 'default' && s.sport === 'run' && ahead && (
-        <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="px-1 text-meta leading-snug text-(--text-muted)">
           Paces start from a typical runner. Add your threshold pace in Me › Training profile, or keep training and rabbt will learn it from your runs.
         </p>
       )}
@@ -457,24 +457,24 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
   const form = editing || (got !== null && !ck)
   return (
     <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">How did it go?</h4>
+      <h4 className="text-caption font-semibold text-(--text-muted)">How did it go?</h4>
       {got === null && <div className="skeleton h-[120px] rounded-lg" aria-hidden />}
       {ck && !editing && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {checkinChips(ck).map((x) => (
-              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-[0.7059rem] font-medium',
+              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-meta font-medium',
                 x.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--border) text-(--text)')}>{x.label}</span>
             ))}
           </div>
-          {ck.text && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">“{ck.text}”</p>}
-          <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => setEditing(true)}>Add another note</button>
+          {ck.text && <p className="text-small leading-snug text-(--text-secondary)">“{ck.text}”</p>}
+          <button type="button" className="hit-44 self-start text-small font-medium text-(--accent)" onClick={() => setEditing(true)}>Add another note</button>
         </div>
       )}
       {form && (
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="flex items-baseline justify-between text-[0.7647rem] text-(--text)">
+            <span className="flex items-baseline justify-between text-small text-(--text)">
               <span>Effort (RPE)</span>
               <span className="font-mono font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe}/10 · {RPE_WORD[rpe]}</span>
             </span>
@@ -491,26 +491,26 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
           </div>
           <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 600))} rows={2} placeholder="Anything else? Legs, sleep, weather… (optional)"
             aria-label="Note about this workout"
-            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-body text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button ref={saveBtn} variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void save()}>Save</Button>
-            {editing && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={() => setEditing(false)}>Cancel</Button>}
-            {onVoice && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={onVoice}>Say it instead</Button>}
+            <Button ref={saveBtn} variant="primary" className="h-11 flex-1 text-body" loading={busy} onClick={() => void save()}>Save</Button>
+            {editing && <Button variant="ghost" className="h-11 px-3 text-body" onClick={() => setEditing(false)}>Cancel</Button>}
+            {onVoice && <Button variant="ghost" className="h-11 px-3 text-body" onClick={onVoice}>Say it instead</Button>}
           </div>
         </div>
       )}
       {fb && (
         <div aria-live="polite">
           <RabbitNote title="rabbt's feedback" className={fb.tone === 'ease' || fb.tone === 'care' ? TONE[fb.tone] : undefined}>
-            <p className="m-0 text-[0.8235rem] font-semibold text-(--text)">{fb.headline}</p>
+            <p className="m-0 text-body font-semibold text-(--text)">{fb.headline}</p>
             {fb.lines.map((l) => <p key={l} className="m-0 text-(--text-secondary)"><RabbitInline text={l} /></p>)}
           </RabbitNote>
         </div>
       )}
       {onAsk && (ck || c?.went) && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={askMore}>
-          <MessageCircle className="size-4" aria-hidden /> Ask rabbt for more feedback
+        <Button variant="default" className="h-11 gap-1.5 text-body" onClick={askMore}>
+          <MessageCircle className="size-5" aria-hidden /> Ask rabbt for more feedback
         </Button>
       )}
     </section>
@@ -520,7 +520,7 @@ function FeedbackCard({ s, c, date, imperial, onAsk, onVoice }: {
 function TargetChips({ targets, label }: { targets: Target[]; label?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && <span className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>}
+      {label && <span className="px-1 text-caption font-semibold text-(--text-muted)">{label}</span>}
       <div className="flex flex-wrap gap-2">
         {targets.map((t) => <BigChip key={t.kind + t.label} t={t} />)}
       </div>
@@ -532,7 +532,7 @@ function BigChip({ t, small }: { t: Target; small?: boolean }) {
   return (
     <span className={cn('inline-flex items-baseline gap-1 rounded-lg font-display leading-none',
       t.kind === 'hr' ? 'bg-(--bg-elevated) text-(--text)' : 'bg-(--accent-subtle) text-(--accent)',
-      small ? 'px-2 py-1 text-[0.9412rem]' : 'px-3 py-2 text-[1.2941rem]')}>
+      small ? 'px-2 py-1 text-lead' : 'px-3 py-2 text-title-md')}>
       {t.label}
     </span>
   )
@@ -550,8 +550,8 @@ function Timeline({ sections }: { sections: WSection[] }) {
           </span>
           <div className="min-w-0 flex-1 pb-1">
             <p className="flex items-baseline justify-between gap-2">
-              <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{sec.name}</span>
-              <span className="text-[0.7059rem] text-(--text-muted)">{Number.isInteger(sec.minutes) ? fmtDuration(sec.minutes) : fmtMin(sec.minutes)}</span>
+              <span className="text-caption font-semibold text-(--accent)">{sec.name}</span>
+              <span className="text-meta text-(--text-muted)">{Number.isInteger(sec.minutes) ? fmtDuration(sec.minutes) : fmtMin(sec.minutes)}</span>
             </p>
             <div className="mt-1.5 flex flex-col gap-2">{sec.steps.map((st, j) => <StepRow key={j} s={st} />)}</div>
           </div>
@@ -565,8 +565,8 @@ function StepRow({ s }: { s: WStep }) {
   if (s.type === 'repeat') {
     return (
       <div className="rounded-xl border border-(--accent)/30 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
-          <Repeat className="size-3.5" /> {s.reps} times
+        <span className="flex items-center gap-1.5 text-caption font-semibold text-(--accent)">
+          <Repeat className="size-4" /> {s.reps} times
         </span>
         <div className="mt-2 flex flex-col gap-2">{s.steps.map((x, i) => <StepRow key={i} s={x} />)}</div>
       </div>
@@ -577,9 +577,9 @@ function StepRow({ s }: { s: WStep }) {
     <div className={cn('flex flex-col gap-1.5 rounded-xl border px-3 py-2.5',
       hard ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
       <p className="flex items-baseline gap-2">
-        <span className="font-display text-[1.1765rem] leading-none text-(--text)">{s.amount}</span>
-        <span className="text-[0.7647rem] text-(--text-secondary)">{s.label}</span>
-        <span className="ml-auto text-[0.6471rem] text-(--text-muted)">Z{s.zone} {s.zone_name}</span>
+        <span className="font-display text-title leading-none text-(--text)">{s.amount}</span>
+        <span className="text-small text-(--text-secondary)">{s.label}</span>
+        <span className="ml-auto text-caption text-(--text-muted)">Z{s.zone} {s.zone_name}</span>
       </p>
       <div className="flex flex-wrap gap-1.5">{s.targets.map((t) => <BigChip key={t.kind + t.label} t={t} small />)}</div>
     </div>
@@ -589,8 +589,8 @@ function StepRow({ s }: { s: WStep }) {
 function CueCard({ cue }: { cue: string }) {
   return (
     <div className="flex items-start gap-2.5 rounded-xl border border-(--brand)/20 bg-(--bg-surface) px-3 py-2.5">
-      <Lightbulb className="mt-0.5 size-4 shrink-0 text-(--brand)" />
-      <p className="text-[0.8235rem] leading-snug text-(--text)"><b className="font-semibold">Key cue:</b> {cue}</p>
+      <Lightbulb className="mt-0.5 size-5 shrink-0 text-(--brand)" />
+      <p className="text-body leading-snug text-(--text)"><b className="font-semibold">Key cue:</b> {cue}</p>
     </div>
   )
 }
@@ -599,18 +599,18 @@ function FuelCard({ s }: { s: WorkoutSession }) {
   if (s.sport === 'rest' || s.sport === 'strength') return null
   return (
     <div className="flex items-start gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
-      <Utensils className="mt-0.5 size-4 shrink-0 text-(--accent)" />
+      <Utensils className="mt-0.5 size-5 shrink-0 text-(--accent)" />
       {s.fuel ? (
         <div className="min-w-0 flex-1">
-          <p className="text-[0.8235rem] text-(--text)">
-            <b className="font-display text-[1.0588rem]">{s.fuel.carbs_g_per_h} g</b> carbs/h
+          <p className="text-body text-(--text)">
+            <b className="font-display text-title-sm">{s.fuel.carbs_g_per_h} g</b> carbs/h
             {s.fuel.total_carbs_g != null && <span className="text-(--text-muted)"> · ≈{s.fuel.total_carbs_g} g total</span>}
             {s.fuel.fluid_ml_per_h && <span className="text-(--text-muted)"> · {s.fuel.fluid_ml_per_h} ml/h</span>}
           </p>
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{s.fuel.note}</p>
+          <p className="text-meta leading-snug text-(--text-muted)">{s.fuel.note}</p>
         </div>
       ) : (
-        <p className="text-[0.8235rem] text-(--text-secondary)">Water is enough for this one. Eat normally beforehand.</p>
+        <p className="text-body text-(--text-secondary)">Water is enough for this one. Eat normally beforehand.</p>
       )}
     </div>
   )
@@ -620,18 +620,18 @@ function WeatherChip({ w, imperial }: { w: Weather; imperial: boolean }) {
   const wind = w.wind_kmh != null ? fmtSpeed(w.wind_kmh, imperial) : null
   return (
     <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5">
-      <CloudSun className="size-4 shrink-0 text-(--accent)" />
+      <CloudSun className="size-5 shrink-0 text-(--accent)" />
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8235rem] text-(--text)">
+        <span className="block text-body text-(--text)">
           <b className="font-semibold">{fmtTemp(w.temp_c, imperial)}</b> {w.summary}
           {w.feels_c != null && w.temp_c != null && Math.abs(w.feels_c - w.temp_c) >= 3 && <span className="text-(--text-muted)"> · feels {fmtTemp(w.feels_c, imperial)}</span>}
         </span>
-        <span className="block truncate text-[0.6471rem] text-(--text-muted)">
+        <span className="block truncate text-caption text-(--text-muted)">
           {w.place}{w.rain_pct != null && w.rain_pct >= 20 ? ` · ${w.rain_pct}% rain next 3 h` : ''}
           {w.next.length > 0 && ` · ${w.next.map((h) => `${h.time} ${fmtTemp(h.temp_c, imperial)}`).join(', ')}`}
         </span>
       </span>
-      {wind && <span className="flex shrink-0 items-center gap-1 text-[0.6471rem] text-(--text-muted)"><Wind className="size-3.5" />{wind}</span>}
+      {wind && <span className="flex shrink-0 items-center gap-1 text-caption text-(--text-muted)"><Wind className="size-4" />{wind}</span>}
     </div>
   )
 }
@@ -641,8 +641,8 @@ function WatchRow({ s, onSynced }: { s: WorkoutSession; onSynced: () => void }) 
   const [err, setErr] = useState<string | null>(null)
   if (s.garmin.on_watch) {
     return (
-      <p className="flex items-center gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2.5 text-[0.8235rem] font-medium text-(--accent)">
-        <Watch className="size-4" /> On your watch <Check className="size-4" strokeWidth={3} />
+      <p className="flex items-center gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2.5 text-body font-medium text-(--accent)">
+        <Watch className="size-5" /> On your watch <Check className="size-5" strokeWidth={3} />
       </p>
     )
   }
@@ -652,10 +652,10 @@ function WatchRow({ s, onSynced }: { s: WorkoutSession; onSynced: () => void }) 
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void send()}>
-        <Watch className="size-4" /> Send to watch
+      <Button variant="primary" className="h-11 gap-1.5 text-body" loading={busy} onClick={() => void send()}>
+        <Watch className="size-5" /> Send to watch
       </Button>
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">{err ?? 'Sends this week\'s plan to Garmin. Sync your watch to pick it up.'}</p>
+      <p className="px-1 text-caption text-(--text-muted)">{err ?? 'Sends this week\'s plan to Garmin. Sync your watch to pick it up.'}</p>
     </div>
   )
 }
@@ -682,9 +682,9 @@ function Checklist({ day, sport }: { day: string; sport: string }) {
                   className="flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left active:opacity-70">
                   <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors',
                     on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border)')}>
-                    {on && <Check className="size-3.5" strokeWidth={3} />}
+                    {on && <Check className="size-4" strokeWidth={3} />}
                   </span>
-                  <span className={cn('text-[0.8235rem]', on ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{t}</span>
+                  <span className={cn('text-body', on ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{t}</span>
                 </button>
               </li>
             )

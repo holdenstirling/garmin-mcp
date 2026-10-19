@@ -87,7 +87,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
           <Row icon={<Icon><Clock /></Icon>} title="Brief time"
             trailing={<input type="time" value={s.brief_time} step={300} aria-label="Brief time"
               onChange={(e) => changeTime(e.target.value)} onBlur={flushTime}
-              className="rounded-lg bg-(--bg-inset) px-2.5 py-1 text-right text-[0.9412rem] text-(--text) [font-family:var(--font)]" />} />
+              className="rounded-lg bg-(--bg-inset) px-2.5 py-1 text-right text-lead text-(--text) [font-family:var(--font)]" />} />
         )}
         <Row icon={<Icon><CalendarCheck /></Icon>} title="Weekly recap (Sundays)" subtitle="Your week in review at 6 pm"
           trailing={<Switch label="Weekly recap" checked={s.recap_enabled !== false} onChange={(v) => void save({ recap_enabled: v })} />} />
@@ -109,7 +109,7 @@ export function CoachingSettings({ me, onChange, onDevDone }: {
           {lab && <MotionLab />}
         </Group>
       )}
-      {msg && <p className="-mt-4 break-words px-4 text-[0.7647rem] text-(--text-muted)">{msg}</p>}
+      {msg && <p className="-mt-4 break-words px-4 text-small text-(--text-muted)">{msg}</p>}
     </>
   )
 }

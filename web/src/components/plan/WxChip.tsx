@@ -19,7 +19,7 @@ export function WxChip({ id, date }: { id: string; date: string }) {
   if (!s || !b) return null
   const B = BADGE[b]
   return (
-    <span className={cn('flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[0.6471rem] font-semibold',
+    <span className={cn('flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-caption font-semibold',
       B.warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--bg-inset) text-(--text-secondary)')}
       aria-label={`Weather: ${s.badges.map((x) => BADGE[x].label).join(', ')}${s.pct ? `, paces about ${s.pct}% slower` : ''}`}>
       <B.icon className="size-3" aria-hidden />{b === 'heat' && s.pct ? `+${Math.round(s.pct)}%` : B.label}

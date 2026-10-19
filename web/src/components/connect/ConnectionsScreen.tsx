@@ -36,11 +36,11 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
 
   return (
     <Screen title="Connected apps" onClose={onClose}>
-      <p className="px-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+      <p className="px-1 text-body leading-snug text-(--text-secondary)">
         rabbt reads from these so you never log anything by hand. Tap one to connect, sync or disconnect.
       </p>
-      <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
-        <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+      <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-meta leading-snug text-(--text-secondary)">
+        <Lock className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
         rabbt only uses what each app lists, changes nothing there unless you ask (like sending a workout to your watch), and stores sign-ins encrypted. Disconnect anytime and rabbt deletes its access.
       </p>
       {err && !data ? <ErrorState message={err} onRetry={load} />
@@ -53,16 +53,16 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
                 className="settings-row flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
                 <AppTile app={a.id} size={40} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.9412rem] text-(--text)">{a.name}</span>
-                  <span className="block truncate text-[0.7059rem] text-(--text-muted)">{PURPOSE[a.id]}</span>
-                  <span className={cn('mt-0.5 flex items-center gap-1.5 text-[0.7059rem] font-medium',
+                  <span className="block truncate text-lead text-(--text)">{a.name}</span>
+                  <span className="block truncate text-meta text-(--text-muted)">{PURPOSE[a.id]}</span>
+                  <span className={cn('mt-0.5 flex items-center gap-1.5 text-meta font-medium',
                     a.state === 'connected' ? 'text-(--accent)' : a.state === 'attention' ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
                     <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full',
                       a.state === 'connected' ? 'bg-(--accent)' : a.state === 'attention' ? 'bg-(--warning-text)' : 'bg-(--text-muted)')} />
                     {statusLine(a)}
                   </span>
                 </span>
-                <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
               </button>
             ))}
           </Group>
@@ -73,16 +73,16 @@ export function ConnectionsScreen({ onClose }: { onClose: () => void }) {
                   className="settings-row flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
                   <SoonTile app={a.id} size={40} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.9412rem] text-(--text)">{a.name}</span>
-                    <span className={cn('mt-0.5 flex items-center gap-1.5 text-[0.7059rem] font-medium', a.wanted ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                      {a.wanted ? <Check className="size-3 shrink-0" aria-hidden /> : <BellRing className="size-3 shrink-0" aria-hidden />}
+                    <span className="block truncate text-lead text-(--text)">{a.name}</span>
+                    <span className={cn('mt-0.5 flex items-center gap-1.5 text-meta font-medium', a.wanted ? 'text-(--accent)' : 'text-(--text-muted)')}>
+                      {a.wanted ? <Check className="size-3.5 shrink-0" aria-hidden /> : <BellRing className="size-3.5 shrink-0" aria-hidden />}
                       <span className="min-w-0 truncate">
                         {a.wanted ? 'You asked for this' : 'Coming soon · tap to ask'}
                         {a.wanted_by != null && <span className="text-(--text-muted)"> · {a.wanted_by} want{a.wanted_by === 1 ? 's' : ''} it</span>}
                       </span>
                     </span>
                   </span>
-                  <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                  <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
                 </button>
               ))}
             </Group>

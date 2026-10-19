@@ -23,7 +23,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
       <span className="seg__pill" aria-hidden />
       {options.map(([v, l]) => (
         <button key={v} type="button" role="tab" data-v={v} aria-selected={value === v} tabIndex={value === v ? 0 : -1} onClick={() => onChange(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
+          className={cn('min-h-11 flex-1 rounded-full text-small font-medium transition-colors',
             value === v ? 'text-(--text)' : 'text-(--text-muted)')}>
           {l}
         </button>

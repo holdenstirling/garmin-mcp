@@ -47,12 +47,12 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
   const body = (
     <>
       {athletes === null && !error && <RabbitLoader className="py-16" label="Finding your athletes…" />}
-      {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
+      {error && <p className="px-1 text-body text-(--danger)">{error}</p>}
       {athletes?.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <Users className="size-8 text-(--text-muted)" />
-          <p className="text-[0.8824rem] text-(--text)">No athletes yet</p>
-          <p className="max-w-xs text-[0.7647rem] text-(--text-muted)">Athletes add you from Settings › Coaches in their rabbt app, using {me.profile.name ? 'your' : 'this'} Google email.</p>
+          <p className="text-body-lg text-(--text)">No athletes yet</p>
+          <p className="max-w-xs text-small text-(--text-muted)">Athletes add you from Settings › Coaches in their rabbt app, using {me.profile.name ? 'your' : 'this'} Google email.</p>
         </div>
       )}
       {(athletes ?? []).map((a) => (
@@ -60,13 +60,13 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
           className="flex w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
           <Avatar name={a.profile.name || 'Athlete'} picture={a.profile.picture} photo={photoUrl(a.photo, a.athlete_id)} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.9412rem] font-medium text-(--text)">{a.profile.name || 'Athlete'}</span>
-            <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+            <span className="block truncate text-lead font-medium text-(--text)">{a.profile.name || 'Athlete'}</span>
+            <span className="block truncate text-meta text-(--text-muted)">
               {a.goal ? `${a.goal.title}${a.goal.date ? ` · ${countdown(a.goal.date)}` : ''}` : 'No goal set'}
             </span>
           </span>
-          {a.unread > 0 && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--on-fill)">{a.unread}</span>}
-          <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />
+          {a.unread > 0 && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-caption font-semibold text-(--on-fill)">{a.unread}</span>}
+          <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />
         </button>
       ))}
       {open && <AthleteDetail aid={open} onClose={() => { setOpen(null); load() }} />}
@@ -81,16 +81,16 @@ export function CoachApp({ me, onClose, onSignOut }: { me: Me; onClose?: () => v
       <header className="flex shrink-0 items-center gap-2.5 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         <span className="logo-tile flex size-[38px] shrink-0 items-center justify-center rounded-[11px] bg-(--brand) shadow-sm"><RabbitLogo size={32} /></span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-lg leading-tight text-(--brand)">rabbt for coaches</span>
-          <span className="block truncate text-[0.6471rem] text-muted-foreground">{me.profile.name || 'Coach'}</span>
+          <span className="block font-display text-title-sm leading-tight text-(--brand)">rabbt for coaches</span>
+          <span className="block truncate text-caption text-muted-foreground">{me.profile.name || 'Coach'}</span>
         </span>
-        <Button variant="ghost" className="h-8 px-2 text-[0.7059rem]" onClick={() => setLegal(true)}>Privacy</Button>
-        {onSignOut && <Button variant="ghost" className="h-8 px-2 text-[0.7059rem]" onClick={onSignOut}>Sign out</Button>}
+        <Button variant="ghost" className="h-8 px-2 text-meta" onClick={() => setLegal(true)}>Privacy</Button>
+        {onSignOut && <Button variant="ghost" className="h-8 px-2 text-meta" onClick={onSignOut}>Sign out</Button>}
       </header>
       {legal && <PrivacyLegalScreen me={me} onClose={() => setLegal(false)} onOpenSettings={() => setLegal(false)} onOpenConnections={() => setLegal(false)} />}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 py-5">
-          <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Your athletes</h2>
+          <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Your athletes</h2>
           {body}
         </div>
       </div>
@@ -135,18 +135,18 @@ function AthleteDetail({ aid, onClose }: { aid: string; onClose: () => void }) {
           <div className="no-scrollbar mx-auto mt-2.5 flex max-w-xl gap-1 overflow-x-auto rounded-lg bg-(--bg-elevated) p-1">
             {tabs.map(([t, l]) => (
               <button key={t} type="button" onClick={() => { setTab(t); setThread(null) }} aria-pressed={tab === t}
-                className={cn('hit-44 h-8 shrink-0 flex-1 rounded-md px-2 text-[0.7059rem] font-medium', tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
+                className={cn('hit-44 h-8 shrink-0 flex-1 rounded-md px-2 text-meta font-medium', tab === t ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>
                 {l}{t === 'messages' && o?.unread ? ` (${o.unread})` : ''}
               </button>
             ))}
           </div>}>
-        {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+        {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
         {!o && !error && <RabbitLoader className="py-16" label="Reading their training…" />}
         {o && tab === 'overview' && <Overview o={o} onOpenPlan={() => setTab('plan')} onMessage={() => void messageAbout()} />}
         {o && tab === 'plan' && <PlanImportHub key={planKey} api={imports} plans={api} who="coach" athleteName={name} onOpenPlan={() => setPlanOpen(true)} onChanged={load} />}
         {o && tab === 'stats' && <AthleteStats aid={aid} />}
         {o && tab === 'messages' && (thread
-          ? <><Button variant="ghost" className="h-8 w-fit px-2 text-[0.7059rem]" onClick={() => setThread(null)}>‹ All conversations</Button>
+          ? <><Button variant="ghost" className="h-8 w-fit px-2 text-meta" onClick={() => setThread(null)}>‹ All conversations</Button>
               <ThreadView api={chat} threadId={thread} me="coach" otherName={name.split(' ')[0]!} /></>
           : <Messages chat={chat} onOpen={setThread} onNew={() => void messageAbout()} name={name} />)}
         {o && tab === 'notes' && <Notes aid={aid} notes={o.notes} events={o.events} onChanged={load} myEmail={o.link.email} />}
@@ -192,23 +192,23 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
     <>
       <div className="flex items-center gap-3 px-1">
         <Avatar name={o.profile.name || 'Athlete'} picture={o.profile.picture} photo={photoUrl(o.photo, o.athlete_id)} size={48} />
-        <span className="min-w-0 flex-1 truncate text-[0.9412rem] font-medium text-(--text)">{o.profile.name || 'Athlete'}</span>
+        <span className="min-w-0 flex-1 truncate text-lead font-medium text-(--text)">{o.profile.name || 'Athlete'}</span>
       </div>
       <div className="flex gap-2">
-        <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={onOpenPlan}><MapIcon className="size-4" /> Plan</Button>
-        <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={onMessage}><MessageSquare className="size-4" /> Message</Button>
+        <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" onClick={onOpenPlan}><MapIcon className="size-5" /> Plan</Button>
+        <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={onMessage}><MessageSquare className="size-5" /> Message</Button>
       </div>
-      {!o.link.can_edit_plan && <p className="px-1 text-[0.7059rem] text-(--text-muted)"><Lock className="inline size-3" /> View only: the athlete hasn't given you edit access to the plan.</p>}
+      {!o.link.can_edit_plan && <p className="px-1 text-meta text-(--text-muted)"><Lock className="inline size-3.5" /> View only: the athlete hasn't given you edit access to the plan.</p>}
       <AthleteGrade aid={o.athlete_id} />
       {upcoming.length > 0 && (
         <Card>
           <Field label="Events">
             <div className="flex flex-col gap-2">
               {upcoming.map((e) => (
-                <div key={e.id} className="flex items-center gap-2 text-[0.8235rem]">
-                  <CalendarDays className="size-4 shrink-0 text-(--accent)" />
+                <div key={e.id} className="flex items-center gap-2 text-body">
+                  <CalendarDays className="size-5 shrink-0 text-(--accent)" />
                   <span className="min-w-0 flex-1 truncate">{e.main ? '★ ' : ''}{e.name}</span>
-                  <span className="shrink-0 text-[0.7059rem] text-(--text-muted)">
+                  <span className="shrink-0 text-meta text-(--text-muted)">
                     {TYPE_LABEL[e.type]}{e.distance && e.distance !== 'other' ? ` · ${DISTANCE_LABEL[e.distance] ?? e.distance}` : ''} · {countdown(e.date)}{e.main ? '' : ` · ${e.priority}`}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
           <Field label="Recent check-ins">
             <ul className="flex flex-col gap-1.5">
               {o.checkins!.map((c, i) => (
-                <li key={`${c.date}-${i}`} className="flex gap-2 text-[0.7647rem]">
+                <li key={`${c.date}-${i}`} className="flex gap-2 text-small">
                   <span className="w-16 shrink-0 text-(--text-muted)">{c.date.slice(5)}</span>
                   <span className={cn('min-w-0 flex-1', c.pain_flag ? 'text-(--warning-text)' : 'text-(--text)')}>
                     {c.summary}{c.feel != null ? ` (feel ${c.feel}/5)` : ''}{c.pain_flag ? ' · pain flagged' : ''}
@@ -235,14 +235,14 @@ function Overview({ o, onOpenPlan, onMessage }: { o: AthleteOverview; onOpenPlan
       )}
       <Card>
         <Field label="Profile">
-          <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[0.7647rem]">
+          <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-small">
             {facts.filter(([, v]) => v).map(([k, v]) => (
               <div key={k} className="contents"><dt className="text-(--text-muted)">{k}</dt><dd className="text-(--text)">{v}</dd></div>
             ))}
           </dl>
         </Field>
         {typeof a.injuries === 'string' && a.injuries && (
-          <Field label="Injuries or limits" className="border-t border-(--border)"><p className="text-[0.8235rem] text-(--text)">{a.injuries}</p></Field>
+          <Field label="Injuries or limits" className="border-t border-(--border)"><p className="text-body text-(--text)">{a.injuries}</p></Field>
         )}
       </Card>
     </>
@@ -261,7 +261,7 @@ function AthleteStats({ aid }: { aid: string }) {
   const [s, setS] = useState<Stats | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => { getAthleteStats(aid).then(setS, (e) => setError((e as Error).message)) }, [aid])
-  if (error) return <p className="px-1 text-[0.7647rem] text-(--danger)">{error}</p>
+  if (error) return <p className="px-1 text-small text-(--danger)">{error}</p>
   if (!s) return <RabbitLoader className="py-16" label="Loading their stats" />
   return <StatsBody s={s} loadBase={coachBase(aid)} />
 }
@@ -273,8 +273,8 @@ function Messages({ chat, onOpen, onNew, name }: {
   useEffect(() => { chat.list().then((r) => setThreads(r.threads), () => setThreads([])) }, [chat])
   return (
     <>
-      <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onNew}><MessageSquare className="size-4" /> Message {name.split(' ')[0]}</Button>
-      <p className="px-1 text-[0.7059rem] text-(--text-muted)">To talk about one workout, open the plan, tap the workout and choose Message.</p>
+      <Button variant="primary" className="h-11 gap-1.5 text-body" onClick={onNew}><MessageSquare className="size-5" /> Message {name.split(' ')[0]}</Button>
+      <p className="px-1 text-meta text-(--text-muted)">To talk about one workout, open the plan, tap the workout and choose Message.</p>
       {threads && threads.length > 0 && <ThreadList threads={threads} onOpen={onOpen} me="coach" />}
     </>
   )
@@ -300,35 +300,35 @@ function Notes({ aid, notes, events, onChanged, myEmail }: { aid: string; notes:
             placeholder="e.g. Keep long runs under 2:30 until December; HR cap 150 on easy days" />
           {upcoming.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[0.7059rem] text-(--text-muted)">For a race (optional): the athlete sees it in that race's Race fit view.</span>
+              <span className="text-meta text-(--text-muted)">For a race (optional): the athlete sees it in that race's Race fit view.</span>
               <Choice value={eventId} allowNone options={upcoming.map((e) => [e.id, e.name] as [string, string])} onChange={setEventId} />
             </div>
           )}
           <div className="flex items-center gap-3">
-            <span className="flex flex-1 items-center gap-2 text-[0.7647rem] text-(--text-secondary)">
+            <span className="flex flex-1 items-center gap-2 text-small text-(--text-secondary)">
               <Switch label="Share with athlete and rabbt" checked={shared} onChange={setShared} /> {shared ? 'Shared' : 'Private'}
             </span>
-            <Button variant="primary" className="h-9 gap-1 px-3 text-[0.7647rem]" disabled={!text.trim()} loading={busy === 'add'}
+            <Button variant="primary" className="h-9 gap-1 px-3 text-small" disabled={!text.trim()} loading={busy === 'add'}
               onClick={() => void run('add', () => addNote(aid, { text: text.trim(), shared, ...(eventId ? { event_id: eventId } : {}) }).then(() => { setText(''); setEventId(null) }))}>
-              <Plus className="size-4" /> Add
+              <Plus className="size-5" /> Add
             </Button>
           </div>
         </Field>
       </Card>
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)">{error}</p>}
       {notes.map((n) => (
         <Card key={n.id} className="px-4 py-3">
-          <p className="whitespace-pre-wrap text-[0.8235rem] leading-snug text-(--text)">{n.text}</p>
-          <div className="mt-2 flex items-center gap-2 text-[0.6471rem] text-(--text-muted)">
-            {n.shared ? <Eye className="size-3.5" /> : <Lock className="size-3.5" />}
+          <p className="whitespace-pre-wrap text-body leading-snug text-(--text)">{n.text}</p>
+          <div className="mt-2 flex items-center gap-2 text-caption text-(--text-muted)">
+            {n.shared ? <Eye className="size-4" /> : <Lock className="size-4" />}
             <span className="flex-1">{n.shared ? 'Shared' : 'Private'} · {n.coach === myEmail ? 'You' : n.coach.split('@')[0]} · {timeAgo(n.ts)}{evName(n.event_id) ? ` · ${evName(n.event_id)}` : ''}</span>
             {n.coach === myEmail && <>
             <button type="button" aria-label={n.pinned ? 'Unpin' : 'Pin'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { pinned: !n.pinned }))}
-              className={cn('hit-44 rounded p-1', n.pinned ? 'text-(--accent)' : 'text-(--text-muted)')}><Pin className="size-3.5" /></button>
+              className={cn('hit-44 rounded p-1', n.pinned ? 'text-(--accent)' : 'text-(--text-muted)')}><Pin className="size-4" /></button>
             <button type="button" aria-label={n.shared ? 'Make private' : 'Share'} onClick={() => void run(n.id, () => updateNote(aid, n.id, { shared: !n.shared }))}
-              className="hit-44 rounded p-1 text-(--text-muted)"><StickyNote className="size-3.5" /></button>
+              className="hit-44 rounded p-1 text-(--text-muted)"><StickyNote className="size-4" /></button>
             <button type="button" aria-label="Delete note" onClick={() => void run(n.id, () => deleteNote(aid, n.id))}
-              className="hit-44 rounded p-1 text-(--danger)"><Trash2 className="size-3.5" /></button>
+              className="hit-44 rounded p-1 text-(--danger)"><Trash2 className="size-4" /></button>
             </>}
           </div>
         </Card>
@@ -348,19 +348,19 @@ function RabbitChats({ aid }: { aid: string }) {
     setTurns(null)
     getRabbitThread(aid, open).then((r) => setTurns(r.turns), (e) => setError((e as Error).message))
   }, [aid, open])
-  if (error) return <p className="px-1 text-[0.7647rem] text-(--danger)">{error}</p>
+  if (error) return <p className="px-1 text-small text-(--danger)">{error}</p>
   if (open) {
     return (
       <>
-        <Button variant="ghost" className="h-8 w-fit px-2 text-[0.7059rem]" onClick={() => setOpen(null)}>‹ All chats</Button>
-        <p className="px-1 text-[0.6471rem] text-(--text-muted)">Read-only. Shared by your athlete.</p>
+        <Button variant="ghost" className="h-8 w-fit px-2 text-meta" onClick={() => setOpen(null)}>‹ All chats</Button>
+        <p className="px-1 text-caption text-(--text-muted)">Read-only. Shared by your athlete.</p>
         {(turns ?? []).map((t) => {
           const reply = (t.parts ?? []).filter((p) => p.type === 'text').map((p) => p.text).join('')
           return (
             <div key={t.id} className="flex flex-col gap-1.5">
-              {t.user && <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-(--bg-elevated) px-3.5 py-2 text-[0.8235rem]">{t.user}</div>}
-              {reply && <div className="chat-text prose prose-sm max-w-[92%] rounded-2xl rounded-bl-sm border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-[0.8235rem] text-foreground"><Markdown remarkPlugins={[remarkGfm]}>{reply}</Markdown></div>}
-              <span className="px-1 text-[0.6471rem] text-(--text-muted)">{t.label ? `${t.label} · ` : ''}{timeAgo(t.ts)}</span>
+              {t.user && <div className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-(--bg-elevated) px-3.5 py-2 text-body">{t.user}</div>}
+              {reply && <div className="chat-text prose prose-sm max-w-[92%] rounded-2xl rounded-bl-sm border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-body text-foreground"><Markdown remarkPlugins={[remarkGfm]}>{reply}</Markdown></div>}
+              <span className="px-1 text-caption text-(--text-muted)">{t.label ? `${t.label} · ` : ''}{timeAgo(t.ts)}</span>
             </div>
           )
         })}
@@ -373,13 +373,13 @@ function RabbitChats({ aid }: { aid: string }) {
         {(threads ?? []).map((t) => (
           <button key={t.id} type="button" onClick={() => setOpen(t.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[0.8824rem] text-(--text)">{t.kind === 'coach' ? 'rabbt (briefs and notes)' : t.title || 'Chat'}</span>
-              <span className="block text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
+              <span className="block truncate text-body-lg text-(--text)">{t.kind === 'coach' ? 'rabbt (briefs and notes)' : t.title || 'Chat'}</span>
+              <span className="block text-caption text-(--text-muted)">{timeAgo(t.updated)}</span>
             </span>
-            <ChevronRight className="size-4 text-(--text-muted)" />
+            <ChevronRight className="size-5 text-(--text-muted)" />
           </button>
         ))}
-        {threads?.length === 0 && <p className="px-4 py-3 text-[0.7647rem] text-(--text-muted)">No chats yet.</p>}
+        {threads?.length === 0 && <p className="px-4 py-3 text-small text-(--text-muted)">No chats yet.</p>}
       </div>
     </Card>
   )

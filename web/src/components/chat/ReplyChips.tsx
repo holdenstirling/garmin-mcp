@@ -23,7 +23,7 @@ export function ReplyChips({ chips, onPick, disabled }: { chips: string[]; onPic
       {chips.slice(0, 3).map((c) => (
         <button key={c} type="button" disabled={disabled} onClick={() => onPick(c)}
           className="inline-flex min-h-11 items-center rounded-full disabled:opacity-50">
-          <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-[0.7647rem] font-medium text-(--accent) active:opacity-70">
+          <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-small font-medium text-(--accent) active:opacity-70">
             {c}
           </span>
         </button>

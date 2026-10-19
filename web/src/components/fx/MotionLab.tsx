@@ -11,7 +11,7 @@ import { TodayFx, type TodayFxTone } from './TodayFx'
 import { celebrate, reducedMotion, signalReplyDone, type BurstKind } from './motion'
 
 const KINDS: BurstKind[] = ['xp', 'checkin', 'race', 'plan', 'challenge', 'badge', 'level']
-const chip = 'hit-44 rounded-full border border-(--border-strong) bg-(--bg-surface) px-3 py-1.5 text-[0.7059rem] text-(--text) active:bg-(--bg-inset)'
+const chip = 'hit-44 rounded-full border border-(--border-strong) bg-(--bg-surface) px-3 py-1.5 text-meta text-(--text) active:bg-(--bg-inset)'
 
 export function MotionLab() {
   const [bar, setBar] = useState(20)
@@ -22,7 +22,7 @@ export function MotionLab() {
   const [leap, setLeap] = useState(0)
   return (
     <div className="flex flex-col gap-3 px-4 py-3">
-      {reducedMotion() && <p className="text-[0.7059rem] text-(--warning-text)">Reduce motion is on: effects are off or static.</p>}
+      {reducedMotion() && <p className="text-meta text-(--warning-text)">Reduce motion is on: effects are off or static.</p>}
       <Lab label="Carrot burst">
         {KINDS.map((k) => <button key={k} type="button" className={chip} onClick={(e) => celebrate(e.currentTarget, k)}>{k}</button>)}
       </Lab>
@@ -45,8 +45,8 @@ export function MotionLab() {
       </Lab>
       <Lab label="Empty rabbit · hop in · shake · tab wiggle">
         <EmptyRabbit key={`e${peek}`} size={44} mode={peek % 2 ? 'peek' : 'sleep'} />
-        <HopIn key={`h${peek}`} index={1} className="rounded-lg border border-(--border) px-3 py-2 text-[0.7059rem] text-(--text)">Card</HopIn>
-        <Shake trigger={peek}><span className="rounded-lg bg-(--danger-subtle) px-3 py-2 text-[0.7059rem] text-(--danger)">Oops</span></Shake>
+        <HopIn key={`h${peek}`} index={1} className="rounded-lg border border-(--border) px-3 py-2 text-meta text-(--text)">Card</HopIn>
+        <Shake trigger={peek}><span className="rounded-lg bg-(--danger-subtle) px-3 py-2 text-meta text-(--danger)">Oops</span></Shake>
         <button type="button" className={chip} onClick={() => setPeek((n) => n + 1)}>Replay</button>
         <button type="button" className={chip} onClick={signalReplyDone}>Wiggle rabbt tab</button>
       </Lab>
@@ -58,16 +58,16 @@ export function MotionLab() {
       <Lab label="Today card">
         {([['go', Zap], ['easy', Waves], ['rest', Moon]] as const).map(([t, I]) => (
           <button key={t} type="button" className={chip} onClick={() => setToday((x) => ({ tone: t, n: (x?.n ?? 0) + 1 }))}>
-            <I className="mr-1 inline size-3.5" />{t}
+            <I className="mr-1 inline size-4" />{t}
           </button>
         ))}
         {today && (
           <span key={today.n} className="relative flex h-10 w-full items-center gap-2 rounded-xl border border-(--border) px-3">
             <TodayFx tone={today.tone} />
             <span className={cn('flex size-7 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)', today.tone === 'easy' && 'fx-sway')}>
-              <Waves className="size-4" />
+              <Waves className="size-5" />
             </span>
-            <span className="text-[0.7059rem] text-(--text-muted)">Today · {today.tone}</span>
+            <span className="text-meta text-(--text-muted)">Today · {today.tone}</span>
           </span>
         )}
       </Lab>
@@ -78,7 +78,7 @@ export function MotionLab() {
         <button type="button" className={chip} onClick={() => setLeap((n) => n + 1)}>Leap</button>
         <Button variant="primary" className="h-9 px-4" onClick={() => setLeap((n) => n + 1)}>Press me</Button>
       </Lab>
-      <p className="text-[0.6471rem] text-(--text-muted)">Pull to refresh: pull down at the top of Progress (touch only).</p>
+      <p className="text-caption text-(--text-muted)">Pull to refresh: pull down at the top of Progress (touch only).</p>
     </div>
   )
 }
@@ -86,7 +86,7 @@ export function MotionLab() {
 function Lab({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
+      <span className="text-caption font-semibold text-(--text-muted)">{label}</span>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   )

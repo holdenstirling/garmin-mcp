@@ -74,11 +74,11 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
       <span className="seg__pill" aria-hidden />
         {([['local', 'Near you'], ['remote', 'Anywhere (remote)']] as const).map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={scope === v} onClick={() => setScope(v)}
-            className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
+            className={cn('min-h-11 flex-1 rounded-full text-small font-medium transition-colors',
               scope === v ? 'text-(--text)' : 'text-(--text-muted)')}>{l}</button>
         ))}
       </div>
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="px-1 text-small leading-snug text-(--text-secondary)">
         rabbt doesn't take a cut; you contact coaches directly. Ranked for {data?.race?.name ? <b className="text-(--text)">{data.race.name}</b> : 'your sports'}.
       </p>
       <div className="flex flex-col gap-2">
@@ -99,8 +99,8 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
                 {DISTANCES_MI.map((mi) => <Chip key={mi} selected={within === mi} onClick={() => setWithin(mi)}>{mi} mi</Chip>)}
               </div>
             ) : data && (
-              <p className="flex items-start gap-1.5 px-1 text-[0.7059rem] text-(--text-muted)">
-                <MapPin className="mt-0.5 size-3.5 shrink-0" />
+              <p className="flex items-start gap-1.5 px-1 text-meta text-(--text-muted)">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
                 {data.area ? `Showing coaches in ${data.area.split(', ').pop()}. ` : ''}Save your location in Explore to see distances.
               </p>
             )}
@@ -114,7 +114,7 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
       {!data && !error && <RabbitLoader className="py-16" label="Finding coaches" cycle={['Finding coaches…', 'Matching your race…', 'Checking who fits…']} />}
       {error && <ErrorState message={error} onRetry={load} />}
       {data && data.coaches.length === 0 && (
-        <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">
+        <p className="px-1 py-6 text-center text-body text-(--text-muted)">
           {scope === 'local' ? 'No coaches in rabbt’s list near you yet. Try Anywhere, or search the web below.' : 'No coaches match that yet.'}
         </p>
       )}
@@ -122,28 +122,28 @@ export function FindCoachScreen({ athleteName, onClose, onBack, onAsk, onInvited
       {data && scope === 'local' && (
         <section className="flex flex-col gap-2 border-t border-(--border) pt-3">
           {!web && (
-            <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" loading={webBusy} onClick={() => void searchWeb()}>
-              <Globe className="size-4" /> Find coaches near me on the web
+            <Button variant="default" className="h-11 gap-1.5 text-small" loading={webBusy} onClick={() => void searchWeb()}>
+              <Globe className="size-5" /> Find coaches near me on the web
             </Button>
           )}
-          {!web && !webBusy && <p className="px-1 text-[0.6471rem] text-(--text-muted)">Searches by your sport and city only. Uses 1 of your daily web searches.</p>}
+          {!web && !webBusy && <p className="px-1 text-caption text-(--text-muted)">Searches by your sport and city only. Uses 1 of your daily web searches.</p>}
           {webBusy && <RabbitLoader className="py-6" label="Searching the web" cycle={['Searching the web…', 'Checking coaching sites…', 'Keeping only real links…']} />}
           {webError && <ErrorState compact message={webError} onRetry={() => void searchWeb()} />}
-          {web && web.state !== 'ok' && <p className="px-1 text-[0.7647rem] text-(--text-muted)">{WEB_STATE[web.state]}</p>}
+          {web && web.state !== 'ok' && <p className="px-1 text-small text-(--text-muted)">{WEB_STATE[web.state]}</p>}
           {web && web.state === 'ok' && (
             <>
-              <p className="flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-                <Globe className="size-3.5" /> {web.label}
+              <p className="flex items-center gap-1.5 px-1 text-caption font-semibold text-(--text-muted)">
+                <Globe className="size-4" /> {web.label}
               </p>
-              {web.coaches.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Nothing with a website turned up around {web.area}.</p>}
+              {web.coaches.length === 0 && <p className="px-1 text-small text-(--text-muted)">Nothing with a website turned up around {web.area}.</p>}
               {web.coaches.map((w) => (
                 <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
                   className="flex min-h-11 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 active:bg-(--bg-inset)">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{w.name}</span>
-                    <span className="block truncate text-[0.7059rem] text-(--text-muted)">{[w.specialty, w.area || web.area].filter(Boolean).join(' · ')}</span>
+                    <span className="block truncate text-body font-medium text-(--text)">{w.name}</span>
+                    <span className="block truncate text-meta text-(--text-muted)">{[w.specialty, w.area || web.area].filter(Boolean).join(' · ')}</span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1 text-[0.7059rem] text-(--accent)">{hostOf(w.url)} <ExternalLink className="size-3" /></span>
+                  <span className="flex shrink-0 items-center gap-1 text-meta text-(--accent)">{hostOf(w.url)} <ExternalLink className="size-3.5" /></span>
                 </a>
               ))}
             </>
@@ -165,7 +165,7 @@ function hostOf(u: string): string {
 function Initials({ name, size = 48 }: { name: string; size?: number }) {
   return (
     <span aria-hidden="true" style={{ width: size, height: size }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) font-display text-[1.0588rem] text-(--accent)">
+      className="flex shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) font-display text-title-sm text-(--accent)">
       {initials(name)}
     </span>
   )
@@ -178,29 +178,29 @@ function CoachCard({ c, onOpen }: { c: DirectoryCoach; onOpen: () => void }) {
       <span className="flex items-center gap-3">
         <Initials name={c.name} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1 text-[0.9412rem] font-medium text-(--text)">
+          <span className="flex items-center gap-1 text-lead font-medium text-(--text)">
             <span className="truncate">{c.name}</span>
-            {c.verified_by_operator && <BadgeCheck className="size-4 shrink-0 text-(--accent)" aria-label="Checked by rabbt" />}
+            {c.verified_by_operator && <BadgeCheck className="size-5 shrink-0 text-(--accent)" aria-label="Checked by rabbt" />}
           </span>
-          <span className="block truncate text-[0.7647rem] text-(--text-muted)">{c.business} · {c.distance_label ?? c.location}</span>
+          <span className="block truncate text-small text-(--text-muted)">{c.business} · {c.distance_label ?? c.location}</span>
         </span>
       </span>
-      <span className="flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--accent)">
-        <Target className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {c.match.why}
+      <span className="flex items-start gap-1.5 text-small leading-snug text-(--accent)">
+        <Target className="mt-0.5 size-4 shrink-0" aria-hidden /> {c.match.why}
       </span>
       <span className="flex flex-wrap gap-1.5">
         {c.specialties.map((s) => (
-          <span key={s} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">{s}</span>
+          <span key={s} className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">{s}</span>
         ))}
-        {c.remote === true && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] text-(--accent)">Coaches remotely</span>}
-        {!c.accepting && <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 text-[0.6471rem] text-(--warning-text)">Not taking athletes</span>}
+        {c.remote === true && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption text-(--accent)">Coaches remotely</span>}
+        {!c.accepting && <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 text-caption text-(--warning-text)">Not taking athletes</span>}
       </span>
     </button>
   )
 }
 
 const H = ({ children }: { children: React.ReactNode }) => (
-  <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h2>
+  <h2 className="text-caption font-semibold text-(--text-muted)">{children}</h2>
 )
 
 function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
@@ -220,102 +220,102 @@ function CoachDetail({ c, race, athleteName, onClose, onAsk, onInvited }: {
     catch (e) { setMsg({ text: (e as Error).message, ok: false }) } finally { setBusy(false) }
   }
   const askText = `Would ${c.name} (${c.business}, ${c.location}; ${c.specialties.join(', ')}) be a good coach for me${race?.name ? ` for ${race.name}` : ''}? `
-  const contactCls = 'h-11 flex-1 gap-1.5 text-[0.7647rem]'
+  const contactCls = 'h-11 flex-1 gap-1.5 text-small'
   return (
     <Sheet title={c.name} onClose={onClose} bodyClassName="gap-4">
           <div className="flex items-center gap-3">
             <Initials name={c.name} size={56} />
             <div className="min-w-0">
-              <p className="text-[0.8824rem] font-medium text-(--text)">{c.business}</p>
-              <p className="text-[0.7647rem] text-(--text-muted)">{c.location}</p>
-              <p className="mt-0.5 flex items-start gap-1 text-[0.7059rem] text-(--accent)"><Target className="mt-0.5 size-3 shrink-0" aria-hidden /> {c.match.why}</p>
+              <p className="text-body-lg font-medium text-(--text)">{c.business}</p>
+              <p className="text-small text-(--text-muted)">{c.location}</p>
+              <p className="mt-0.5 flex items-start gap-1 text-meta text-(--accent)"><Target className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {c.match.why}</p>
             </div>
           </div>
-          <p className="text-[0.8235rem] leading-snug text-(--text)">{c.bio}</p>
+          <p className="text-body leading-snug text-(--text)">{c.bio}</p>
 
           <div className="flex flex-wrap gap-2">
             {c.contact.email && (
               <Button asChild variant="primary" className={contactCls}>
-                <a href={mailtoHref(c, race, athleteName)}><Mail className="size-4" /> Email</a>
+                <a href={mailtoHref(c, race, athleteName)}><Mail className="size-5" /> Email</a>
               </Button>
             )}
             {c.contact.phone && (
               <Button asChild variant="default" className={contactCls}>
-                <a href={`tel:${c.contact.phone.replace(/[^\d+]/g, '')}`}><Phone className="size-4" /> Call</a>
+                <a href={`tel:${c.contact.phone.replace(/[^\d+]/g, '')}`}><Phone className="size-5" /> Call</a>
               </Button>
             )}
             {c.contact.website && (
               <Button asChild variant="default" className={contactCls}>
-                <a href={c.contact.website} target="_blank" rel="noopener noreferrer"><ExternalLink className="size-4" /> Website</a>
+                <a href={c.contact.website} target="_blank" rel="noopener noreferrer"><ExternalLink className="size-5" /> Website</a>
               </Button>
             )}
           </div>
-          <p className="-mt-2 text-[0.6471rem] text-(--text-muted)">
+          <p className="-mt-2 text-caption text-(--text-muted)">
             Email opens a draft{race?.name ? ` mentioning ${race.name}` : ''} for you to edit and send yourself.
           </p>
 
           {c.credentials.length > 0 && (
             <section className="flex flex-col gap-1"><H>Credentials</H>
-              <ul className="flex flex-col gap-0.5 text-[0.7647rem] text-(--text-secondary)">{c.credentials.map((x) => <li key={x}>• {x}</li>)}</ul>
+              <ul className="flex flex-col gap-0.5 text-small text-(--text-secondary)">{c.credentials.map((x) => <li key={x}>• {x}</li>)}</ul>
             </section>
           )}
           {c.highlights.length > 0 && (
             <section className="flex flex-col gap-1"><H>Athlete results</H>
-              <ul className="flex flex-col gap-0.5 text-[0.7647rem] text-(--text-secondary)">{c.highlights.map((x) => <li key={x}>• {x}</li>)}</ul>
+              <ul className="flex flex-col gap-0.5 text-small text-(--text-secondary)">{c.highlights.map((x) => <li key={x}>• {x}</li>)}</ul>
             </section>
           )}
           {c.testimonial && (
             <figure className="flex gap-2 rounded-xl bg-(--bg-inset) p-3">
-              <Quote className="mt-0.5 size-4 shrink-0 text-(--accent)" />
+              <Quote className="mt-0.5 size-5 shrink-0 text-(--accent)" />
               <div>
-                <blockquote className="text-[0.8235rem] italic leading-snug text-(--text)">{c.testimonial.quote}</blockquote>
-                <figcaption className="mt-1 text-[0.6471rem] text-(--text-muted)">{c.testimonial.by}</figcaption>
+                <blockquote className="text-body italic leading-snug text-(--text)">{c.testimonial.quote}</blockquote>
+                <figcaption className="mt-1 text-caption text-(--text-muted)">{c.testimonial.by}</figcaption>
               </div>
             </figure>
           )}
           {(c.services.length > 0 || c.pricing_note) && (
             <section className="flex flex-col gap-1"><H>Services</H>
-              {c.services.map((x) => <p key={x} className="text-[0.7647rem] text-(--text-secondary)">{x}</p>)}
-              {c.pricing_note && <p className="text-[0.7647rem] text-(--text-muted)">{c.pricing_note}</p>}
+              {c.services.map((x) => <p key={x} className="text-small text-(--text-secondary)">{x}</p>)}
+              {c.pricing_note && <p className="text-small text-(--text-muted)">{c.pricing_note}</p>}
             </section>
           )}
 
           {(c.can_invite || onAsk) && (
             <div className="flex flex-col gap-2 border-t border-(--border) pt-3">
               {c.can_invite && !confirm && (
-                <Button variant="default" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setConfirm(true)}>
-                  <UserPlus className="size-4" /> Invite as my coach
+                <Button variant="default" className="h-11 gap-1.5 text-small" onClick={() => setConfirm(true)}>
+                  <UserPlus className="size-5" /> Invite as my coach
                 </Button>
               )}
               {c.can_invite && confirm && (
                 <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3">
-                  <p className="text-[0.7647rem] font-medium text-(--text)">What can {first} do?</p>
-                  <p className="text-[0.7059rem] text-(--text-muted)">{first} can always see your plan, races and workouts. Turn on more only if you want to.</p>
+                  <p className="text-small font-medium text-(--text)">What can {first} do?</p>
+                  <p className="text-meta text-(--text-muted)">{first} can always see your plan, races and workouts. Turn on more only if you want to.</p>
                   <div className="flex min-h-11 items-center justify-between gap-3">
-                    <span className="text-[0.7647rem] text-(--text)">Edit my plan</span>
+                    <span className="text-small text-(--text)">Edit my plan</span>
                     <Switch label="Coach can edit my plan" checked={canEdit} disabled={busy} onChange={setCanEdit} />
                   </div>
                   <div className="flex min-h-11 items-center justify-between gap-3">
-                    <span className="text-[0.7647rem] text-(--text)">See my rabbt chats</span>
+                    <span className="text-small text-(--text)">See my rabbt chats</span>
                     <Switch label="Coach can see my rabbt chats" checked={canSee} disabled={busy} onChange={setCanSee} />
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" className="h-11 flex-1 text-[0.7647rem]" disabled={busy} onClick={() => setConfirm(false)}>Cancel</Button>
-                    <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void invite()}>
-                      <UserPlus className="size-4" /> Send invite
+                    <Button variant="ghost" className="h-11 flex-1 text-small" disabled={busy} onClick={() => setConfirm(false)}>Cancel</Button>
+                    <Button variant="primary" className="h-11 flex-1 gap-1.5 text-small" loading={busy} onClick={() => void invite()}>
+                      <UserPlus className="size-5" /> Send invite
                     </Button>
                   </div>
-                  <p className="text-[0.6471rem] text-(--text-muted)">You can change these any time in Me → Coaches.</p>
+                  <p className="text-caption text-(--text-muted)">You can change these any time in Me → Coaches.</p>
                 </div>
               )}
               {onAsk && (
-                <Button variant="ghost" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => onAsk(askText)}>
-                  <MessageCircle className="size-4" /> Ask rabbt if this coach fits me
+                <Button variant="ghost" className="h-11 gap-1.5 text-small" onClick={() => onAsk(askText)}>
+                  <MessageCircle className="size-5" /> Ask rabbt if this coach fits me
                 </Button>
               )}
             </div>
           )}
-          {msg && <p className={`text-[0.7647rem] ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
+          {msg && <p className={`text-small ${msg.ok ? 'text-(--accent)' : 'text-(--danger)'}`} role="status">{msg.text}</p>}
     </Sheet>
   )
 }

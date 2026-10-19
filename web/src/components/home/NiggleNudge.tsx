@@ -22,9 +22,9 @@ export function NiggleNudge({ refreshKey }: { refreshKey?: number }) {
   return (
     <button type="button" onClick={() => openBody({ view: 'niggles' })}
       className={`mx-4 mt-3 flex min-h-12 w-[calc(100%-2rem)] shrink-0 items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left active:opacity-80 ${red ? 'border-(--danger)/30 bg-(--danger)/5' : 'border-(--warning)/30 bg-(--warning-subtle)'}`}>
-      <Bandage className={`size-4 shrink-0 ${red ? 'text-(--danger)' : 'text-(--warning-text)'}`} aria-hidden />
-      <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text)">{text}</span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <Bandage className={`size-5 shrink-0 ${red ? 'text-(--danger)' : 'text-(--warning-text)'}`} aria-hidden />
+      <span className="min-w-0 flex-1 text-body text-(--text)">{text}</span>
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }

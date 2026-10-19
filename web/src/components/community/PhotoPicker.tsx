@@ -103,14 +103,14 @@ export function PhotoPicker({ picker, className }: { picker: PhotoPickerState; c
         <button type="button" onClick={() => gallery.current?.click()}
           className="flex min-h-[88px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-(--border) bg-(--bg-surface) px-3 text-(--accent) active:bg-(--bg-inset)">
           <ImagePlus className="size-6" aria-hidden />
-          <span className="text-[0.8235rem] font-semibold">Add photos</span>
-          <span className="text-[0.6471rem] text-(--text-muted)">Up to {max}</span>
+          <span className="text-body font-semibold">Add photos</span>
+          <span className="text-caption text-(--text-muted)">Up to {max}</span>
         </button>
         {phone && (
           <button type="button" onClick={() => camera.current?.click()} aria-label="Take a photo"
             className="flex min-h-[88px] w-[88px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-(--border) bg-(--bg-surface) text-(--accent) active:bg-(--bg-inset)">
             <Camera className="size-6" aria-hidden />
-            <span className="text-[0.6471rem] font-medium">Camera</span>
+            <span className="text-caption font-medium">Camera</span>
           </button>
         )}
       </div>
@@ -134,13 +134,13 @@ export function PhotoPicker({ picker, className }: { picker: PhotoPickerState; c
             {p.state === 'error' && (
               <button type="button" onClick={() => picker.retry(p.key)} title={p.error}
                 aria-label={`Photo ${i + 1} didn't upload: ${p.error ?? ''}. Retry`}
-                className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/55 text-[0.6471rem] font-semibold text-white">
-                <RotateCw className="size-5" aria-hidden /> Retry
+                className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-xl bg-black/55 text-caption font-semibold text-white">
+                <RotateCw className="size-6" aria-hidden /> Retry
               </button>
             )}
             <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => picker.remove(p.key)}
               className="absolute -right-1.5 -top-1.5 flex size-7 items-center justify-center rounded-full bg-(--text) text-(--bg) shadow-sm">
-              <X className="size-3.5" aria-hidden />
+              <X className="size-4" aria-hidden />
             </button>
           </li>
         ))}
@@ -148,14 +148,14 @@ export function PhotoPicker({ picker, className }: { picker: PhotoPickerState; c
           <li className="flex shrink-0 flex-col gap-2">
             <button type="button" onClick={() => gallery.current?.click()} aria-label="Add more photos"
               className="flex size-[88px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-(--border) text-(--accent) active:bg-(--bg-inset)">
-              <ImagePlus className="size-5" aria-hidden />
-              <span className="text-[0.6471rem] font-medium">{items.length}/{max}</span>
+              <ImagePlus className="size-6" aria-hidden />
+              <span className="text-caption font-medium">{items.length}/{max}</span>
             </button>
           </li>
         )}
       </ul>
       {picker.failed && (
-        <p className="text-[0.6471rem] text-(--danger)" role="alert">
+        <p className="text-caption text-(--danger)" role="alert">
           {items.find((x) => x.state === 'error')?.error ?? "A photo didn't upload."} Tap it to retry, or remove it.
         </p>
       )}

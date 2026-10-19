@@ -39,8 +39,8 @@ export function SickBanner({ className }: { className?: string }) {
     <>
       <RabbitNap size={30} mode={v.active ? 'sleep' : 'run'} className="shrink-0" />
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8235rem] font-semibold text-(--text)">{head}</span>
-        <span className="block text-[0.7059rem] leading-snug text-(--text-muted)">{sub}</span>
+        <span className="block text-body font-semibold text-(--text)">{head}</span>
+        <span className="block text-meta leading-snug text-(--text-muted)">{sub}</span>
       </span>
     </>
   )
@@ -50,7 +50,7 @@ export function SickBanner({ className }: { className?: string }) {
       {v.active ? (
         <button type="button" onClick={openSick} aria-label={`${head}. ${sub}`} className={`${cls} active:bg-(--bg-inset)`}>
           {body}
-          <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.7059rem] font-semibold text-(--accent)">I feel better</span>
+          <span className="shrink-0 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-meta font-semibold text-(--accent)">I feel better</span>
         </button>
       ) : <div role="status" className={cls}>{body}</div>}
     </div>

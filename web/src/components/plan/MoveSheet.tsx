@@ -99,25 +99,25 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
     return (
       <Sheet title={undone ? 'Put back' : 'Moved'} onClose={onClose} bodyClassName={body}>
         <div role="status" aria-live="polite" className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--accent)">
-            <Check className="size-4" aria-hidden />
+          <p className="flex items-center gap-1.5 text-body font-semibold text-(--accent)">
+            <Check className="size-5" aria-hidden />
             {undone ? `${session.title} is back on ${dayLabel(from)}.` : done.change.summary}
           </p>
           {!undone && done.change.rebalanced.length > 0 && (
             <>
-              <p className="text-[0.7647rem] text-(--text-secondary)">rabbt also re-balanced your week:</p>
-              <ul className="flex list-disc flex-col gap-0.5 pl-5 text-[0.7647rem] leading-snug text-(--text)">
+              <p className="text-small text-(--text-secondary)">rabbt also re-balanced your week:</p>
+              <ul className="flex list-disc flex-col gap-0.5 pl-5 text-small leading-snug text-(--text)">
                 {done.change.rebalanced.map((l) => <li key={l}>{l}</li>)}
               </ul>
             </>
           )}
         </div>
-        {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+        {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
         <div className="flex gap-2">
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={onClose}>Done</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" onClick={onClose}>Done</Button>
           {!undone && done.change.id && (
-            <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" loading={busy === 'undo'} onClick={() => void undo()}>
-              <Undo2 className="size-4" aria-hidden /> Undo
+            <Button variant="default" className="h-11 gap-1.5 px-4 text-body" loading={busy === 'undo'} onClick={() => void undo()}>
+              <Undo2 className="size-5" aria-hidden /> Undo
             </Button>
           )}
         </div>
@@ -134,20 +134,20 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
           aria-label={`${verb} ${dayLabel(d.date)}: ${d.sessions.length ? d.sessions.map((s) => s.title).join(', ') : 'rest day'}${d.clash ? `. ${d.clash}` : ''}${d.off ? '. Not one of your usual training days' : ''}`}
           className={cn('flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)', on && 'bg-(--accent-subtle)')}>
           <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-            {on && <Check className="size-3" aria-hidden />}
+            {on && <Check className="size-3.5" aria-hidden />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className={cn('block text-[0.8235rem] font-medium', d.off ? 'text-(--text-secondary)' : 'text-(--text)')}>
-              {dayLabel(d.date)}{best?.date === d.date && best.date !== tomorrow && <span className="ml-1.5 text-[0.7059rem] font-semibold text-(--accent)">Best fit</span>}
+            <span className={cn('block text-body font-medium', d.off ? 'text-(--text-secondary)' : 'text-(--text)')}>
+              {dayLabel(d.date)}{best?.date === d.date && best.date !== tomorrow && <span className="ml-1.5 text-meta font-semibold text-(--accent)">Best fit</span>}
             </span>
-            <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+            <span className="block truncate text-meta text-(--text-muted)">
               {d.sessions.length ? d.sessions.map((s) => s.title).join(' · ') : 'Rest day, nothing planned'}
               {d.off && ' · not a usual training day'}
             </span>
           </span>
           {d.clash && (
-            <span className="flex shrink-0 items-center gap-1 text-[0.6471rem] font-medium text-(--warning-text)">
-              <TriangleAlert className="size-3" aria-hidden />{d.clash}
+            <span className="flex shrink-0 items-center gap-1 text-caption font-medium text-(--warning-text)">
+              <TriangleAlert className="size-3.5" aria-hidden />{d.clash}
             </span>
           )}
         </button>
@@ -156,7 +156,7 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
   }
   const group = (label: string, days: DayInfo[]) => days.length > 0 && (
     <Card className="shrink-0">
-      <p className="border-b border-(--border) px-3.5 py-2 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</p>
+      <p className="border-b border-(--border) px-3.5 py-2 text-caption font-semibold text-(--text-muted)">{label}</p>
       <ul className="divide-y divide-(--border)">{days.map(dayRow)}</ul>
     </Card>
   )
@@ -165,20 +165,20 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
     <Sheet title={`Move ${session.title}`} onClose={onClose} bodyClassName={body}
       footer={
         <div className="flex gap-2 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" disabled={!pick} loading={busy === 'go'} onClick={() => void go()}>
+          <Button variant="primary" className="h-11 flex-1 text-body" disabled={!pick} loading={busy === 'go'} onClick={() => void go()}>
             {pick ? `${verb} ${dayLabel(pick).split(',')[0]}` : mode === 'move' ? 'Pick a day' : 'Pick a day to swap with'}
           </Button>
         </div>
       }>
       <div className="flex items-center gap-3 px-1">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-4" aria-hidden /></span>
-        <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" aria-hidden /></span>
+        <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
           Now on {from === today || from === tomorrow ? dayLabel(from).toLowerCase() : dayLabel(from)}. rabbt keeps hard days apart and your weekly miles on track.
         </p>
       </div>
       <ChipRow>
         <Chip selected={mode === 'move'} onClick={() => setMode('move')}>Move this workout</Chip>
-        <Chip selected={mode === 'swap'} onClick={() => setMode('swap')}><ArrowLeftRight className="mr-1 inline size-3.5" aria-hidden />Swap whole days</Chip>
+        <Chip selected={mode === 'swap'} onClick={() => setMode('swap')}><ArrowLeftRight className="mr-1 inline size-4" aria-hidden />Swap whole days</Chip>
       </ChipRow>
       {mode === 'move' && (tomorrowOk || best) && (
         <ChipRow>
@@ -190,9 +190,9 @@ export function MoveSheet({ session, from, plan, cal, today, initialMode = 'move
       )}
       {group('This week', thisWeek)}
       {group('Next week', nextWeek)}
-      {!thisWeek.length && !nextWeek.length && <p className="px-1 text-[0.8235rem] text-(--text-secondary)">There's no free day left before race day to move this to.</p>}
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
-      {!inline && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Tip: on the week calendar you can also press and hold a workout, then drag it to a day.</p>}
+      {!thisWeek.length && !nextWeek.length && <p className="px-1 text-body text-(--text-secondary)">There's no free day left before race day to move this to.</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
+      {!inline && <p className="px-1 text-meta text-(--text-muted)">Tip: on the week calendar you can also press and hold a workout, then drag it to a day.</p>}
     </Sheet>
   )
 }
@@ -216,7 +216,7 @@ export function MoveSessionSheet({ sessionId, onClose, onMoved }: { sessionId: s
     return (
       <Sheet title="Move this session" onClose={onClose} bodyClassName="flex flex-col gap-4 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         {err || (data && !hit)
-          ? <p className="text-[0.8235rem] text-(--text-secondary)" role="alert">{err ?? "Couldn't find this workout in your plan. Open Schedule to move it."}</p>
+          ? <p className="text-body text-(--text-secondary)" role="alert">{err ?? "Couldn't find this workout in your plan. Open Schedule to move it."}</p>
           : <RabbitLoader className="py-10" label="Loading your week" cycle={['Loading your week…', 'Finding free days…']} />}
       </Sheet>
     )

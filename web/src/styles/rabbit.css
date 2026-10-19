@@ -10,9 +10,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 /* Conversation text reads like iMessage: the proportional system font, not DM Mono. */
 .chat-text, .chat-text .prose { font-family: var(--font); letter-spacing: normal; }
-/* Body text is the system sans (globals.css). Small uppercase tracked labels/badges keep
-   DM Mono as a brand accent; numbers that line up use font-mono / tabular-nums. */
-.uppercase:is(.tracking-wide, .tracking-wider, .tracking-widest) { font-family: var(--font-mono); }
+/* Body text is the system sans (globals.css). Labels are sentence case in the sans (no tracked
+   ALL-CAPS): see web/DESIGN.md. font-mono is only for numbers that line up (pace, time, stats). */
 .font-mono { font-variant-numeric: tabular-nums; }
 /* Settings: system font like iOS Settings; section labels stay in DM Mono. */
 .settings { font-family: var(--font); letter-spacing: normal; }
@@ -173,7 +172,7 @@ html.msg-menu-open .selectable, html.msg-menu-open .selectable * { -webkit-user-
 .rabbit-toast {
   position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: var(--z-toast);
   transform: translateX(-50%); padding: 6px 14px; border-radius: 999px;
-  background: var(--text); color: var(--bg); font-size: 0.7647rem; box-shadow: var(--shadow-md); pointer-events: none;
+  background: var(--text); color: var(--bg); font-size: var(--text-small); box-shadow: var(--shadow-md); pointer-events: none;
   animation: toast-in 1.6s ease both;
 }
 @keyframes toast-in {
@@ -248,7 +247,7 @@ html.kb-open .empty-hero { transform: none; }
   position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; min-height: 50px; min-width: 44px; color: var(--text-muted); font-weight: 500;
   /* Labels grow with larger text only up to 14px, like iOS tab bars, so five still fit side by side. */
-  font-size: min(0.6471rem, 14px);
+  font-size: min(var(--text-caption), 14px);
   transition: color 0.15s ease;
 }
 .tab-bar__item[aria-current="page"] { color: var(--accent); }
@@ -262,7 +261,7 @@ html.kb-open .tab-bar { display: none; }
 .plan-chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px;
   border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-surface);
-  color: var(--text-secondary); font-size: 0.8235rem; line-height: 1.2; cursor: pointer;
+  color: var(--text-secondary); font-size: var(--text-body); line-height: 1.2; cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
 }
 .plan-chip { position: relative; flex-shrink: 0; white-space: nowrap; } /* chip rows that scroll sideways keep chips one line high */
@@ -363,9 +362,9 @@ html.kb-open .tab-bar { display: none; }
 .rb-nap--sleep .rb-nap__body { animation: rb-breathe 2800ms ease-in-out infinite; }
 .rb-nap--sleep .rb-nap__body .rabbit-logo { opacity: 0.85; }
 @keyframes rb-breathe { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(1px) scale(1.03, 0.95); } }
-.rb-nap__z { position: absolute; right: 2%; top: 4%; font-size: 0.7059rem; font-weight: 700; line-height: 1;
+.rb-nap__z { position: absolute; right: 2%; top: 4%; font-size: 12px; font-weight: 700; line-height: 1;
   color: var(--text-muted); opacity: 0; animation: rb-z 2800ms ease-out infinite; }
-.rb-nap__z--2 { right: -4%; top: -14%; font-size: 0.8235rem; animation-delay: 1400ms; }
+.rb-nap__z--2 { right: -4%; top: -14%; font-size: 14px; animation-delay: 1400ms; }
 @keyframes rb-z { 0% { opacity: 0; transform: translate(0, 6px) scale(0.6); } 25% { opacity: 1; } 70% { opacity: 0.7; } 100% { opacity: 0; transform: translate(8px, -10px) scale(1); } }
 .rb-nap--peek { overflow: hidden; }
 .rb-nap--peek .rb-nap__body { animation: rb-peek 520ms cubic-bezier(0.2, 0.9, 0.3, 1.25) 120ms backwards, rb-breathe 2800ms ease-in-out 700ms infinite; }
@@ -458,9 +457,9 @@ html.kb-open .tab-bar { display: none; }
 
 
 /* ---------------------------------------------------------------- design system ---
-   Spacing: 4 / 8 / 12 / 16 / 24 px (Tailwind 1 / 2 / 3 / 4 / 6; --spacing is 4px).
-   Cards: rounded-xl (16px), 1px --border, --bg-surface, padding 16px (p-4), 12px between
-   cards in a list (gap-3), 24px between sections (gap-6). Section labels: <SectionLabel>.
+   The rules live in web/DESIGN.md. In short: 8px rhythm (--spacing is 4px), 20px page gutters,
+   28px between sections, cards 20px radius with 16-20px padding, 1px --border on --bg-surface.
+   Section headings: <Section> or <SectionLabel> (.section-title); labels in cards: .section-label.
    Rabbit's voice (chat replies, moments, plan notes, workout feedback, overview intros) always
    uses one surface: .rabbit-voice (components/ui/brand.tsx RabbitNote). Coach notes use the
    plain card so who's talking is obvious. */
@@ -472,13 +471,19 @@ html.kb-open .tab-bar { display: none; }
 }
 .rabbit-voice--tail { border-top-left-radius: 4px; }
 .rabbit-voice__label {
-  font-family: var(--default-mono-font-family); font-size: var(--text-caption); font-weight: 600;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+  font-family: var(--font); font-size: var(--text-meta); line-height: 1.3; font-weight: 650; color: var(--accent);
 }
+/* A label over a group inside a card or list ("Coach notes", "Splits", "Requests"). Screen-level
+   section headings use <Section> / <SectionLabel> (.section-title). */
 .section-label {
-  font-family: var(--default-mono-font-family); font-size: var(--text-caption); font-weight: 600;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+  font-family: var(--font); font-size: var(--text-small); line-height: 1.35; font-weight: 600;
+  color: var(--text-secondary);
 }
+.section-title {
+  font-family: var(--font); font-size: var(--text-title-sm); line-height: 1.3; font-weight: 650;
+  color: var(--text); letter-spacing: -0.005em;
+}
+.section-title--sm { font-size: var(--text-body-lg); line-height: 1.35; }
 
 /* ------------------------------------------------------------------ motion kit (feat-look) --
    One small set of motions, all transform/opacity (GPU), 150-300 ms, off under reduced motion:
@@ -506,11 +511,11 @@ html.kb-open .tab-bar { display: none; }
 @keyframes rb-think { 0%, 100% { transform: rotate(0deg); } 40%, 60% { transform: rotate(-7deg); } }
 .rb-pose__bubble { position: absolute; right: -6%; top: -12%; display: flex; align-items: center; justify-content: center;
   width: 1.4em; height: 1.4em; border-radius: 999px; background: var(--bg-surface); border: 1.5px solid var(--border-strong);
-  font-size: 0.8235rem; font-weight: 700; line-height: 1; color: var(--text-secondary); animation: rb-bubble 2400ms ease-in-out infinite; }
+  font-size: 14px; font-weight: 700; line-height: 1; color: var(--text-secondary); animation: rb-bubble 2400ms ease-in-out infinite; }
 @keyframes rb-bubble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .rb-nap--wave .rb-nap__body { transform-origin: 50% 100%; animation: rb-wave 1600ms ease-in-out infinite; }
 @keyframes rb-wave { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-6deg); } 40% { transform: rotate(4deg); } 60% { transform: rotate(-3deg); } }
-.rb-pose__hi { position: absolute; right: -10%; top: -6%; font-size: 0.7059rem; font-weight: 700; color: var(--accent);
+.rb-pose__hi { position: absolute; right: -10%; top: -6%; font-size: 12px; font-weight: 700; color: var(--accent);
   animation: rb-hi 1600ms ease-in-out infinite; }
 @keyframes rb-hi { 0%, 100% { opacity: 0.4; transform: translateY(0) rotate(-8deg); } 30% { opacity: 1; transform: translateY(-3px) rotate(4deg); } }
 .rb-nap--offline .rb-nap__body .rabbit-logo { opacity: 0.45; }

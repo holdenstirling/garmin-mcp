@@ -14,7 +14,7 @@ function ConvAvatar({ c }: { c: DMConv }) {
   if (c.kind === 'group' || c.members.length !== 1) {
     return (
       <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
-        <Users className="size-5" />
+        <Users className="size-6" />
       </span>
     )
   }
@@ -32,12 +32,12 @@ export function ConvRow({ c, i, onOpen }: { c: DMConv; i?: number; onOpen: (id: 
         <ConvAvatar c={c} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className={cn('min-w-0 flex-1 truncate text-[0.8824rem] text-(--text)', c.unread && 'font-semibold')}>{title}</span>
-            <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">{timeAgo(c.last?.ts ?? c.created)}</span>
+            <span className={cn('min-w-0 flex-1 truncate text-body-lg text-(--text)', c.unread && 'font-semibold')}>{title}</span>
+            <span className="shrink-0 text-caption text-(--text-muted)">{timeAgo(c.last?.ts ?? c.created)}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', c.unread ? 'text-(--text)' : 'text-(--text-muted)')}>{preview}</span>
-            {c.muted && <BellOff className="size-3.5 shrink-0 text-(--text-muted)" aria-label="Muted" />}
+            <span className={cn('min-w-0 flex-1 truncate text-small', c.unread ? 'text-(--text)' : 'text-(--text-muted)')}>{preview}</span>
+            {c.muted && <BellOff className="size-4 shrink-0 text-(--text-muted)" aria-label="Muted" />}
             {c.unread && <span className="size-2.5 shrink-0 rounded-full bg-(--accent)" aria-hidden />}
           </span>
         </span>
@@ -59,12 +59,12 @@ export function DmList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew:
   return (
     <div className="flex flex-col">
       <div className="px-4 pb-2 pt-1">
-        <Button variant="primary" className="h-11 w-full gap-1.5 text-[0.8235rem]" onClick={onNew}>
-          <SquarePen className="size-4" aria-hidden /> New message
+        <Button variant="primary" className="h-11 w-full gap-1.5 text-body" onClick={onNew}>
+          <SquarePen className="size-5" aria-hidden /> New message
         </Button>
       </div>
       {error && !data ? (
-        <p className="px-4 py-6 text-center text-[0.7647rem] text-(--text-muted)">
+        <p className="px-4 py-6 text-center text-small text-(--text-muted)">
           Couldn't load messages. <button type="button" className="hit-44 underline" onClick={load}>Retry</button>
         </p>
       ) : !data ? (

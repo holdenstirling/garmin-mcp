@@ -56,9 +56,9 @@ export function EmptyRabbit({ title, body, action, size = 56, mode = 'sleep', he
     <div className={cn('flex flex-col items-center gap-2 text-center', className)}>
       <RabbitNap size={size} mode={mode} />
       {title && (hero
-        ? <h2 className="font-display text-[1.1765rem] text-(--brand)">{title}</h2>
-        : <p className="text-[0.8824rem] font-medium text-(--text)">{title}</p>)}
-      {body && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">{body}</p>}
+        ? <h2 className="font-display text-title text-(--brand)">{title}</h2>
+        : <p className="text-body-lg font-medium text-(--text)">{title}</p>)}
+      {body && <p className="max-w-xs text-small leading-snug text-(--text-muted)">{body}</p>}
       {action}
     </div>
   )

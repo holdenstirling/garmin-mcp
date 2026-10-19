@@ -22,7 +22,7 @@
 .rabbit-md blockquote { margin: 0.4em 0 0.6em; padding-left: 0.75em; border-left: 3px solid var(--border-strong); color: var(--text-secondary); }
 .rabbit-md hr { border: 0; border-top: 1px solid var(--border); margin: 0.8em 0; }
 .rabbit-md .md-table { overflow-x: auto; margin: 0.4em 0 0.6em; }
-.rabbit-md table { border-collapse: collapse; font-size: 0.8235rem; }
+.rabbit-md table { border-collapse: collapse; font-size: var(--text-body); }
 .rabbit-md th, .rabbit-md td { border-bottom: 1px solid var(--border); padding: 0.3em 0.6em 0.3em 0; text-align: left; }
 .rabbit-md th { color: var(--text-secondary); font-weight: 600; }
 /* A very long reply folds after ~22 lines; "Show more" opens it. */
@@ -32,5 +32,5 @@
 /* Documents Rabbit keeps (the plan file, notes): section headings as small labels. */
 .rabbit-md--doc { max-width: none; }
 .rabbit-md--doc h1, .rabbit-md--doc h2, .rabbit-md--doc h3, .rabbit-md--doc h4 {
-  font-size: 0.7059rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 1em 0 0.3em; }
+  font-size: var(--text-meta); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin: 1em 0 0.3em; }
 .rabbit-md--doc > h1:first-child, .rabbit-md--doc > h2:first-child, .rabbit-md--doc > h3:first-child { margin-top: 0; }

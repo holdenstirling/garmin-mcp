@@ -76,11 +76,11 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
           <>
             <section aria-labelledby="ff-on" className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <h3 id="ff-on" className="min-w-0 flex-1 text-[0.8824rem] font-semibold text-(--text)">
+                <h3 id="ff-on" className="min-w-0 flex-1 text-body-lg font-semibold text-(--text)">
                   {found.length ? `On rabbt (${found.length})` : 'None of them are on rabbt yet'}
                 </h3>
                 {toFollow > 1 && followAll !== 'done' && (
-                  <Button variant="primary" className="h-9 px-3.5 text-[0.7647rem]" loading={followAll === 'busy'} onClick={() => void followEveryone()}>Follow all</Button>
+                  <Button variant="primary" className="h-9 px-3.5 text-small" loading={followAll === 'busy'} onClick={() => void followEveryone()}>Follow all</Button>
                 )}
               </div>
               {found.length > 0 && (
@@ -89,8 +89,8 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
                     <li key={f.user.id} className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
                       <PersonAvatar p={f.user} size={44} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[0.9412rem] font-medium text-(--text)">{f.user.name}</span>
-                        <span className="block truncate text-[0.7059rem] text-(--text-muted)">{[f.user.handle ? `@${f.user.handle}` : '', f.contact.name && !f.contact.name.toLowerCase().startsWith(f.user.name.toLowerCase()) ? `In your contacts as ${f.contact.name}` : 'In your contacts'].filter(Boolean).join(' · ')}</span>
+                        <span className="block truncate text-lead font-medium text-(--text)">{f.user.name}</span>
+                        <span className="block truncate text-meta text-(--text-muted)">{[f.user.handle ? `@${f.user.handle}` : '', f.contact.name && !f.contact.name.toLowerCase().startsWith(f.user.name.toLowerCase()) ? `In your contacts as ${f.contact.name}` : 'In your contacts'].filter(Boolean).join(' · ')}</span>
                       </span>
                       <FollowButton key={f.status} uid={f.user.id} status={f.status} followsYou={f.follows_you} onError={setErr} />
                     </li>
@@ -100,30 +100,30 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
             </section>
             {invite.length > 0 && (
               <section aria-labelledby="ff-inv" className="flex flex-col gap-2">
-                <h3 id="ff-inv" className="text-[0.8824rem] font-semibold text-(--text)">Invite to rabbt ({invite.length})</h3>
+                <h3 id="ff-inv" className="text-body-lg font-semibold text-(--text)">Invite to rabbt ({invite.length})</h3>
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {invite.slice(0, 200).map((c, i) => {
                     const s = sms(c), m = mail(c)
                     return (
                       <li key={i} className="flex min-h-14 items-center gap-3 px-3.5 py-2">
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[0.9412rem] text-(--text)">{c.name || c.phones[0] || c.emails[0]}</span>
-                          {c.name && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{c.phones[0] ?? c.emails[0]}</span>}
+                          <span className="block truncate text-lead text-(--text)">{c.name || c.phones[0] || c.emails[0]}</span>
+                          {c.name && <span className="block truncate text-meta text-(--text-muted)">{c.phones[0] ?? c.emails[0]}</span>}
                         </span>
                         {s ? (
-                          <a href={s} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-(--border) px-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-                            <MessageSquare className="size-3.5" aria-hidden /> Text
+                          <a href={s} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-(--border) px-3 text-small font-medium text-(--accent) active:bg-(--bg-inset)">
+                            <MessageSquare className="size-4" aria-hidden /> Text
                           </a>
                         ) : m ? (
-                          <a href={m} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-(--border) px-3 text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-                            <Mail className="size-3.5" aria-hidden /> Email
+                          <a href={m} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-(--border) px-3 text-small font-medium text-(--accent) active:bg-(--bg-inset)">
+                            <Mail className="size-4" aria-hidden /> Email
                           </a>
                         ) : null}
                       </li>
                     )
                   })}
                 </ul>
-                <p className="text-[0.7059rem] leading-snug text-(--text-muted)">Opens your Messages or Mail with an invite link. rabbt never texts or emails anyone for you.</p>
+                <p className="text-meta leading-snug text-(--text-muted)">Opens your Messages or Mail with an invite link. rabbt never texts or emails anyone for you.</p>
               </section>
             )}
             <Button variant="default" className="h-11" onClick={() => { setFound(null); setInvite([]); setPaste(''); setFollowAll('idle') }}>Check more contacts</Button>
@@ -131,40 +131,40 @@ export function ContactsSheet({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             <div className="flex items-start gap-3 rounded-2xl bg-(--accent-subtle) p-3.5">
-              <Users className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
-              <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+              <Users className="mt-0.5 size-6 shrink-0 text-(--accent)" aria-hidden />
+              <p className="text-small leading-snug text-(--text-secondary)">
                 rabbt checks these against people on rabbt and <b className="text-(--text)">doesn&rsquo;t keep them</b>. People who turned off &ldquo;find me by email or phone&rdquo; won&rsquo;t show up.
               </p>
             </div>
             {picker && (
-              <Button variant="primary" className="h-12 gap-2 text-[0.9412rem]" onClick={() => void pick()}>
-                <BookUser className="size-5" aria-hidden /> Choose from my contacts
+              <Button variant="primary" className="h-12 gap-2 text-lead" onClick={() => void pick()}>
+                <BookUser className="size-6" aria-hidden /> Choose from my contacts
               </Button>
             )}
             <section className="flex flex-col gap-2">
-              <label htmlFor="ff-paste" className="text-[0.8235rem] font-semibold text-(--text)">
+              <label htmlFor="ff-paste" className="text-body font-semibold text-(--text)">
                 {picker ? 'Or paste numbers or emails' : 'Paste numbers or emails'}
               </label>
               <textarea id="ff-paste" rows={4} value={paste} onChange={(e) => setPaste(e.target.value)}
                 placeholder={'Jesse 303-555-1234\nsam@example.com'}
-                className="w-full rounded-xl border border-input bg-transparent p-3 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                className="w-full rounded-xl border border-input bg-transparent p-3 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
               <Button variant="primary" className="h-11" disabled={!paste.trim()} onClick={() => void check(parsePasted(paste))}>Find them on rabbt</Button>
             </section>
             <section className="flex flex-col gap-2">
               <input ref={file} type="file" accept=".vcf,text/vcard,text/x-vcard" className="sr-only" tabIndex={-1} aria-hidden
                 onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = '' }} />
               <Button variant="default" className="h-11 gap-2" onClick={() => file.current?.click()}>
-                <FileUp className="size-4" aria-hidden /> Open a contacts file (.vcf)
+                <FileUp className="size-5" aria-hidden /> Open a contacts file (.vcf)
               </Button>
               {!picker && (
-                <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+                <p className="text-meta leading-snug text-(--text-muted)">
                   On iPhone: in Contacts, open a contact (or a list), tap Share Contact, then Save to Files, and pick that file here.
                 </p>
               )}
             </section>
           </>
         )}
-        {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+        {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
       </div>
     </Sheet>
   )

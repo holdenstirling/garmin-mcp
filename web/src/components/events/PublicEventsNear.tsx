@@ -33,7 +33,7 @@ export function PublicEventsNear({ refreshKey }: { refreshKey?: number }) {
   if (!rows || rows.length === 0) return null
   return (
     <section aria-label="Meetups and games near you" className="flex flex-col gap-2">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Meetups &amp; games near you</h2>
+      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Meetups &amp; games near you</h2>
       <ul className="flex flex-col gap-2">
         {rows.map((e) => {
           const Icon = isSport(e.activity) ? SPORT_ICON[e.activity] : Users
@@ -41,37 +41,37 @@ export function PublicEventsNear({ refreshKey }: { refreshKey?: number }) {
           return (
             <li key={e.key} className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
               <div className="flex items-start gap-3">
-                <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" /></span>
+                <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-6" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.8824rem] font-semibold leading-snug text-(--text)">{e.name}</p>
-                  <p className="text-[0.7059rem] text-(--text-secondary)">{[e.activity_label, when].filter(Boolean).join(' · ')}</p>
-                  {e.repeat_text && <p className="text-[0.7059rem] text-(--text-muted)">{e.repeat_text}</p>}
+                  <p className="text-body-lg font-semibold leading-snug text-(--text)">{e.name}</p>
+                  <p className="text-meta text-(--text-secondary)">{[e.activity_label, when].filter(Boolean).join(' · ')}</p>
+                  {e.repeat_text && <p className="text-meta text-(--text-muted)">{e.repeat_text}</p>}
                   {(e.neighborhood || e.location) && (
-                    <p className="mt-0.5 flex items-center gap-1 text-[0.7059rem] text-(--text-muted)"><MapPin className="size-3 shrink-0" aria-hidden />{e.neighborhood || e.location}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-meta text-(--text-muted)"><MapPin className="size-3.5 shrink-0" aria-hidden />{e.neighborhood || e.location}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <p className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-muted)">
+                <p className="min-w-0 flex-1 truncate text-meta text-(--text-muted)">
                   {e.host}{e.going ? ` · ${e.going} going` : ''}
                 </p>
                 {e.url && (
                   <a href={e.url} target="_blank" rel="noopener noreferrer" aria-label={`${e.name} website`}
                     className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-(--border) text-(--text-secondary) active:bg-(--bg-inset)">
-                    <ExternalLink className="size-4" aria-hidden />
+                    <ExternalLink className="size-5" aria-hidden />
                   </a>
                 )}
-                <Button variant={e.my_going ? 'default' : 'primary'} className={cn('h-11 shrink-0 gap-1.5 px-4 text-[0.7647rem]', e.my_going && 'text-(--accent)')}
+                <Button variant={e.my_going ? 'default' : 'primary'} className={cn('h-11 shrink-0 gap-1.5 px-4 text-small', e.my_going && 'text-(--accent)')}
                   aria-pressed={e.my_going} loading={busy === e.key} onClick={() => void toggle(e)}>
-                  {e.my_going ? <><Check className="size-4" aria-hidden /> Going</> : "I'm going"}
+                  {e.my_going ? <><Check className="size-5" aria-hidden /> Going</> : "I'm going"}
                 </Button>
               </div>
             </li>
           )
         })}
       </ul>
-      {err && <p className="px-1 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Hosting something? Make your event Public and it shows up here for people nearby.</p>
+      {err && <p className="px-1 text-meta text-(--danger)" role="alert">{err}</p>}
+      <p className="px-1 text-caption text-(--text-muted)">Hosting something? Make your event Public and it shows up here for people nearby.</p>
     </section>
   )
 }

@@ -36,7 +36,7 @@ function LoadDots({ days }: { days: CalDay[] }) {
           <li key={d.date} className="flex flex-1 flex-col items-center gap-1"
             aria-label={`${dt.toLocaleDateString([], { weekday: 'long' })}: ${d.travel ? 'travelling' : `${LOAD_LABEL[d.load]}, ${hours(d.busy_min)} of meetings`}`}>
             <span aria-hidden className={cn('size-3 rounded-full', d.travel ? 'border-2 border-(--accent) bg-transparent' : DOT[d.load])} />
-            <span aria-hidden className="text-[0.6471rem] font-medium text-(--text-muted)">{WD[dt.getDay()]}</span>
+            <span aria-hidden className="text-caption font-medium text-(--text-muted)">{WD[dt.getDay()]}</span>
           </li>
         )
       })}
@@ -63,13 +63,13 @@ export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onRe
     if (!data.available || promptGone) return null
     return (
       <section aria-label="Connect your calendar" className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-        <CalendarClock className="size-5 shrink-0 text-(--accent)" aria-hidden />
-        <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <CalendarClock className="size-6 shrink-0 text-(--accent)" aria-hidden />
+        <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
           Connect Google Calendar so rabbt plans around your week.
         </p>
         <div className="flex shrink-0 flex-col gap-1">
-          <Button variant="primary" className="h-9 px-3 text-[0.7059rem]" onClick={() => requestConnect('calendar')}>Connect</Button>
-          <button type="button" className="hit-44 text-[0.7059rem] text-(--text-muted)" onClick={() => { hideCalPrompt(); setPromptGone(true) }}>Not now</button>
+          <Button variant="primary" className="h-9 px-3 text-meta" onClick={() => requestConnect('calendar')}>Connect</Button>
+          <button type="button" className="hit-44 text-meta text-(--text-muted)" onClick={() => { hideCalPrompt(); setPromptGone(true) }}>Not now</button>
         </div>
       </section>
     )
@@ -108,44 +108,44 @@ export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onRe
   return (
     <section aria-label="Your week vs your calendar" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-center gap-2">
-        <CalendarClock className="size-4 text-(--accent)" aria-hidden />
+        <CalendarClock className="size-5 text-(--accent)" aria-hidden />
         <SectionLabel as="h3" className="flex-1 px-0">Your week vs your calendar</SectionLabel>
       </div>
       {week.length > 0 && <LoadDots days={week} />}
-      {data.error && <p className="text-[0.7059rem] text-(--text-muted)">{data.error}</p>}
+      {data.error && <p className="text-meta text-(--text-muted)">{data.error}</p>}
       {!data.error && recs.length === 0 && (
-        <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <p className="text-small leading-snug text-(--text-secondary)">
           {packed ? `${packed} busy day${packed === 1 ? '' : 's'} this week, and your plan already fits around them.` : 'Your plan and your calendar line up this week.'}
         </p>
       )}
       <ul className="flex flex-col gap-2" aria-live="polite">
         {shown.map((r) => (
           <li key={r.id} className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) px-3 py-2.5">
-            <p className="m-0 text-[0.8235rem] font-semibold leading-snug text-(--text)">{r.title}</p>
-            <p className="m-0 text-[0.7647rem] leading-snug text-(--text-secondary)">{r.body}</p>
+            <p className="m-0 text-body font-semibold leading-snug text-(--text)">{r.title}</p>
+            <p className="m-0 text-small leading-snug text-(--text-secondary)">{r.body}</p>
             <div className="flex items-center gap-2">
-              <Button variant="primary" className="h-10 px-3.5 text-[0.7647rem]" loading={busy === r.id} disabled={!!busy && busy !== r.id}
+              <Button variant="primary" className="h-10 px-3.5 text-small" loading={busy === r.id} disabled={!!busy && busy !== r.id}
                 onClick={() => void act(r)}>{r.label}</Button>
-              <button type="button" className="hit-44 px-2 text-[0.7647rem] text-(--text-muted)" onClick={() => void notNow(r)}>Not now</button>
+              <button type="button" className="hit-44 px-2 text-small text-(--text-muted)" onClick={() => void notNow(r)}>Not now</button>
             </div>
           </li>
         ))}
       </ul>
       {recs.length > 3 && (
-        <button type="button" className="hit-44 inline-flex items-center gap-1 self-start text-[0.7647rem] text-(--accent)" aria-expanded={more}
+        <button type="button" className="hit-44 inline-flex items-center gap-1 self-start text-small text-(--accent)" aria-expanded={more}
           onClick={() => setMore((m) => !m)}>
-          {more ? 'Show less' : `${recs.length - 3} more`} <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden />
+          {more ? 'Show less' : `${recs.length - 3} more`} <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} aria-hidden />
         </button>
       )}
       {undo && (
-        <div className="flex items-center gap-2 text-[0.7647rem] text-(--accent)" role="status">
+        <div className="flex items-center gap-2 text-small text-(--accent)" role="status">
           <span className="flex-1">{undo.text}</span>
-          <Button variant="default" className="h-9 gap-1 px-3 text-[0.7059rem]" loading={busy === 'undo'} onClick={() => void doUndo()}>
-            <Undo2 className="size-3.5" aria-hidden /> Undo
+          <Button variant="default" className="h-9 gap-1 px-3 text-meta" loading={busy === 'undo'} onClick={() => void doUndo()}>
+            <Undo2 className="size-4" aria-hidden /> Undo
           </Button>
         </div>
       )}
-      {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
     </section>
   )
 }
@@ -155,7 +155,7 @@ export function DayLoadChip({ day }: { day: CalDay | undefined }) {
   if (!day || (!day.travel && day.load !== 'heavy' && day.load !== 'packed')) return null
   const text = day.travel ? 'Travelling' : `${LOAD_LABEL[day.load]} day · ${hours(day.busy_min)} of meetings`
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-(--bg-inset) px-2 py-0.5 text-[0.6471rem] font-medium text-(--text-secondary)">
+    <span className="inline-flex items-center gap-1 rounded-full bg-(--bg-inset) px-2 py-0.5 text-caption font-medium text-(--text-secondary)">
       <span aria-hidden className={cn('size-2 rounded-full', day.travel ? 'border border-(--accent)' : DOT[day.load])} />
       {text}
     </span>

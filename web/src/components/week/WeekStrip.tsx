@@ -29,7 +29,7 @@ export function WeekDots({ days, className }: { days: WeekDay[]; className?: str
         const st = dayState(d)
         return (
           <span key={d.date} aria-hidden className="flex w-4 flex-col items-center gap-0.5">
-            <span className={cn('text-[0.6471rem] leading-none', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+            <span className={cn('text-caption leading-none', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
               {d.weekday.charAt(0)}
             </span>
             <span className={cn('flex size-3 items-center justify-center rounded-full border text-(--on-fill)',
@@ -60,7 +60,7 @@ export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = t
     return (
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
         {error && !loading ? (
-          <button type="button" onClick={onRetry} className="min-h-11 w-full text-left text-[0.7647rem] text-(--text-muted)">
+          <button type="button" onClick={onRetry} className="min-h-11 w-full text-left text-small text-(--text-muted)">
             Couldn't load this week. <span className="underline">Retry</span>
           </button>
         ) : (
@@ -74,12 +74,12 @@ export function WeekList({ week, loading, error, onRetry, onAskDay, imperial = t
   }
   return (
     <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
-      <h2 className="border-b border-(--border) px-3.5 py-2.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+      <h2 className="border-b border-(--border) px-3.5 py-2.5 text-caption font-semibold text-(--text-muted)">
         {weekTitle(week)}
       </h2>
-      {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
-      {week.plan_status === 'error' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Couldn't read this week from your plan. Showing what you've done.</p>}
-      {week.plan_status === 'over_budget' && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--text-muted)">Planned workouts show up tomorrow (today's limit is used up).</p>}
+      {week.garmin_error && <p className="px-3.5 pt-2 text-meta text-(--warning-text)">{week.garmin_error}</p>}
+      {week.plan_status === 'error' && <p className="px-3.5 pt-2 text-meta text-(--text-muted)">Couldn't read this week from your plan. Showing what you've done.</p>}
+      {week.plan_status === 'over_budget' && <p className="px-3.5 pt-2 text-meta text-(--text-muted)">Planned workouts show up tomorrow (today's limit is used up).</p>}
       <div className="divide-y divide-(--border)">
         {week.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey} onAsk={onAskDay}
           onOpen={(day) => setDayOpen(day.date)} />)}

@@ -42,15 +42,15 @@ function BlockRow({ b }: { b: BlockSummary }) {
     <button type="button" onClick={() => openBlock(b.id)}
       className="settings-row flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-(--bg-inset)">
       {b.me ? <WeekRing done={b.me.done} target={b.me.target} size={36} />
-        : <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Users className="size-4" /></span>}
+        : <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Users className="size-5" /></span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.9412rem] leading-snug text-(--text)">{b.name}</span>
-        <span className="mt-0.5 block text-[0.7647rem] leading-snug text-(--text-muted)">
+        <span className="block truncate text-lead leading-snug text-(--text)">{b.name}</span>
+        <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">
           {weekLine(b.week)} · {b.members} {b.members === 1 ? 'person' : 'people'}
           {b.week.state === 'active' && b.members > 1 ? ` · ${b.closed} closed` : ''}
         </span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />
     </button>
   )
 }

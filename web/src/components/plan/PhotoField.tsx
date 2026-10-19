@@ -38,18 +38,18 @@ export function PhotoField({ me, onChanged }: { me: Me; onChanged: () => void })
     <Card className="flex items-center gap-4 px-4 py-3.5">
       <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(version)} size={64} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Profile photo</span>
+        <span className="text-caption font-semibold text-(--text-muted)">Profile photo</span>
         <div className="flex flex-wrap gap-2">
-          <Button variant="default" className="h-9 gap-1.5 px-3 text-[0.7647rem]" loading={busy} onClick={() => input.current?.click()}>
-            <Upload className="size-4" /> {version ? 'Change' : 'Upload'}
+          <Button variant="default" className="h-9 gap-1.5 px-3 text-small" loading={busy} onClick={() => input.current?.click()}>
+            <Upload className="size-5" /> {version ? 'Change' : 'Upload'}
           </Button>
           {version != null && (
-            <Button variant="ghost" className="h-9 gap-1.5 px-3 text-[0.7647rem] text-(--danger)" disabled={busy} onClick={() => void remove()}>
-              <Trash2 className="size-4" /> Remove
+            <Button variant="ghost" className="h-9 gap-1.5 px-3 text-small text-(--danger)" disabled={busy} onClick={() => void remove()}>
+              <Trash2 className="size-5" /> Remove
             </Button>
           )}
         </div>
-        {error && <span className="text-[0.7059rem] text-(--danger)" role="alert">{error}</span>}
+        {error && <span className="text-meta text-(--danger)" role="alert">{error}</span>}
         <input ref={input} type="file" accept="image/*" className="hidden"
           onChange={(e) => void pick(e.target.files?.[0])} />
       </div>

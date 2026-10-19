@@ -27,8 +27,8 @@ const range = (a: string, b: string) => (a === b ? a : `${a}–${b}`)
 
 function Chip({ icon: Icon, children, label }: { icon: typeof Zap; children: React.ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-(--bg-inset) px-1.5 py-0.5 font-mono text-[0.7059rem] tabular-nums text-(--text)" aria-label={label}>
-      <Icon className="size-3 text-(--text-muted)" aria-hidden />{children}
+    <span className="inline-flex items-center gap-1 rounded-md bg-(--bg-inset) px-1.5 py-0.5 font-mono text-meta tabular-nums text-(--text)" aria-label={label}>
+      <Icon className="size-3.5 text-(--text-muted)" aria-hidden />{children}
     </span>
   )
 }
@@ -54,19 +54,19 @@ function StepRow({ st, imperial }: { st: TargetStep; imperial: boolean }) {
         <span className={cn('mt-0.5 w-1 shrink-0 self-stretch rounded-full', ZONE_TONE[st.zone])} aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-1.5">
-            <span className="text-[0.8235rem] font-semibold tabular-nums text-(--text)">{amount(st)}</span>
-            <span className="text-[0.8235rem] text-(--text)">{st.type === 'work' || st.type === 'steady' ? ZONE_LABEL[st.zone] : st.label}</span>
-            <span className="ml-auto shrink-0 font-mono text-[0.6471rem] text-(--text-muted)">Z{st.zone}</span>
+            <span className="text-body font-semibold tabular-nums text-(--text)">{amount(st)}</span>
+            <span className="text-body text-(--text)">{st.type === 'work' || st.type === 'steady' ? ZONE_LABEL[st.zone] : st.label}</span>
+            <span className="ml-auto shrink-0 font-mono text-caption text-(--text-muted)">Z{st.zone}</span>
           </span>
           {chips.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{chips}</span>}
           {open && (
-            <span className="mt-1.5 block text-[0.7059rem] leading-snug text-(--text-secondary)">
+            <span className="mt-1.5 block text-meta leading-snug text-(--text-secondary)">
               Effort {st.rpe} out of 10 · Talk test: {st.talk.toLowerCase()}.
               {st.cadence && (st.cadence[0] >= 120 ? ' Cadence is steps per minute, both feet.' : ' Cadence is pedal turns per minute.')}
             </span>
           )}
         </span>
-        <ChevronDown className={cn('mt-1 size-3.5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+        <ChevronDown className={cn('mt-1 size-4 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
     </li>
   )
@@ -77,7 +77,7 @@ function Blocks({ blocks, imperial }: { blocks: TargetBlock[]; imperial: boolean
     <ol className="flex flex-col">
       {blocks.map((b, i) => b.type === 'repeat' ? (
         <li key={i} className="my-1 rounded-lg border border-(--border) px-2.5 py-1">
-          <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">Repeat {b.reps} times</span>
+          <span className="text-caption font-semibold text-(--accent)">Repeat {b.reps} times</span>
           <Blocks blocks={b.steps} imperial={imperial} />
         </li>
       ) : <StepRow key={i} st={b} imperial={imperial} />)}
@@ -95,7 +95,7 @@ function ZoneBar({ zones }: { zones: Record<string, number> }) {
       <div className="flex h-2 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>
         {items.map(([z, m]) => <span key={z} className={ZONE_TONE[z]} style={{ width: `${(m / total) * 100}%` }} />)}
       </div>
-      <div className="flex flex-wrap gap-x-3 text-[0.6471rem] text-(--text-muted)" aria-hidden>
+      <div className="flex flex-wrap gap-x-3 text-caption text-(--text-muted)" aria-hidden>
         {items.map(([z, m]) => <span key={z}>Z{z} {ZONE_LABEL[z]?.toLowerCase()} {m}′</span>)}
       </div>
     </div>
@@ -116,8 +116,8 @@ export function WorkoutSummary({ t, dist, imperial }: { t: Targets; dist: string
       <dl className="grid grid-cols-2 gap-x-3 min-[400px]:grid-cols-3 gap-y-1.5">
         {cells.map(([k, v]) => (
           <div key={k} className="min-w-0">
-            <dt className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">{k}</dt>
-            <dd className="font-mono text-[0.8235rem] font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]">{v}</dd>
+            <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
+            <dd className="font-mono text-body font-semibold leading-tight tabular-nums text-(--text) [overflow-wrap:anywhere]">{v}</dd>
           </div>
         ))}
       </dl>
@@ -130,20 +130,20 @@ export function WorkoutSteps({ t, imperial }: { t: Targets; imperial: boolean })
   const groups = t.legs ? t.legs.map((l) => ({ label: SPORT_NAME[l.sport], steps: l.steps })) : [{ label: undefined, steps: t.steps ?? [] }]
   return (
     <div className="mx-3.5 mt-3 flex flex-col gap-1">
-      <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">The workout · tap a step for effort</p>
+      <p className="text-caption font-semibold text-(--text-muted)">The workout · tap a step for effort</p>
       {groups.map((g, i) => (
         <div key={i} className="flex flex-col">
-          {g.label && <span className="mt-1 text-[0.7059rem] font-semibold text-(--text-secondary)">{g.label}</span>}
+          {g.label && <span className="mt-1 text-meta font-semibold text-(--text-secondary)">{g.label}</span>}
           <Blocks blocks={g.steps} imperial={imperial} />
         </div>
       ))}
       {t.hr_source === 'estimated' && (
-        <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="text-meta leading-snug text-(--text-muted)">
           Heart-rate targets are estimated from the highest heart rate in your recent workouts. Add your max or threshold heart rate in Me › Profile for exact zones.
         </p>
       )}
       {t.hr_source === null && (
-        <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="text-meta leading-snug text-(--text-muted)">
           Add your max heart rate in Me › Profile to see heart-rate targets in beats per minute.
         </p>
       )}
@@ -171,12 +171,12 @@ export function HowItWent({ w, imperial, sport }: { w: Went; imperial: boolean; 
   return (
     <div className="mx-3.5 mt-3 flex flex-col gap-1.5 rounded-lg border border-(--border) px-3 py-2.5">
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">How it went</span>
-        <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[0.6471rem] font-semibold', WENT_TONE[w.verdict])}>{w.headline}</span>
+        <span className="text-caption font-semibold text-(--text-muted)">How it went</span>
+        <span className={cn('ml-auto rounded-full px-2 py-0.5 text-caption font-semibold', WENT_TONE[w.verdict])}>{w.headline}</span>
       </div>
-      {facts.length > 0 && <p className="font-mono text-[0.7647rem] tabular-nums text-(--text)">{facts.join(' · ')}</p>}
+      {facts.length > 0 && <p className="font-mono text-small tabular-nums text-(--text)">{facts.join(' · ')}</p>}
       {w.lines.length > 0 && (
-        <div className="flex flex-col gap-0.5 text-[0.7647rem] leading-normal text-(--text-secondary)">
+        <div className="flex flex-col gap-0.5 text-small leading-normal text-(--text-secondary)">
           {w.lines.map((l) => <p key={l} className="m-0"><RabbitInline text={l} /></p>)}
         </div>
       )}
@@ -195,20 +195,20 @@ export function PaceNudge({ sports }: { sports: string[] }) {
     getPaces().then((v) => { if (live) setSug(v.pending.find((p) => key.split(',').includes(p.sport)) ?? null) }, () => {})
     return () => { live = false }
   }, [key])
-  if (done) return <p className="flex items-center gap-1.5 px-2 text-[0.7647rem] text-(--accent)" role="status"><Check className="size-3.5" aria-hidden />{done}</p>
+  if (done) return <p className="flex items-center gap-1.5 px-2 text-small text-(--accent)" role="status"><Check className="size-4" aria-hidden />{done}</p>
   if (!sug) return null
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3" role="status">
-      <p className="flex items-start gap-2 text-[0.7647rem] leading-snug text-(--text)">
-        <Gauge className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
+      <p className="flex items-start gap-2 text-small leading-snug text-(--text)">
+        <Gauge className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
         <span><span className="font-semibold">You're getting fitter.</span> {sug.headline}</span>
       </p>
       <div className="flex gap-2">
-        <Button variant="primary" className="h-11 px-4 text-[0.7647rem]" loading={busy}
+        <Button variant="primary" className="h-11 px-4 text-small" loading={busy}
           onClick={() => { setBusy(true); acceptPace(sug.id).then((r) => setDone(`${r.summary} Your upcoming targets now use it.`), () => setBusy(false)) }}>
           Update my targets
         </Button>
-        <Button variant="ghost" className="h-11 px-3 text-[0.7647rem]" onClick={() => { void dismissPace(sug.id).catch(() => {}); setSug(null) }}>Not now</Button>
+        <Button variant="ghost" className="h-11 px-3 text-small" onClick={() => { void dismissPace(sug.id).catch(() => {}); setSug(null) }}>Not now</Button>
       </div>
     </div>
   )

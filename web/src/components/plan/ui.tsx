@@ -76,23 +76,23 @@ export function Screen({ title, subtitle, onBack, onClose, closing, footer, chil
           <div className="mx-auto flex max-w-xl items-center gap-2 px-1">
             <div className="min-w-0 flex-1">
               <h1 className="truncate font-display text-[clamp(1.15rem,6.2vw,1.4118rem)] leading-tight text-(--brand)">{name}</h1>
-              {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
+              {subtitle && <p className="truncate text-caption text-(--text-muted)">{subtitle}</p>}
             </div>
             {embed.action}
           </div>
         ) : (
           <div className="flex items-center gap-2">
             {onBack ? (
-              <button type="button" className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-5" /></button>
+              <button type="button" className="modal-close" aria-label="Back" onClick={onBack}><ChevronLeft className="size-6" /></button>
             ) : <span className="modal-close invisible" aria-hidden />}
             <div className="min-w-0 flex-1 text-center">
-              <h2 className="truncate font-display text-[1.0588rem] leading-tight text-(--brand)">{name}</h2>
-              {subtitle && <p className="truncate text-[0.6471rem] text-(--text-muted)">{subtitle}</p>}
+              <h2 className="truncate font-display text-title-sm leading-tight text-(--brand)">{name}</h2>
+              {subtitle && <p className="truncate text-caption text-(--text-muted)">{subtitle}</p>}
             </div>
             {/* X: a root screen, or a step/child screen whose close leaves entirely (a wizard step,
                 a thread inside the inbox), so there is always one tap all the way out. */}
             {embedded || !onClose || onClose === onBack ? <span className="modal-close invisible" aria-hidden />
-              : <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>}
+              : <button type="button" className="modal-close" aria-label="Close" onClick={onClose}><X className="size-5" /></button>}
           </div>
         )}
         {embedded && embed.top}
@@ -143,9 +143,9 @@ export function Progress({ step, total }: { step: number; total: number }) {
 export function StepIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
   return (
     <div className="px-1">
-      <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{eyebrow}</p>
-      <h3 className="mt-1 font-display text-[1.4118rem] leading-tight text-(--brand)">{title}</h3>
-      {children && <p className="mt-1.5 text-[0.8235rem] leading-snug text-(--text-secondary)">{children}</p>}
+      <p className="text-caption font-semibold text-(--accent)">{eyebrow}</p>
+      <h3 className="mt-1 font-display text-title-lg leading-tight text-(--brand)">{title}</h3>
+      {children && <p className="mt-1.5 text-body leading-snug text-(--text-secondary)">{children}</p>}
     </div>
   )
 }
@@ -168,9 +168,9 @@ export function Field({ label, hint, children, className }: {
   })
   return (
     <div ref={box} role="group" aria-labelledby={id} className={cn('flex flex-col gap-2 px-4 py-3.5', className)}>
-      <span id={id} className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
+      <span id={id} className="text-caption font-semibold text-(--text-muted)">{label}</span>
       {children}
-      {hint && <span id={`${id}-hint`} className="text-[0.7059rem] leading-snug text-(--text-muted)">{hint}</span>}
+      {hint && <span id={`${id}-hint`} className="text-meta leading-snug text-(--text-muted)">{hint}</span>}
     </div>
   )
 }
@@ -230,8 +230,8 @@ export function OptionCard({ selected, title, description, onClick }: {
     <button type="button" onClick={onClick} aria-pressed={selected}
       className={cn('flex w-full flex-col items-start gap-0.5 rounded-xl border px-3.5 py-3 text-left transition-colors',
         selected ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface) active:bg-(--bg-inset)')}>
-      <span className={cn('text-[0.9412rem] font-medium', selected ? 'text-(--accent)' : 'text-(--text)')}>{title}</span>
-      <span className="text-[0.7647rem] leading-snug text-(--text-muted)">{description}</span>
+      <span className={cn('text-lead font-medium', selected ? 'text-(--accent)' : 'text-(--text)')}>{title}</span>
+      <span className="text-small leading-snug text-(--text-muted)">{description}</span>
     </button>
   )
 }
@@ -257,7 +257,7 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
     <div className="relative">
       <select aria-label={label} value={v == null ? '' : fmt(v)}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-        className={cn('h-12 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-10 text-[1.0588rem] tabular-nums',
+        className={cn('h-12 w-full appearance-none rounded-md border border-input bg-transparent pl-3 pr-10 text-title-sm tabular-nums',
           'text-(--text) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring', v == null && 'text-(--text-muted)')}>
         <option value="">Choose {label}…</option>
         {common.length > 0 && v == null && (
@@ -269,10 +269,10 @@ export function NumberStepper({ value, onChange, step = 1, min, max, suffix, dec
           {opts.map((n) => <option key={n} value={fmt(n)}>{fmt(n)}{unit}</option>)}
         </optgroup>
       </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
+      <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
     </div>
   )
 }
 
-export const inputCls = 'h-11 w-full rounded-md border border-input bg-transparent px-3 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-export const areaCls = 'min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+export const inputCls = 'h-11 w-full rounded-md border border-input bg-transparent px-3 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+export const areaCls = 'min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'

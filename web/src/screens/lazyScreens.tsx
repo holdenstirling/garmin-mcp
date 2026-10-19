@@ -24,7 +24,7 @@ function Fallback({ kind, onClose }: { kind: Kind; onClose?: () => void }) {
         <RabbitLoader label="Loading" cycle={HOPS} />
         {onClose && (
           <button type="button" className="modal-close absolute right-3 top-[max(10px,env(safe-area-inset-top))]" aria-label="Close" onClick={onClose}>
-            <X className="size-4" />
+            <X className="size-5" />
           </button>
         )}
       </div>
@@ -41,12 +41,12 @@ class LoadFailed extends Component<{ kind: Kind; onClose?: () => void; children:
     return (
       <div className={kind === 'tab' ? 'flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center'
         : 'fixed inset-0 z-(--z-page) flex flex-col items-center justify-center gap-3 bg-(--bg) p-8 text-center'} role="alert">
-        <p className="text-[0.8235rem] text-(--text-secondary)">This screen didn't load. Check your connection.</p>
+        <p className="text-body text-(--text-secondary)">This screen didn't load. Check your connection.</p>
         <div className="flex gap-2">
-          <button type="button" className="hit-44 rounded-lg border border-(--border) px-4 py-2 text-[0.8235rem] text-(--text)"
+          <button type="button" className="hit-44 rounded-lg border border-(--border) px-4 py-2 text-body text-(--text)"
             onClick={() => window.location.reload()}>Reload</button>
           {onClose && (
-            <button type="button" className="hit-44 rounded-lg px-4 py-2 text-[0.8235rem] text-(--accent)"
+            <button type="button" className="hit-44 rounded-lg px-4 py-2 text-body text-(--accent)"
               onClick={() => { this.setState({ failed: false }); onClose() }}>Close</button>
           )}
         </div>

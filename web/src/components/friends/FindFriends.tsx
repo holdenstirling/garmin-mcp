@@ -71,15 +71,15 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
     <Screen title="Find friends" onClose={onClose}>
       <div className="flex flex-col gap-5 pb-[max(16px,env(safe-area-inset-bottom))]">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" aria-hidden />
+          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-6 -translate-y-1/2 text-(--text-muted)" aria-hidden />
           <input type="text" inputMode="search" role="searchbox" value={q} onChange={(e) => setQ(e.target.value)} enterKeyHint="search"
             aria-label="Search people by name, @handle, email or phone" placeholder="Name, @handle, email or phone"
             autoCapitalize="none" autoCorrect="off" spellCheck={false}
-            className="h-12 w-full rounded-full border border-(--border) bg-(--bg-surface) pl-11 pr-11 text-base text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/40" />
+            className="h-12 w-full rounded-full border border-(--border) bg-(--bg-surface) pl-11 pr-11 text-lead text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/40" />
           {q && (
             <button type="button" onClick={() => setQ('')} aria-label="Clear search"
               className="absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)">
-              <X className="size-4" aria-hidden />
+              <X className="size-5" aria-hidden />
             </button>
           )}
         </div>
@@ -111,16 +111,16 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
 
             {requests.length > 0 && (
               <section aria-labelledby="ff-req" className="flex flex-col gap-2">
-                <h2 id="ff-req" className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Want to follow you</h2>
+                <h2 id="ff-req" className="px-1 text-caption font-semibold text-(--text-muted)">Want to follow you</h2>
                 <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
                   {requests.map((e) => e.user && (
                     <li key={e.edge_id} className="flex min-h-16 items-center gap-3 px-3.5 py-2.5">
                       <PersonAvatar p={e.user} size={44} />
-                      <span className="min-w-0 flex-1 truncate text-[0.9412rem] font-medium text-(--text)">{e.user.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-lead font-medium text-(--text)">{e.user.name}</span>
                       <button type="button" onClick={() => void answer(e, true)}
-                        className="h-9 shrink-0 rounded-full bg-(--accent) px-3.5 text-[0.7647rem] font-semibold text-(--on-fill) active:opacity-80">Accept</button>
+                        className="h-9 shrink-0 rounded-full bg-(--accent) px-3.5 text-small font-semibold text-(--on-fill) active:opacity-80">Accept</button>
                       <button type="button" onClick={() => void answer(e, false)} aria-label={`Decline ${e.user.name}`}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-4" aria-hidden /></button>
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) active:bg-(--bg-inset)"><X className="size-5" aria-hidden /></button>
                     </li>
                   ))}
                 </ul>
@@ -128,7 +128,7 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
             )}
 
             <section aria-labelledby="ff-sug" className="flex flex-col gap-2">
-              <h2 id="ff-sug" className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">People you may know</h2>
+              <h2 id="ff-sug" className="px-1 text-caption font-semibold text-(--text-muted)">People you may know</h2>
               {sug === null ? <RabbitLoader className="py-8" label="Finding people you may know" cycle={['Finding your crew…', 'Lacing up…']} />
                 : sug.length ? (
                   <ul className="divide-y divide-(--border) overflow-hidden rounded-2xl border border-(--border) bg-(--bg-surface)">
@@ -150,21 +150,21 @@ export function FindFriends({ onClose, section, add, q: q0 }: { onClose: () => v
 
         <button type="button" onClick={() => setSheet('me')}
           className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><AtSign className="size-4" aria-hidden /></span>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><AtSign className="size-5" aria-hidden /></span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8824rem] font-medium text-(--text)">{me ? `You're @${me.handle}` : 'Your @handle'}</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">Change it, and choose how people can find you</span>
+            <span className="block truncate text-body-lg font-medium text-(--text)">{me ? `You're @${me.handle}` : 'Your @handle'}</span>
+            <span className="block text-meta text-(--text-muted)">Change it, and choose how people can find you</span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         </button>
         <button type="button" onClick={() => { onClose(); openPlace('people') }}
           className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-secondary)"><Users className="size-4" aria-hidden /></span>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-(--bg-inset) text-(--text-secondary)"><Users className="size-5" aria-hidden /></span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.8824rem] font-medium text-(--text)">Following and followers</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">Manage who you follow, requests you sent, and blocks</span>
+            <span className="block text-body-lg font-medium text-(--text)">Following and followers</span>
+            <span className="block text-meta text-(--text-muted)">Manage who you follow, requests you sent, and blocks</span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         </button>
       </div>
 
@@ -180,8 +180,8 @@ function WayIn({ icon, label, onClick, primary }: { icon: React.ReactNode; label
   return (
     <button type="button" onClick={onClick}
       className={primary
-        ? 'flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-(--accent) px-2 text-center text-[0.7647rem] font-semibold text-(--on-fill) active:opacity-85 [&>svg]:size-6'
-        : 'flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-(--border) bg-(--bg-surface) px-2 text-center text-[0.7647rem] font-semibold text-(--text) active:bg-(--bg-inset) [&>svg]:size-6 [&>svg]:text-(--accent)'}>
+        ? 'flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-(--accent) px-2 text-center text-small font-semibold text-(--on-fill) active:opacity-85 [&>svg]:size-6'
+        : 'flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-(--border) bg-(--bg-surface) px-2 text-center text-small font-semibold text-(--text) active:bg-(--bg-inset) [&>svg]:size-6 [&>svg]:text-(--accent)'}>
       {icon}{label}
     </button>
   )
@@ -203,18 +203,18 @@ function AddByCode({ code, onDone }: { code: string; onDone: () => void }) {
   return (
     <HopIn className="flex flex-col items-center gap-2 rounded-2xl border border-(--accent)/30 bg-(--accent-subtle) p-4 text-center">
       <PersonAvatar p={who.user} size={64} />
-      <p className="text-[1rem] font-semibold text-(--text)">{who.user.name}</p>
-      {who.user.handle && <p className="-mt-1.5 text-[0.7647rem] text-(--text-muted)">@{who.user.handle}</p>}
-      {who.status === 'self' ? <p className="text-[0.7647rem] text-(--text-secondary)">That&rsquo;s your own code.</p>
-        : done ? <p role="status" className="text-[0.8235rem] font-medium text-(--accent)">{done}</p>
+      <p className="text-lead font-semibold text-(--text)">{who.user.name}</p>
+      {who.user.handle && <p className="-mt-1.5 text-small text-(--text-muted)">@{who.user.handle}</p>}
+      {who.status === 'self' ? <p className="text-small text-(--text-secondary)">That&rsquo;s your own code.</p>
+        : done ? <p role="status" className="text-body font-medium text-(--accent)">{done}</p>
         : who.status !== 'none' ? <FollowButton uid={who.user.id} status={who.status} />
         : (
           <button type="button" disabled={busy} onClick={() => void go()}
-            className="h-11 rounded-full bg-(--accent) px-6 text-[0.8824rem] font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">
+            className="h-11 rounded-full bg-(--accent) px-6 text-body-lg font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">
             {who.follows_you ? 'Follow back' : 'Follow'}
           </button>
         )}
-      <button type="button" onClick={onDone} className="hit-44 text-[0.7059rem] text-(--text-muted)">Done</button>
+      <button type="button" onClick={onDone} className="hit-44 text-meta text-(--text-muted)">Done</button>
     </HopIn>
   )
 }

@@ -59,13 +59,13 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
     <>
       <Screen title={race.name} subtitle={undated || race.ongoing ? whenText(rx) : `${raceDate(race.date)} · ${countdown(race.date)}`} closing={closing} onClose={close} onBack={close}
         footer={added ? (
-          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFit(true)}>
-            <Gauge className="size-4" /> See race fit
+          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" onClick={() => setFit(true)}>
+            <Gauge className="size-5" /> See race fit
           </Button>
         ) : (
-          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} disabled={needsPick || undated}
+          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" loading={busy} disabled={needsPick || undated}
             onClick={() => void add()}>
-            <CalendarPlus className="size-4" /> {undated ? 'Check the date on the official site' : needsPick ? 'Pick a distance to add' : 'Add to my events'}
+            <CalendarPlus className="size-5" /> {undated ? 'Check the date on the official site' : needsPick ? 'Pick a distance to add' : 'Add to my events'}
           </Button>
         )}>
         <div className="flex items-center gap-3 px-1">
@@ -78,36 +78,36 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-[0.9412rem] font-medium leading-snug text-(--text)">{undated || race.ongoing ? whenText(rx) : raceDate(race.date)}</p>
-            {place && <p className="text-[0.7647rem] text-(--text-muted)">{place}</p>}
+            <p className="text-lead font-medium leading-snug text-(--text)">{undated || race.ongoing ? whenText(rx) : raceDate(race.date)}</p>
+            {place && <p className="text-small text-(--text-muted)">{place}</p>}
             <div className="mt-1 flex flex-wrap gap-1">
               {race.registration_open && (
-                <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--accent)">Registration open</span>
+                <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption font-semibold text-(--accent)">Registration open</span>
               )}
               {undated && (
-                <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 text-[0.6471rem] font-medium text-(--warning-text)">Check dates</span>
+                <span className="rounded-full bg-(--warning-subtle) px-2 py-0.5 text-caption font-medium text-(--warning-text)">Check dates</span>
               )}
               {race.source === 'web' && (
-                <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">Found online</span>
+                <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">Found online</span>
               )}
               {(race.hints ?? []).map((h) => (
-                <span key={h.id} className={cn('rounded-full px-2 py-0.5 text-[0.6471rem] font-medium', HINT_CLS[h.tone])}>{h.label}</span>
+                <span key={h.id} className={cn('rounded-full px-2 py-0.5 text-caption font-medium', HINT_CLS[h.tone])}>{h.label}</span>
               ))}
             </div>
           </div>
         </div>
 
         {added && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3 text-[0.7647rem] leading-snug text-(--accent)">
-            <Check className="mt-px size-4 shrink-0" />
+          <div className="flex items-start gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3 text-small leading-snug text-(--accent)">
+            <Check className="mt-px size-5 shrink-0" />
             <span>{added.already ? "It's already in your events." : 'Added to your events as a training race. Change its priority any time in Events.'}</span>
           </div>
         )}
 
-        {rx.why && <p className="px-1 text-[0.8235rem] font-medium leading-snug text-(--text)">{rx.why}</p>}
+        {rx.why && <p className="px-1 text-body font-medium leading-snug text-(--text)">{rx.why}</p>}
         <FinishChip type={ev?.type} distanceKm={ev?.distance_km} date={undated ? undefined : ev?.date || race.date} />
 
-        {race.summary && <p className="px-1 text-[0.8235rem] leading-relaxed text-(--text-secondary)">{race.summary}</p>}
+        {race.summary && <p className="px-1 text-body leading-relaxed text-(--text-secondary)">{race.summary}</p>}
 
         {race.events.length > 0 && (
           <Card>
@@ -120,13 +120,13 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
                   const body = (
                     <>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{e.name}</span>
-                        <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+                        <span className="block truncate text-body font-medium text-(--text)">{e.name}</span>
+                        <span className="block truncate text-meta text-(--text-muted)">
                           {[distanceText(e, imperial), e.start_time ? `starts ${e.start_time}` : '', e.date && e.date !== race.date ? raceDate(e.date) : '']
                             .filter(Boolean).join(' · ')}
                         </span>
                       </span>
-                      {e.fee_from && <span className="shrink-0 text-[0.7059rem] text-(--text-secondary)">{e.fee_from}</span>}
+                      {e.fee_from && <span className="shrink-0 text-meta text-(--text-secondary)">{e.fee_from}</span>}
                     </>
                   )
                   return selectable ? (
@@ -147,21 +147,21 @@ export function RaceDetail({ race, imperial, onClose, onAsk, onAdded }: {
         <div className="flex flex-col gap-2">
           {register && (
             <a href={register} target="_blank" rel="noopener noreferrer"
-              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-(--radius) border border-black/15 bg-background text-[0.8235rem] font-medium text-foreground active:scale-[0.97]">
-              {race.source === 'web' ? 'Official site' : 'Register'} <ExternalLink className="size-4" />
+              className="inline-flex h-11 items-center justify-center gap-1.5 rounded-(--radius) border border-black/15 bg-background text-body font-medium text-foreground active:scale-[0.97]">
+              {race.source === 'web' ? 'Official site' : 'Register'} <ExternalLink className="size-5" />
             </a>
           )}
           {race.website && race.url && race.website !== race.url && (
             <a href={race.website} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 py-1 text-[0.7647rem] text-(--accent) underline-offset-2 hover:underline">
-              <Globe className="size-3.5" /> Race website
+              className="inline-flex items-center justify-center gap-1.5 py-1 text-small text-(--accent) underline-offset-2 hover:underline">
+              <Globe className="size-4" /> Race website
             </a>
           )}
-          <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={ask}>
-            <MessageCircle className="size-4" /> Ask rabbt about this race
+          <Button variant="default" className="h-11 gap-1.5 text-body" onClick={ask}>
+            <MessageCircle className="size-5" /> Ask rabbt about this race
           </Button>
         </div>
-        {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+        {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
       </Screen>
       {fit && added && <RaceFitScreen eventId={added.id} onClose={() => setFit(false)} />}
     </>

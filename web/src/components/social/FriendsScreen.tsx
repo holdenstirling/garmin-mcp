@@ -58,11 +58,11 @@ export function FriendsScreen({ imperial, onClose, onChanged }: { imperial: bool
       <span className="seg__pill" aria-hidden />
       {(['feed', 'people'] as const).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-          className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
+          className={cn('hit-44 flex-1 rounded-full py-1.5 text-meta font-medium transition-colors',
             tab === t ? 'text-(--text)' : 'text-(--text-muted)')}>
           {t === 'feed' ? 'Feed' : 'People'}
           {t === 'people' && pending > 0 && (
-            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{pending}</span>
+            <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-caption font-semibold text-(--on-fill)">{pending}</span>
           )}
         </button>
       ))}
@@ -102,12 +102,12 @@ function FeedList({ items, following, imperial, onOpen, onInvite, onChange }: {
         <EmptyRabbit hero size={60} className="celebrate rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
           title="Training's better together"
           body="Follow a friend to see their workouts here and send kudos. Share your invite code so they can follow you back."
-          action={<Button variant="primary" className="mt-1 h-10 gap-1.5 px-4 text-[0.7647rem]" onClick={onInvite}>
-            <UserPlus className="size-4" /> Add a friend
+          action={<Button variant="primary" className="mt-1 h-10 gap-1.5 px-4 text-small" onClick={onInvite}>
+            <UserPlus className="size-5" /> Add a friend
           </Button>} />
       )}
       {following > 0 && theirs.length === 0 && (
-        <p className="px-1 text-center text-[0.7647rem] text-(--text-muted)">No workouts from your friends in the last two weeks yet.</p>
+        <p className="px-1 text-center text-small text-(--text-muted)">No workouts from your friends in the last two weeks yet.</p>
       )}
       <div className="flex flex-col gap-3">
         {items.map((it, i) => <HopIn key={`${it.user.id}:${it.id}`} index={i}><FeedCard it={it} imperial={imperial} onOpen={onOpen} onUpdate={(p) => update(it, p)} /></HopIn>)}
@@ -163,8 +163,8 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
           className="flex w-full items-center gap-2.5 text-left">
           <FriendAvatar u={it.user} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{it.mine ? 'You' : it.user.name}</span>
-            <span className="block text-[0.6471rem] text-(--text-muted)">{relativeDay(it.date, it.time)}</span>
+            <span className="block truncate text-body font-medium text-(--text)">{it.mine ? 'You' : it.user.name}</span>
+            <span className="block text-caption text-(--text-muted)">{relativeDay(it.date, it.time)}</span>
           </span>
           {it.user.level != null && <LevelBadge level={it.user.level} size="sm" />}
         </button>
@@ -172,40 +172,40 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
       <div className={cn('flex items-start gap-2.5', !compact && 'mt-2.5')}>
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-[18px]" /></span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9412rem] font-medium text-(--text)">{it.title}</span>
-          <span className="block text-[0.7059rem] text-(--text-secondary)">
+          <span className="block truncate text-lead font-medium text-(--text)">{it.title}</span>
+          <span className="block text-meta text-(--text-secondary)">
             {line || (compact ? relativeDay(it.date, it.time) : 'Workout')}
             {compact && line ? ` · ${relativeDay(it.date, it.time)}` : ''}
-            {it.race && <span className="ml-1.5 rounded-full bg-(--accent-subtle) px-1.5 py-0.5 text-[0.6471rem] font-semibold text-(--accent)">Race</span>}
+            {it.race && <span className="ml-1.5 rounded-full bg-(--accent-subtle) px-1.5 py-0.5 text-caption font-semibold text-(--accent)">Race</span>}
           </span>
         </span>
-        {it.xp != null && <span className="shrink-0 text-[0.6471rem] font-semibold text-(--accent)">+{it.xp} XP</span>}
+        {it.xp != null && <span className="shrink-0 text-caption font-semibold text-(--accent)">+{it.xp} XP</span>}
       </div>
       <div className="mt-2.5 flex items-center gap-1">
         <button ref={kudosBtn} type="button" onClick={() => void toggleKudos()} disabled={it.mine} aria-pressed={it.you_kudoed}
           aria-label={it.mine ? `${it.kudos} kudos` : it.you_kudoed ? 'Take back kudos' : 'Give kudos'}
-          className={cn('hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium transition-colors',
+          className={cn('hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-meta font-medium transition-colors',
             it.you_kudoed ? 'bg-(--accent-subtle) text-(--accent)' : 'text-(--text-secondary) active:bg-(--bg-inset)',
             it.mine && 'opacity-80')}>
-          <Heart key={it.you_kudoed ? `on${it.kudos}` : 'off'} className={cn('size-4', it.you_kudoed && 'celebrate fill-current')} />
+          <Heart key={it.you_kudoed ? `on${it.kudos}` : 'off'} className={cn('size-5', it.you_kudoed && 'celebrate fill-current')} />
           <span key={it.kudos} className={cn('tabular-nums', bump && 'rb-bump')}>{it.kudos}</span>
         </button>
         {!it.mine && (
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
-            className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.7059rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-            <MessageCircle className="size-4" /> Cheer
+            className="hit-44 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-meta font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+            <MessageCircle className="size-5" /> Cheer
           </button>
         )}
       </div>
       {it.cheers.length > 0 && (
         <ul className="mt-1.5 flex flex-col gap-1 border-t border-(--border) pt-2">
           {it.cheers.map((c) => (
-            <li key={c.id} className="flex items-start gap-1.5 text-[0.7647rem] leading-snug">
+            <li key={c.id} className="flex items-start gap-1.5 text-small leading-snug">
               <span className="min-w-0 flex-1"><span className="font-medium text-(--text)">{c.mine ? 'You' : c.by.name}</span>{' '}
                 <span className="text-(--text-secondary)">{c.text}</span></span>
               {c.can_delete && (
                 <button type="button" aria-label="Delete cheer" onClick={() => void remove(c.id)} className="hit-44 shrink-0 p-0.5 text-(--text-muted)">
-                  <X className="size-3.5" />
+                  <X className="size-4" />
                 </button>
               )}
             </li>
@@ -214,14 +214,14 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
       )}
       {open && (
         <div className="mt-2 flex items-center gap-2">
-          <input aria-label="Cheer" className={cn(inputCls, 'h-11 text-[0.8235rem]')} maxLength={140} autoFocus placeholder="Nice work!"
+          <input aria-label="Cheer" className={cn(inputCls, 'h-11 text-body')} maxLength={140} autoFocus placeholder="Nice work!"
             value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send() }} />
           <Button variant="primary" className="h-9 w-9 shrink-0 p-0" aria-label="Send cheer" loading={busy} disabled={!text.trim()} onClick={() => void send()}>
-            <Send className="size-4" />
+            <Send className="size-5" />
           </Button>
         </div>
       )}
-      {err && <p className="mt-1.5 text-[0.7059rem] text-(--danger)">{err}</p>}
+      {err && <p className="mt-1.5 text-meta text-(--danger)">{err}</p>}
     </article>
   )
 }
@@ -277,7 +277,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
   const person = (e: PersonEdge, trailing: React.ReactNode, subtitle?: string) => {
     const u = e.user
     return (
-      <Row key={e.edge_id} icon={u ? <FriendAvatar u={u} size={30} /> : <span className="flex size-[30px] items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><UserPlus className="size-4" /></span>}
+      <Row key={e.edge_id} icon={u ? <FriendAvatar u={u} size={30} /> : <span className="flex size-[30px] items-center justify-center rounded-full bg-(--bg-inset) text-(--text-muted)"><UserPlus className="size-5" /></span>}
         title={u ? u.name : e.email ?? 'Someone'} subtitle={subtitle} trailing={trailing} />
     )
   }
@@ -285,17 +285,17 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
   return (
     <>
       <Card className="p-4">
-        <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Your invite code</p>
+        <p className="text-caption font-semibold text-(--text-muted)">Your invite code</p>
         <div className="mt-2 flex items-center gap-2">
-          <code className="min-w-0 flex-1 rounded-lg bg-(--bg-inset) px-3 py-2 text-center font-mono text-[1.1765rem] tracking-[0.25em] text-(--brand)">{code}</code>
+          <code className="min-w-0 flex-1 rounded-lg bg-(--bg-inset) px-3 py-2 text-center font-mono text-title tracking-[0.25em] text-(--brand)">{code}</code>
           <Button variant="default" className="h-10 w-10 p-0" aria-label="Copy code" onClick={() => void copy()}>
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copied ? <Check className="size-5" /> : <Copy className="size-5" />}
           </Button>
           {canShare && (
-            <Button variant="default" className="h-10 w-10 p-0" aria-label="Share code" onClick={() => void share()}><Share2 className="size-4" /></Button>
+            <Button variant="default" className="h-10 w-10 p-0" aria-label="Share code" onClick={() => void share()}><Share2 className="size-5" /></Button>
           )}
         </div>
-        <button type="button" className="hit-44 mt-2 text-[0.6471rem] text-(--text-muted) underline-offset-2 hover:underline" disabled={busy === 'code'}
+        <button type="button" className="hit-44 mt-2 text-caption text-(--text-muted) underline-offset-2 hover:underline" disabled={busy === 'code'}
           onClick={() => void run('code', newInviteCode, 'New code made. The old one no longer works.')}>Make a new code</button>
       </Card>
 
@@ -304,22 +304,22 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
           <div className="flex items-center gap-2">
             <input className={inputCls} autoComplete="off" autoCapitalize="none" placeholder="friend@example.com or ABCD2345"
               value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void add() }} />
-            <Button variant="primary" className="h-10 shrink-0 gap-1.5 px-3 text-[0.7647rem]" loading={busy === 'add'} disabled={!value.trim()} onClick={() => void add()}>
-              <UserPlus className="size-4" /> Follow
+            <Button variant="primary" className="h-10 shrink-0 gap-1.5 px-3 text-small" loading={busy === 'add'} disabled={!value.trim()} onClick={() => void add()}>
+              <UserPlus className="size-5" /> Follow
             </Button>
           </div>
         </Field>
       </Card>
-      {msg && <p className={cn('px-1 text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
 
       {people.pending_in.length > 0 && (
         <Group label="Requests">
           {people.pending_in.map((e) => person(e, (
             <span className="flex shrink-0 gap-1.5">
               <Button variant="default" className="h-8 px-2.5" aria-label="Decline" disabled={busy != null}
-                onClick={() => void run(e.edge_id, () => declineRequest(e.edge_id))}><X className="size-4" /></Button>
+                onClick={() => void run(e.edge_id, () => declineRequest(e.edge_id))}><X className="size-5" /></Button>
               <Button variant="primary" className="h-8 gap-1 px-2.5" loading={busy === e.edge_id}
-                onClick={() => void run(e.edge_id, () => acceptRequest(e.edge_id), 'They can see your training now.')}><Check className="size-4" /> Accept</Button>
+                onClick={() => void run(e.edge_id, () => acceptRequest(e.edge_id), 'They can see your training now.')}><Check className="size-5" /> Accept</Button>
             </span>
           ), 'Wants to follow you'))}
         </Group>
@@ -334,15 +334,15 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
             </button>
             {e.user && (
               <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Message ${e.user.name}`} onClick={() => messagePeople([e.user!.id])}>
-                <MessageCircle className="size-4" aria-hidden />
+                <MessageCircle className="size-5" aria-hidden />
               </Button>
             )}
             <Button variant="ghost" className="mr-2 h-8 px-2" aria-label={`Unfollow ${e.user?.name ?? ''}`} disabled={busy != null}
-              onClick={() => void run(e.edge_id, () => unfollow(e.edge_id))}><UserMinus className="size-4" /></Button>
+              onClick={() => void run(e.edge_id, () => unfollow(e.edge_id))}><UserMinus className="size-5" /></Button>
           </div>
         ))}
         {people.pending_out.map((e) => person(e, (
-          <Button variant="ghost" className="h-8 px-2 text-[0.6471rem]" disabled={busy != null}
+          <Button variant="ghost" className="h-8 px-2 text-caption" disabled={busy != null}
             onClick={() => void run(e.edge_id, () => unfollow(e.edge_id))}>Cancel</Button>
         ), 'Requested'))}
       </Group>
@@ -351,18 +351,18 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
         {people.followers.length === 0 && <Row title="No followers yet" subtitle="Share your code so friends can follow you." />}
         {people.followers.map((e) => confirm === e.edge_id ? (
           <div key={e.edge_id} className="flex flex-wrap items-center gap-2 px-4 py-3">
-            <span className="min-w-0 flex-1 text-[0.8235rem]">Remove {e.user?.name}?</span>
+            <span className="min-w-0 flex-1 text-body">Remove {e.user?.name}?</span>
             <Button variant="default" className="h-8 px-2.5" onClick={() => setConfirm(null)}>Keep</Button>
             <Button variant="default" className="h-8 gap-1 px-2.5" disabled={busy != null}
               onClick={() => void run(e.edge_id, () => removeFollower(e.edge_id), 'Removed.').then(() => setConfirm(null))}>
-              <Trash2 className="size-3.5" /> Remove</Button>
+              <Trash2 className="size-4" /> Remove</Button>
             <Button variant="destructive" className="h-8 gap-1 px-2.5" disabled={busy != null || !e.user}
               onClick={() => e.user && void run(e.edge_id, () => blockUser(e.user!.id), 'Blocked. They can’t follow you again.').then(() => setConfirm(null))}>
-              <Ban className="size-3.5" /> Block</Button>
+              <Ban className="size-4" /> Block</Button>
           </div>
         ) : person(e, (
           <Button variant="ghost" className="h-8 px-2" aria-label={`Remove ${e.user?.name ?? 'follower'}`} onClick={() => setConfirm(e.edge_id)}>
-            <UserMinus className="size-4" />
+            <UserMinus className="size-5" />
           </Button>
         )))}
       </Group>
@@ -380,7 +380,7 @@ export function PeopleTab({ people, onOpen, onChanged, setPeople }: {
         <Group label="Blocked">
           {people.blocked.filter((u): u is SocialUser => !!u).map((u) => (
             <Row key={u.id} icon={<FriendAvatar u={u} size={30} />} title={u.name}
-              trailing={<Button variant="ghost" className="h-8 px-2 text-[0.6471rem]" onClick={() => void run(u.id, () => unblockUser(u.id))}>Unblock</Button>} />
+              trailing={<Button variant="ghost" className="h-8 px-2 text-caption" onClick={() => void run(u.id, () => unblockUser(u.id))}>Unblock</Button>} />
           ))}
         </Group>
       )}
@@ -402,7 +402,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 className="modal-title">{u?.name ?? 'Friend'}</h2>
-          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-4" /></button>
+          <button className="modal-close" aria-label="Close" onClick={onClose}><X className="size-5" /></button>
         </div>
         <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {error && <ErrorState compact message={error} onRetry={() => { setError(null); getFriend(id).then(setCard, (e) => setError((e as Error).message)) }} />}
@@ -412,19 +412,19 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
               <div className="flex items-center gap-3">
                 <FriendAvatar u={u} size={56} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-[1.2941rem] text-(--brand)">{u.name}</p>
+                  <p className="truncate font-display text-title-md text-(--brand)">{u.name}</p>
                   {u.streak != null && (
-                    <p className="flex items-center gap-1 text-[0.7647rem] text-(--accent)"><Flame className="size-4" />{u.streak} day streak</p>
+                    <p className="flex items-center gap-1 text-small text-(--accent)"><Flame className="size-5" />{u.streak} day streak</p>
                   )}
                 </div>
                 {u.level != null && <LevelBadge level={u.level} />}
               </div>
               <div className="flex gap-2">
-                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" onClick={() => messagePeople([u.id])}>
-                  <MessageCircle className="size-4" aria-hidden /> Message
+                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-small" onClick={() => messagePeople([u.id])}>
+                  <MessageCircle className="size-5" aria-hidden /> Message
                 </Button>
-                <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.7647rem]" onClick={() => setRaceInvite(true)}>
-                  <Flag className="size-4" /> Invite to an event
+                <Button variant="default" className="h-11 flex-1 gap-1.5 text-small" onClick={() => setRaceInvite(true)}>
+                  <Flag className="size-5" /> Invite to an event
                 </Button>
               </div>
               {card.week && (
@@ -434,8 +434,8 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
                 </div>
               )}
               <div className="flex flex-col gap-2">
-                <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Recent workouts</p>
-                {card.recent.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Nothing shared in the last two weeks.</p>}
+                <p className="text-caption font-semibold text-(--text-muted)">Recent workouts</p>
+                {card.recent.length === 0 && <p className="text-small text-(--text-muted)">Nothing shared in the last two weeks.</p>}
                 {card.recent.map((it) => (
                   <FeedCard key={it.id} it={it} imperial={imperial} compact
                     onUpdate={(p) => setCard((c) => c && { ...c, recent: c.recent.map((x) => (x.id === it.id ? { ...x, ...p } : x)) })} />
@@ -453,8 +453,8 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-3 text-center">
-      <span className="font-display text-[1.2941rem] leading-none text-(--text)">{value}</span>
-      <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{label}</span>
+      <span className="font-display text-title-md leading-none text-(--text)">{value}</span>
+      <span className="text-caption leading-tight text-(--text-muted)">{label}</span>
     </div>
   )
 }

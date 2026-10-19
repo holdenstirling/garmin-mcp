@@ -54,7 +54,7 @@ export function JoinScreen({ token }: { token: string }) {
     <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto p-6">
       <RabbitLoader size={64} gentle decorative />
       <div className="text-center">
-        <h1 className="font-display text-3xl text-(--brand)">Join rabbt</h1>
+        <h1 className="font-display text-display text-(--brand)">Join rabbt</h1>
         {phase.kind === 'form' && (
           <p className="mt-1.5 text-(--text-secondary)">
             {phase.inviter ? `${phase.inviter} invited you to train with rabbt.` : "You're invited to train with rabbt."}
@@ -64,13 +64,13 @@ export function JoinScreen({ token }: { token: string }) {
 
       {phase.kind === 'bad' && (
         <div className="flex max-w-sm flex-col items-center gap-3 text-center">
-          <p role="alert" className="rounded-xl bg-(--danger-subtle) px-4 py-3 text-[0.8235rem] text-(--danger)">{phase.message}</p>
-          <a href="/app/" className="inline-flex min-h-11 items-center text-[0.8235rem] font-medium text-(--accent) underline-offset-2 hover:underline">Go to sign in</a>
+          <p role="alert" className="rounded-xl bg-(--danger-subtle) px-4 py-3 text-body text-(--danger)">{phase.message}</p>
+          <a href="/app/" className="inline-flex min-h-11 items-center text-body font-medium text-(--accent) underline-offset-2 hover:underline">Go to sign in</a>
         </div>
       )}
 
       {phase.kind === 'form' && phase.signedIn && (
-        <p className="max-w-sm text-center text-[0.8235rem] text-(--text-secondary)">
+        <p className="max-w-sm text-center text-body text-(--text-secondary)">
           You're already signed in on this device. <a href="/app/" className="font-medium text-(--accent) underline">Open rabbt</a>
         </p>
       )}
@@ -79,37 +79,37 @@ export function JoinScreen({ token }: { token: string }) {
         supportsPasskeys() ? (
           <form onSubmit={(e) => void submit(e)} className="flex w-full max-w-sm flex-col gap-4" noValidate>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={nameId} className="text-[0.8235rem] font-medium text-(--text)">First name</label>
+              <label htmlFor={nameId} className="text-body font-medium text-(--text)">First name</label>
               <input id={nameId} className={inputCls + ' h-11'} value={name} onChange={(e) => setName(e.target.value)}
                 autoComplete="given-name" maxLength={40} required aria-invalid={!!error && !name.trim()} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={emailId} className="text-[0.8235rem] font-medium text-(--text)">Email</label>
+              <label htmlFor={emailId} className="text-body font-medium text-(--text)">Email</label>
               <input id={emailId} type="email" inputMode="email" className={inputCls + ' h-11'} value={email}
                 onChange={(e) => setEmail(e.target.value)} autoComplete="email webauthn" maxLength={254} required
                 aria-describedby={hintId + (error ? ` ${errId}` : '')} />
-              <span id={hintId} className="text-[0.7059rem] leading-snug text-(--text-muted)">
+              <span id={hintId} className="text-meta leading-snug text-(--text-muted)">
                 Only so we can reach you about your account. Never shown to other athletes.
               </span>
             </div>
             {error && (
-              <p id={errId} role="alert" className="rounded-xl bg-(--danger-subtle) px-3 py-2 text-[0.7647rem] text-(--danger)">
+              <p id={errId} role="alert" className="rounded-xl bg-(--danger-subtle) px-3 py-2 text-small text-(--danger)">
                 {error.text}{' '}
                 {error.signin && <a href="/app/" className="font-medium underline">Sign in</a>}
               </p>
             )}
-            <Button type="submit" variant="primary" className="h-11 gap-2 text-sm" disabled={busy || !name.trim() || !email.trim()}>
-              {busy ? <KeyRound className="size-4" aria-hidden /> : <UserPlus className="size-4" aria-hidden />}
+            <Button type="submit" variant="primary" className="h-11 gap-2 text-body" disabled={busy || !name.trim() || !email.trim()}>
+              {busy ? <KeyRound className="size-5" aria-hidden /> : <UserPlus className="size-5" aria-hidden />}
               {busy ? 'Creating your passkey…' : 'Create my passkey'}
             </Button>
-            <p className="text-center text-[0.7059rem] leading-snug text-(--text-muted)">
+            <p className="text-center text-meta leading-snug text-(--text-muted)">
               A passkey signs you in with your face, fingerprint or device PIN. No password to remember.
               By joining you agree to the <a href="/app/terms" className="underline">terms</a> and{' '}
               <a href="/app/privacy" className="underline">privacy policy</a>.
             </p>
           </form>
         ) : (
-          <p role="alert" className="max-w-sm text-center text-[0.8235rem] text-(--danger)">
+          <p role="alert" className="max-w-sm text-center text-body text-(--danger)">
             This browser can't create passkeys. Open this link in Safari, Chrome or Edge on your phone or computer.
           </p>
         )

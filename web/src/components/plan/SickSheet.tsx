@@ -26,8 +26,8 @@ function Choice({ on, icon, title, sub, onPick }: { on: boolean; icon: React.Rea
         on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl', on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')} aria-hidden>{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8824rem] font-semibold text-(--text)">{title}</span>
-        <span className="block text-[0.7059rem] leading-snug text-(--text-muted)">{sub}</span>
+        <span className="block text-body-lg font-semibold text-(--text)">{title}</span>
+        <span className="block text-meta leading-snug text-(--text-muted)">{sub}</span>
       </span>
     </button>
   )
@@ -83,32 +83,32 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
   if (!view && !loadErr) {
     content = <div className="flex justify-center py-10"><RabbitNap size={48} mode="sleep" /></div>
   } else if (loadErr) {
-    content = <p className="px-1 py-6 text-center text-[0.8235rem] text-(--danger)" role="alert">{loadErr}</p>
+    content = <p className="px-1 py-6 text-center text-body text-(--danger)" role="alert">{loadErr}</p>
   } else if (active && view) {
     content = (
       <>
         <div className="flex flex-col items-center gap-2 pt-1 text-center">
           <RabbitNap size={52} mode="sleep" />
-          <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">Day {view.day} · Rest up</p>
-          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{view.line}</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">
+          <p className="font-display text-title-md leading-tight text-(--brand)">Day {view.day} · Rest up</p>
+          <p className="max-w-xs text-small leading-snug text-(--text-secondary)">{view.line}</p>
+          <p className="text-meta text-(--text-muted)">
             Since {short(view.start!)}
             {view.until && view.until !== 'better' ? ` · back by ${short(view.until)}` : ' · until you feel better'}
           </p>
         </div>
-        {view.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-[0.7647rem] leading-snug text-(--warning-text)">{view.race_note}</p>}
-        <Button variant="primary" className="h-12 text-[0.8824rem]" loading={busy === 'better'}
+        {view.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-small leading-snug text-(--warning-text)">{view.race_note}</p>}
+        <Button variant="primary" className="h-12 text-body-lg" loading={busy === 'better'}
           onClick={() => void run('better', feelBetter, 'Welcome back. rabbt eased the next few days.')}>I feel better</Button>
-        <p className="-mt-2 px-1 text-center text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="-mt-2 px-1 text-center text-meta leading-snug text-(--text-muted)">
           rabbt makes the next few days easy, then your plan picks up where it is. No catching up.
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="default" className="h-11 text-[0.8235rem]" loading={busy === 'extend'}
+          <Button variant="default" className="h-11 text-body" loading={busy === 'extend'}
             onClick={() => void run('extend', () => extendSick(2), 'Okay. Two more easy days.')}>Still sick</Button>
-          <Button variant="default" className="h-11 text-[0.8235rem]" onClick={() => setEditing(true)}>Change</Button>
+          <Button variant="default" className="h-11 text-body" onClick={() => setEditing(true)}>Change</Button>
         </div>
         <button type="button" disabled={!!busy} onClick={() => void run('undo', undoSick, 'Sick mode is off. Your plan is back as it was.')}
-          className="mx-auto min-h-11 px-3 text-[0.7647rem] font-medium text-(--text-secondary) underline-offset-2 hover:underline">
+          className="mx-auto min-h-11 px-3 text-small font-medium text-(--text-secondary) underline-offset-2 hover:underline">
           Undo sick mode (put the plan back)
         </button>
       </>
@@ -118,12 +118,12 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
       <>
         <div className="flex items-center gap-3 px-1">
           <RabbitNap size={40} mode="sleep" className="shrink-0" />
-          <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">Sorry you're feeling rough. How is it?</p>
+          <p className="text-body leading-snug text-(--text-secondary)">Sorry you're feeling rough. How is it?</p>
         </div>
         <div role="radiogroup" aria-label="How you're feeling" className="flex flex-col gap-2">
-          <Choice on={sev === 'head'} icon={<Wind className="size-5" />} title="Head cold"
+          <Choice on={sev === 'head'} icon={<Wind className="size-6" />} title="Head cold"
             sub="Sniffles, stuffy nose, sore throat" onPick={() => setSev('head')} />
-          <Choice on={sev === 'body'} icon={<Thermometer className="size-5" />} title="Fever or worse"
+          <Choice on={sev === 'body'} icon={<Thermometer className="size-6" />} title="Fever or worse"
             sub="Fever, chest, body aches or stomach" onPick={() => setSev('body')} />
         </div>
         {sev && (
@@ -140,7 +140,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
                 </Field>
               </div>
               {!openEnded && (
-                <button type="button" className="min-h-11 w-full border-t border-(--border) px-3.5 text-left text-[0.7647rem] font-medium text-(--accent)" onClick={() => setOpenEnded(true)}>
+                <button type="button" className="min-h-11 w-full border-t border-(--border) px-3.5 text-left text-small font-medium text-(--accent)" onClick={() => setOpenEnded(true)}>
                   Not sure: until I feel better
                 </button>
               )}
@@ -150,7 +150,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
                 </div>
               )}
             </Card>
-            <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+            <p className="px-1 text-small leading-snug text-(--text-secondary)">
               {sev === 'head' && !restAll
                 ? 'Each day keeps one short, easy session (30 min at most). Skip it if you don\'t feel up to it.'
                 : 'Every session becomes rest until you feel better.'}
@@ -158,15 +158,15 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
               {pv && pv.sessions === 0 && <> Nothing is planned on those days.</>}
               {' '}Your streak is safe.
             </p>
-            {pv?.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-[0.7647rem] leading-snug text-(--warning-text)">{pv.race_note}</p>}
+            {pv?.race_note && <p className="rounded-xl border border-(--warning)/30 bg-(--warning-subtle) px-3.5 py-2.5 text-small leading-snug text-(--warning-text)">{pv.race_note}</p>}
           </>
         )}
-        <p className="px-1 text-[0.6471rem] leading-snug text-(--text-muted)">{view?.safety}</p>
-        <Button variant="primary" className="h-12 text-[0.8824rem]" disabled={!sev} loading={busy === 'start'}
+        <p className="px-1 text-caption leading-snug text-(--text-muted)">{view?.safety}</p>
+        <Button variant="primary" className="h-12 text-body-lg" disabled={!sev} loading={busy === 'start'}
           onClick={() => body && void run('start', () => startSick(body), view?.active ? 'Sick mode updated.' : 'Rest up. rabbt cleared the way.')}>
           {view?.active ? 'Save changes' : 'Turn on sick mode'}
         </Button>
-        {editing && <button type="button" className="mx-auto min-h-11 px-3 text-[0.7647rem] text-(--text-secondary)" onClick={() => setEditing(false)}>Back</button>}
+        {editing && <button type="button" className="mx-auto min-h-11 px-3 text-small text-(--text-secondary)" onClick={() => setEditing(false)}>Back</button>}
       </>
     )
   }
@@ -175,7 +175,7 @@ export function SickSheet({ today = todayStr(), onClose, onDone }: {
     <Sheet title={title} onClose={onClose}
       bodyClassName="settings flex flex-col gap-3.5 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {content}
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }

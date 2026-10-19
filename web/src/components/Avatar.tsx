@@ -15,7 +15,7 @@ export function Avatar({ name, picture, photo, size = 28 }: { name: string; pict
   }
   return (
     <span aria-label={name} style={{ width: size, height: size }}
-      className="flex items-center justify-center rounded-full bg-(--accent-subtle) text-xs font-medium text-(--accent)">
+      className="flex items-center justify-center rounded-full bg-(--accent-subtle) text-meta font-medium text-(--accent)">
       {initial}
     </span>
   )

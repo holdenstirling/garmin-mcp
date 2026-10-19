@@ -68,11 +68,11 @@ export function RewardSheet({ activityId, initial, onClose, onBreakdown, onCheck
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="reward-title" className="modal-title">Nice work</h2>
-          <button className="modal-close hit-44" aria-label="Close" onClick={close}><X className="size-4" /></button>
+          <button className="modal-close hit-44" aria-label="Close" onClick={close}><X className="size-5" /></button>
         </div>
         <div className="modal-body flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {!r && !error && <RabbitLoader className="py-10" label="Loading your reward" cycle={['Checking your records…', 'Counting your XP…']} />}
-          {error && <p className="py-8 text-center text-[0.8235rem] text-(--text-muted)" role="alert">{error}</p>}
+          {error && <p className="py-8 text-center text-body text-(--text-muted)" role="alert">{error}</p>}
           {r && <Body r={r} onDone={close} onFeel={onFeel}
             onBreakdown={onBreakdown && (() => { onClose(); onBreakdown(r.activity_id) })}
             onCheckIn={onCheckIn && (() => { onClose(); onCheckIn({ activityId: r.activity_id, sessionId: r.session_id ?? undefined, title: r.name }) })} />}
@@ -96,12 +96,12 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
   return (
     <>
       <div ref={hero} className="celebrate flex flex-col items-center gap-2 rounded-2xl bg-(--brand) px-4 pb-5 pt-5 text-center text-(--on-fill)">
-        <span className="flex items-center gap-1.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest opacity-90">
-          {record ? <Award className="size-3.5" aria-hidden="true" /> : <RabbitLogo size={14} current />}
+        <span className="flex items-center gap-1.5 text-caption font-semibold opacity-90">
+          {record ? <Award className="size-4" aria-hidden="true" /> : <RabbitLogo size={14} current />}
           {record ? 'New best' : 'Workout done'}
         </span>
-        <p className="rb-pop m-0 max-w-sm font-display text-[1.6471rem] leading-tight" style={{ animationDelay: '120ms' }}>{r.headline.text}</p>
-        <p className="m-0 text-[0.7647rem] opacity-90">
+        <p className="rb-pop m-0 max-w-sm font-display text-display leading-tight" style={{ animationDelay: '120ms' }}>{r.headline.text}</p>
+        <p className="m-0 text-small opacity-90">
           {r.name} · {Number.isNaN(day.getTime()) ? '' : day.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
         </p>
       </div>
@@ -110,8 +110,8 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
         <ul className="m-0 grid list-none gap-2 p-0" style={{ gridTemplateColumns: `repeat(${r.chips.length}, minmax(0, 1fr))` }}>
           {r.chips.map((c) => (
             <li key={c.label} className="flex flex-col items-center rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2">
-              <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{c.label}</span>
-              <span className="font-mono text-[0.9412rem] font-medium tabular-nums text-(--text)">{c.value}</span>
+              <span className="text-caption font-semibold text-(--text-muted)">{c.label}</span>
+              <span className="font-mono text-lead font-medium tabular-nums text-(--text)">{c.value}</span>
             </li>
           ))}
         </ul>
@@ -119,15 +119,15 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
 
       <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-display text-[1.5294rem] leading-none text-(--accent)" aria-label={`${r.xp.gained} XP earned`}>+{xp} XP</span>
+          <span className="font-display text-display-sm leading-none text-(--accent)" aria-label={`${r.xp.gained} XP earned`}>+{xp} XP</span>
           {r.streak > 0 && (
-            <span className="flex items-center gap-1 text-[0.8235rem] font-semibold text-(--accent)">
-              <Flame className="size-4" aria-hidden="true" />{r.streak}-day streak
+            <span className="flex items-center gap-1 text-body font-semibold text-(--accent)">
+              <Flame className="size-5" aria-hidden="true" />{r.streak}-day streak
             </span>
           )}
         </div>
         <LevelBar before={r.level.before} after={r.level.after} levelUp={r.level.level_up} />
-        {r.xp.plan > 0 && <p className="m-0 text-[0.7059rem] text-(--text-muted)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
+        {r.xp.plan > 0 && <p className="m-0 text-meta text-(--text-muted)">{r.xp.workout} for the workout + {r.xp.plan} for sticking to the plan</p>}
       </div>
 
       <Feel r={r} onCheckIn={onCheckIn} onFeel={onFeel} />
@@ -135,11 +135,11 @@ function Body({ r, onDone, onBreakdown, onCheckIn, onFeel }: {
       <ShareWorkoutButton activityId={r.activity_id} />
       <div className="flex gap-2">
         {onBreakdown && (
-          <Button variant="default" className="h-11 flex-1 gap-1 text-[0.8235rem]" onClick={onBreakdown}>
-            See breakdown <ChevronRight className="size-4" aria-hidden="true" />
+          <Button variant="default" className="h-11 flex-1 gap-1 text-body" onClick={onBreakdown}>
+            See breakdown <ChevronRight className="size-5" aria-hidden="true" />
           </Button>
         )}
-        <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={onDone}>Done</Button>
+        <Button variant="primary" className="h-11 flex-1 text-body" onClick={onDone}>Done</Button>
       </div>
     </>
   )
@@ -162,11 +162,11 @@ function LevelBar({ before, after, levelUp }: { before: LevelView; after: LevelV
   const shown = stage === 'end' ? after : before
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between text-[0.7647rem]">
+      <div className="flex items-baseline justify-between text-small">
         <span className={cn('font-semibold text-(--text)', stage === 'end' && levelUp && 'rb-pop')}>
           {stage === 'end' && levelUp ? `Level up! ${after.level} · ${after.name}` : `Level ${shown.level} · ${shown.name}`}
         </span>
-        <span className="font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">{after.to_next} XP to {after.level + 1}</span>
+        <span className="font-mono text-meta tabular-nums text-(--text-muted)">{after.to_next} XP to {after.level + 1}</span>
       </div>
       <span className="block h-2 w-full overflow-hidden rounded-full bg-(--bg-elevated)" role="progressbar"
         aria-valuemin={0} aria-valuemax={after.level_span} aria-valuenow={after.level_xp} aria-label="XP to next level">
@@ -195,8 +195,8 @@ function Feel({ r, onCheckIn, onFeel }: { r: Reward; onCheckIn?: () => void; onF
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[0.8235rem] font-semibold text-(--text)">How did it feel?</span>
-        {state === 'done' && <span className="flex items-center gap-1 text-[0.7059rem] text-(--accent)" role="status"><Check className="size-3.5" aria-hidden="true" />{msg}</span>}
+        <span className="text-body font-semibold text-(--text)">How did it feel?</span>
+        {state === 'done' && <span className="flex items-center gap-1 text-meta text-(--accent)" role="status"><Check className="size-4" aria-hidden="true" />{msg}</span>}
       </div>
       <div className="flex justify-between gap-1" role="group" aria-label="How did it feel?">
         {FACES.map(([v, face, label]) => (
@@ -204,14 +204,14 @@ function Feel({ r, onCheckIn, onFeel }: { r: Reward; onCheckIn?: () => void; onF
             aria-label={`${label} (${v} of 5)`} onClick={(e) => void pick(v, e.currentTarget)}
             className={cn('flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl border py-1.5 transition-colors disabled:opacity-40',
               picked === v ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg)')}>
-            <span className="text-[1.2941rem] leading-none" aria-hidden="true">{face}</span>
-            <span className="text-[0.6471rem] text-(--text-muted)">{label}</span>
+            <span className="text-title-md leading-none" aria-hidden="true">{face}</span>
+            <span className="text-caption text-(--text-muted)">{label}</span>
           </button>
         ))}
       </div>
-      {state !== 'done' && msg && <p className="m-0 text-[0.7059rem] text-(--danger)" role="alert">{msg}</p>}
+      {state !== 'done' && msg && <p className="m-0 text-meta text-(--danger)" role="alert">{msg}</p>}
       {onCheckIn && (
-        <button type="button" onClick={onCheckIn} className="hit-44 self-start text-[0.7059rem] font-medium text-(--accent)">
+        <button type="button" onClick={onCheckIn} className="hit-44 self-start text-meta font-medium text-(--accent)">
           {state === 'done' ? 'Add how your legs felt' : 'Say more (sore spots, sleep…)'}
         </button>
       )}

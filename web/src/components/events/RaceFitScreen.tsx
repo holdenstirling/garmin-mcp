@@ -70,15 +70,15 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
   }
   const coachExtra = coaches === null ? null : coach ? (
     <div className="flex flex-col gap-1 border-t border-(--border) pt-2.5">
-      <Button variant="default" className="h-11 w-fit gap-1.5 text-[0.7647rem]" loading={asking} onClick={() => void askCoach()}>
-        <MessageSquare className="size-4" /> Ask your coach
+      <Button variant="default" className="h-11 w-fit gap-1.5 text-small" loading={asking} onClick={() => void askCoach()}>
+        <MessageSquare className="size-5" /> Ask your coach
       </Button>
-      {askErr && <p className="text-[0.7059rem] text-(--danger)" role="alert">{askErr}</p>}
+      {askErr && <p className="text-meta text-(--danger)" role="alert">{askErr}</p>}
     </div>
   ) : (
     <button type="button" onClick={() => setFindCoach(true)}
-      className="hit-44 flex w-fit items-center gap-1.5 text-[0.7647rem] text-(--accent)">
-      <Search className="size-3.5" /> Want a human coach? Find one
+      className="hit-44 flex w-fit items-center gap-1.5 text-small text-(--accent)">
+      <Search className="size-4" /> Want a human coach? Find one
     </button>
   )
 
@@ -92,8 +92,8 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
           {race && <ReadinessSection r={r} error={rError} onRetry={loadReadiness} />}
           {race && <FinishEstimate eventId={eventId} />}
           <RacePeopleSection eventId={eventId} eventName={v.event.name} />
-          <h2 className="mt-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Course & conditions</h2>
-          <p className="px-1 text-[0.8824rem] leading-snug text-(--text)">{v.racefit.summary}</p>
+          <h2 className="mt-1 px-1 text-caption font-semibold text-(--text-muted)">Course & conditions</h2>
+          <p className="px-1 text-body-lg leading-snug text-(--text)">{v.racefit.summary}</p>
           {v.racefit.factors.length > 0 && (
             <Card>
               <div className="divide-y divide-(--border)">
@@ -101,7 +101,7 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
               </div>
             </Card>
           )}
-          <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+          <p className="px-1 text-meta text-(--text-muted)">
             Based on your profile (strengths, home elevation, heat) and the {race ? 'race' : 'event'} details. Add more of either for a sharper read.
           </p>
           {v.coach_notes.length > 0 && (
@@ -110,10 +110,10 @@ export function RaceFitScreen({ eventId, onClose, race = true }: {
                 <div className="flex flex-col gap-2.5">
                   {v.coach_notes.map((n) => (
                     <div key={n.id} className="flex gap-2">
-                      <StickyNote className="mt-0.5 size-3.5 shrink-0 text-(--accent)" />
+                      <StickyNote className="mt-0.5 size-4 shrink-0 text-(--accent)" />
                       <div className="min-w-0">
-                        <p className="whitespace-pre-wrap text-[0.8235rem] leading-snug text-(--text)">{n.text}</p>
-                        <p className="text-[0.6471rem] text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)}</p>
+                        <p className="whitespace-pre-wrap text-body leading-snug text-(--text)">{n.text}</p>
+                        <p className="text-caption text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)}</p>
                       </div>
                     </div>
                   ))}
@@ -140,15 +140,15 @@ function FactorRow({ f }: { f: FitFactor }) {
     <div>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex min-h-11 w-full items-center gap-2.5 px-4 py-3 text-left active:bg-(--bg-inset)">
-        <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[0.6471rem] font-semibold uppercase tracking-wider', CHIP[f.impact])}>
+        <span className={cn('w-16 shrink-0 rounded-full px-2 py-0.5 text-center text-caption font-semibold', CHIP[f.impact])}>
           {IMPACT_LABEL[f.impact]}
         </span>
-        <span className="shrink-0 text-[0.8824rem] font-medium text-(--text)">{f.title}</span>
-        <span className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--text-muted)">{open ? '' : f.detail}</span>
-        <ChevronDown className={cn('size-4 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} />
+        <span className="shrink-0 text-body-lg font-medium text-(--text)">{f.title}</span>
+        <span className="min-w-0 flex-1 truncate text-meta text-(--text-muted)">{open ? '' : f.detail}</span>
+        <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div className="flex flex-col gap-1.5 px-4 pb-3 text-[0.7647rem] leading-snug">
+        <div className="flex flex-col gap-1.5 px-4 pb-3 text-small leading-snug">
           <p className="text-(--text-secondary)">{f.detail}</p>
           {f.tip && <p className="text-(--text)"><b className="text-(--accent)">Tip:</b> {f.tip}</p>}
         </div>
@@ -178,25 +178,25 @@ function StrategyCard({ eventId, strategy, onUpdated, extra, race }: {
     <Card>
       <Field label={race ? 'Race strategy' : 'Game plan'} hint={strategy ? `Written ${timeAgo(strategy.created)} · ${strategy.weeks_to_race} weeks out (${strategy.phase})` : `rabbt writes a plan for the day from your profile, this ${race ? 'race' : 'event'} and your training phase.`}>
         {!strategy ? (
-          <Button variant="primary" className="h-10 gap-1.5 text-[0.7647rem]" loading={busy} onClick={() => void run()}>
+          <Button variant="primary" className="h-10 gap-1.5 text-small" loading={busy} onClick={() => void run()}>
             <RabbitLogo size={16} current /> {race ? 'Ask rabbt for a race strategy' : 'Ask rabbt for a game plan'}
           </Button>
         ) : (
-          <div className="flex flex-col gap-2.5 text-[0.7647rem] leading-snug">
-            <p className="text-[0.8235rem] text-(--text)">{strategy.summary}</p>
+          <div className="flex flex-col gap-2.5 text-small leading-snug">
+            <p className="text-body text-(--text)">{strategy.summary}</p>
             {sections.filter(([, xs]) => xs.length > 0).map(([label, xs]) => (
               <div key={label}>
-                <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</p>
+                <p className="text-caption font-semibold text-(--text-muted)">{label}</p>
                 <ul className="mt-0.5 flex flex-col gap-0.5 text-(--text-secondary)">{xs.map((x) => <li key={x}>• {x}</li>)}</ul>
               </div>
             ))}
             {strategy.taper_notes && <p className="text-(--text-secondary)"><b className="text-(--text)">Taper:</b> {strategy.taper_notes}</p>}
-            <Button variant="ghost" className="h-9 w-fit gap-1.5 px-2 text-[0.7059rem]" loading={busy} onClick={() => void run()}>
-              <RefreshCw className="size-3.5" /> Refresh strategy
+            <Button variant="ghost" className="h-9 w-fit gap-1.5 px-2 text-meta" loading={busy} onClick={() => void run()}>
+              <RefreshCw className="size-4" /> Refresh strategy
             </Button>
           </div>
         )}
-        {error && <p className="text-[0.7059rem] text-(--danger)" role="alert">{error}</p>}
+        {error && <p className="text-meta text-(--danger)" role="alert">{error}</p>}
         {extra}
       </Field>
     </Card>

@@ -61,9 +61,9 @@ function NigglesSheet({ startWithForm, affects, onClose }: { startWithForm: bool
   }
   return (
     <Sheet title="Body & niggles" className="modal--tall" onClose={onClose} bodyClassName={BODY}
-      footer={<Button variant="primary" className="h-11 w-full gap-1.5 text-[0.8235rem]" onClick={() => setForm(true)}><Plus className="size-4" aria-hidden />Log a niggle</Button>}>
+      footer={<Button variant="primary" className="h-11 w-full gap-1.5 text-body" onClick={() => setForm(true)}><Plus className="size-5" aria-hidden />Log a niggle</Button>}>
       {!data && !err && <RabbitLoader className="py-10" label="Checking in on your body" />}
-      {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
       {data && data.proposal && <EaseCard p={data.proposal} onDone={() => { load(); try { window.dispatchEvent(new CustomEvent(PLAN_RELOAD)) } catch { /* ignore */ } }} />}
       {data && data.active.length === 0 && (
         <EmptyState compact title="Nothing's bugging you"
@@ -75,8 +75,8 @@ function NigglesSheet({ startWithForm, affects, onClose }: { startWithForm: bool
           <SectionLabel as="h3">Resolved</SectionLabel>
           <ul className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-1">
             {data.resolved.map((n) => (
-              <li key={n.id} className="flex min-h-11 items-center gap-2 text-[0.7647rem]">
-                <Check className="size-4 text-(--accent)" aria-hidden />
+              <li key={n.id} className="flex min-h-11 items-center gap-2 text-small">
+                <Check className="size-5 text-(--accent)" aria-hidden />
                 <span className="flex-1 text-(--text)">{n.label}</span>
                 <span className="text-(--text-muted)">{fmtDay(n.created, { month: 'short', day: 'numeric' })}{n.resolved ? ` – ${fmtDay(n.resolved, { month: 'short', day: 'numeric' })}` : ''}</span>
                 <button type="button" className="hit-44 font-medium text-(--accent)" onClick={() => void updateNiggle(n.id, { reopen: true }).then(changed)}>Reopen</button>
@@ -85,7 +85,7 @@ function NigglesSheet({ startWithForm, affects, onClose }: { startWithForm: bool
           </ul>
         </section>
       )}
-      {data && <p className="m-0 px-1 text-[0.7059rem] leading-snug text-(--text-muted)">{data.care_note}</p>}
+      {data && <p className="m-0 px-1 text-meta leading-snug text-(--text-muted)">{data.care_note}</p>}
     </Sheet>
   )
 }
@@ -106,8 +106,8 @@ function NiggleCard({ n, onChanged }: { n: Niggle; onChanged: (d: Niggles) => vo
       <header className="flex items-start gap-3">
         <PainBadge pain={a?.pain ?? n.pain} />
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 text-[0.9412rem] font-semibold text-(--text)">{n.label}</h3>
-          <p className="m-0 text-[0.7059rem] text-(--text-muted)">
+          <h3 className="m-0 text-lead font-semibold text-(--text)">{n.label}</h3>
+          <p className="m-0 text-meta text-(--text-muted)">
             {[n.type[0]!.toUpperCase() + n.type.slice(1), n.affects.map((s) => SPORTS.find(([v]) => v === s)?.[1] ?? s).join(', '),
               a ? (a.age_days ? `day ${a.age_days + 1}` : 'new today') : '', a?.trend ? `last: ${a.trend}` : ''].filter(Boolean).join(' · ')}
           </p>
@@ -116,47 +116,47 @@ function NiggleCard({ n, onChanged }: { n: Niggle; onChanged: (d: Niggles) => vo
       {n.history.length > 1 && <PainTrend h={n.history} />}
       {a && a.red_flag.length > 0 && (
         <div role="alert" className="flex gap-2 rounded-lg border border-(--danger)/30 bg-(--danger)/5 px-3 py-2.5">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-(--danger)" aria-hidden />
-          <p className="m-0 text-[0.7647rem] leading-snug text-(--text)">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-(--danger)" aria-hidden />
+          <p className="m-0 text-small leading-snug text-(--text)">
             <b className="font-semibold">Stop training this and see a physio or doctor.</b> {a.red_flag.join('; ')}.
           </p>
         </div>
       )}
       {a && !a.red_flag.length && a.ease && (
-        <p className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={`**Easy for ${a.days} days** for ${n.affects.map((s) => SPORTS.find(([v]) => v === s)?.[1].toLowerCase() ?? s).join(' and ')}: no hard efforts, shorter sessions${a.swap ? ', and runs swapped for an easy ride or swim' : ''}.`} /></p>
+        <p className="m-0 text-small text-(--text-secondary)"><RabbitInline text={`**Easy for ${a.days} days** for ${n.affects.map((s) => SPORTS.find(([v]) => v === s)?.[1].toLowerCase() ?? s).join(' and ')}: no hard efforts, shorter sessions${a.swap ? ', and runs swapped for an easy ride or swim' : ''}.`} /></p>
       )}
       {n.needs_update && (
         <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3">
-          <span className="text-[0.7647rem] font-medium text-(--text)">How is it today?</span>
+          <span className="text-small font-medium text-(--text)">How is it today?</span>
           <Chips label="Compared with last time" value={trend} options={TRENDS} onChange={setTrend} />
           <label className="flex flex-col gap-1">
-            <span className="flex justify-between text-[0.7647rem] text-(--text)"><span>Pain</span><span className="font-mono tabular-nums text-(--accent)">{pain}/10</span></span>
+            <span className="flex justify-between text-small text-(--text)"><span>Pain</span><span className="font-mono tabular-nums text-(--accent)">{pain}/10</span></span>
             <input type="range" min={0} max={10} value={pain} onChange={(e) => setPain(Number(e.target.value))}
               aria-valuetext={`${pain} out of 10`} className="h-11 w-full accent-(--accent)" />
           </label>
-          <Button variant="primary" className="h-11 text-[0.8235rem]" disabled={!trend} loading={busy === 'up'}
+          <Button variant="primary" className="h-11 text-body" disabled={!trend} loading={busy === 'up'}
             onClick={() => void run('up', { trend, pain })}>{trend ? 'Save today' : 'Pick better, same or worse'}</Button>
         </div>
       )}
-      {!n.needs_update && today && <p className="m-0 text-[0.7059rem] text-(--text-muted)">Updated today. Check back tomorrow.</p>}
+      {!n.needs_update && today && <p className="m-0 text-meta text-(--text-muted)">Updated today. Check back tomorrow.</p>}
       {n.prehab.length > 0 && (
         <details className="group rounded-lg border border-(--border)">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center px-3 text-[0.7647rem] font-medium text-(--accent) [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center px-3 text-small font-medium text-(--accent) [&::-webkit-details-marker]:hidden">
             Prehab for your {n.area_label.toLowerCase()}
           </summary>
           <ul className="flex flex-col gap-1.5 px-3 pb-3">
             {n.prehab.map((e) => (
-              <li key={e.name} className="flex gap-2 text-[0.7647rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+              <li key={e.name} className="flex gap-2 text-small"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
             ))}
           </ul>
         </details>
       )}
-      {err && <p className="m-0 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="m-0 text-meta text-(--danger)" role="alert">{err}</p>}
       <div className="flex flex-wrap gap-2">
-        <Button variant="default" className="h-11 gap-1.5 px-3 text-[0.7647rem]" loading={busy === 'res'} onClick={() => void run('res', { resolve: true })}>
-          <Check className="size-4" aria-hidden />It's gone
+        <Button variant="default" className="h-11 gap-1.5 px-3 text-small" loading={busy === 'res'} onClick={() => void run('res', { resolve: true })}>
+          <Check className="size-5" aria-hidden />It's gone
         </Button>
-        <Button variant="ghost" className="h-11 px-3 text-[0.7647rem] text-(--text-muted)" loading={busy === 'del'} onClick={() => void run('del', { delete: true })}>Delete</Button>
+        <Button variant="ghost" className="h-11 px-3 text-small text-(--text-muted)" loading={busy === 'del'} onClick={() => void run('del', { delete: true })}>Delete</Button>
       </div>
     </article>
   )
@@ -167,7 +167,7 @@ function PainBadge({ pain }: { pain: number }) {
   return (
     <span className={cn('flex size-11 shrink-0 flex-col items-center justify-center rounded-xl font-mono leading-none', tone)}
       aria-label={`Pain ${pain} out of 10`}>
-      <span className="text-[0.9412rem] font-semibold tabular-nums">{pain}</span><span className="text-[0.6471rem]">/10</span>
+      <span className="text-lead font-semibold tabular-nums">{pain}</span><span className="text-caption">/10</span>
     </span>
   )
 }
@@ -188,7 +188,7 @@ function PainTrend({ h }: { h: Niggle['history'] }) {
         <path d={d} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         {pts.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.pain)} r="2.5" fill="var(--accent)" />)}
       </svg>
-      <figcaption className="flex justify-between text-[0.6471rem] text-(--text-muted)">
+      <figcaption className="flex justify-between text-caption text-(--text-muted)">
         <span>{fmtDay(first.date, { month: 'short', day: 'numeric' })}</span><span>dashed: 4/10, when rabbt eases off</span><span>{fmtDay(last.date, { month: 'short', day: 'numeric' })}</span>
       </figcaption>
     </figure>
@@ -205,21 +205,21 @@ function EaseCard({ p, onDone }: { p: NonNullable<Niggles['proposal']>; onDone: 
   const SPORT = { run: 'run', bike: 'ride', swim: 'swim', brick: 'brick' } as Record<string, string>
   return (
     <RabbitNote title="rabbt suggests easing your plan">
-      <p className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={p.why} /></p>
+      <p className="m-0 text-small text-(--text-secondary)"><RabbitInline text={p.why} /></p>
       <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         {p.changes.map((c) => (
-          <li key={c.session_id} className="flex flex-wrap items-center gap-x-1.5 text-[0.7647rem] text-(--text)">
+          <li key={c.session_id} className="flex flex-wrap items-center gap-x-1.5 text-small text-(--text)">
             <span className="w-16 shrink-0 text-(--text-muted)">{fmtDay(c.date, { weekday: 'short', day: 'numeric' })}</span>
             <span className="line-through decoration-(--text-muted)">{c.from.title} {c.from.minutes ? fmtDuration(c.from.minutes) : ''}</span>
-            <ArrowRight className="size-3.5 text-(--text-muted)" aria-label="becomes" />
+            <ArrowRight className="size-4 text-(--text-muted)" aria-label="becomes" />
             <b className="font-semibold">Easy {SPORT[c.to.sport] ?? c.to.sport} {fmtDuration(c.to.minutes)}</b>
           </li>
         ))}
       </ul>
-      {err && <p className="m-0 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="m-0 text-meta text-(--danger)" role="alert">{err}</p>}
       <div className="flex gap-2">
-        <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'apply'} onClick={() => void act('apply')}>Ease my plan</Button>
-        <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" loading={busy === 'dismiss'} onClick={() => void act('dismiss')}>Not now</Button>
+        <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'apply'} onClick={() => void act('apply')}>Ease my plan</Button>
+        <Button variant="ghost" className="h-11 px-3 text-body" loading={busy === 'dismiss'} onClick={() => void act('dismiss')}>Not now</Button>
       </div>
     </RabbitNote>
   )
@@ -248,8 +248,8 @@ function NiggleForm({ affects, areas, onCancel, onSaved }: {
     <Sheet title="Log a niggle" className="modal--tall" onClose={onCancel} bodyClassName={BODY}
       footer={(
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-[0.8235rem]" onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} disabled={!area || !sports.length} onClick={() => void save()}>
+          <Button variant="default" className="h-11 px-5 text-body" onClick={onCancel}>Cancel</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={!area || !sports.length} onClick={() => void save()}>
             {!area ? 'Pick where it hurts' : !sports.length ? 'Pick a sport' : 'Save'}
           </Button>
         </div>
@@ -257,14 +257,14 @@ function NiggleForm({ affects, areas, onCancel, onSaved }: {
       <Chips label="Where" value={area} options={AREA_LIST as unknown as readonly (readonly [string, string])[]} onChange={setArea} />
       <Chips label="Side" value={side} options={SIDES} onChange={setSide} />
       <label className="flex flex-col gap-1">
-        <span className="flex justify-between text-[0.7647rem] text-(--text)"><span>Pain</span>
+        <span className="flex justify-between text-small text-(--text)"><span>Pain</span>
           <span className="font-mono tabular-nums text-(--accent)">{pain}/10 · {PAIN_WORD}</span></span>
         <input type="range" min={0} max={10} value={pain} onChange={(e) => setPain(Number(e.target.value))}
           aria-valuetext={`${pain} out of 10, ${PAIN_WORD}`} className="h-11 w-full accent-(--accent)" />
       </label>
       <Chips label="What it feels like" value={type} options={TYPES} onChange={setType} />
       <div className="flex flex-col gap-1.5">
-        <span className="text-[0.7647rem] text-(--text)">It bothers me when</span>
+        <span className="text-small text-(--text)">It bothers me when</span>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Sports it affects">
           {SPORTS.map(([v, l]) => (
             <button key={v} type="button" aria-pressed={sports.includes(v)} onClick={() => setSports((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]))}
@@ -274,9 +274,9 @@ function NiggleForm({ affects, areas, onCancel, onSaved }: {
       </div>
       <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 300))} rows={2} aria-label="Note"
         placeholder="When it started, what makes it worse (optional)"
-        className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-      {err && <p className="m-0 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-      <p className="m-0 text-[0.7059rem] leading-snug text-(--text-muted)">
+        className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-body text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+      {err && <p className="m-0 text-meta text-(--danger)" role="alert">{err}</p>}
+      <p className="m-0 text-meta leading-snug text-(--text-muted)">
         Not medical advice. If pain is sharp, getting worse or changes how you move, see a physio or doctor.
       </p>
     </Sheet>
@@ -292,7 +292,7 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
   return (
     <Sheet title="Fueling" className="modal--tall" onClose={onClose} bodyClassName={BODY}>
       {!d && !err && <RabbitLoader className="py-10" label="Counting your gels" />}
-      {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
       {d && (
         <>
           <div className="grid grid-cols-2 gap-2">
@@ -301,7 +301,7 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
           </div>
           {d.learnings.lines.length > 0 && (
             <RabbitNote title="What rabbt's learned">
-              {d.learnings.lines.map((l) => <p key={l} className="m-0 text-[0.7647rem] text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+              {d.learnings.lines.map((l) => <p key={l} className="m-0 text-small text-(--text-secondary)"><RabbitInline text={l} /></p>)}
             </RabbitNote>
           )}
           {d.learnings.trend.length > 0 ? (
@@ -318,14 +318,14 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
               <SectionLabel as="h3">Logged</SectionLabel>
               <ul className="flex flex-col divide-y divide-(--border) rounded-xl border border-(--border) bg-(--bg-surface) px-3.5">
                 {d.entries.map((e) => (
-                  <li key={e.key} className="flex min-h-12 items-center gap-2 py-2 text-[0.7647rem]">
+                  <li key={e.key} className="flex min-h-12 items-center gap-2 py-2 text-small">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-(--text)">{e.title || 'Session'}</span>
-                      <span className="block text-[0.7059rem] text-(--text-muted)">{e.date ? fmtDay(e.date, { month: 'short', day: 'numeric' }) : ''} · {e.minutes} min
+                      <span className="block text-meta text-(--text-muted)">{e.date ? fmtDay(e.date, { month: 'short', day: 'numeric' }) : ''} · {e.minutes} min
                         {e.gi === 'issues' ? ' · gut issues' : ''}{e.energy === 'bonked' ? ' · bonked' : e.energy === 'strong' ? ' · strong' : ''}</span>
                     </span>
                     <span className="text-right font-mono tabular-nums text-(--text)">{e.g_per_h ?? 0} g/h
-                      {e.ml_per_h != null && <span className="block text-[0.6471rem] text-(--text-muted)">{toFluidUnit(e.ml_per_h, imperial)} {fl}/h</span>}
+                      {e.ml_per_h != null && <span className="block text-caption text-(--text-muted)">{toFluidUnit(e.ml_per_h, imperial)} {fl}/h</span>}
                     </span>
                   </li>
                 ))}
@@ -341,8 +341,8 @@ function FuelingSheet({ imperial, onClose }: { imperial: boolean; onClose: () =>
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-      <span className="text-[0.7059rem] text-(--text-muted)">{label}</span>
-      <span className="font-mono text-[1.0588rem] font-semibold tabular-nums text-(--text)">{value}</span>
+      <span className="text-meta text-(--text-muted)">{label}</span>
+      <span className="font-mono text-title-sm font-semibold tabular-nums text-(--text)">{value}</span>
     </div>
   )
 }
@@ -374,7 +374,7 @@ function FuelBars({ t, target }: { t: FuelLearnings['trend']; target: number }) 
           </>
         )}
       </svg>
-      <figcaption className="mt-1 flex flex-wrap gap-x-3 text-[0.6471rem] text-(--text-muted)">
+      <figcaption className="mt-1 flex flex-wrap gap-x-3 text-caption text-(--text-muted)">
         <span><span className="mr-1 inline-block size-2 rounded-sm bg-(--accent)" aria-hidden />Strong</span>
         <span><span className="mr-1 inline-block size-2 rounded-sm bg-(--text-muted)" aria-hidden />Faded</span>
         <span><span className="mr-1 inline-block size-2 rounded-sm bg-(--warning)" aria-hidden />Gut issues or bonked</span>

@@ -101,9 +101,9 @@ export function useMentionField<T extends Field>({ value, setValue, where, initi
     <div className="absolute inset-x-0 bottom-full z-20 mb-1.5 overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) shadow-lg"
       role="listbox" aria-label="Mention someone">
       {people === null ? (
-        <p className="px-3 py-2.5 text-[0.7059rem] text-(--text-muted)">Finding people…</p>
+        <p className="px-3 py-2.5 text-meta text-(--text-muted)">Finding people…</p>
       ) : matches.length === 0 ? (
-        q.length > 0 ? <p className="px-3 py-2.5 text-[0.7059rem] text-(--text-muted)">No one called “{q}” you can mention here.</p> : null
+        q.length > 0 ? <p className="px-3 py-2.5 text-meta text-(--text-muted)">No one called “{q}” you can mention here.</p> : null
       ) : matches.map((p, i) => (
         <button key={p.id} type="button" role="option" aria-selected={i === active} aria-disabled={!p.can_see}
           onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}
@@ -111,14 +111,14 @@ export function useMentionField<T extends Field>({ value, setValue, where, initi
             i === active && 'bg-(--bg-inset)', !p.can_see && 'opacity-50')}>
           <Avatar name={p.name} picture={p.picture ?? ''} photo={communityPhotoUrl(p)} size={28} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8235rem] font-medium text-(--text)">{p.name}</span>
+            <span className="block truncate text-body font-medium text-(--text)">{p.name}</span>
             {(!p.can_see || p.handle) && (
-              <span className="block truncate text-[0.6471rem] text-(--text-muted)">{!p.can_see ? "Can't see this post" : `@${p.handle}`}</span>
+              <span className="block truncate text-caption text-(--text-muted)">{!p.can_see ? "Can't see this post" : `@${p.handle}`}</span>
             )}
           </span>
         </button>
       ))}
-      {note && <p className="border-t border-(--border) px-3 py-2 text-[0.7059rem] text-(--warning-text,var(--danger))" role="alert">{note}</p>}
+      {note && <p className="border-t border-(--border) px-3 py-2 text-meta text-(--warning-text,var(--danger))" role="alert">{note}</p>}
     </div>
   )
 

@@ -36,15 +36,15 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1 px-1">
-        <p className="text-[0.9412rem] font-semibold leading-snug text-(--text)">
+        <p className="text-lead font-semibold leading-snug text-(--text)">
           {s.weeks} weeks, {s.start_hours === s.peak_hours ? `about ${s.peak_hours}h a week` : `building from about ${s.start_hours}h to ${s.peak_hours}h a week`}
         </p>
         {s.first_session && (
-          <p className="text-[0.7647rem] text-(--text-secondary)">
+          <p className="text-small text-(--text-secondary)">
             Starts {day(s.first_session.date)} with <b className="font-semibold text-(--text)">{s.first_session.title} · {fmtMin(s.first_session.minutes)}</b>
           </p>
         )}
-        {s.note && <p className="text-[0.7647rem] text-(--warning-text)">{s.note}</p>}
+        {s.note && <p className="text-small text-(--warning-text)">{s.note}</p>}
       </div>
       <Card className="p-3">
         <div className="flex h-16 items-end gap-[2px]" role="img"
@@ -56,7 +56,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {s.phases.filter((p, i, a) => a.findIndex((x) => x.phase === p.phase) === i).map((p) => (
-            <span key={p.phase} className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)">
+            <span key={p.phase} className="flex items-center gap-1.5 text-caption text-(--text-muted)">
               <span className={cn('size-2 rounded-full', `phase-${p.phase}`)} />{PHASE_LABEL[p.phase]}
             </span>
           ))}
@@ -68,10 +68,10 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
             <li key={i} className="flex items-start gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
               <span className={cn('mt-1.5 size-2.5 shrink-0 rounded-full', `phase-${p.phase}`)} aria-hidden />
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.8235rem] font-semibold text-(--text)">
+                <span className="block text-body font-semibold text-(--text)">
                   {PHASE_LABEL[p.phase]} · {p.weeks} {p.weeks === 1 ? 'week' : 'weeks'}
                 </span>
-                <span className="block text-[0.7059rem] text-(--text-muted)">
+                <span className="block text-meta text-(--text-muted)">
                   {day(p.from)} – {day(p.to)} · {p.hours_from === p.hours_to ? `${p.hours_from}h` : `${p.hours_from}h → ${p.hours_to}h`} a week
                 </span>
               </span>
@@ -80,7 +80,7 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
         </ol>
       )}
       {longLine.length > 0 && (
-        <p className="px-1 text-[0.7647rem] text-(--text-secondary)">
+        <p className="px-1 text-small text-(--text-secondary)">
           <b className="font-semibold text-(--text)">Long workout:</b> {longLine[0]}′ to start, {longLine[1]}′ by week 3, up to {longLine[2]}′ at its longest. It grows about 10% a week at most.
         </p>
       )}
@@ -90,13 +90,13 @@ export function PlanSummaryView({ s, compact }: { s: PlanSummary; compact?: bool
             <ul className="flex flex-col">
               {firstWeeks.map((d) => (
                 <li key={d.date} className="flex min-h-10 items-center gap-3 border-b border-(--border) py-1.5 last:border-b-0">
-                  <span className="w-20 shrink-0 text-[0.7059rem] text-(--text-muted)">{day(d.date)}</span>
+                  <span className="w-20 shrink-0 text-meta text-(--text-muted)">{day(d.date)}</span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     {d.sessions.map((x, i) => {
                       const I = SPORT_ICON[x.sport as keyof typeof SPORT_ICON]
                       return (
-                        <span key={i} className="flex items-center gap-1.5 text-[0.7647rem] text-(--text)">
-                          {I && <I className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />}
+                        <span key={i} className="flex items-center gap-1.5 text-small text-(--text)">
+                          {I && <I className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
                           <span className="truncate">{x.title}</span>
                           <span className="ml-auto shrink-0 font-mono tabular-nums text-(--text-muted)">{fmtMin(x.minutes)}</span>
                         </span>
@@ -154,8 +154,8 @@ export function LeverFields({ v, set, start, setStart, minStart, maxStart }: {
               <button key={k} type="button" role="radio" aria-checked={on} onClick={() => set({ plan_intensity: k })}
                 className={cn('flex min-h-16 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left',
                   on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-                <span className={cn('text-[0.7647rem] font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{l}</span>
-                <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{hint}</span>
+                <span className={cn('text-small font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{l}</span>
+                <span className="text-caption leading-tight text-(--text-muted)">{hint}</span>
               </button>
             )
           })}
@@ -192,25 +192,25 @@ export function usePreview(body: Parameters<typeof previewPlan>[0] | null) {
 function DiffView({ d }: { d: PlanDiff }) {
   const weeks = d.weeks.filter((w) => w.before !== w.after).slice(0, 6)
   if (!d.changed_days && !d.changed_weeks) {
-    return <p className="px-1 text-[0.7647rem] text-(--text-muted)">No change to your plan yet. Change a setting above to see what moves.</p>
+    return <p className="px-1 text-small text-(--text-muted)">No change to your plan yet. Change a setting above to see what moves.</p>
   }
   return (
     <Card>
       <Field label="What changes" hint={`${d.changed_days} ${d.changed_days === 1 ? 'day' : 'days'} from today on${d.peak_hours.before !== d.peak_hours.after ? ` · peak week ${d.peak_hours.before}h → ${d.peak_hours.after}h` : ''}.`}>
         <ul className="flex flex-col gap-1.5">
           {d.days.map((x) => (
-            <li key={x.date} className="flex flex-col text-[0.7647rem]">
+            <li key={x.date} className="flex flex-col text-small">
               <span className="font-semibold text-(--text)">{day(x.date)}</span>
               <span className="flex flex-wrap items-center gap-1 text-(--text-secondary)">
                 <span className="line-through decoration-(--text-muted)">{x.before}</span>
-                <ArrowRight className="size-3 text-(--text-muted)" aria-label="becomes" />
+                <ArrowRight className="size-3.5 text-(--text-muted)" aria-label="becomes" />
                 <span className="text-(--text)">{x.after}</span>
               </span>
             </li>
           ))}
         </ul>
         {weeks.length > 0 && (
-          <p className="mt-2 font-mono text-[0.7059rem] tabular-nums text-(--text-muted)">
+          <p className="mt-2 font-mono text-meta tabular-nums text-(--text-muted)">
             Weekly hours: {weeks.map((w) => `${fmtDay(w.start, { month: 'short', day: 'numeric' })} ${w.before ?? '–'}→${w.after ?? '–'}`).join(' · ')}
           </p>
         )}
@@ -251,42 +251,42 @@ export function AdjustPlanSheet({ athlete, onClose, onApplied, onCheckIn }: {
     <Sheet title="Adjust my plan" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-[0.8235rem]" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
+          <Button variant="default" className="h-11 px-5 text-body" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} disabled={!changed || tooFew || prev.busy || !!prev.error}
             onClick={() => void apply()}>
             {tooFew ? 'Pick at least 2 days' : !changed ? 'Change something above' : 'Update my plan'}
           </Button>
         </div>
       }>
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="px-1 text-small leading-snug text-(--text-secondary)">
         Change what fits your life. rabbt rebuilds from today, keeps the slow build, and shows what moves before anything changes. You can undo it.
       </p>
       <LeverFields v={v} set={set} />
       {changed && !tooFew && (prev.busy && !prev.diff ? (
-        <RabbitLoader inline className="px-1 text-[0.7647rem]" label="Working out what changes…" />
+        <RabbitLoader inline className="px-1 text-small" label="Working out what changes…" />
       ) : prev.error ? (
-        <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{prev.error}</p>
+        <p className="px-1 text-small text-(--danger)" role="alert">{prev.error}</p>
       ) : prev.diff ? <DiffView d={prev.diff} /> : null)}
       {prev.summary && changed && <PlanSummaryView s={prev.summary} compact />}
       {onCheckIn && (
         <button type="button" onClick={() => { onClose(); onCheckIn() }}
           className="flex min-h-12 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-          <MessageCircleHeart className="size-4 shrink-0 text-(--accent)" aria-hidden />
+          <MessageCircleHeart className="size-5 shrink-0 text-(--accent)" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.8235rem] text-(--text)">Check in on my week</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">Tired, sore, busy next week? rabbt suggests changes.</span>
+            <span className="block text-body text-(--text)">Check in on my week</span>
+            <span className="block text-meta text-(--text-muted)">Tired, sore, busy next week? rabbt suggests changes.</span>
           </span>
         </button>
       )}
       <button type="button" onClick={() => { onClose(); openTravel() }}
         className="flex min-h-12 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
-        <Plane className="size-4 shrink-0 text-(--accent)" aria-hidden />
+        <Plane className="size-5 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] text-(--text)">Travelling or away?</span>
-          <span className="block text-[0.7059rem] text-(--text-muted)">Travel mode swaps those days for a hotel gym, treadmill or runs.</span>
+          <span className="block text-body text-(--text)">Travelling or away?</span>
+          <span className="block text-meta text-(--text-muted)">Travel mode swaps those days for a hotel gym, treadmill or runs.</span>
         </span>
       </button>
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }
@@ -298,11 +298,11 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
   useEffect(() => { const t = window.setTimeout(onDone, 15000); return () => window.clearTimeout(t) }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div role="status" className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2">
-      <Check className="size-4 shrink-0 text-(--accent)" aria-hidden />
-      <p className="min-w-0 flex-1 text-[0.7647rem] text-(--accent)">{err ?? 'Plan updated from today.'}</p>
-      <Button variant="default" className="h-9 gap-1 px-3 text-[0.7647rem]" loading={busy}
+      <Check className="size-5 shrink-0 text-(--accent)" aria-hidden />
+      <p className="min-w-0 flex-1 text-small text-(--accent)">{err ?? 'Plan updated from today.'}</p>
+      <Button variant="default" className="h-9 gap-1 px-3 text-small" loading={busy}
         onClick={() => { setBusy(true); undoLevers(id).then((r) => { announcePlanReload(); onUndone(r.plan) }, (e) => setErr((e as Error).message)).finally(() => setBusy(false)) }}>
-        <Undo2 className="size-3.5" aria-hidden /> Undo
+        <Undo2 className="size-4" aria-hidden /> Undo
       </Button>
     </div>
   )
@@ -322,12 +322,12 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild 
     <>
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
         className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2 text-left active:bg-(--bg-inset)">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-4" aria-hidden /></span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><Flag className="size-5" aria-hidden /></span>
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-[0.8824rem] font-semibold leading-snug text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
-          {sub && <span className="line-clamp-2 text-[0.7059rem] leading-snug text-(--text-muted)">{sub}</span>}
+          <span className="line-clamp-2 text-body-lg font-semibold leading-snug text-(--text)">{title}{date ? ` · ${fmtDay(date, { month: 'short', day: 'numeric' })}` : ''}</span>
+          {sub && <span className="line-clamp-2 text-meta leading-snug text-(--text-muted)">{sub}</span>}
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-[0.7059rem] text-(--accent)">Change race <ChevronDown className="size-4" aria-hidden /></span>
+        <span className="flex shrink-0 items-center gap-1 text-meta text-(--accent)">Change race <ChevronDown className="size-5" aria-hidden /></span>
       </button>
       {open && <RaceSheet onClose={() => setOpen(false)} onSwitched={(p) => { setOpen(false); onSwitched(p) }}
         onAddRace={() => { setOpen(false); onAddRace() }} onBuild={() => { setOpen(false); onBuild() }} />}
@@ -358,8 +358,8 @@ function RaceSheet({ onClose, onSwitched, onAddRace, onBuild }: {
   const past = (races ?? []).filter((r) => r.past)
   return (
     <Sheet title="Your races" onClose={onClose} portal bodyClassName={bodyCls} dismissible={!busy}
-      footer={<Button variant="default" className="h-11 w-full gap-1.5 text-[0.8235rem]" onClick={onAddRace}><Plus className="size-4" aria-hidden /> Add a race</Button>}>
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+      footer={<Button variant="default" className="h-11 w-full gap-1.5 text-body" onClick={onAddRace}><Plus className="size-5" aria-hidden /> Add a race</Button>}>
+      <p className="px-1 text-small leading-snug text-(--text-secondary)">
         Your plan trains for one race at a time. Switch anytime: each race keeps its own plan, so switching back brings it back as it was.
       </p>
       {races === null && !err && <RabbitLoader className="py-6" label="Finding your races" />}
@@ -367,26 +367,26 @@ function RaceSheet({ onClose, onSwitched, onAddRace, onBuild }: {
         <div key={r.id} className={cn('flex flex-col gap-2 rounded-xl border px-3.5 py-3', r.active ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
           <div className="flex items-start gap-3">
             <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', r.active ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-muted)')}>
-              {r.active ? <Trophy className="size-4" aria-hidden /> : <Flag className="size-4" aria-hidden />}
+              {r.active ? <Trophy className="size-5" aria-hidden /> : <Flag className="size-5" aria-hidden />}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[0.8824rem] font-semibold text-(--text)">{r.title}</span>
-              <span className="block text-[0.7059rem] text-(--text-muted)">
+              <span className="block text-body-lg font-semibold text-(--text)">{r.title}</span>
+              <span className="block text-meta text-(--text-muted)">
                 {[r.date && fmtDay(r.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }), r.distance,
                   r.active ? 'Your plan trains for this' : r.has_plan ? 'Has a saved plan' : r.priority && r.priority !== 'A' ? `${r.priority} race on your calendar` : 'No plan yet'].filter(Boolean).join(' · ')}
               </span>
             </span>
-            {r.active && <Check className="size-4 shrink-0 text-(--accent)" aria-label="Active" />}
+            {r.active && <Check className="size-5 shrink-0 text-(--accent)" aria-label="Active" />}
           </div>
           {r.active ? (!r.has_plan && (
-            <Button variant="primary" className="h-11 text-[0.8235rem]" onClick={onBuild}>Build a plan for this race</Button>
+            <Button variant="primary" className="h-11 text-body" onClick={onBuild}>Build a plan for this race</Button>
           )) : (
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" className="h-11 flex-1 text-[0.7647rem]" loading={busy === r.id} disabled={!!busy} onClick={() => void train(r)}>
+              <Button variant="primary" className="h-11 flex-1 text-small" loading={busy === r.id} disabled={!!busy} onClick={() => void train(r)}>
                 {r.has_plan ? 'Switch my plan to this' : 'Train for this race'}
               </Button>
               {r.kind === 'event' && r.priority !== 'B' && r.priority !== 'C' && (
-                <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" loading={busy === `t${r.id}`} disabled={!!busy} onClick={() => void tune(r)}>
+                <Button variant="default" className="h-11 flex-1 text-small" loading={busy === `t${r.id}`} disabled={!!busy} onClick={() => void tune(r)}>
                   Tune-up in my plan
                 </Button>
               )}
@@ -396,14 +396,14 @@ function RaceSheet({ onClose, onSwitched, onAddRace, onBuild }: {
       ))}
       {past.length > 0 && (
         <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center px-3.5 text-[0.7647rem] text-(--text-secondary) [&::-webkit-details-marker]:hidden">Past races ({past.length})</summary>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center px-3.5 text-small text-(--text-secondary) [&::-webkit-details-marker]:hidden">Past races ({past.length})</summary>
           <ul className="flex flex-col px-3.5 pb-2">
-            {past.map((r) => <li key={r.id} className="py-1 text-[0.7647rem] text-(--text-muted)">{r.title}{r.date ? ` · ${fmtDay(r.date, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</li>)}
+            {past.map((r) => <li key={r.id} className="py-1 text-small text-(--text-muted)">{r.title}{r.date ? ` · ${fmtDay(r.date, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</li>)}
           </ul>
         </details>
       )}
-      {msg && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{msg}</p>}
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {msg && <p className="px-1 text-small text-(--accent)" role="status">{msg}</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }
@@ -424,12 +424,12 @@ export function WeekCheckCard({ force, onApplied, onClose }: { force?: boolean; 
     return (
       <button type="button" onClick={() => setOpen(true)}
         className="flex min-h-14 items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-left active:opacity-80">
-        <CalendarCheck className="size-5 shrink-0 text-(--accent)" aria-hidden />
+        <CalendarCheck className="size-6 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] font-semibold text-(--accent)">How was this week?</span>
-          <span className="block text-[0.7059rem] text-(--text-secondary)">Three taps, and rabbt fits next week to how you feel.</span>
+          <span className="block text-body font-semibold text-(--accent)">How was this week?</span>
+          <span className="block text-meta text-(--text-secondary)">Three taps, and rabbt fits next week to how you feel.</span>
         </span>
-        <ArrowRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+        <ArrowRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
       </button>
     )
   }
@@ -458,8 +458,8 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
     <Sheet title="How was this week?" onClose={onClose} portal className="modal--tall" bodyClassName={bodyCls} dismissible={!busy}
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-4 text-[0.8235rem]" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
+          <Button variant="default" className="h-11 px-4 text-body" loading={busy === 'skip'} disabled={!!busy} onClick={() => void go('skip')}>Skip</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'preview' || busy === 'apply'} disabled={!answered || !!busy}
             onClick={() => void go(!prop ? 'preview' : prop.status === 'suggest' ? 'apply' : 'skip')}>{label}</Button>
         </div>
       }>
@@ -484,12 +484,12 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
       {prop && (
         <Card>
           <Field label={prop.status === 'suggest' ? "rabbt suggests for next week" : 'Next week'}>
-            {(prop.reasons ?? []).map((r) => <p key={r} className="text-[0.7647rem] leading-snug text-(--text-secondary)">{r}</p>)}
-            {calHint && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)"><span className="font-semibold text-(--text)">From your calendar:</span> {calHint}</p>}
+            {(prop.reasons ?? []).map((r) => <p key={r} className="text-small leading-snug text-(--text-secondary)">{r}</p>)}
+            {calHint && <p className="text-small leading-snug text-(--text-secondary)"><span className="font-semibold text-(--text)">From your calendar:</span> {calHint}</p>}
             {changes.length > 0 && (
               <ul className="mt-1 flex flex-col gap-2">
                 {changes.map((c) => (
-                  <li key={c.session_id + c.action} className="flex flex-col rounded-lg bg-(--bg-inset) px-3 py-2 text-[0.7647rem]">
+                  <li key={c.session_id + c.action} className="flex flex-col rounded-lg bg-(--bg-inset) px-3 py-2 text-small">
                     <span className="font-semibold text-(--text)">
                       {c.from.title}
                       {c.action === 'relocate' ? ` → ${fmtDay(c.date, { weekday: 'long' })}` : c.action === 'rest' ? ' → dropped' : ''}
@@ -504,7 +504,7 @@ function WeekCheckSheet({ onClose, onDone }: { onClose: () => void; onDone: (pla
           </Field>
         </Card>
       )}
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </Sheet>
   )
 }

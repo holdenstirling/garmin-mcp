@@ -38,14 +38,14 @@ export function GoalsTab({ seasonGoal, onSeasonGoal, onOpenEvents }: {
         </Field>
       </Card>
       {events === null && !error && <RabbitLoader size={40} className="py-8" label="Loading events…" />}
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)">{error} <button type="button" className="hit-44 underline" onClick={load}>Retry</button></p>}
+      {error && <p className="px-1 text-small text-(--danger)">{error} <button type="button" className="hit-44 underline" onClick={load}>Retry</button></p>}
       {events !== null && upcoming.length === 0 && (
-        <p className="px-1 text-[0.8235rem] text-(--text-muted)">No upcoming events. Add them in Events.</p>
+        <p className="px-1 text-body text-(--text-muted)">No upcoming events. Add them in Events.</p>
       )}
       {upcoming.map((e) => <GoalRow key={e.id} e={e} onSaved={(list) => setEvents(list)} />)}
       {onOpenEvents && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onOpenEvents}>
-          <CalendarDays className="size-4" /> Edit races <ChevronRight className="size-4" />
+        <Button variant="default" className="h-11 gap-1.5 text-body" onClick={onOpenEvents}>
+          <CalendarDays className="size-5" /> Edit races <ChevronRight className="size-5" />
         </Button>
       )}
     </>
@@ -75,12 +75,12 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
   return (
     <Card className={cn(e.main && 'border-(--accent)')}>
       <div className="flex items-center gap-2 px-4 pt-3.5">
-        {e.main && <Star className="size-3.5 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
-        <span className="min-w-0 flex-1 truncate text-[0.9412rem] font-medium text-(--text)">{e.name}</span>
-        <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
+        {e.main && <Star className="size-4 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
+        <span className="min-w-0 flex-1 truncate text-lead font-medium text-(--text)">{e.name}</span>
+        <span className="shrink-0 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">
           {e.main ? 'Main' : !isRace(e) ? KIND_LABEL[kindOf(e)] : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
-        <span className="shrink-0 text-[0.6471rem] text-(--text-muted)">{countdown(e.date)}</span>
+        <span className="shrink-0 text-caption text-(--text-muted)">{countdown(e.date)}</span>
       </div>
       <div className="flex flex-col gap-2 px-4 pb-3.5 pt-2.5">
         <Choice value={e.goal_type ?? 'finish'} options={GOAL_TYPES}
@@ -89,7 +89,7 @@ function GoalRow({ e, onSaved }: { e: RaceEvent; onSaved: (list: RaceEvent[]) =>
           <DurationInput label={`Target time for ${e.name}`} expect={expectForDistance(e.distance)} value={target} onChange={setTarget}
             onBlur={(v) => saveTarget(v)} disabled={busy} />
         )}
-        {msg && <span className={cn('text-[0.7059rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</span>}
+        {msg && <span className={cn('text-meta', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</span>}
       </div>
     </Card>
   )

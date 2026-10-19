@@ -31,15 +31,15 @@ export function SignIn({ error }: { error: string | null }) {
           : <RabbitLoader size={80} gentle decorative />}
       </div>
       <div>
-        <h1 className="font-display text-4xl text-(--brand)">rabbt</h1>
+        <h1 className="font-display text-display-xl text-(--brand)">rabbt</h1>
         <p className="mt-2 text-(--text-secondary)">Your training pacer. Prep, reviews, and a nudge when you need it.</p>
       </div>
       {error && (
-        <p role="alert" className="max-w-sm rounded-(--radius) bg-(--danger-subtle) px-3 py-2 text-sm text-(--danger)">
+        <p role="alert" className="max-w-sm rounded-(--radius) bg-(--danger-subtle) px-3 py-2 text-body text-(--danger)">
           {ERRORS[error] ?? "Sign-in didn't go through. Try once more."}
         </p>
       )}
-      <Button asChild variant="primary" className="h-11 px-6 text-sm">
+      <Button asChild variant="primary" className="h-11 px-6 text-body">
         <a href="/app/auth/google/start" onClick={(e) => {
           // A modified click opens a new tab; only a plain click leaves this page.
           if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { hapticTap(); setRedirecting(true) }

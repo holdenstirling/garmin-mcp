@@ -68,9 +68,9 @@ export function GroupSheet({ initial, onClose, onSaved }: {
       footer={
         <div className="flex flex-col gap-1.5">
           {queued && <SaveStatus state="queued" />}
-          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-          {missing && !busy && <p className="text-center text-[0.7059rem] text-(--text-muted)" aria-live="polite">{missing}</p>}
-          <Button variant="primary" className="h-12 text-[0.8235rem]" loading={busy} disabled={!!missing}
+          {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
+          {missing && !busy && <p className="text-center text-meta text-(--text-muted)" aria-live="polite">{missing}</p>}
+          <Button variant="primary" className="h-12 text-body" loading={busy} disabled={!!missing}
             onClick={(e) => void save(e.currentTarget)}>
             {initial ? 'Save changes' : picked.length ? `Create group with ${picked.length} ${picked.length === 1 ? 'person' : 'people'}` : 'Create group'}
           </Button>
@@ -84,11 +84,11 @@ export function GroupSheet({ initial, onClose, onSaved }: {
       <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Group emoji">
         {EMOJIS.map((e) => (
           <button key={e} type="button" role="radio" aria-checked={emoji === e} aria-label={`Emoji ${e}`} onClick={() => setEmoji(e)}
-            className={cn('hit-44 flex size-10 items-center justify-center rounded-xl text-[1.1765rem]', emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
+            className={cn('hit-44 flex size-10 items-center justify-center rounded-xl text-title', emoji === e ? 'bg-(--accent-subtle) ring-1 ring-(--accent)' : 'bg-(--bg-inset)')}>{e}</button>
         ))}
       </div>
       {!initial && <FriendPicker picked={picked} onPick={setPicked} />}
-      <p className="text-[0.6471rem] text-(--text-muted)">Only people in the group see what's posted to it. Anyone can leave any time.</p>
+      <p className="text-caption text-(--text-muted)">Only people in the group see what's posted to it. Anyone can leave any time.</p>
     </Sheet>
   )
 }
@@ -115,9 +115,9 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
   if (!list.length) {
     return (
       <div className="flex flex-col items-start gap-2">
-        <p className="text-[0.7647rem] text-(--text-muted)">Groups are for friends who follow you back. Follow each other first, then come back to pick them.</p>
-        <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.7647rem]" onClick={() => openFindFriends()}>
-          <UserPlus className="size-4" aria-hidden /> Find friends
+        <p className="text-small text-(--text-muted)">Groups are for friends who follow you back. Follow each other first, then come back to pick them.</p>
+        <Button variant="default" className="h-11 gap-1.5 px-4 text-small" onClick={() => openFindFriends()}>
+          <UserPlus className="size-5" aria-hidden /> Find friends
         </Button>
       </div>
     )
@@ -128,7 +128,7 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
   const chosen = list.filter((p) => picked.includes(p.id))
   return (
     <section aria-label="People in the group" className="flex flex-col gap-2">
-      <p className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+      <p className="px-1 text-caption font-semibold text-(--text-muted)">
         People {picked.length > 0 && `· ${picked.length} picked`}
       </p>
       {chosen.length > 0 && (
@@ -136,8 +136,8 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
           {chosen.map((p) => (
             <li key={p.id}>
               <button type="button" onClick={() => toggle(p.id)} aria-label={`Remove ${p.name}`}
-                className="hit-44 inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) py-1 pl-1 pr-2.5 text-[0.7647rem] font-medium text-(--accent)">
-                <PersonAvatar u={p} size={22} />{p.name}<X className="size-3.5" aria-hidden />
+                className="hit-44 inline-flex items-center gap-1.5 rounded-full bg-(--accent-subtle) py-1 pl-1 pr-2.5 text-small font-medium text-(--accent)">
+                <PersonAvatar u={p} size={22} />{p.name}<X className="size-4" aria-hidden />
               </button>
             </li>
           ))}
@@ -145,9 +145,9 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
       )}
       {list.length > 6 && (
         <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
-          <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+          <SearchIcon className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
           <input type="text" inputMode="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 40))} placeholder="Search friends"
-            aria-label="Search friends" className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+            aria-label="Search friends" className="min-w-0 flex-1 bg-transparent text-body text-(--text) outline-none placeholder:text-(--text-muted)" />
         </label>
       )}
       <ul className="flex flex-col divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
@@ -158,16 +158,16 @@ function FriendPicker({ picked, onPick, skip = [] }: { picked: string[]; onPick:
               <button type="button" role="checkbox" aria-checked={on} onClick={() => toggle(p.id)}
                 className={cn('flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left active:bg-(--bg-inset)', on && 'bg-(--accent-subtle)')}>
                 <PersonAvatar u={p} size={30} />
-                <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{p.name}</span>
+                <span className="min-w-0 flex-1 truncate text-body text-(--text)">{p.name}</span>
                 <span aria-hidden className={cn('flex size-6 shrink-0 items-center justify-center rounded-full border',
                   on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                  {on && <Check className="rb-tick size-3.5" />}
+                  {on && <Check className="rb-tick size-4" />}
                 </span>
               </button>
             </li>
           )
         })}
-        {shown.length === 0 && <li className="px-3.5 py-3 text-[0.7647rem] text-(--text-muted)">No friends match “{q.trim()}”.</li>}
+        {shown.length === 0 && <li className="px-3.5 py-3 text-small text-(--text-muted)">No friends match “{q.trim()}”.</li>}
       </ul>
     </section>
   )
@@ -182,12 +182,12 @@ function ConfirmSheet({ title, body, action, onConfirm, onClose }: {
     <Sheet title={title} onClose={onClose} portal
       footer={
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="destructive" className="h-11 flex-1 text-[0.7647rem]" loading={busy}
+          <Button variant="default" className="h-11 flex-1 text-small" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="destructive" className="h-11 flex-1 text-small" loading={busy}
             onClick={() => { setBusy(true); void onConfirm().finally(() => setBusy(false)) }}>{action}</Button>
         </div>
       }>
-      <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">{body}</p>
+      <p className="text-body leading-snug text-(--text-secondary)">{body}</p>
     </Sheet>
   )
 }
@@ -206,8 +206,8 @@ function AddPeopleSheet({ group, onClose, onAdded }: { group: FeedGroup; onClose
     <Sheet title={`Add to ${group.name}`} onClose={onClose} bodyClassName="settings flex flex-col gap-3 overflow-y-auto p-4"
       footer={
         <div className="flex flex-col gap-1.5">
-          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
-          <Button variant="primary" className="h-12 text-[0.8235rem]" loading={busy} disabled={!picked.length} onClick={(e) => void add(e.currentTarget)}>
+          {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
+          <Button variant="primary" className="h-12 text-body" loading={busy} disabled={!picked.length} onClick={(e) => void add(e.currentTarget)}>
             {picked.length ? `Add ${picked.length} to the group` : 'Pick people to add'}
           </Button>
         </div>
@@ -242,7 +242,7 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
       <span className="seg__pill" aria-hidden />
       {([['feed', 'Feed'], ['members', 'Members']] as const).map(([v, label]) => (
         <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-          className={cn('min-h-11 flex-1 rounded-full text-[0.7059rem] font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
+          className={cn('min-h-11 flex-1 rounded-full text-meta font-medium', view === v ? 'text-(--text)' : 'text-(--text-muted)')}>
           {label}{v === 'members' && g ? ` · ${g.count}` : ''}
         </button>
       ))}
@@ -253,12 +253,12 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
       closing={closing} onBack={close} onClose={close} headerExtra={seg}>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!g && !error && <RabbitLoader className="py-10" label="Loading group" />}
-      {msg && <p className={cn('px-1 text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
       {g && view === 'feed' && <CommunityFeed imperial={imperial} groupId={g.id} groupName={g.name} />}
       {g && view === 'members' && (
         <>
-          <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" onClick={() => setSheet('add')}>
-            <UserPlus className="size-4" /> Invite friends
+          <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('add')}>
+            <UserPlus className="size-5" /> Invite friends
           </Button>
           <Group label="Members">
             {g.members.length === 0 && <EmptyRabbit size={40} mode="peek" title="Just you so far" body="Invite friends who follow you back." />}
@@ -270,18 +270,18 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
                   <Button variant="ghost" className="h-11 w-11 p-0" aria-label={`Remove ${m.name}`}
                     onClick={() => setConfirm({ title: `Remove ${m.name}?`, body: `${m.name} won't see ${g.name}'s posts any more. You can add them back later.`,
                       action: 'Remove', run: () => act(() => removeFromGroup(g.id, m.id)) })}>
-                    <X className="size-4" />
+                    <X className="size-5" />
                   </Button>
                 ) : undefined} />
             ))}
           </Group>
           <Group>
-            {g.owner && <Row icon={<Pencil className="size-4" />} title="Rename or change emoji" onClick={() => setSheet('edit')} />}
-            <Row icon={<LogOut className="size-4" />} title="Leave group" danger
+            {g.owner && <Row icon={<Pencil className="size-5" />} title="Rename or change emoji" onClick={() => setSheet('edit')} />}
+            <Row icon={<LogOut className="size-5" />} title="Leave group" danger
               onClick={() => setConfirm({ title: `Leave ${g.name}?`, body: "You won't see its posts any more. A member can add you back.",
                 action: 'Leave group', run: () => act(() => leaveGroup(g.id), close) })} />
             {g.owner && (
-              <Row icon={<Trash2 className="size-4" />} title="Delete group" danger
+              <Row icon={<Trash2 className="size-5" />} title="Delete group" danger
                 onClick={() => setConfirm({ title: `Delete ${g.name}?`, body: 'The group goes away for everyone. Posts stay with their authors, seen by nobody else.',
                   action: 'Delete group', run: () => act(() => deleteGroup(g.id), close) })} />
             )}
@@ -290,9 +290,9 @@ export function GroupPage({ id, imperial, onClose, onChanged }: {
       )}
       {g && (
         <Related items={[
-          { key: 'chat', icon: <MessagesSquare className="size-4" />, label: `Message ${g.name}`, sub: 'A group chat with everyone in it',
+          { key: 'chat', icon: <MessagesSquare className="size-5" />, label: `Message ${g.name}`, sub: 'A group chat with everyone in it',
             onClick: g.members.some(Boolean) ? () => messagePeople(g.members.filter((m): m is SocialUser => !!m).map((m) => m.id).slice(0, 11)) : null },
-          { key: 'members', icon: <Users className="size-4" />, label: 'Members', sub: `${g.count} in the group`, onClick: view !== 'members' ? () => setView('members') : null },
+          { key: 'members', icon: <Users className="size-5" />, label: 'Members', sub: `${g.count} in the group`, onClick: view !== 'members' ? () => setView('members') : null },
         ]} />
       )}
       {confirm && <ConfirmSheet title={confirm.title} body={confirm.body} action={confirm.action} onConfirm={confirm.run} onClose={() => setConfirm(null)} />}

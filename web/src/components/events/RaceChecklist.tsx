@@ -36,7 +36,7 @@ export function ProgressRing({ done, total, size = 64 }: { done: number; total: 
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={6} strokeLinecap="round"
           className="rb-ring" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span className="absolute font-mono text-[0.7647rem] font-semibold tabular-nums text-(--text)" aria-hidden>
+      <span className="absolute font-mono text-small font-semibold tabular-nums text-(--text)" aria-hidden>
         {done}/{total}
       </span>
     </span>
@@ -107,7 +107,7 @@ export function RaceChecklistScreen({ eventId, onClose }: { eventId: string; onC
       )}
       {error && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <p className="text-[0.8235rem] text-(--text-secondary)">{error}</p>
+          <p className="text-body text-(--text-secondary)">{error}</p>
           <Button variant="default" className="h-11 px-4" onClick={load}>Try again</Button>
         </div>
       )}
@@ -116,53 +116,53 @@ export function RaceChecklistScreen({ eventId, onClose }: { eventId: string; onC
           <section className="flex items-center gap-4 rounded-2xl border border-(--accent)/25 bg-(--accent-subtle) px-4 py-4" aria-label="Progress">
             <ProgressRing done={v.done} total={v.total} />
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[1.4118rem] leading-tight text-(--brand)">
+              <p className="font-display text-title-lg leading-tight text-(--brand)">
                 {v.days_out > 1 ? `${v.days_out} days to go` : v.days_out === 1 ? 'Tomorrow' : v.days_out === 0 ? 'Race day!' : 'Race done'}
               </p>
               {cur && (
-                <p className="text-[0.7647rem] text-(--text-secondary)">
+                <p className="text-small text-(--text-secondary)">
                   Up now: <b className="font-semibold text-(--text)">{cur.label}</b> · {cur.done} of {cur.total} done
                 </p>
               )}
             </div>
           </section>
-          {msg && <p role="alert" className="px-1 text-[0.7647rem] text-(--danger)">{msg}</p>}
+          {msg && <p role="alert" className="px-1 text-small text-(--danger)">{msg}</p>}
           {v.buckets.filter((b) => b.total > 0 || b.current).map((b) => (
             <BucketCard key={b.id} b={b} open={open.has(b.id)} onToggle={() => toggleOpen(b.id)}
               onAct={act} onHidden={setUndo} />
           ))}
           {v.hidden.length > 0 && (
             <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-[0.8235rem] text-(--text-secondary) [&::-webkit-details-marker]:hidden">
-                <EyeOff className="size-4" aria-hidden /> <span className="flex-1">{v.hidden.length} hidden</span>
-                <ChevronDown className="size-4" aria-hidden />
+              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-body text-(--text-secondary) [&::-webkit-details-marker]:hidden">
+                <EyeOff className="size-5" aria-hidden /> <span className="flex-1">{v.hidden.length} hidden</span>
+                <ChevronDown className="size-5" aria-hidden />
               </summary>
               <ul className="flex flex-col px-2 pb-2">
                 {v.hidden.map((i) => (
                   <li key={i.id} className="flex min-h-11 items-center gap-2 px-2">
-                    <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text-muted)">{i.text}</span>
-                    <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7647rem]" onClick={() => void act({ action: 'unhide', item: i.id })}>
-                      <RotateCcw className="size-3.5" aria-hidden /> Show
+                    <span className="min-w-0 flex-1 text-body text-(--text-muted)">{i.text}</span>
+                    <Button variant="ghost" className="h-11 gap-1 px-2 text-small" onClick={() => void act({ action: 'unhide', item: i.id })}>
+                      <RotateCcw className="size-4" aria-hidden /> Show
                     </Button>
                   </li>
                 ))}
               </ul>
             </details>
           )}
-          <p className="px-1 text-[0.7059rem] text-(--text-muted)">Saved on your account. Tap a line to tick it; hide what doesn't apply to you.</p>
+          <p className="px-1 text-meta text-(--text-muted)">Saved on your account. Tap a line to tick it; hide what doesn't apply to you.</p>
           {ev && (
             <WhoElse eventName={ev.name} eventDate={ev.date} invite={v.days_out >= 0}
               share={{ type: 'event', ref: { id: eventId }, label: ev.name }} />
           )}
           <Related items={[
-            { key: 'race', icon: <Flag className="size-4" />, label: ev ? ev.name : 'The race', sub: 'The race page: details, goal, gear',
+            { key: 'race', icon: <Flag className="size-5" />, label: ev ? ev.name : 'The race', sub: 'The race page: details, goal, gear',
               onClick: () => { close(); window.setTimeout(() => openEvent(eventId), 220) } },
           ]} link={{ kind: 'checklist', id: eventId }} />
         </div>
       )}
       {undo && (
         <div role="status" className="pointer-events-none fixed inset-x-0 bottom-[max(16px,env(safe-area-inset-bottom))] z-[80] flex justify-center px-4">
-          <div className="pointer-events-auto flex min-h-11 items-center gap-3 rounded-full bg-(--text) px-4 text-[0.7647rem] text-(--bg) shadow-lg">
+          <div className="pointer-events-auto flex min-h-11 items-center gap-3 rounded-full bg-(--text) px-4 text-small text-(--bg) shadow-lg">
             <span>Hidden</span>
             <button type="button" className="min-h-11 font-semibold underline" onClick={() => { const i = undo; setUndo(null); void act({ action: 'unhide', item: i.id }) }}>Undo</button>
           </div>
@@ -194,16 +194,16 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
         className="flex min-h-12 items-center gap-2 px-4 py-2 text-left">
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="text-[0.8824rem] font-semibold text-(--text)">{b.label}</span>
-            {b.current && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--on-fill)">Up now</span>}
+            <span className="text-body-lg font-semibold text-(--text)">{b.label}</span>
+            {b.current && <span className="rounded-full bg-(--accent) px-2 py-0.5 text-caption font-semibold text-(--on-fill)">Up now</span>}
           </span>
-          <span className="block text-[0.7059rem] text-(--text-muted)">
+          <span className="block text-meta text-(--text-muted)">
             {all ? 'All done' : `${b.done} of ${b.total} done`}{!b.past && !all ? ` · ${dueLabel(b.due)}` : ''}
             {b.past && !all ? ' · window passed' : ''}
           </span>
         </span>
-        {all && <Check className="rb-tick size-4 text-(--accent)" aria-hidden />}
-        <ChevronDown className={cn('size-4 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+        {all && <Check className="rb-tick size-5 text-(--accent)" aria-hidden />}
+        <ChevronDown className={cn('size-5 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
         <div className="flex flex-col border-t border-(--border) pb-2">
@@ -215,17 +215,17 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
                   className="flex min-h-12 min-w-0 flex-1 items-start gap-3 px-4 py-2.5 text-left active:bg-(--bg-inset)">
                   <span aria-hidden className={cn('mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                     i.checked ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                    {i.checked && <Check className="rb-tick size-3.5" strokeWidth={3} />}
+                    {i.checked && <Check className="rb-tick size-4" strokeWidth={3} />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={cn('block text-[0.8235rem] leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>
-                    {i.note && !i.checked && <span className="mt-0.5 block text-[0.7059rem] leading-snug text-(--text-muted)">{i.note}</span>}
+                    <span className={cn('block text-body leading-snug', i.checked ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{i.text}</span>
+                    {i.note && !i.checked && <span className="mt-0.5 block text-meta leading-snug text-(--text-muted)">{i.note}</span>}
                   </span>
                 </button>
                 <button type="button" className="flex w-11 shrink-0 items-center justify-center text-(--text-muted)"
                   aria-label={i.custom ? `Delete "${i.text}"` : `Hide "${i.text}"`}
                   onClick={() => { void onAct({ action: i.custom ? 'delete' : 'hide', item: i.id }); if (!i.custom) onHidden(i) }}>
-                  {i.custom ? <Trash2 className="size-4" aria-hidden /> : <EyeOff className="size-4" aria-hidden />}
+                  {i.custom ? <Trash2 className="size-5" aria-hidden /> : <EyeOff className="size-5" aria-hidden />}
                 </button>
               </li>
             ))}
@@ -236,12 +236,12 @@ function BucketCard({ b, open, onToggle, onAct, onHidden }: {
                 aria-label={`Add your own item to ${b.label}`}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void add(); if (e.key === 'Escape') setAdding(false) }} />
-              <Button variant="primary" className="h-11 shrink-0 px-3 text-[0.7647rem]" disabled={!text.trim()} onClick={() => void add()}>Add</Button>
+              <Button variant="primary" className="h-11 shrink-0 px-3 text-small" disabled={!text.trim()} onClick={() => void add()}>Add</Button>
             </div>
           ) : (
             <button type="button" onClick={() => setAdding(true)}
-              className="mx-4 mt-1 flex min-h-11 items-center gap-1.5 text-[0.7647rem] text-(--accent)">
-              <Plus className="size-4" aria-hidden /> Add your own
+              className="mx-4 mt-1 flex min-h-11 items-center gap-1.5 text-small text-(--accent)">
+              <Plus className="size-5" aria-hidden /> Add your own
             </button>
           )}
         </div>

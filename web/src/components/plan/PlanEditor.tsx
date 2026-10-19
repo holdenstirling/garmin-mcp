@@ -177,9 +177,9 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           <RabbitLoader className="py-16" label="Loading plan" cycle={['Opening your plan…', 'Lining up your weeks…', 'Checking your watch…']} />
         ) : (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-[0.8235rem] text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in rabbt yet." : "There's no plan built in rabbt for this goal yet.")}</p>
-            {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-[0.8235rem]" onClick={onRebuild}>Build my plan</Button>}
-            {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-[0.7647rem]" onClick={() => void loadImport(true)}>I have a plan</Button>}
+            <p className="text-body text-(--text-secondary)">{loadError ?? (coachMode ? "Your athlete hasn't built a plan in rabbt yet." : "There's no plan built in rabbt for this goal yet.")}</p>
+            {!loadError && !coachMode && <Button variant="primary" className="h-11 px-6 text-body" onClick={onRebuild}>Build my plan</Button>}
+            {!loadError && !coachMode && <Button variant="ghost" className="h-11 px-4 text-small" onClick={() => void loadImport(true)}>I have a plan</Button>}
           </div>
         )}
         {plan === null && <TPCalendarList tp={tp} today={planToday(plan)} imperial={imperial} />}
@@ -269,7 +269,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       {/* Which race the plan trains for (switch: each race keeps its plan) + Adjust my plan */}
       {coachMode ? (
         <div className="px-1">
-          <p className="text-[0.8235rem] text-(--text-secondary)">
+          <p className="text-body text-(--text-secondary)">
             <span className="font-semibold text-(--brand)">{daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done'}</span>
             {plan.current_week ? ` · week ${plan.current_week} of ${plan.weeks.length}` : ` · ${plan.weeks.length} weeks`}
           </p>
@@ -281,8 +281,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
             onAddRace={onOpenEvents} onBuild={onRebuild} />
           {!readOnly && (
-            <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => setAdjusting(true)}>
-              <SlidersHorizontal className="size-4" aria-hidden /> Adjust my plan
+            <Button variant="default" className="h-11 gap-1.5 text-body" onClick={() => setAdjusting(true)}>
+              <SlidersHorizontal className="size-5" aria-hidden /> Adjust my plan
             </Button>
           )}
           {undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
@@ -292,15 +292,15 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       )}
       {plan.origin && (
         <div className="px-1">
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[0.7647rem] text-(--text-secondary)">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-small text-(--text-secondary)">
             {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : plan.origin.kind === 'block' ? `Built for ${plan.origin.name ?? 'your training block'}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
             {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
-            {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7059rem]" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>}
+            {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-meta" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>}
           </p>
         </div>
       )}
       {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
-      {note && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{note}</p>}
+      {note && <p className="px-1 text-small text-(--accent)" role="status">{note}</p>}
       {!coachMode && !readOnly && (
         <CalendarInsightsCard data={calIns.data} onReload={calIns.reload}
           onApplied={(p) => applied(p)} onAdjust={() => setAdjusting(true)}
@@ -308,19 +308,19 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       )}
       {!coachMode && !calIns.data?.connected && suggestions.map((t) => (
         <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-          <Plane className="size-4 shrink-0 text-(--accent)" />
-          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+          <Plane className="size-5 shrink-0 text-(--accent)" />
+          <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
             On your calendar: <span className="text-(--text)">{t.title}</span>, {fmtDay(t.start, { month: 'short', day: 'numeric' })}{t.end !== t.start ? ` – ${fmtDay(t.end, { month: 'short', day: 'numeric' })}` : ''}
           </p>
-          <Button variant="default" className="h-8 px-3 text-[0.7059rem]" onClick={() => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.title.slice(0, 60) })}>Plan around it</Button>
+          <Button variant="default" className="h-8 px-3 text-meta" onClick={() => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.title.slice(0, 60) })}>Plan around it</Button>
         </div>
       ))}
       {!coachMode && (plan.events_changed || plan.race_changed) && (
         <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
-          <p className="min-w-0 flex-1 text-[0.7647rem] leading-snug text-(--accent)">
+          <p className="min-w-0 flex-1 text-small leading-snug text-(--accent)">
             {plan.race_changed ? 'Your race date or distance changed since this plan was built.' : 'Your events changed since this plan was built.'}
             {' '}Rebuild to fit {plan.race_changed ? 'it' : 'them'} in (session edits are replaced).</p>
-          <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
+          <Button variant="primary" className="h-8 px-3 text-meta" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
         </div>
       )}
 
@@ -355,31 +355,31 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             <div className="flex flex-col gap-2.5">
               <div className="flex gap-2">
                 <select aria-label="How far ahead" value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))}
-                  className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-[0.8235rem] text-(--text)">
+                  className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text)">
                   {[7, 14, 28].map((n) => <option key={n} value={n}>Next {n} days</option>)}
                 </select>
-                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={sync.busy === 'sync'}
+                <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" loading={sync.busy === 'sync'}
                   disabled={sync.busy != null} onClick={() => void doSync()}>
-                  <Watch className="size-4" /> Sync
+                  <Watch className="size-5" /> Sync
                 </Button>
                 {(synced > 0 || plan.pending_removals > 0) && (
-                  <Button variant="default" className="h-11 px-4 text-[0.8235rem]" loading={sync.busy === 'remove'}
+                  <Button variant="default" className="h-11 px-4 text-body" loading={sync.busy === 'remove'}
                     disabled={sync.busy != null} onClick={() => void doRemove()}>Remove</Button>
                 )}
               </div>
-              {sync.busy === 'sync' && <RabbitLoader inline className="text-[0.7647rem]" label="Sending to your watch…" />}
+              {sync.busy === 'sync' && <RabbitLoader inline className="text-small" label="Sending to your watch…" />}
               {plan.pending_removals > 0 && !sync.result && (
-                <p className="text-[0.7059rem] text-(--text-muted)">{plan.pending_removals} old workout{plan.pending_removals === 1 ? '' : 's'} will be cleared from Garmin on the next sync.</p>
+                <p className="text-meta text-(--text-muted)">{plan.pending_removals} old workout{plan.pending_removals === 1 ? '' : 's'} will be cleared from Garmin on the next sync.</p>
               )}
               {sync.result && <SyncSummary result={sync.result} />}
-              {sync.removed != null && <p className="text-[0.7647rem] text-(--accent)">Removed {sync.removed} workout{sync.removed === 1 ? '' : 's'} from your Garmin calendar.</p>}
+              {sync.removed != null && <p className="text-small text-(--accent)">Removed {sync.removed} workout{sync.removed === 1 ? '' : 's'} from your Garmin calendar.</p>}
             </div>
           ) : me.garmin.can_connect ? (
             <GarminEmpty what="workout" compact />
-          ) : <p className="text-[0.7647rem] text-(--text-muted)">Garmin isn't available on this server.</p>}
+          ) : <p className="text-small text-(--text-muted)">Garmin isn't available on this server.</p>}
         </Field>
       </Group>
-      {sync.error && <p className="-mt-3 px-4 text-[0.7647rem] text-(--danger)" role="alert">{sync.error}</p>}
+      {sync.error && <p className="-mt-3 px-4 text-small text-(--danger)" role="alert">{sync.error}</p>}
 
       <BlocksEntry compact />
 
@@ -397,7 +397,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         )}
         {plan.trips.map((t) => (
           <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
-            trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-[0.7059rem]" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-3.5" /> Undo</Button>} />
+            trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-meta" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>} />
         ))}
         <Row icon={<Icon><FileUp /></Icon>} title="Add a plan" subtitle="A file, pasted text, Zwift workouts or a template"
           onClick={() => void loadImport(true)} />
@@ -405,9 +405,9 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           onClick={onRebuild} />
         {confirmDelete ? (
           <div className="flex items-center gap-2 px-4 py-3">
-            <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text)">Delete this plan{synced ? ' and its Garmin workouts' : ''}?</span>
-            <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setConfirmDelete(false)}>Keep</Button>
-            <Button variant="destructive" className="h-9 px-3 text-[0.7647rem]" loading={deleting} onClick={() => void doDelete()}>Delete</Button>
+            <span className="min-w-0 flex-1 text-body text-(--text)">Delete this plan{synced ? ' and its Garmin workouts' : ''}?</span>
+            <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
+            <Button variant="destructive" className="h-9 px-3 text-small" loading={deleting} onClick={() => void doDelete()}>Delete</Button>
           </div>
         ) : (
           <Row icon={<Icon tone="danger"><Trash2 /></Icon>} title="Delete plan" danger onClick={() => setConfirmDelete(true)} />

@@ -25,12 +25,12 @@ function BigChip({ on, onClick, emoji, label, sub }: {
     <button type="button" aria-pressed={on} onClick={onClick}
       className={cn('relative flex min-h-14 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left transition-colors active:scale-[0.98]',
         on ? 'border-(--accent) bg-(--accent-subtle) text-(--text)' : 'border-(--border) bg-(--bg-surface) text-(--text-secondary)')}>
-      {emoji && <span aria-hidden className="text-[1.4118rem] leading-none">{emoji}</span>}
+      {emoji && <span aria-hidden className="text-title-lg leading-none">{emoji}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8235rem] font-medium leading-tight">{label}</span>
-        {sub && <span className="block text-[0.6471rem] text-(--text-muted)">{sub}</span>}
+        <span className="block text-body font-medium leading-tight">{label}</span>
+        {sub && <span className="block text-caption text-(--text-muted)">{sub}</span>}
       </span>
-      {on && <Check className="size-4 shrink-0 text-(--accent)" aria-hidden />}
+      {on && <Check className="size-5 shrink-0 text-(--accent)" aria-hidden />}
     </button>
   )
 }
@@ -80,9 +80,9 @@ export function InterestsSheet({ initial, onClose, onSaved }: {
       closing={closing} onClose={close} headerExtra={<Dots step={step} />}
       footer={<>
         {step > 0
-          ? <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={() => setStep(step - 1)}>Back</Button>
-          : <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={close}>Skip for now</Button>}
-        <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={next}>
+          ? <Button variant="default" className="h-11 flex-1 text-body" onClick={() => setStep(step - 1)}>Back</Button>
+          : <Button variant="default" className="h-11 flex-1 text-body" onClick={close}>Skip for now</Button>}
+        <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} onClick={next}>
           {step < STEPS - 1 ? 'Next' : 'Show my picks'}
         </Button>
       </>}>
@@ -117,7 +117,7 @@ export function InterestsSheet({ initial, onClose, onSaved }: {
                 onClick={() => set({ race_vibe: toggle(i.race_vibe, v) })} />
             ))}
           </div>
-          <p className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Next 12 months, you want to…</p>
+          <p className="px-1 text-caption font-semibold text-(--text-muted)">Next 12 months, you want to…</p>
           <div className="grid grid-cols-2 gap-2">
             {GOALS.map(([v, label]) => (
               <BigChip key={v} on={!!i.goals_next_12mo?.includes(v)} label={label}
@@ -136,23 +136,23 @@ export function InterestsSheet({ initial, onClose, onSaved }: {
             ))}
           </div>
           <label className="flex flex-col gap-1.5 px-1">
-            <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Home zip (optional)</span>
+            <span className="text-caption font-semibold text-(--text-muted)">Home zip (optional)</span>
             <span className="relative">
-              <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-(--text-muted)" />
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-(--text-muted)" />
               <input className={cn(inputCls, 'pl-9')} value={i.home_zip ?? ''} inputMode="numeric" maxLength={5}
                 autoComplete="postal-code" placeholder="e.g. 80204" aria-invalid={zipBad}
                 onChange={(e) => set({ home_zip: e.target.value.replace(/\D/g, '').slice(0, 5) })} />
             </span>
-            <span className="text-[0.7059rem] text-(--text-muted)">Used to find races near you. Leave empty to use your profile's home.</span>
+            <span className="text-meta text-(--text-muted)">Used to find races near you. Leave empty to use your profile's home.</span>
           </label>
           <div className="flex flex-col gap-1.5 px-1">
-            <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Months to skip</span>
+            <span className="text-caption font-semibold text-(--text-muted)">Months to skip</span>
             <div className="grid grid-cols-6 gap-1.5">
               {MONTH_SHORT.map((m, idx) => {
                 const on = !!i.months_avoid?.includes(idx + 1)
                 return (
                   <button key={m} type="button" aria-pressed={on} onClick={() => set({ months_avoid: toggle(i.months_avoid, idx + 1) })}
-                    className={cn('hit-44 h-10 rounded-xl border text-[0.7059rem] font-medium',
+                    className={cn('hit-44 h-10 rounded-xl border text-meta font-medium',
                       on ? 'border-(--warning) bg-(--warning-subtle) text-(--warning-text) line-through' : 'border-(--border) text-(--text-secondary)')}>
                     {m}
                   </button>
@@ -162,7 +162,7 @@ export function InterestsSheet({ initial, onClose, onSaved }: {
           </div>
         </>
       )}
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
     </Screen>
   )
 }

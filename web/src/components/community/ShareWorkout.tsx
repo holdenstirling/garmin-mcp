@@ -22,11 +22,11 @@ export function ShareWorkoutButton({ activityId }: { activityId: number }) {
   }
   return (
     <div className="flex flex-col gap-1">
-      <Button variant="ghost" className="h-11 gap-1.5 text-[0.7647rem]" loading={state === 'busy'} disabled={state === 'done'}
+      <Button variant="ghost" className="h-11 gap-1.5 text-small" loading={state === 'busy'} disabled={state === 'done'}
         onClick={(e) => void share(e.currentTarget)}>
-        {state === 'done' ? <><Check className="size-4" /> On your Feed</> : <><Share2 className="size-4" /> Post to feed</>}
+        {state === 'done' ? <><Check className="size-5" /> On your Feed</> : <><Share2 className="size-5" /> Post to feed</>}
       </Button>
-      {err && <p className="text-center text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="text-center text-meta text-(--danger)" role="alert">{err}</p>}
     </div>
   )
 }

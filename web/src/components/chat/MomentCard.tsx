@@ -30,17 +30,17 @@ export const MomentCard = memo(function MomentCard({ item, onAction, disabled }:
         <RabbitLogo size={22} />
       </span>
       <div className="rabbit-voice rabbit-voice--tail min-w-0 flex-1 px-3.5 py-2.5">
-        <div className="flex items-baseline gap-1.5 text-[0.6471rem]">
+        <div className="flex items-baseline gap-1.5 text-caption">
           <span className="rabbit-voice__label">rabbt</span>
           <span className="text-(--text-muted)">· {fmtTime(item.ts)}</span>
         </div>
-        <p className="m-0 mt-0.5 text-[1rem] leading-[1.45] text-(--text)"><RabbitInline text={item.text} /></p>
+        <p className="m-0 mt-0.5 text-lead leading-[1.45] text-(--text)"><RabbitInline text={item.text} /></p>
         {item.actions.length > 0 && (
           <div className="-mx-1 mt-1 flex flex-wrap gap-1.5">
             {item.actions.map((a) => (
               <button key={`${a.id}-${a.label}`} type="button" disabled={disabled} onClick={() => onAction(a)}
                 className="hit-44 inline-flex min-h-11 items-center rounded-full px-1 disabled:opacity-50">
-                <span className="rounded-full border border-(--accent)/40 bg-(--bg-surface) px-3 py-1.5 text-[0.7059rem] font-medium text-(--accent) active:opacity-70">
+                <span className="rounded-full border border-(--accent)/40 bg-(--bg-surface) px-3 py-1.5 text-meta font-medium text-(--accent) active:opacity-70">
                   {a.label}
                 </span>
               </button>

@@ -122,7 +122,7 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
                 </div>
               </Group>
               {usage && (
-                <p className="px-1 text-[0.6471rem] text-(--text-muted)">
+                <p className="px-1 text-caption text-(--text-muted)">
                   Photos: {usage.photos} of {usage.max_photos} · {Math.round(usage.bytes / 1024 / 1024)} of {Math.round(usage.max_bytes / 1024 / 1024)} MB
                 </p>
               )}

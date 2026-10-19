@@ -15,12 +15,12 @@ export function SaveStatus({ state, error, className }: { state: SaveState; erro
   if (state === 'idle') return null
   return (
     <span role="status" aria-live="polite"
-      className={cn('inline-flex items-center gap-1 text-[0.7059rem]',
+      className={cn('inline-flex items-center gap-1 text-meta',
         state === 'saved' && 'text-(--success)', state === 'queued' && 'text-(--warning-text)',
         state === 'error' && 'text-(--danger)', state === 'saving' && 'text-(--text-muted)', className)}>
       {state === 'saving' && 'Saving…'}
-      {state === 'saved' && <><Check className="size-3.5" aria-hidden /> Saved</>}
-      {state === 'queued' && <><CloudOff className="size-3.5" aria-hidden /> Not saved yet — we'll retry</>}
+      {state === 'saved' && <><Check className="size-4" aria-hidden /> Saved</>}
+      {state === 'queued' && <><CloudOff className="size-4" aria-hidden /> Not saved yet — we'll retry</>}
       {state === 'error' && (error || "Couldn't save")}
     </span>
   )

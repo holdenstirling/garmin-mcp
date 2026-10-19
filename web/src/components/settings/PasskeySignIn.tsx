@@ -21,12 +21,12 @@ export function PasskeySignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) 
   }
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button type="button" variant="default" className="h-11 min-w-[200px] gap-2 px-6 text-sm" disabled={busy} onClick={() => void go()}>
-        <KeyRound className="size-4" aria-hidden />
+      <Button type="button" variant="default" className="h-11 min-w-[200px] gap-2 px-6 text-body" disabled={busy} onClick={() => void go()}>
+        <KeyRound className="size-5" aria-hidden />
         {busy ? 'Checking your passkey…' : 'Sign in with a passkey'}
       </Button>
-      {error && <p role="alert" className="max-w-sm text-[0.7647rem] text-(--danger)">{error}</p>}
-      <p className="max-w-xs text-[0.7059rem] leading-snug text-(--text-muted)">
+      {error && <p role="alert" className="max-w-sm text-small text-(--danger)">{error}</p>}
+      <p className="max-w-xs text-meta leading-snug text-(--text-muted)">
         Got an invite link? Open it to join. rabbt doesn't need Google.
       </p>
     </div>

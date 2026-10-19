@@ -118,40 +118,40 @@ export function ShareSheet({ target, hrOption, onSendInRabbit, onClose }: {
     } finally { setBusy(null) }
   }
 
-  const row = 'flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-[0.8824rem] text-(--text) active:bg-(--bg-inset)'
+  const row = 'flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-body-lg text-(--text) active:bg-(--bg-inset)'
   return (
     <Sheet title={`Share ${target.label ? `“${target.label}”` : SHARE_KIND_LABEL[target.kind].toLowerCase()}`} onClose={onClose} portal
       footer={
         <div className="flex gap-2 border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           {native ? (
-            <Button variant="primary" className="h-12 flex-1 gap-2 text-[0.8824rem]" disabled={!link} onClick={() => void share()}>
-              <Share2 className="size-4" aria-hidden /> Share…
+            <Button variant="primary" className="h-12 flex-1 gap-2 text-body-lg" disabled={!link} onClick={() => void share()}>
+              <Share2 className="size-5" aria-hidden /> Share…
             </Button>
           ) : (
             <a href={link ? smsHref(text, link.url) : undefined} aria-disabled={!link}
-              className={cn('flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-(--accent) text-[0.8824rem] font-semibold text-(--on-fill)', !link && 'pointer-events-none opacity-50')}>
-              <MessageSquareText className="size-4" aria-hidden /> Text message
+              className={cn('flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-(--accent) text-body-lg font-semibold text-(--on-fill)', !link && 'pointer-events-none opacity-50')}>
+              <MessageSquareText className="size-5" aria-hidden /> Text message
             </a>
           )}
         </div>
       }>
       <div className="flex flex-col gap-4 p-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[0.7059rem] font-semibold uppercase tracking-widest text-(--text-muted)">Message</span>
+          <span className="text-meta font-semibold text-(--text-muted)">Message</span>
           <textarea className={areaCls} rows={3} maxLength={300} value={text}
             onChange={(e) => { edited.current = true; setText(e.target.value) }} aria-label="Message to send with the link" />
         </label>
 
-        <div className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 text-[0.7647rem] text-(--text-secondary)" aria-live="polite">
-          <Link2 className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+        <div className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 text-small text-(--text-secondary)" aria-live="polite">
+          <Link2 className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
           {err ? <span className="text-(--danger)">{err}</span>
             : link ? <span className="min-w-0 flex-1 truncate font-mono tabular-nums">{link.url.replace(/^https?:\/\//, '')}</span>
             : <RabbitLoader inline label="Making a link" />}
         </div>
 
         {hrOption && (
-          <label className="flex min-h-11 items-center justify-between gap-3 text-[0.8235rem] text-(--text)">
-            <span>Include heart rate<span className="block text-[0.7059rem] text-(--text-muted)">Off: friends see distance, time and pace only. Never your location.</span></span>
+          <label className="flex min-h-11 items-center justify-between gap-3 text-body text-(--text)">
+            <span>Include heart rate<span className="block text-meta text-(--text-muted)">Off: friends see distance, time and pace only. Never your location.</span></span>
             <input type="checkbox" className="size-5 accent-(--accent)" checked={hr} onChange={(e) => { setLink(null); setHr(e.target.checked) }} />
           </label>
         )}
@@ -159,25 +159,25 @@ export function ShareSheet({ target, hrOption, onSendInRabbit, onClose }: {
         <div className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) p-1">
           {native && (
             <a href={link ? smsHref(text, link.url) : undefined} className={cn(row, !link && 'pointer-events-none opacity-50')}>
-              <Smartphone className="size-4 text-(--accent)" aria-hidden /> Text message
+              <Smartphone className="size-5 text-(--accent)" aria-hidden /> Text message
             </a>
           )}
           <button type="button" className={row} disabled={!link} onClick={() => void copy()}>
-            {copied ? <Check className="size-4 text-(--accent)" aria-hidden /> : <Copy className="size-4 text-(--accent)" aria-hidden />}
+            {copied ? <Check className="size-5 text-(--accent)" aria-hidden /> : <Copy className="size-5 text-(--accent)" aria-hidden />}
             {copied ? 'Copied' : 'Copy link'}
           </button>
           {onSendInRabbit && (
             <button type="button" className={row} onClick={() => { onClose(); onSendInRabbit() }}>
-              <MessageCircle className="size-4 text-(--accent)" aria-hidden /> Send in rabbt
+              <MessageCircle className="size-5 text-(--accent)" aria-hidden /> Send in rabbt
             </button>
           )}
           {target.kind !== 'invite' && (
             <button type="button" className={row} disabled={!link || busy === 'image'} onClick={() => void image()}>
-              <ImageIcon className="size-4 text-(--accent)" aria-hidden /> {busy === 'image' ? 'Making the image…' : 'Share an image'}
+              <ImageIcon className="size-5 text-(--accent)" aria-hidden /> {busy === 'image' ? 'Making the image…' : 'Share an image'}
             </button>
           )}
         </div>
-        <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="px-1 text-meta leading-snug text-(--text-muted)">
           Anyone with the link can see it, no app needed. Turn links off anytime in Me › Settings › Shared links.
         </p>
         <canvas ref={canvas} className="hidden" aria-hidden />
@@ -194,9 +194,9 @@ export function ShareButton({ target, hrOption, onSendInRabbit, label = 'Share',
   return (
     <>
       <Button variant="default" size={iconOnly ? 'icon' : undefined}
-        className={cn(iconOnly ? 'size-11 shrink-0' : 'h-11 gap-1.5 text-[0.8235rem]', className)}
+        className={cn(iconOnly ? 'size-11 shrink-0' : 'h-11 gap-1.5 text-body', className)}
         aria-label={iconOnly ? `${label}: text, copy a link or send in rabbt` : undefined} onClick={() => setOpen(true)}>
-        <Share2 className="size-4" aria-hidden />{!iconOnly && ` ${label}`}
+        <Share2 className="size-5" aria-hidden />{!iconOnly && ` ${label}`}
       </Button>
       {open && <ShareSheet target={target} hrOption={hrOption} onSendInRabbit={onSendInRabbit} onClose={() => setOpen(false)} />}
     </>

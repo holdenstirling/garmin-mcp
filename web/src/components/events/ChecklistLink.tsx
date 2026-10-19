@@ -39,9 +39,9 @@ export function ChecklistRow({ eventId }: { eventId: string }) {
   if (!c) return null
   return (
     <button type="button" onClick={() => openChecklist(eventId)}
-      className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-      <ListChecks className="size-3.5" aria-hidden /> {label(c)}
-      <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" aria-hidden />
+      className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
+      <ListChecks className="size-4" aria-hidden /> {label(c)}
+      <ChevronRight className="ml-auto size-4 text-(--text-muted)" aria-hidden />
     </button>
   )
 }
@@ -51,9 +51,9 @@ export function ChecklistButton({ eventId, className, onBefore }: { eventId: str
   const c = useChecklistCount(eventId)
   if (!c) return null
   return (
-    <Button variant="default" className={cn('h-11 w-full gap-1.5 text-[0.8235rem]', className)}
+    <Button variant="default" className={cn('h-11 w-full gap-1.5 text-body', className)}
       onClick={() => { onBefore?.(); openChecklist(eventId) }}>
-      <ListChecks className="size-4" aria-hidden /> {label(c)}
+      <ListChecks className="size-5" aria-hidden /> {label(c)}
     </Button>
   )
 }

@@ -69,13 +69,13 @@ export function StatsScreen({ onClose, onOpenPlan, onOpenRecap, onAsk, onOpenGea
         <div className="mx-auto mt-1 flex max-w-xl justify-end gap-3">
           {onOpenRecap && (
             <button type="button" onClick={onOpenRecap}
-              className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] font-medium text-(--accent)">
-              <CalendarCheck className="size-3" /> Weekly recap
+              className="hit-44 inline-flex items-center gap-1 text-caption font-medium text-(--accent)">
+              <CalendarCheck className="size-3.5" /> Weekly recap
             </button>
           )}
           <button type="button" onClick={() => void refresh()} disabled={busy} aria-label="Refresh"
-            className="hit-44 inline-flex items-center gap-1 text-[0.6471rem] text-(--text-muted) disabled:opacity-50">
-            <RefreshCw className={cn('size-3', busy && 'animate-spin motion-reduce:animate-none')} /> Refresh
+            className="hit-44 inline-flex items-center gap-1 text-caption text-(--text-muted) disabled:opacity-50">
+            <RefreshCw className={cn('size-3.5', busy && 'animate-spin motion-reduce:animate-none')} /> Refresh
           </button>
         </div>) : undefined}>
       <group.Provider value={group.track}>
@@ -131,8 +131,8 @@ export function StatsBody({ s, progress, onOpenPlan, onOpenSetup, loadBase, load
       {challenges}
       {loadBase && <LoadCard key={loadKey ?? 0} base={loadBase} />}
       <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more}
-        className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-[0.7647rem] font-medium text-(--text-secondary) active:bg-(--bg-inset)">
-        {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} />
+        className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) bg-(--bg-surface) py-2.5 text-small font-medium text-(--text-secondary) active:bg-(--bg-inset)">
+        {more ? 'Fewer stats' : 'More stats'} <ChevronDown className={cn('size-5 transition-transform', more && 'rotate-180')} />
       </button>
       {more && <>
         <WeeklyBars s={s} />
@@ -154,7 +154,7 @@ function planTime(s: Stats): string | undefined {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h2>
+  return <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
 }
 
 function StreakHero({ s }: { s: Stats }) {
@@ -166,18 +166,18 @@ function StreakHero({ s }: { s: Stats }) {
           <span className={cn('flex size-16 items-center justify-center rounded-full', st.current ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
             <Flame className="size-8" />
           </span>
-          <span className="mt-2 font-display text-[2.1176rem] leading-none text-(--brand)">{st.current}</span>
-          <span className="text-[0.7059rem] text-(--text-muted)">day streak</span>
+          <span className="mt-2 font-display text-display-xl leading-none text-(--brand)">{st.current}</span>
+          <span className="text-meta text-(--text-muted)">day streak</span>
         </div>
         <div className="flex flex-col items-center pb-1">
-          <span className="font-display text-[1.6471rem] leading-none text-(--text)">{st.weeks_current}</span>
-          <span className="max-w-[90px] text-[0.6471rem] leading-tight text-(--text-muted)">active weeks in a row ({st.active_week}+ workouts)</span>
+          <span className="font-display text-display leading-none text-(--text)">{st.weeks_current}</span>
+          <span className="max-w-[90px] text-caption leading-tight text-(--text-muted)">active weeks in a row ({st.active_week}+ workouts)</span>
         </div>
       </div>
-      <p className="max-w-sm text-[0.8824rem] leading-snug text-(--text)">{s.headline}</p>
-      <p className="text-[0.6471rem] text-(--text-muted)">Best: {st.best} days · {st.weeks_best} weeks</p>
+      <p className="max-w-sm text-body-lg leading-snug text-(--text)">{s.headline}</p>
+      <p className="text-caption text-(--text-muted)">Best: {st.best} days · {st.weeks_best} weeks</p>
       {s.plan?.week && s.plan.week.planned > 0 && (
-        <p className="text-[0.7647rem] text-(--text-secondary)">
+        <p className="text-small text-(--text-secondary)">
           This week: {s.plan.week.done} of {s.plan.week.planned} sessions{planTime(s) ? ` · ${planTime(s)}` : ''}
         </p>
       )}
@@ -198,7 +198,7 @@ function WeekDots({ s }: { s: Stats }) {
         const k = key(d), mins = s.calendar.days[k] ?? 0, isToday = k === s.today, future = d > today
         return (
           <span key={k} className="flex flex-col items-center gap-1">
-            <span className={cn('text-[0.6471rem] uppercase', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+            <span className={cn('text-caption uppercase', isToday ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
               {d.toLocaleDateString([], { weekday: 'narrow' })}
             </span>
             <span className={cn('size-6 rounded-full border',
@@ -225,20 +225,20 @@ function TotalsCard({ s, period, setPeriod }: { s: Stats; period: Period; setPer
         <div className="flex gap-1 rounded-lg bg-(--bg-elevated) p-0.5">
           {([['week', 'Week'], ['month', 'Month'], ['year', '12 mo']] as [Period, string][]).map(([p, l]) => (
             <button key={p} type="button" onClick={() => setPeriod(p)} aria-pressed={period === p}
-              className={cn('hit-44 h-7 rounded-md px-2.5 text-[0.6471rem] font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
+              className={cn('hit-44 h-7 rounded-md px-2.5 text-caption font-medium', period === p ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-muted)')}>{l}</button>
           ))}
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
         {tiles.map(([I, label, v]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-3">
-            <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><I className="size-3.5" />{label}</span>
-            <span className="mt-1 block font-display text-[1.1765rem] leading-tight text-(--text)">{v}</span>
+            <span className="flex items-center gap-1.5 text-caption text-(--text-muted)"><I className="size-4" />{label}</span>
+            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
           </div>
         ))}
       </div>
       {period === 'week' && t.vs_last_week_hours != null && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+        <p className="px-1 text-meta text-(--text-muted)">
           {t.vs_last_week_hours === 0 ? 'Same as this point last week.' : `${t.vs_last_week_hours > 0 ? '+' : '−'}${hours(Math.abs(t.vs_last_week_hours))} vs this point last week.`}
         </p>
       )}
@@ -272,15 +272,15 @@ function WeeklyBars({ s }: { s: Stats }) {
             const shown = (s.weekly.length - 1 - i) % 2 === 0
             return (
               <span key={w.start} aria-hidden={!shown}
-                className={cn('flex-1 overflow-visible whitespace-nowrap text-center text-[0.6471rem] leading-tight', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+                className={cn('flex-1 overflow-visible whitespace-nowrap text-center text-caption leading-tight', i === s.weekly.length - 1 ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
                 {shown ? new Date(`${w.start}T12:00:00`).toLocaleDateString([], { month: 'numeric', day: 'numeric' }) : '\u00a0'}
               </span>
             )
           })}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {sports.map((sp) => <span key={sp} className="flex items-center gap-1 text-[0.6471rem] text-(--text-muted)"><span className="size-2 rounded-full" style={{ background: SPORT_COLOR[sp] }} />{SPORT_NAME[sp]}</span>)}
-          <span className="ml-auto text-[0.6471rem] text-(--text-muted)">avg {hours(s.weekly.reduce((a, w) => a + w.hours, 0) / s.weekly.length)}/wk</span>
+          {sports.map((sp) => <span key={sp} className="flex items-center gap-1 text-caption text-(--text-muted)"><span className="size-2 rounded-full" style={{ background: SPORT_COLOR[sp] }} />{SPORT_NAME[sp]}</span>)}
+          <span className="ml-auto text-caption text-(--text-muted)">avg {hours(s.weekly.reduce((a, w) => a + w.hours, 0) / s.weekly.length)}/wk</span>
         </div>
       </Card>
     </section>
@@ -312,7 +312,7 @@ function CalendarHeat({ s }: { s: Stats }) {
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[0.6471rem] text-(--text-muted)">{active} active days · darker = longer</p>
+        <p className="mt-2 text-caption text-(--text-muted)">{active} active days · darker = longer</p>
       </Card>
     </section>
   )
@@ -328,12 +328,12 @@ function SportsCard({ s }: { s: Stats }) {
             <div key={x.sport} className="flex items-center gap-3 px-4 py-3">
               <span className="size-3 shrink-0 rounded-full" style={{ background: SPORT_COLOR[x.sport] }} />
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.8824rem] text-(--text)">{SPORT_NAME[x.sport]}{x.favorite && <span className="ml-1.5 text-[0.6471rem] text-(--accent)">favorite</span>}</span>
-                <span className="block text-[0.6471rem] text-(--text-muted)">
+                <span className="block text-body-lg text-(--text)">{SPORT_NAME[x.sport]}{x.favorite && <span className="ml-1.5 text-caption text-(--accent)">favorite</span>}</span>
+                <span className="block text-caption text-(--text-muted)">
                   {x.workouts} workouts{x.km > 0 ? ` · ${dist(x.km, s.units, x.sport)}` : ''}{x.climb_m > 0 ? ` · ${climb(x.climb_m, s.units)} up` : ''}
                 </span>
               </span>
-              <span className="text-[0.8235rem] font-medium text-(--text-secondary)">{hours(x.hours)}</span>
+              <span className="text-body font-medium text-(--text-secondary)">{hours(x.hours)}</span>
             </div>
           ))}
         </div>
@@ -357,9 +357,9 @@ function BestsCard({ s }: { s: Stats }) {
       <div className="grid grid-cols-2 gap-2">
         {rows.filter(([, v]) => v).map(([label, v, d]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-            <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)"><Trophy className="size-3.5" />{label}</span>
-            <span className="mt-1 block font-display text-[1.1765rem] leading-tight text-(--text)">{v}</span>
-            {d && <span className="text-[0.6471rem] text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
+            <span className="flex items-center gap-1.5 text-caption text-(--text-muted)"><Trophy className="size-4" />{label}</span>
+            <span className="mt-1 block font-display text-title leading-tight text-(--text)">{v}</span>
+            {d && <span className="text-caption text-(--text-muted)">{new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
           </div>
         ))}
       </div>
@@ -376,25 +376,25 @@ function BadgesCard({ s }: { s: Stats }) {
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <SectionLabel>{all ? 'All badges' : 'Next badges'} · {earned.length} of {s.badges.length} earned</SectionLabel>
-        <button type="button" onClick={() => setAll((a) => !a)} className="hit-44 text-[0.6471rem] font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
+        <button type="button" onClick={() => setAll((a) => !a)} className="hit-44 text-caption font-medium text-(--accent)">{all ? 'Show less' : 'See all'}</button>
       </div>
-      {shown.length === 0 && <p className="px-1 text-[0.7647rem] text-(--text-muted)">Every badge earned. Legendary.</p>}
+      {shown.length === 0 && <p className="px-1 text-small text-(--text-muted)">Every badge earned. Legendary.</p>}
       <div className="grid grid-cols-3 gap-2">
         {shown.map((b, i) => (
           <div key={b.id} title={b.description}
             {...hopIn(i, cn('flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center',
               b.earned ? 'border-(--accent)/40 bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)'))}>
             <span className={cn('flex size-9 items-center justify-center rounded-full', b.earned ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-elevated) text-(--text-muted)')}>
-              {b.earned ? <Award className="size-5" /> : <Lock className="size-4" />}
+              {b.earned ? <Award className="size-6" /> : <Lock className="size-5" />}
             </span>
-            <span className={cn('text-[0.7059rem] font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
-            <span className="text-[0.6471rem] leading-tight text-(--text-muted)">{b.description}</span>
+            <span className={cn('text-meta font-medium leading-tight', b.earned ? 'text-(--accent)' : 'text-(--text)')}>{b.title}</span>
+            <span className="text-caption leading-tight text-(--text-muted)">{b.description}</span>
             {!b.earned && (
               <>
                 <span className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-(--bg-elevated)">
                   <span className="block h-full rounded-full bg-(--accent)" style={{ width: `${Math.round(b.progress * 100)}%` }} />
                 </span>
-                <span className="text-[0.7059rem] text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
+                <span className="text-meta text-(--text-muted)">{Math.round(b.progress * 100)}% · +100 XP</span>
               </>
             )}
           </div>
@@ -455,15 +455,15 @@ function OuraRecovery({ loadKey = 0 }: { loadKey?: number }) {
       <div className="grid grid-cols-2 gap-1.5">
         {tiles.map(([label, v, d]) => (
           <div key={label} className="rounded-xl border border-(--border) bg-(--bg-surface) px-2 py-2.5 text-center">
-            <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">
+            <span className="flex items-center justify-center gap-1 text-caption text-(--text-muted)">
               {label}{label === 'Oura readiness' && <InfoTip term="oura_readiness" />}
             </span>
-            <span className="mt-0.5 block font-display text-[1.0588rem] leading-tight text-(--text)">{v}</span>
-            {d && <span className="block text-[0.7059rem] leading-tight">{d}</span>}
+            <span className="mt-0.5 block font-display text-title-sm leading-tight text-(--text)">{v}</span>
+            {d && <span className="block text-meta leading-tight">{d}</span>}
           </div>
         ))}
       </div>
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to rabbt.</p>
+      <p className="px-1 text-caption text-(--text-muted)">Compared with your usual. Shown here only; Oura data is never sent to rabbt.</p>
       </>}
     </section>
   )

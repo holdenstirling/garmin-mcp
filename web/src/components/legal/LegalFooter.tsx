@@ -3,7 +3,7 @@
 export function LegalFooter({ className }: { className?: string }) {
   const links = [['/app/privacy', 'Privacy'], ['/app/terms', 'Terms'], ['/app/security', 'Data & security']] as const
   return (
-    <nav aria-label="Policies" className={className ?? 'flex items-center justify-center gap-1 text-[0.7647rem] text-(--text-muted)'}>
+    <nav aria-label="Policies" className={className ?? 'flex items-center justify-center gap-1 text-small text-(--text-muted)'}>
       {links.map(([href, label], i) => (
         <span key={href} className="flex items-center gap-1">
           {i > 0 && <span aria-hidden>·</span>}

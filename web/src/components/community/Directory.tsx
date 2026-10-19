@@ -38,7 +38,7 @@ const CRAWLING = ['Lacing up…', 'Reading club pages…', 'Finding the Tuesday 
 const POLL_MS = 8000
 const POLL_MAX = 15
 
-const linkCls = 'inline-flex min-h-11 items-center gap-1.5 text-[0.7647rem] font-medium'
+const linkCls = 'inline-flex min-h-11 items-center gap-1.5 text-small font-medium'
 
 function verified(d: string): string {
   return new Date(`${d}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -58,9 +58,9 @@ function GoingRow({ l, onGoing }: { l: DirListing; onGoing: (g: DirGoing) => voi
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" aria-pressed={g.me} disabled={busy} onClick={() => void toggle()}
-        className={cn('press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-[0.7647rem] font-medium',
+        className={cn('press inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-small font-medium',
           g.me ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) text-(--text)')}>
-        {g.me ? <><Check className="size-3.5" aria-hidden /> Going</> : 'I\'m going'}
+        {g.me ? <><Check className="size-4" aria-hidden /> Going</> : 'I\'m going'}
       </button>
       {g.friends.length > 0 && (
         <span className="flex -space-x-1.5" aria-hidden>
@@ -68,11 +68,11 @@ function GoingRow({ l, onGoing }: { l: DirListing; onGoing: (g: DirGoing) => voi
         </span>
       )}
       {g.count > 0 && (
-        <span className="text-[0.7059rem] text-(--text-secondary)">
+        <span className="text-meta text-(--text-secondary)">
           {g.count} going{names.length ? ` · ${names.join(', ')}` : ''}
         </span>
       )}
-      {err && <span className="text-[0.7059rem] text-(--danger)" role="status">{err}</span>}
+      {err && <span className="text-meta text-(--danger)" role="status">{err}</span>}
     </div>
   )
 }
@@ -91,60 +91,60 @@ function ListingCard({ l, imperial, onStart, onReport, onGoing, busy, onFeature 
       <div className="flex items-start gap-2.5">
         <ActivityTile activity={l.activity} />
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-[0.8824rem] font-medium leading-snug text-(--text)">{l.name}</h3>
-          <p className="truncate text-[0.7059rem] text-(--text-muted)">{what}</p>
+          <h3 className="line-clamp-2 text-body-lg font-medium leading-snug text-(--text)">{l.name}</h3>
+          <p className="truncate text-meta text-(--text-muted)">{what}</p>
         </div>
         {l.distance_km !== undefined && (
-          <span className="shrink-0 pt-0.5 text-[0.6471rem] font-medium text-(--text-secondary)">{distanceLabel(l.distance_km, imperial)}</span>
+          <span className="shrink-0 pt-0.5 text-caption font-medium text-(--text-secondary)">{distanceLabel(l.distance_km, imperial)}</span>
         )}
       </div>
       {when && (
-        <p className="flex items-center gap-1.5 text-[0.7647rem] font-medium text-(--text)">
-          <Clock className="size-3.5 text-(--text-muted)" aria-hidden /> Next: {when}
+        <p className="flex items-center gap-1.5 text-small font-medium text-(--text)">
+          <Clock className="size-4 text-(--text-muted)" aria-hidden /> Next: {when}
         </p>
       )}
       {l.meet_spot && (
-        <p className="flex items-center gap-1.5 text-[0.7059rem] text-(--text-secondary)">
-          <MapPin className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden /> <span className="truncate">{l.meet_spot}</span>
+        <p className="flex items-center gap-1.5 text-meta text-(--text-secondary)">
+          <MapPin className="size-4 shrink-0 text-(--text-muted)" aria-hidden /> <span className="truncate">{l.meet_spot}</span>
         </p>
       )}
-      {meta && <p className="text-[0.7059rem] text-(--text-secondary)">{meta}</p>}
-      {l.description && <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">{l.description}</p>}
+      {meta && <p className="text-meta text-(--text-secondary)">{meta}</p>}
+      {l.description && <p className="text-meta leading-snug text-(--text-secondary)">{l.description}</p>}
       <GoingRow l={l} onGoing={onGoing} />
       <div className="flex flex-wrap items-center gap-x-4">
         <a href={l.join_url} target="_blank" rel="noopener noreferrer" className={cn(linkCls, 'text-(--accent)')}>
-          {l.link_only ? `See on ${l.link_only}` : 'Visit site'} <ExternalLink className="size-3.5" aria-hidden />
+          {l.link_only ? `See on ${l.link_only}` : 'Visit site'} <ExternalLink className="size-4" aria-hidden />
         </a>
         {l.calendar && (
           <a href={calendarUrl(l.id)} download className={cn(linkCls, 'text-(--text-secondary)')}>
-            <CalendarPlus className="size-3.5" aria-hidden /> Add to calendar
+            <CalendarPlus className="size-4" aria-hidden /> Add to calendar
           </a>
         )}
-        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-3.5" aria-hidden /> On rabbt</span>}
+        {l.linked_club && <span className={cn(linkCls, 'text-(--text-muted)')}><Check className="size-4" aria-hidden /> On rabbt</span>}
         <button type="button" aria-expanded={more} className={cn(linkCls, 'ml-auto text-(--text-muted)')} onClick={() => setMore((v) => !v)}>
-          More <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden />
+          More <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} aria-hidden />
         </button>
       </div>
       {more && (
         <div className="flex flex-wrap items-center gap-x-4 border-t border-(--border) pt-1">
           {!l.linked_club && (
             <button type="button" className={cn(linkCls, 'text-(--text-secondary)')} onClick={onStart}>
-              <Plus className="size-3.5" aria-hidden /> Start a rabbt group
+              <Plus className="size-4" aria-hidden /> Start a rabbt group
             </button>
           )}
           {onFeature && (
             <button type="button" className={cn(linkCls, 'text-(--accent)')} onClick={onFeature}>
-              <Megaphone className="size-3.5" aria-hidden /> Feature
+              <Megaphone className="size-4" aria-hidden /> Feature
             </button>
           )}
           {!l.reported && (
             <button type="button" className={cn(linkCls, 'text-(--text-muted)')} disabled={busy} onClick={onReport}>
-              <Flag className="size-3.5" aria-hidden /> Report outdated
+              <Flag className="size-4" aria-hidden /> Report outdated
             </button>
           )}
         </div>
       )}
-      <p className="text-[0.6471rem] text-(--text-muted)">
+      <p className="text-caption text-(--text-muted)">
         {l.link_only ? `From web search · ${l.source}` : `Checked ${verified(l.last_verified)} · ${l.source}`}
         {l.found_by === 'search' ? ' · Added by a search' : ''}
       </p>
@@ -167,7 +167,7 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
   }
   return (
     <Sheet title="Suggest a club or league" onClose={onClose}>
-          <p className="text-[0.7647rem] text-(--text-secondary)">
+          <p className="text-small text-(--text-secondary)">
             rabbt reads the club's public page on its next update for {city}, {state} and adds it here.
           </p>
           <Field label="Name"><input className={inputCls} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Sloan Lake Striders" /></Field>
@@ -175,8 +175,8 @@ function SuggestSheet({ city, state, onClose }: { city: string; state: string; o
             <input className={inputCls} inputMode="url" autoCapitalize="none" maxLength={300} value={url}
               onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
           </Field>
-          {msg && <p className={cn('text-[0.7059rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
-          <Button variant="primary" className="h-11 text-[0.8235rem]" loading={busy} disabled={!name.trim() || !url.trim()} onClick={() => void send()}>
+          {msg && <p className={cn('text-meta', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+          <Button variant="primary" className="h-11 text-body" loading={busy} disabled={!name.trim() || !url.trim()} onClick={() => void send()}>
             Send suggestion
           </Button>
     </Sheet>
@@ -209,8 +209,8 @@ function ClubSearch({ q, filters, card, onSuggest }: { q: string; filters: DirFi
   const found = look.out?.status === 'found' ? look.out.listings : []
   const rows = [...found, ...res.listings.filter((l) => !found.some((f) => f.id === l.id))]
   const lookUpBtn = (label: string) => (
-    <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={look.busy} onClick={() => void lookUp()}>
-      <Globe className="size-4" aria-hidden /> {label}
+    <Button variant="primary" className="h-11 gap-1.5 text-body" loading={look.busy} onClick={() => void lookUp()}>
+      <Globe className="size-5" aria-hidden /> {label}
     </Button>
   )
   return (
@@ -226,24 +226,24 @@ function ClubSearch({ q, filters, card, onSuggest }: { q: string; filters: DirFi
           body="Know the club's website? Send it and rabbt adds it on the next update."
           action="Suggest the club" onAction={onSuggest} />
       )}
-      {look.err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{look.err}</p>}
+      {look.err && <p className="px-1 text-small text-(--danger)" role="alert">{look.err}</p>}
       {!look.busy && !look.out && rows.length === 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-(--border-strong) p-4 text-center">
-          <p className="text-[0.8235rem] font-medium text-(--text)">No “{q}” in rabbt's list for {res.metro?.label ?? 'your city'} yet</p>
-          <p className="text-[0.7059rem] text-(--text-muted)">rabbt can look it up online and add it for everyone here. Takes about 20 seconds.</p>
+          <p className="text-body font-medium text-(--text)">No “{q}” in rabbt's list for {res.metro?.label ?? 'your city'} yet</p>
+          <p className="text-meta text-(--text-muted)">rabbt can look it up online and add it for everyone here. Takes about 20 seconds.</p>
           {res.can_look_up ? lookUpBtn(`Look up “${q}”`) : (
-            <Button variant="default" className="h-11 text-[0.8235rem]" onClick={onSuggest}>Suggest the club's website</Button>
+            <Button variant="default" className="h-11 text-body" onClick={onSuggest}>Suggest the club's website</Button>
           )}
         </div>
       )}
       {(res.farther ?? 0) > 0 && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+        <p className="px-1 text-meta text-(--text-muted)">
           {res.farther} more {res.farther === 1 ? 'match is' : 'matches are'} farther away. Widen your area above to see {res.farther === 1 ? 'it' : 'them'}.
         </p>
       )}
       {!look.busy && !look.out && rows.length > 0 && res.can_look_up && (
         <button type="button" className={cn(linkCls, 'justify-center text-(--accent)')} onClick={() => void lookUp()}>
-          <Globe className="size-3.5" aria-hidden /> Not the one? Look up “{q}” online
+          <Globe className="size-4" aria-hidden /> Not the one? Look up “{q}” online
         </button>
       )}
       {partner && <PartnerSheet p={partner} onClose={() => setPartner(null)} />}
@@ -299,7 +299,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
     return (
       <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
         {bar}
-        <p className="px-1 text-[0.7647rem] text-(--text-secondary)">Set your area above (your location or a zip) to see run clubs, leagues and meetups near you.</p>
+        <p className="px-1 text-small text-(--text-secondary)">Set your area above (your location or a zip) to see run clubs, leagues and meetups near you.</p>
       </section>
     )
   }
@@ -313,13 +313,13 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
     <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
       {bar}
       <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
-        <SearchIcon className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+        <SearchIcon className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         <input type="text" inputMode="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value.slice(0, 60))}
           placeholder="Search clubs, leagues and meetups" aria-label={`Search clubs, leagues and meetups near ${data.area?.label || metro.label}`}
-          className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+          className="min-w-0 flex-1 bg-transparent text-body text-(--text) outline-none placeholder:text-(--text-muted)" />
         {q && (
           <button type="button" aria-label="Clear search" onClick={() => setQ('')}
-            className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>
+            className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-5" aria-hidden /></button>
         )}
       </label>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label="Filter by activity">
@@ -331,7 +331,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
         ))}
         <Chip selected={more || extraOn > 0} onClick={() => setMore((v) => !v)}>
           <span className="inline-flex items-center gap-1">{extraOn ? `Day & time · ${extraOn}` : 'Day & time'}
-            <ChevronDown className={cn('size-3.5 transition-transform', more && 'rotate-180')} aria-hidden /></span>
+            <ChevronDown className={cn('size-4 transition-transform', more && 'rotate-180')} aria-hidden /></span>
         </Chip>
       </div>
       {more && (
@@ -356,7 +356,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       {(listings.length > 0 || crawling) && <SponsoredCard placement="local" />}
       <PartnersNearYou partners={(data.partners ?? []).filter((p) => !p.sponsored)} metro={metro.label} />
       <div className="flex items-center justify-between gap-2 px-1 pt-1">
-        <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        <h2 className="text-caption font-semibold text-(--text-muted)">
           {activity ? ACTIVITY_LABEL[activity] : 'Clubs, leagues & meetups'}{radius ? ` within ${radius}` : ''}
         </h2>
         {crawling && listings.length > 0 && <RabbitLoader inline label="Updating" />}
@@ -364,7 +364,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       {mappable && (
         <div className="w-full"><Segmented label="Show clubs as" value={view} onChange={setView} options={[['list', 'List'], ['map', 'Map']] as const} /></div>
       )}
-      {msg && <p className="px-1 text-[0.7647rem] text-(--accent)" role="status">{msg}</p>}
+      {msg && <p className="px-1 text-small text-(--accent)" role="status">{msg}</p>}
       {listings.length > 0 && mappable && view === 'map' ? (
         <DirectoryMap listings={listings.slice(0, 30)} center={data.center} metroLabel={metro.label} renderCard={card} />
       ) : listings.length > 0 ? (
@@ -376,7 +376,7 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       ) : crawling ? (
         <div className="flex flex-col gap-2">
           <RabbitLoader className="py-4" label={`Finding clubs and leagues in ${metro.label}`} cycle={CRAWLING} />
-          <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">rabbt is reading club pages for your city. This takes a few minutes.</p>
+          <p className="px-1 text-center text-meta text-(--text-muted)">rabbt is reading club pages for your city. This takes a few minutes.</p>
         </div>
       ) : (
         activity || weekday || when ? (
@@ -392,30 +392,30 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
         )
       )}
       {listings.length > 0 && (data.farther ?? 0) > 0 && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+        <p className="px-1 text-meta text-(--text-muted)">
           {data.farther} more {data.farther === 1 ? 'is' : 'are'} farther than {radius}. Widen your area above to see {data.farther === 1 ? 'it' : 'them'}.
         </p>
       )}
       {!listings.length && fallback.length > 0 && (
         <div className="flex flex-col gap-1">
-          <p className="px-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Meanwhile, from Explore</p>
+          <p className="px-1 text-caption font-semibold text-(--text-muted)">Meanwhile, from Explore</p>
           {fallback.map((g) => (
             <a key={g.id} href={g.url} target="_blank" rel="noopener noreferrer"
               className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
               <span className="min-w-0">
-                <span className="block truncate text-[0.8235rem] text-(--text)">{g.name}</span>
-                {(g.when || g.where) && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{[g.when, g.where].filter(Boolean).join(' · ')}</span>}
+                <span className="block truncate text-body text-(--text)">{g.name}</span>
+                {(g.when || g.where) && <span className="block truncate text-meta text-(--text-muted)">{[g.when, g.where].filter(Boolean).join(' · ')}</span>}
               </span>
-              <ExternalLink className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+              <ExternalLink className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </a>
           ))}
         </div>
       )}
       </>)}
       <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-[0.6471rem] text-(--text-muted)">From public club pages. Times change; check the site.</p>
+        <p className="text-caption text-(--text-muted)">From public club pages. Times change; check the site.</p>
         <button type="button" className={cn(linkCls, 'shrink-0 text-(--accent)')} onClick={() => setSuggesting(true)}>
-          <Plus className="size-3.5" aria-hidden /> Suggest one
+          <Plus className="size-4" aria-hidden /> Suggest one
         </button>
       </div>
       {suggesting && <SuggestSheet city={metro.city} state={metro.state} onClose={() => setSuggesting(false)} />}

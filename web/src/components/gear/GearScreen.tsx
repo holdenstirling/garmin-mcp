@@ -71,13 +71,13 @@ export function GearScreen({ onClose, imperial, onAsk }: {
         closing={closing} onClose={close}
         // With nothing in the garage, the empty state's own buttons are the only ones (no duplicates).
         footer={items && items.length === 0 ? undefined : <>
-          <Button variant="default" className="h-11 gap-1.5 px-3.5 text-[0.7647rem]" loading={importing}
+          <Button variant="default" className="h-11 gap-1.5 px-3.5 text-small" loading={importing}
             disabled={items === null} onClick={() => void runImport()}>
-            <RefreshCw className="size-4" /> Import from Garmin
+            <RefreshCw className="size-5" /> Import from Garmin
           </Button>
-          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" disabled={items === null || full}
+          <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" disabled={items === null || full}
             onClick={() => setEditing('new')}>
-            <Plus className="size-4" /> Add gear
+            <Plus className="size-5" /> Add gear
           </Button>
         </>}>
         {items === null && !error ? (
@@ -86,8 +86,8 @@ export function GearScreen({ onClose, imperial, onAsk }: {
           <ErrorState message={`Couldn't load your gear: ${error}`} onRetry={load} />
         ) : (
           <>
-            {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
-            {note && <p className="rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-[0.7647rem] text-(--accent)">{note}</p>}
+            {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
+            {note && <p className="rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-small text-(--accent)">{note}</p>}
             {active.length === 0 && (
               <EmptyState mode="sleep" title="Your garage is empty"
                 body="Add your shoes to track every mile and get a heads-up before they wear out."
@@ -99,7 +99,7 @@ export function GearScreen({ onClose, imperial, onAsk }: {
               if (!list.length) return null
               return (
                 <section key={k} className="flex flex-col gap-2">
-                  <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{KIND_GROUP[k]}</h2>
+                  <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{KIND_GROUP[k]}</h2>
                   {list.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}
                 </section>
               )
@@ -107,14 +107,14 @@ export function GearScreen({ onClose, imperial, onAsk }: {
             {retired.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowRetired((v) => !v)} aria-expanded={showRetired}
-                  className="hit-44 flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-                  Retired ({retired.length}) <ChevronRight className={cn('size-3.5 transition-transform', showRetired && 'rotate-90')} />
+                  className="hit-44 flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
+                  Retired ({retired.length}) <ChevronRight className={cn('size-4 transition-transform', showRetired && 'rotate-90')} />
                 </button>
                 {showRetired && retired.map((g) => <GearRow key={g.id} g={g} imperial={imperial} onClick={() => setEditing(g)} />)}
               </section>
             )}
             {!statsOk && active.length > 0 && (
-              <p className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
+              <p className="px-1 text-meta leading-snug text-(--text-muted)">
                 Workouts couldn't be read from Garmin just now, so distances may be behind.
               </p>
             )}
@@ -143,20 +143,20 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
       <span className="flex w-full items-center gap-3">
         <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
           warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--accent-subtle) text-(--accent)')}>
-          <Icon className="size-5" />
+          <Icon className="size-6" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9412rem] font-medium text-(--text)">
+          <span className="block truncate text-lead font-medium text-(--text)">
             {gearName(g)}
             {g.nickname && gearName(g) !== g.nickname && <span className="font-normal text-(--text-muted)"> ({g.nickname})</span>}
           </span>
-          {meta && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{meta}</span>}
+          {meta && <span className="block truncate text-meta text-(--text-muted)">{meta}</span>}
         </span>
         {warn ? (
-          <span className="shrink-0 rounded-full bg-(--warning-subtle) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--warning-text)">
+          <span className="shrink-0 rounded-full bg-(--warning-subtle) px-2 py-0.5 text-caption font-semibold text-(--warning-text)">
             {STATUS_LABEL[g.status as 'soon' | 'retire']}
           </span>
-        ) : <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />}
+        ) : <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />}
       </span>
       <span className="flex w-full flex-col gap-1">
         {g.alert_km != null && pct != null && (
@@ -167,7 +167,7 @@ function GearRow({ g, imperial, onClick }: { g: GearItem; imperial: boolean; onC
               style={{ width: `${Math.max(2, Math.min(100, pct))}%` }} />
           </span>
         )}
-        <span className="flex justify-between gap-2 text-[0.6471rem] text-(--text-muted)">
+        <span className="flex justify-between gap-2 text-caption text-(--text-muted)">
           <span>
             <b className="font-semibold text-(--text-secondary)">{fmtDist(g.total_km, imperial)}</b>
             {g.alert_km != null ? ` of ${fmtDist(g.alert_km, imperial)}` : ''}
@@ -265,7 +265,7 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
   return (
     <Screen title={item ? gearName(item) : 'Add gear'} subtitle={item?.retired ? 'Retired' : item ? KIND_LABEL[item.kind] : undefined}
       closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
-      footer={<Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'} disabled={!named}
+      footer={<Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'} disabled={!named}
         onClick={save}>{item ? 'Save changes' : 'Add to garage'}</Button>}>
       {guard.dialog}
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
@@ -324,7 +324,7 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
           </Field>
         </div>
         {f.kind === 'shoes' && (
-          <p className="px-4 pb-3.5 text-[0.7059rem] leading-snug text-(--text-muted)">
+          <p className="px-4 pb-3.5 text-meta leading-snug text-(--text-muted)">
             Most running shoes last {imperial ? '300 to 500 mi' : '500 to 800 km'}. You'll get a heads-up at 80%.
           </p>
         )}
@@ -336,37 +336,37 @@ function GearEditor({ item, catalog, imperial, onClose, onSaved, onAsk }: {
         </Field>
       </Card>
       {item && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+        <p className="px-1 text-meta text-(--text-muted)">
           {fmtDist(item.total_km, imperial)} over {item.activities} workout{item.activities === 1 ? '' : 's'}
           {item.source === 'garmin' ? ' (from Garmin Connect)' : ''} · added {new Date(`${item.added}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>
       )}
       {item && onAsk && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]"
+        <Button variant="default" className="h-11 gap-1.5 text-body"
           onClick={() => onAsk(`My ${gearName(item)} has ${fmtDist(item.total_km, imperial)}. `
             + 'When should I replace it and what should I consider next?')}>
-          <MessageCircle className="size-4" /> Ask rabbt
+          <MessageCircle className="size-5" /> Ask rabbt
         </Button>
       )}
       {item && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'retire'}
+        <Button variant="default" className="h-11 gap-1.5 text-body" loading={busy === 'retire'}
           onClick={() => void run('retire', () => retireGear(item.id, !item.retired))}>
-          <Flag className="size-4" /> {item.retired ? 'Bring it back' : 'Retire it'}
+          <Flag className="size-5" /> {item.retired ? 'Bring it back' : 'Retire it'}
         </Button>
       )}
       {item && (confirmDelete ? (
         <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3">
-          <span className="min-w-0 flex-1 text-[0.8235rem]">Delete {gearName(item)}? Retiring keeps its history.</span>
-          <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setConfirmDelete(false)}>Keep</Button>
-          <Button variant="destructive" className="h-9 px-3 text-[0.7647rem]" loading={busy === 'delete'}
+          <span className="min-w-0 flex-1 text-body">Delete {gearName(item)}? Retiring keeps its history.</span>
+          <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
+          <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === 'delete'}
             onClick={() => void run('delete', () => deleteGear(item.id))}>Delete</Button>
         </div>
       ) : (
-        <Button variant="ghost" className="h-10 gap-1.5 text-[0.7647rem] text-(--danger)" onClick={() => setConfirmDelete(true)}>
-          <Trash2 className="size-4" /> Delete
+        <Button variant="ghost" className="h-10 gap-1.5 text-small text-(--danger)" onClick={() => setConfirmDelete(true)}>
+          <Trash2 className="size-5" /> Delete
         </Button>
       ))}
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
     </Screen>
   )
 }

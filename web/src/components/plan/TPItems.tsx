@@ -60,17 +60,17 @@ export function TPLine({ it, imperial, onClick }: { it: TPItem; imperial: boolea
   return (
     <button type="button" onClick={onClick} className="flex min-h-11 w-full items-center gap-2.5 py-1.5 text-left">
       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--bg-inset) text-(--text-secondary)">
-        <Icon className="size-3.5" aria-hidden />
+        <Icon className="size-4" aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.8235rem] text-(--text)">{it.title}</span>
-        <span className="block truncate text-[0.6471rem] text-(--text-muted)">
+        <span className="block truncate text-body text-(--text)">{it.title}</span>
+        <span className="block truncate text-caption text-(--text-muted)">
           From TrainingPeaks{m ? ` · ${m}` : ''}{it.coach_notes ? ' · coach notes' : ''}
         </span>
       </span>
       {it.garmin_activity_id
-        ? <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-[0.6471rem] text-(--accent)"><Check className="size-3" aria-hidden />Done</span>
-        : <ClipboardList className="size-3.5 shrink-0 text-(--text-muted)" aria-label="TrainingPeaks" />}
+        ? <span className="flex shrink-0 items-center gap-1 rounded-full bg-(--accent-subtle) px-2 py-0.5 text-caption text-(--accent)"><Check className="size-3.5" aria-hidden />Done</span>
+        : <ClipboardList className="size-4 shrink-0 text-(--text-muted)" aria-label="TrainingPeaks" />}
     </button>
   )
 }
@@ -98,20 +98,20 @@ export function TPPlanBar({ tp, onToast }: { tp: TPState; onToast?: (m: string) 
   }
   return (
     <div className={cn('flex items-center gap-2.5 rounded-xl border px-3.5 py-2', attention ? 'border-(--warning-text)' : 'border-(--border)')}>
-      {attention ? <TriangleAlert className="size-4 shrink-0 text-(--warning-text)" aria-hidden />
-        : <ClipboardList className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+      {attention ? <TriangleAlert className="size-5 shrink-0 text-(--warning-text)" aria-hidden />
+        : <ClipboardList className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.7647rem] text-(--text)">TrainingPeaks · {TP_SOURCE_LABEL[v.source]} leads</span>
-        <span className={cn('block text-[0.6471rem] leading-snug', attention || v.error ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
+        <span className="block truncate text-small text-(--text)">TrainingPeaks · {TP_SOURCE_LABEL[v.source]} leads</span>
+        <span className={cn('block text-caption leading-snug', attention || v.error ? 'text-(--warning-text)' : 'text-(--text-muted)')}>
           {v.error ?? (v.last_sync ? `Synced ${new Date(v.last_sync * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Not synced yet')}
         </span>
       </span>
       {attention ? (
-        <Button variant="primary" className="h-11 px-3 text-[0.7647rem]" onClick={() => requestConnect('trainingpeaks')}>Reconnect</Button>
+        <Button variant="primary" className="h-11 px-3 text-small" onClick={() => requestConnect('trainingpeaks')}>Reconnect</Button>
       ) : (
         <button type="button" aria-label="Sync TrainingPeaks now" disabled={busy} onClick={() => void sync()}
           className="hit-44 flex size-8 shrink-0 items-center justify-center rounded-full text-(--text-secondary) active:bg-(--bg-inset)">
-          <RefreshCw className={cn('size-4', busy && 'animate-spin motion-reduce:animate-none')} />
+          <RefreshCw className={cn('size-5', busy && 'animate-spin motion-reduce:animate-none')} />
         </button>
       )}
     </div>
@@ -133,8 +133,8 @@ export function TPCalendarList({ tp, today, imperial }: { tp: TPState; today: st
             {days.map((d) => (
               <div key={d} className="flex gap-3 px-4 py-2">
                 <span className="w-10 shrink-0 pt-2 text-center leading-tight">
-                  <span className="block text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{fmtDay(d, { weekday: 'short' })}</span>
-                  <span className="block text-[0.7647rem] text-(--text-secondary)">{fmtDay(d, { day: 'numeric' })}</span>
+                  <span className="block text-caption font-semibold uppercase text-(--text-muted)">{fmtDay(d, { weekday: 'short' })}</span>
+                  <span className="block text-small text-(--text-secondary)">{fmtDay(d, { day: 'numeric' })}</span>
                 </span>
                 <div className="min-w-0 flex-1">
                   {items.filter((i) => i.date === d).map((it) => <TPLine key={it.id} it={it} imperial={imperial} onClick={() => tp.setOpen(it)} />)}
@@ -144,7 +144,7 @@ export function TPCalendarList({ tp, today, imperial }: { tp: TPState; today: st
           </div>
         </Card>
       ) : (
-        <p className="px-1 text-[0.7647rem] text-(--text-muted)">Nothing planned in TrainingPeaks for the next 6 weeks.</p>
+        <p className="px-1 text-small text-(--text-muted)">Nothing planned in TrainingPeaks for the next 6 weeks.</p>
       )}
     </section>
   )
@@ -176,34 +176,34 @@ export function TPWorkoutSheet({ tp, today, imperial, onToast }: {
 
   return (
     <Sheet title={it.title} onClose={close} dismissible={!busy} bodyClassName="gap-3.5" portal>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.7647rem] text-(--text-secondary)">
-        <span className="inline-flex items-center gap-1 rounded-full bg-(--bg-inset) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">
-          <ClipboardList className="size-3" aria-hidden />From TrainingPeaks
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-(--text-secondary)">
+        <span className="inline-flex items-center gap-1 rounded-full bg-(--bg-inset) px-2 py-0.5 text-caption text-(--text-secondary)">
+          <ClipboardList className="size-3.5" aria-hidden />From TrainingPeaks
         </span>
-        <span><CalendarDays className="mr-1 inline size-3.5 align-[-2px]" aria-hidden />{fmtDay(it.date)}</span>
+        <span><CalendarDays className="mr-1 inline size-4 align-[-2px]" aria-hidden />{fmtDay(it.date)}</span>
         {m && <span>· {m}</span>}
       </p>
       {it.garmin_activity_id && (
-        <p className="flex items-center gap-2 rounded-xl bg-(--accent-subtle) px-3.5 py-2.5 text-[0.7647rem] text-(--accent)">
-          <Check className="size-4 shrink-0" aria-hidden />Done: matched to your Garmin workout that day.
+        <p className="flex items-center gap-2 rounded-xl bg-(--accent-subtle) px-3.5 py-2.5 text-small text-(--accent)">
+          <Check className="size-5 shrink-0" aria-hidden />Done: matched to your Garmin workout that day.
         </p>
       )}
       {it.coach_notes && (
         <section className="flex flex-col gap-1">
-          <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Coach notes</h2>
-          <p className="whitespace-pre-line text-[0.8235rem] leading-snug text-(--text)">{it.coach_notes}</p>
+          <h2 className="text-caption font-semibold text-(--text-muted)">Coach notes</h2>
+          <p className="whitespace-pre-line text-body leading-snug text-(--text)">{it.coach_notes}</p>
         </section>
       )}
       {it.description && (
         <section className="flex flex-col gap-1">
-          <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Description</h2>
-          <p className="whitespace-pre-line text-[0.8235rem] leading-snug text-(--text-secondary)">{it.description}</p>
+          <h2 className="text-caption font-semibold text-(--text-muted)">Description</h2>
+          <p className="whitespace-pre-line text-body leading-snug text-(--text-secondary)">{it.description}</p>
         </section>
       )}
       {it.structure.length > 0 && (
         <section className="flex flex-col gap-1">
-          <h2 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Structure</h2>
-          <ul className="flex flex-col gap-0.5 text-[0.7647rem] text-(--text-secondary)">
+          <h2 className="text-caption font-semibold text-(--text-muted)">Structure</h2>
+          <ul className="flex flex-col gap-0.5 text-small text-(--text-secondary)">
             {it.structure.map((l, i) => <li key={i}>{l}</li>)}
           </ul>
         </section>
@@ -212,17 +212,17 @@ export function TPWorkoutSheet({ tp, today, imperial, onToast }: {
         <Field label="Move to">
           <div className="flex gap-2">
             <input type="date" className={inputCls} min={today} value={date} onChange={(e) => setDate(e.target.value)} aria-label="New date" />
-            <Button variant="primary" className="h-10 shrink-0 px-4 text-[0.8235rem]" loading={busy}
+            <Button variant="primary" className="h-10 shrink-0 px-4 text-body" loading={busy}
               disabled={!date || date === it.date || date < today} onClick={() => void move()}>Move</Button>
           </div>
         </Field>
       ) : (
-        <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+        <p className="text-meta leading-snug text-(--text-muted)">
           {it.completed ? 'This workout is done, so it stays where it is.'
             : 'This one follows your rabbt plan: move the workout in rabbt and TrainingPeaks follows.'}
         </p>
       )}
-      {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+      {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
     </Sheet>
   )
 }

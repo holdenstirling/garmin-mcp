@@ -34,7 +34,7 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
 
   return (
     <Sheet title="Travel mode" onClose={onClose} closing={closing} onDismissed={onDismissed} bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-          <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">
+          <p className="px-1 text-small leading-snug text-(--text-muted)">
             rabbt reworks the sessions on those days for what you'll have, keeps them under 75 minutes, and moves long sessions to home days that week.
           </p>
           <Card>
@@ -56,9 +56,9 @@ export function TravelSheet({ initial, raceDate, today = todayStr(), onApply, on
             <Row title="Pool" trailing={<Switch label="Pool" checked={has.pool} onChange={toggle('pool')} />} />
             <Row title="My bike or a rental" trailing={<Switch label="Bike" checked={has.bike} onChange={toggle('bike')} />} />
           </Card>
-          {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
-          <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void apply()}>
-            <Plane className="size-4" /> Plan around this trip
+          {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
+          <Button variant="primary" className="h-11 gap-1.5 text-body" loading={busy} onClick={() => void apply()}>
+            <Plane className="size-5" /> Plan around this trip
           </Button>
     </Sheet>
   )

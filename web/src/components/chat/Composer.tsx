@@ -113,8 +113,8 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
       onDrop={(e) => { e.preventDefault(); dragDepth.current = 0; setDragging(false); addFiles(Array.from(e.dataTransfer.files)) }}
     >
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center gap-2 border-2 border-dashed border-accent bg-accent/5 text-sm font-semibold text-accent">
-          <Paperclip className="size-5" /> Drop files to attach
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center gap-2 border-2 border-dashed border-accent bg-accent/5 text-body font-semibold text-accent">
+          <Paperclip className="size-6" /> Drop files to attach
         </div>
       )}
 
@@ -124,19 +124,19 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
             <div key={f.localId} className="relative size-16 overflow-hidden rounded-lg border border-border bg-secondary">
               <img src={f.preview} alt={f.name} className={cn('size-full object-cover', f.status === 'uploading' && 'opacity-50')} />
               {f.status === 'uploading' && <span className="absolute inset-0 flex items-center justify-center"><span className="thinking-dots flex gap-[3px]" role="status" aria-label="Uploading"><span /><span /><span /></span></span>}
-              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-[0.6471rem] text-(--on-fill)" title={f.error}>Failed</span>}
+              {f.status === 'error' && <span className="absolute inset-x-0 bottom-0 bg-(--danger) px-1 text-caption text-(--on-fill)" title={f.error}>Failed</span>}
               <button aria-label="Remove" onClick={() => remove(f.localId)}
                 className="hit-44 absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white">
-                <X className="size-3" />
+                <X className="size-3.5" />
               </button>
             </div>
           ) : (
             <div key={f.localId} title={f.error}
-              className={cn('group inline-flex items-center gap-1.5 rounded border bg-secondary px-2 py-1 text-xs transition-colors',
+              className={cn('group inline-flex items-center gap-1.5 rounded border bg-secondary px-2 py-1 text-meta transition-colors',
                 f.status === 'error' ? 'border-(--danger)/50' : 'border-border')}>
-              <FileText className="size-3 shrink-0 text-accent" />
+              <FileText className="size-3.5 shrink-0 text-accent" />
               <span className="max-w-[120px] truncate font-medium text-foreground/80">{f.name}</span>
-              <span className="font-mono text-[0.6471rem] text-muted-foreground">
+              <span className="font-mono text-caption text-muted-foreground">
                 {f.status === 'uploading' ? '…' : f.status === 'error' ? 'failed' : formatFileSize(f.size)}
               </span>
               <button aria-label="Remove" onClick={() => remove(f.localId)}
@@ -148,7 +148,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
         </div>
       )}
       {(notice || files.some((f) => f.status === 'error')) && (
-        <p className="mb-1.5 text-[0.6471rem] text-(--danger)">{notice ?? files.find((f) => f.error)?.error}</p>
+        <p className="mb-1.5 text-caption text-(--danger)">{notice ?? files.find((f) => f.error)?.error}</p>
       )}
 
       {/* --row: height of one line of text (or the 36px send button, if taller). Buttons sit
@@ -178,7 +178,7 @@ export function Composer({ disabled, streaming, onSend, onStop, placeholder, dra
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() }
           }}
           placeholder={placeholder}
-          className="chat-text max-h-[calc(1.375em*5+44px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((44px-1.375rem)/2))] text-base leading-[1.375] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+          className="chat-text max-h-[calc(1.375em*5+44px)] min-h-(--row) flex-1 resize-none border-none bg-transparent p-0 py-[max(5px,calc((44px-1.375rem)/2))] text-lead leading-[1.375] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
           style={{ overflowY: 'auto' }}
         />
         {onMic && !input.trim() && (

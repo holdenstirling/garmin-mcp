@@ -20,7 +20,7 @@ const NEAR_HOPS = ['Peeking at courts and tracks nearby…', 'Asking around for 
 type Part<T> = { state: 'busy' } | { state: 'ok'; data: T } | { state: 'error'; message: string }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{children}</h2>
+  return <h2 className="px-1 text-caption font-semibold text-(--text-muted)">{children}</h2>
 }
 
 function Stage({ label, cycle }: { label: string; cycle: string[] }) {
@@ -35,12 +35,12 @@ function Stage({ label, cycle }: { label: string; cycle: string[] }) {
 function Stages({ races, near }: { races: Part<unknown> | null; near: Part<unknown> | null }) {
   const one = (label: string, p: Part<unknown> | null) => (
     <span className="inline-flex items-center gap-1">
-      {p?.state === 'busy' ? <RabbitLoader inline decorative size={14} /> : p?.state === 'ok' ? <Check className="size-3.5 text-(--accent)" /> : <X className="size-3.5 text-(--danger)" />}
+      {p?.state === 'busy' ? <RabbitLoader inline decorative size={14} /> : p?.state === 'ok' ? <Check className="size-4 text-(--accent)" /> : <X className="size-4 text-(--danger)" />}
       {label}
     </span>
   )
   return (
-    <p className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[0.6471rem] text-(--text-muted)" aria-live="polite">
+    <p className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-caption text-(--text-muted)" aria-live="polite">
       {one('Races', races)}{one('Near you', near)}
     </p>
   )
@@ -70,10 +70,10 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
     return (
       <button type="button" onClick={go}
         className="ex-cta flex min-h-11 w-full items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3 py-2.5 text-left">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><RabbitGlyph className="ex-hop size-5" /></span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><RabbitGlyph className="ex-hop size-6" /></span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] font-semibold leading-snug text-(--accent)">Let rabbt explore</span>
-          <span className="block text-[0.6471rem] leading-snug text-(--text-muted)">Races, notable events and things to do near you · uses 1 of 5 daily searches</span>
+          <span className="block text-body font-semibold leading-snug text-(--accent)">Let rabbt explore</span>
+          <span className="block text-caption leading-snug text-(--text-muted)">Races, notable events and things to do near you · uses 1 of 5 daily searches</span>
         </span>
       </button>
     )
@@ -90,32 +90,32 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-start gap-2 px-1">
-        <span className="ex-count flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitGlyph className="size-5" /></span>
+        <span className="ex-count flex size-9 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitGlyph className="size-6" /></span>
         <div className="min-w-0 flex-1">
-          <p className="ex-count text-[0.9412rem] font-semibold leading-snug text-(--text)">
+          <p className="ex-count text-lead font-semibold leading-snug text-(--text)">
             {done ? (count ? `rabbt found ${count} thing${count === 1 ? '' : 's'} for you` : 'rabbt is back') : 'rabbt is exploring…'}
           </p>
-          {r?.intro && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{r.intro}</p>}
+          {r?.intro && <p className="text-meta leading-snug text-(--text-muted)">{r.intro}</p>}
         </div>
         <Button variant="ghost" size="icon" className="size-11 shrink-0" aria-label="Explore again" disabled={!done} onClick={go}>
-          <RefreshCw className="size-4" />
+          <RefreshCw className="size-5" />
         </Button>
         <Button variant="ghost" size="icon" className="size-11 shrink-0" aria-label="Hide" onClick={hide}>
-          <X className="size-4" />
+          <X className="size-5" />
         </Button>
       </div>
       {!done && <Stages races={races} near={near} />}
 
       {races?.state === 'busy' && <Stage label="Finding races" cycle={RACE_HOPS} />}
       {races?.state === 'error' && <ErrorState compact message={`Races: ${races.message}`} onRetry={go} />}
-      {note && <p className="px-1 text-[0.7059rem] text-(--text-muted)">{note}</p>}
-      {r?.nationwide && r.location.note && <p className="px-1 text-[0.7059rem] text-(--text-muted)">{r.location.note}</p>}
+      {note && <p className="px-1 text-meta text-(--text-muted)">{note}</p>}
+      {r?.nationwide && r.location.note && <p className="px-1 text-meta text-(--text-muted)">{r.location.note}</p>}
       {r && r.races.length > 0 && (
         <div className="flex flex-col gap-2">
           <Heading>Races</Heading>
           <CardRow>{r.races.map((x) => <PickCard key={x.id} r={x} onClick={() => onOpen(x)} className="ex-pop" style={delay()} />)}</CardRow>
           {r.races.some((x) => x.source === 'web') && (
-            <p className="px-1 text-[0.6471rem] text-(--text-muted)">Some were found on the web by rabbt. Check dates on the official site.</p>
+            <p className="px-1 text-caption text-(--text-muted)">Some were found on the web by rabbt. Check dates on the official site.</p>
           )}
         </div>
       )}
@@ -126,7 +126,7 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
         <div className="flex flex-col gap-2">
           <Heading>Groups near you</Heading>
           <CardRow>{nb.groups.map((a) => <GroupCard key={a.id} a={a} onAsk={onAsk} className="ex-pop" style={delay()} />)}</CardRow>
-          <p className="px-1 text-[0.6471rem] text-(--text-muted)">{WEB_NOTE}</p>
+          <p className="px-1 text-caption text-(--text-muted)">{WEB_NOTE}</p>
         </div>
       )}
       {nb && nb.places.length > 0 && (
@@ -136,10 +136,10 @@ export function LetRabbitExplore({ onOpen, onAsk, imperial }: {
         </div>
       )}
       {nb?.places_state === 'busy' && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">The map is busy right now. Tap explore again in a few seconds for places.</p>
+        <p className="px-1 text-meta text-(--text-muted)">The map is busy right now. Tap explore again in a few seconds for places.</p>
       )}
       {nb?.places_state === 'needs_location' && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Add your location to see courts, tracks and groups near you too.</p>
+        <p className="px-1 text-meta text-(--text-muted)">Add your location to see courts, tracks and groups near you too.</p>
       )}
     </section>
   )

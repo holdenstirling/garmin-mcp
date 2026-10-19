@@ -32,7 +32,7 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
 
   return (
     <Sheet title="Do you want a coach?" onClose={onClose} dismissible={!busy}>
-          <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
+          <p className="text-body leading-snug text-(--text-secondary)">
             A human coach can work alongside rabbt. You can change this any time.
           </p>
           <fieldset className="flex flex-col gap-2">
@@ -45,19 +45,19 @@ export function CoachStatusSheet({ current, onClose, onSaved }: {
                     on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                   <input type="radio" name="coach-status" value={c.id} checked={on} onChange={() => setPick(c.id)} className="sr-only" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[0.9412rem] text-(--text)">{c.title}</span>
-                    <span className="block text-[0.7647rem] text-(--text-muted)">{c.sub}</span>
+                    <span className="block text-lead text-(--text)">{c.title}</span>
+                    <span className="block text-small text-(--text-muted)">{c.sub}</span>
                   </span>
                   <span aria-hidden="true" className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border',
                     on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')}>
-                    {on && <Check className="size-3" />}
+                    {on && <Check className="size-3.5" />}
                   </span>
                 </label>
               )
             })}
           </fieldset>
-          {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
-          <Button variant="primary" className="h-11 w-full text-[0.8824rem]" loading={busy} disabled={!pick}
+          {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
+          <Button variant="primary" className="h-11 w-full text-body-lg" loading={busy} disabled={!pick}
             onClick={() => void save()}>Save</Button>
     </Sheet>
   )

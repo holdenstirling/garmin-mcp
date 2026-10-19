@@ -133,7 +133,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
         {events === null && !error ? (
           <EventsSkeleton />
         ) : error ? (
-          <p className="px-1 text-[0.8235rem] text-(--danger)">
+          <p className="px-1 text-body text-(--danger)">
             {error} <button type="button" className="hit-44 underline" onClick={() => void load()}>Retry</button>
           </p>
         ) : (
@@ -141,32 +141,32 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             <AreaBar imperial={imperial} what="races, group runs and meetups" />
             {onDiscover && (
               <button type="button" onClick={onDiscover}
-                className="flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-(--border-strong) px-3.5 text-left text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-                <Compass className="size-4 shrink-0" aria-hidden />
+                className="flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-(--border-strong) px-3.5 text-left text-small font-medium text-(--accent) active:bg-(--bg-inset)">
+                <Compass className="size-5 shrink-0" aria-hidden />
                 <span className="flex-1">Find races and meetups in your area</span>
-                <ChevronRight className="size-4 shrink-0" aria-hidden />
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
               </button>
             )}
             {(events?.length ?? 0) > 3 && (
               <label className="flex h-11 items-center gap-2 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 focus-within:ring-1 focus-within:ring-(--accent)">
-                <Search className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                <Search className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
                 <input type="text" inputMode="search" enterKeyHint="search" value={q} maxLength={60} onChange={(e) => setQ(e.target.value)}
                   placeholder="Search my events" aria-label="Search my events by name, place or activity"
-                  className="min-w-0 flex-1 bg-transparent text-[0.8235rem] text-(--text) outline-none placeholder:text-(--text-muted)" />
+                  className="min-w-0 flex-1 bg-transparent text-body text-(--text) outline-none placeholder:text-(--text-muted)" />
                 {q && <button type="button" aria-label="Clear search" onClick={() => setQ('')}
-                  className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-4" aria-hidden /></button>}
+                  className="-mr-2 flex size-11 items-center justify-center text-(--text-muted)"><X className="size-5" aria-hidden /></button>}
               </label>
             )}
             {searching && upcoming.length === 0 && past.length === 0 && (
-              <p className="px-1 text-[0.7647rem] text-(--text-muted)">None of your events match “{q.trim()}”.</p>
+              <p className="px-1 text-small text-(--text-muted)">None of your events match “{q.trim()}”.</p>
             )}
             <RaceInvitesInbox onChanged={() => { void load(); setFollowKey((k) => k + 1) }} />
             {changed && (
               <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
-                <p className="min-w-0 flex-1 text-[0.7647rem] text-(--accent)">
+                <p className="min-w-0 flex-1 text-small text-(--accent)">
                   {hasBuiltPlan ? 'Rebuild your plan to fit these changes in.' : 'Build a plan around your main event.'}
                 </p>
-                <Button variant="primary" className="h-8 px-3 text-[0.7059rem]" onClick={hasBuiltPlan ? onOpenPlan : onBuildPlan}>
+                <Button variant="primary" className="h-8 px-3 text-meta" onClick={hasBuiltPlan ? onOpenPlan : onBuildPlan}>
                   {hasBuiltPlan ? 'Open plan' : 'Build plan'}
                 </Button>
               </div>
@@ -191,17 +191,17 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             {past.length > 0 && (
               <section className="flex flex-col gap-2">
                 <button type="button" onClick={() => setShowPast((v) => !v)}
-                  className="hit-44 flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-                  Past events ({past.length}) <ChevronRight className={cn('size-3.5 transition-transform', showPast && 'rotate-90')} />
+                  className="hit-44 flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
+                  Past events ({past.length}) <ChevronRight className={cn('size-4 transition-transform', showPast && 'rotate-90')} />
                 </button>
                 {(showPast || searching) && past.map((e, i) => <HopIn key={e.id} index={i}><EventCard e={e} onClick={() => setEditing(e)} /></HopIn>)}
               </section>
             )}
             <CalendarSync />
-            <details className="px-1 text-[0.7059rem] leading-snug text-(--text-muted)">
-              <summary className="hit-44 inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-(--accent) [&::-webkit-details-marker]:hidden">How events shape your plan <ChevronDown className="size-3.5" aria-hidden /></summary>
+            <details className="px-1 text-meta leading-snug text-(--text-muted)">
+              <summary className="hit-44 inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-(--accent) [&::-webkit-details-marker]:hidden">How events shape your plan <ChevronDown className="size-4" aria-hidden /></summary>
               <p>
-                Your <Star className="inline size-3 -translate-y-px fill-current" /> main event is what your plan builds toward.
+                Your <Star className="inline size-3.5 -translate-y-px fill-current" /> main event is what your plan builds toward.
                 Other races go into the plan as race days: B races get a short taper, training races are raced as hard workouts.
                 Group activities count as sessions, trips keep those days light and life events get rest days.
               </p>
@@ -236,22 +236,22 @@ function EventCard({ e, grade, people, onPeople, onClick, onFit, onPack }: {
       <EventCardButton e={e} onClick={onClick} bare />
       {!onFit ? null : !race ? (
         <button type="button" onClick={onFit}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Gauge className="size-3.5" /> Event prep <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-4" /> Event prep <ChevronRight className="ml-auto size-4 text-(--text-muted)" />
         </button>
       ) : grade ? <ReadinessRow g={grade} onClick={onFit} extra={n >= 0 ? <FinishChip eventId={e.id} /> : undefined} /> : (
         <button type="button" onClick={onFit}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Gauge className="size-3.5" /> Readiness & race fit
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Gauge className="size-4" /> Readiness & race fit
           <span className="ml-auto flex items-center gap-1.5">
-            {n >= 0 && <FinishChip eventId={e.id} />}<ChevronRight className="size-3.5 text-(--text-muted)" />
+            {n >= 0 && <FinishChip eventId={e.id} />}<ChevronRight className="size-4 text-(--text-muted)" />
           </span>
         </button>
       )}
       {onPack && (
         <button type="button" onClick={onPack}
-          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-          <Backpack className="size-3.5" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-3.5 text-(--text-muted)" />
+          className="flex min-h-11 w-full items-center gap-1.5 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium text-(--accent) active:bg-(--bg-inset)">
+          <Backpack className="size-4" /> {packTitle(kindOf(e))} <ChevronRight className="ml-auto size-4 text-(--text-muted)" />
         </button>
       )}
       {(kindOf(e) === 'race' || kindOf(e) === 'challenge' || kindOf(e) === 'trip') && n >= -7 && <ChecklistRow eventId={e.id} />}
@@ -274,15 +274,15 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
         !bare && 'rounded-xl border', !bare && (e.main ? 'border-(--accent)' : 'border-(--border)'), !bare && !isUpcoming(e) && 'opacity-70')}>
       <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl',
         e.main ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--accent-subtle) text-(--accent)')}>
-        <Icon className="size-5" />
+        <Icon className="size-6" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          {e.main && <Star className="size-3.5 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
-          <span className="truncate text-[0.9412rem] font-medium text-(--text)">{e.name}</span>
-          {e.visibility === 'public' && <Globe className="size-3.5 shrink-0 text-(--text-muted)" aria-label="Public" />}
+          {e.main && <Star className="size-4 shrink-0 fill-(--accent) text-(--accent)" aria-label="Main event" />}
+          <span className="truncate text-lead font-medium text-(--text)">{e.name}</span>
+          {e.visibility === 'public' && <Globe className="size-4 shrink-0 text-(--text-muted)" aria-label="Public" />}
         </span>
-        <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+        <span className="block truncate text-meta text-(--text-muted)">
           {e.recurring && e.repeat_text ? `${e.repeat_text}${e.time ? ` · ${e.time}` : ''}`
             : new Date(`${e.date}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           {e.end_date && e.end_date !== e.date ? ` – ${new Date(`${e.end_date}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : ''}
@@ -291,16 +291,16 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
           {e.location ? ` · ${e.location}` : e.at ? ` · ${e.at}` : ''}{e.neighborhood ? ` · ${e.neighborhood}` : ''}
         </span>
         {e.plan && (e.plan.status === 'in_plan' || e.plan.status === 'pending') && (
-          <span className={cn('mt-0.5 flex items-center gap-1 text-[0.6471rem] font-medium', e.plan.status === 'in_plan' ? 'text-(--accent)' : 'text-(--warning-text)')}>
-            {e.recurring && <Repeat className="size-3" aria-hidden />}{e.plan.status === 'in_plan' ? 'In your plan' : 'Not in your plan yet'}
+          <span className={cn('mt-0.5 flex items-center gap-1 text-caption font-medium', e.plan.status === 'in_plan' ? 'text-(--accent)' : 'text-(--warning-text)')}>
+            {e.recurring && <Repeat className="size-3.5" aria-hidden />}{e.plan.status === 'in_plan' ? 'In your plan' : 'Not in your plan yet'}
           </span>
         )}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
-        <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">
+        <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">
           {e.main ? 'Main' : kind !== 'race' ? KIND_LABEL[kind] : e.priority === 'C' ? 'Training' : `${e.priority} race`}
         </span>
-        <span className="text-[0.6471rem] text-(--text-muted)">{e.result && n < 0 ? e.result : e.recurring && isUpcoming(e) ? `Next: ${countdown(when)}` : countdown(when)}</span>
+        <span className="text-caption text-(--text-muted)">{e.result && n < 0 ? e.result : e.recurring && isUpcoming(e) ? `Next: ${countdown(when)}` : countdown(when)}</span>
       </span>
     </button>
   )
@@ -362,7 +362,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
     <Screen title={event ? event.name : 'Add an event'} subtitle={event?.main ? 'Your main event' : undefined}
       closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
       footer={<>
-        <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
+        <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'}
           disabled={!kind || !(v.name ?? '').trim() || !v.date || (!!event && !draft.dirty)}
           onClick={(e) => {
             const btn = e.currentTarget
@@ -383,8 +383,8 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {guard.dialog}
       {event?.series_id && (
         <button type="button" onClick={() => onOpenEvent(event.series_id!)}
-          className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 text-left text-[0.7647rem] text-(--text-secondary) active:bg-(--bg-inset)">
-          <Repeat className="size-4 text-(--accent)" aria-hidden /> <span className="flex-1">One date of a repeating event</span>
+          className="flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 text-left text-small text-(--text-secondary) active:bg-(--bg-inset)">
+          <Repeat className="size-5 text-(--accent)" aria-hidden /> <span className="flex-1">One date of a repeating event</span>
           <span className="font-medium text-(--accent)">See the series</span>
         </button>
       )}
@@ -419,27 +419,27 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       {event && past && race && <DebriefCard event={event} result={v.result ?? ''} notes={v.notes ?? ''} onSaved={(list) => onSaved(list)} />}
       </>)}
       {!event && !isFirst && canBeMain && (
-        <label className="flex items-center gap-3 px-1 text-[0.8235rem] text-(--text)">
+        <label className="flex items-center gap-3 px-1 text-body text-(--text)">
           <input type="checkbox" className="size-4 accent-(--accent)" checked={main} onChange={(e) => setMain(e.target.checked)} />
           Make this my main event (the plan builds toward it)
         </label>
       )}
       {event && !past && kind !== 'milestone' && (
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setPack(true)}>
-            <Backpack className="size-4" /> {packTitle(kind)}
+          <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={() => setPack(true)}>
+            <Backpack className="size-5" /> {packTitle(kind)}
           </Button>
-          <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={() => setFitOpen(true)}>
-            <Gauge className="size-4" /> {race ? 'Readiness' : 'Event prep'}
+          <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={() => setFitOpen(true)}>
+            <Gauge className="size-5" /> {race ? 'Readiness' : 'Event prep'}
           </Button>
         </div>
       )}
       {fitOpen && event && <RaceFitScreen eventId={event.id} race={race} onClose={() => setFitOpen(false)} />}
       {pack && event && <RacePackScreen eventId={event.id} kind={kind} imperial={imperial} onClose={() => setPack(false)} />}
       {event && !event.main && !past && canBeMain && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy === 'main'}
+        <Button variant="default" className="h-11 gap-1.5 text-body" loading={busy === 'main'}
           onClick={() => void run('main', () => makeMainEvent(event.id))}>
-          <Star className="size-4" /> Make this my main event
+          <Star className="size-5" /> Make this my main event
         </Button>
       )}
       {event && kind !== 'milestone' && (
@@ -448,27 +448,27 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
       )}
       {event && (
         <Related items={[
-          { key: 'checklist', icon: <ListChecks className="size-4" />, label: 'Race checklist', sub: 'What to do before the day',
+          { key: 'checklist', icon: <ListChecks className="size-5" />, label: 'Race checklist', sub: 'What to do before the day',
             onClick: !past && kind !== 'milestone' ? () => { close(); window.setTimeout(() => openChecklist(event.id), 220) } : null },
-          { key: 'plan', icon: <CalendarDays className="size-4" />, label: 'Your plan', sub: event.main ? 'Built toward this' : 'Your training around it',
+          { key: 'plan', icon: <CalendarDays className="size-5" />, label: 'Your plan', sub: event.main ? 'Built toward this' : 'Your training around it',
             onClick: () => { onOpenPlan(); close() } },
-          { key: 'series', icon: <Repeat className="size-4" />, label: 'The whole series', onClick: event.series_id ? () => onOpenEvent(event.series_id!) : null },
+          { key: 'series', icon: <Repeat className="size-5" />, label: 'The whole series', onClick: event.series_id ? () => onOpenEvent(event.series_id!) : null },
         ]} link={{ kind: 'event', id: event.id }} />
       )}
       {event && !event.main && (confirmDelete ? (
         <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3">
-          <span className="min-w-0 flex-1 text-[0.8235rem]">Delete {event.name}?</span>
-          <Button variant="default" className="h-9 px-3 text-[0.7647rem]" onClick={() => setConfirmDelete(false)}>Keep</Button>
-          <Button variant="destructive" className="h-9 px-3 text-[0.7647rem]" loading={busy === 'delete'}
+          <span className="min-w-0 flex-1 text-body">Delete {event.name}?</span>
+          <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
+          <Button variant="destructive" className="h-9 px-3 text-small" loading={busy === 'delete'}
             onClick={() => void run('delete', () => deleteEvent(event.id))}>Delete</Button>
         </div>
       ) : (
-        <Button variant="ghost" className="h-10 gap-1.5 text-[0.7647rem] text-(--danger)" onClick={() => setConfirmDelete(true)}>
-          <Trash2 className="size-4" /> Delete event
+        <Button variant="ghost" className="h-10 gap-1.5 text-small text-(--danger)" onClick={() => setConfirmDelete(true)}>
+          <Trash2 className="size-5" /> Delete event
         </Button>
       ))}
       {queued && busy === 'save' && <SaveStatus state="queued" className="px-1" />}
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
     </Screen>
   )
 }
@@ -497,12 +497,12 @@ function DebriefCard({ event, result, notes, onSaved }: {
               className={cn('plan-chip', feel === n && 'plan-chip--on')}>{['Rough', 'Hard', 'OK', 'Good', 'Great'][n - 1]}</button>
           ))}
         </div>
-        <Button variant="primary" className="h-10 text-[0.7647rem]" loading={busy} onClick={() => void write()}>
+        <Button variant="primary" className="h-10 text-small" loading={busy} onClick={() => void write()}>
           {d ? 'Rewrite my debrief' : 'Write my debrief'}
         </Button>
-        {error && <p className="text-[0.7059rem] text-(--danger)">{error}</p>}
+        {error && <p className="text-meta text-(--danger)">{error}</p>}
         {d && (
-          <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3 text-[0.7647rem] leading-snug">
+          <div className="flex flex-col gap-2 rounded-lg bg-(--bg-inset) p-3 text-small leading-snug">
             <p className="text-(--text)">{d.summary}</p>
             {d.went_well.length > 0 && <p><b className="text-(--accent)">Went well:</b> <span className="text-(--text-secondary)">{d.went_well.join('; ')}</span></p>}
             {d.work_on.length > 0 && <p><b className="text-(--warning-text)">Work on:</b> <span className="text-(--text-secondary)">{d.work_on.join('; ')}</span></p>}

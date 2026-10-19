@@ -39,24 +39,24 @@ export function FitnessCountdown({ refreshKey, onOpen }: { refreshKey: number; o
     <button type="button" onClick={() => onOpen(race.event_id)} aria-label={label}
       className="flex min-h-[76px] w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3 text-left active:bg-(--bg-inset)">
       <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-xl bg-(--accent-subtle) leading-none text-(--accent)" aria-hidden>
-        <span className="font-display text-[1.2941rem]">{race.grade}</span>
-        <span className="mt-0.5 text-[0.6471rem] font-semibold uppercase">grade</span>
+        <span className="font-display text-title-md">{race.grade}</span>
+        <span className="mt-0.5 text-caption font-semibold uppercase">grade</span>
       </span>
       <span className="min-w-0 flex-1" aria-hidden>
-        <span className="flex items-center gap-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-          <Flag className="size-3" /> {race.main ? 'Goal race' : 'Next race'}
+        <span className="flex items-center gap-1 text-caption font-semibold text-(--text-muted)">
+          <Flag className="size-3.5" /> {race.main ? 'Goal race' : 'Next race'}
         </span>
-        <span className="block truncate text-[0.8824rem] font-semibold text-(--text)">{race.name}</span>
-        <span className="flex items-center gap-1 truncate text-[0.7059rem] text-(--text-secondary)">
+        <span className="block truncate text-body-lg font-semibold text-(--text)">{race.name}</span>
+        <span className="flex items-center gap-1 truncate text-meta text-(--text-secondary)">
           <span className={cn(race.status === 'at_risk' || race.status === 'behind' ? 'text-(--warning-text)' : 'text-(--accent)')}>{STATUS_LABEL[race.status]}</span>
           {Arrow && <>· <Arrow className="size-3.5 shrink-0" /> {trendWord}</>}
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end leading-none" aria-hidden>
-        <span className="font-display text-[1.6471rem] text-(--brand)">{days}</span>
-        <span className="text-[0.6471rem] text-(--text-muted)">{days === 1 ? 'day' : 'days'}</span>
+        <span className="font-display text-display text-(--brand)">{days}</span>
+        <span className="text-caption text-(--text-muted)">{days === 1 ? 'day' : 'days'}</span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }

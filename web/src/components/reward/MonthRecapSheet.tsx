@@ -55,25 +55,25 @@ export function MonthRecapSheet({ month, onClose }: { month?: string; onClose: (
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="month-title" className="modal-title">{r ? `Your ${r.label}` : 'Your month'}</h2>
-          <button className="modal-close hit-44" aria-label="Close" onClick={close}><X className="size-4" /></button>
+          <button className="modal-close hit-44" aria-label="Close" onClick={close}><X className="size-5" /></button>
         </div>
         <div className="modal-body flex flex-col gap-3 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
           {!r && !error && <RabbitLoader className="py-10" label="Adding up your month" cycle={['Adding up your hours…', 'Finding your longest day…', 'Drawing your card…']} />}
           {error && <ErrorState message={`Couldn't load your recap: ${error}`} onRetry={() => setTries((n) => n + 1)} compact />}
           {r && !r.sessions && (
-            <p className="py-8 text-center text-[0.8235rem] text-(--text-muted)">No workouts synced in {r.label}. Next month's card starts with your next one.</p>
+            <p className="py-8 text-center text-body text-(--text-muted)">No workouts synced in {r.label}. Next month's card starts with your next one.</p>
           )}
           {r && r.sessions > 0 && (
             <>
               {img
                 ? <img src={img} alt={alt} width={CARD_W} height={CARD_H} className="mx-auto h-auto w-full max-w-sm rounded-2xl shadow-sm" />
                 : <div className="skeleton mx-auto aspect-[4/5] w-full max-w-sm rounded-2xl" aria-hidden="true" />}
-              <p className="m-0 text-center text-[0.7059rem] text-(--text-muted)">Totals only: no names, places or heart rate.</p>
-              <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={busy} disabled={!img}
+              <p className="m-0 text-center text-meta text-(--text-muted)">Totals only: no names, places or heart rate.</p>
+              <Button variant="primary" className="h-11 gap-1.5 text-body" loading={busy} disabled={!img}
                 onClick={(e) => void share(e.currentTarget)}>
-                {canShareFiles ? <><Share2 className="size-4" aria-hidden="true" /> Share</> : <><Download className="size-4" aria-hidden="true" /> Download image</>}
+                {canShareFiles ? <><Share2 className="size-5" aria-hidden="true" /> Share</> : <><Download className="size-5" aria-hidden="true" /> Download image</>}
               </Button>
-              {note && <p className="m-0 text-center text-[0.7059rem] text-(--text-secondary)" role="status">{note}</p>}
+              {note && <p className="m-0 text-center text-meta text-(--text-secondary)" role="status">{note}</p>}
             </>
           )}
         </div>

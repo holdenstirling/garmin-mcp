@@ -18,10 +18,10 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
   return (
     <div className={cn('relative flex w-full min-w-0 flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
       {showLabel && (isUser ? (
-        <span className="px-1 pr-2 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">You</span>
+        <span className="px-1 pr-2 text-caption font-semibold text-muted-foreground">You</span>
       ) : (
         // Every Rabbit message carries the same mark: the brand tile + name.
-        <span className="flex items-center gap-1.5 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">
+        <span className="flex items-center gap-1.5 pl-1 text-caption font-semibold text-(--accent)">
           <span className="logo-tile flex size-5 items-center justify-center rounded-[6px] bg-(--brand)" aria-hidden><RabbitLogo size={15} /></span>
           rabbt
         </span>
@@ -38,19 +38,19 @@ export const MessageBubble = memo(function MessageBubble({ message, showLabel, p
             // Dolly's MessageFileCard
             <a key={a.id} href={attachmentUrl(a.id)} target="_blank" rel="noopener"
               className="inline-flex min-w-[140px] max-w-[220px] items-center gap-2 rounded-lg border border-border bg-background p-1.5 shadow-sm transition-colors hover:bg-secondary/50">
-              <span className="flex h-7 w-8 shrink-0 items-center justify-center rounded bg-accent font-mono text-[0.6471rem] font-bold tracking-wide text-(--on-fill)">
-                {a.kind === 'pdf' ? 'PDF' : <FileText className="size-3.5" />}
+              <span className="flex h-7 w-8 shrink-0 items-center justify-center rounded bg-accent font-mono text-caption font-bold tracking-wide text-(--on-fill)">
+                {a.kind === 'pdf' ? 'PDF' : <FileText className="size-4" />}
               </span>
               <span className="flex min-w-0 flex-col pr-2">
-                <span className="truncate text-xs font-medium text-foreground">{a.name}</span>
-                <span className="mt-0.5 font-mono text-[0.6471rem] leading-none text-muted-foreground">{formatFileSize(a.size)}</span>
+                <span className="truncate text-meta font-medium text-foreground">{a.name}</span>
+                <span className="mt-0.5 font-mono text-caption leading-none text-muted-foreground">{formatFileSize(a.size)}</span>
               </span>
             </a>
           ))}
         </div>
       )}
       {message.text && <div data-msg-id={message.id} {...pressProps} className={cn(
-        'msg-press chat-text relative min-w-0 max-w-[85%] overflow-hidden break-words rounded-xl px-3.5 py-2.5 text-[1rem] leading-[1.45] shadow-sm',
+        'msg-press chat-text relative min-w-0 max-w-[85%] overflow-hidden break-words rounded-xl px-3.5 py-2.5 text-lead leading-[1.45] shadow-sm',
         isUser
           ? 'rounded-tr-sm border border-black/10 bg-[var(--msg-user-bg)] text-[var(--msg-user-text)]'
           : message.error

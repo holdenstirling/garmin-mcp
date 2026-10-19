@@ -57,8 +57,8 @@ export function GetStartedCard({ garmin, hasGoal, progress, onStep }: {
     <div className="px-4">
       <section aria-label="Get started" className="mx-auto max-w-2xl rounded-2xl border border-(--border) bg-(--bg-surface) px-3 py-2">
         <div className="flex min-h-9 items-center gap-2">
-          <h2 className="flex-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Get started · {done} of {steps.length}</h2>
-          <button type="button" onClick={hide} aria-label="Hide Get started" className="hit-44 rounded-full p-1 text-(--text-muted)"><X className="size-4" /></button>
+          <h2 className="flex-1 text-caption font-semibold text-(--text-muted)">Get started · {done} of {steps.length}</h2>
+          <button type="button" onClick={hide} aria-label="Hide Get started" className="hit-44 rounded-full p-1 text-(--text-muted)"><X className="size-5" /></button>
         </div>
         <div className="mb-1 h-1 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>
           <div className="h-full rounded-full bg-(--accent) transition-[width]" style={{ width: `${(done / steps.length) * 100}%` }} />
@@ -68,12 +68,12 @@ export function GetStartedCard({ garmin, hasGoal, progress, onStep }: {
             <li key={s.id} className="border-t border-(--border) first:border-t-0">
               <button type="button" disabled={s.done} onClick={() => onStep(s.id)}
                 className="flex min-h-12 w-full items-center gap-3 py-1.5 text-left disabled:cursor-default">
-                <IconTile size={30} tone={s.done ? 'neutral' : undefined}>{s.done ? <Check className="size-4" /> : <s.icon className="size-4" />}</IconTile>
+                <IconTile size={30} tone={s.done ? 'neutral' : undefined}>{s.done ? <Check className="size-5" /> : <s.icon className="size-4" />}</IconTile>
                 <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate text-[0.7647rem] font-medium', s.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{s.label}</span>
-                  {!s.done && <span className="block truncate text-[0.7059rem] text-(--text-muted)">{s.sub}</span>}
+                  <span className={cn('block truncate text-small font-medium', s.done ? 'text-(--text-muted) line-through' : 'text-(--text)')}>{s.label}</span>
+                  {!s.done && <span className="block truncate text-meta text-(--text-muted)">{s.sub}</span>}
                 </span>
-                {!s.done && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+                {!s.done && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
               </button>
             </li>
           ))}

@@ -71,9 +71,9 @@ export function DurationInput({ value, onChange, onBlur, withHours = true, expec
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-center gap-2">
         <button type="button" className={btn} aria-label={`${label}: ${mode === 'hours' ? '5 minutes less' : '5 seconds faster'}`}
-          disabled={disabled || !sec} onClick={() => nudge(-1)}><Minus className="size-4" aria-hidden /></button>
+          disabled={disabled || !sec} onClick={() => nudge(-1)}><Minus className="size-5" aria-hidden /></button>
         <div className="relative min-w-0 flex-1">
-          <input className={cn('h-11 w-full rounded-md border bg-transparent px-3 pr-14 text-lg tabular-nums tracking-wide text-(--text)',
+          <input className={cn('h-11 w-full rounded-md border bg-transparent px-3 pr-14 text-title-sm tabular-nums tracking-wide text-(--text)',
             'placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50',
             bad ? 'border-(--danger)' : 'border-input')}
             inputMode={letters ? 'text' : 'numeric'} autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="done"
@@ -81,15 +81,15 @@ export function DurationInput({ value, onChange, onBlur, withHours = true, expec
             placeholder={example} value={text} disabled={disabled}
             onChange={(e) => change(e.target.value)} onBlur={blur} />
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setLetters((v) => !v)}
-            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-[0.7059rem] font-medium text-(--text-muted)"
+            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-meta font-medium text-(--text-muted)"
             aria-label={letters ? 'Use the number pad' : 'Use the full keyboard to type letters like 5h30'}>
             {letters ? '123' : 'abc'}
           </button>
         </div>
         <button type="button" className={btn} aria-label={`${label}: ${mode === 'hours' ? '5 minutes more' : '5 seconds slower'}`}
-          disabled={disabled} onClick={() => nudge(1)}><Plus className="size-4" aria-hidden /></button>
+          disabled={disabled} onClick={() => nudge(1)}><Plus className="size-5" aria-hidden /></button>
       </div>
-      <p id={hintId} aria-live="polite" className={cn('text-[0.7059rem]', bad ? 'text-(--danger)' : sec != null ? 'text-(--accent)' : 'text-(--text-muted)')}>
+      <p id={hintId} aria-live="polite" className={cn('text-meta', bad ? 'text-(--danger)' : sec != null ? 'text-(--accent)' : 'text-(--text-muted)')}>
         {bad ? `Couldn't read that. Try ${example}, ${mode === 'hours' ? '5h30 or 530' : '8m30 or 830'}.`
           : sec != null ? `= ${describeDuration(sec)}`
           : mode === 'hours' ? 'Any format works: 5:30:00, 5h30, 5.5 or just 530' : 'Any format works: 8:30, 8m30 or just 830'}

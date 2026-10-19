@@ -251,18 +251,18 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
   const showProgress = step !== 'intro' && step !== 'done'
   const footer = step === 'intro' ? null : step === 'done' ? (
     <>
-      <Button variant="default" className="h-11 flex-1 text-[0.8235rem]" onClick={close}>Done</Button>
-      <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={onOpenPlan}>See my plan</Button>
+      <Button variant="default" className="h-11 flex-1 text-body" onClick={close}>Done</Button>
+      <Button variant="primary" className="h-11 flex-1 text-body" onClick={onOpenPlan}>See my plan</Button>
     </>
   ) : (
     <>
-      {idx > 1 && <Button variant="default" className="h-11 px-5 text-[0.8235rem]" onClick={back}>Back</Button>}
+      {idx > 1 && <Button variant="default" className="h-11 px-5 text-body" onClick={back}>Back</Button>}
       {step === 'review' ? (
-        <Button variant="primary" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" loading={busy} onClick={() => void build()}>
-          <Route className="size-4" aria-hidden /> Start this plan
+        <Button variant="primary" className="h-11 flex-1 gap-1.5 text-body" loading={busy} onClick={() => void build()}>
+          <Route className="size-5" aria-hidden /> Start this plan
         </Button>
       ) : (
-        <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" onClick={next}>
+        <Button variant="primary" className="h-11 flex-1 text-body" onClick={next}>
           {step === 'numbers' && !hasNumbers(a) ? 'Skip for now' : 'Continue'}
         </Button>
       )}
@@ -282,8 +282,8 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             <span className="logo-tile mb-4 flex size-[72px] items-center justify-center rounded-[20px] bg-(--brand) shadow-md">
               <RabbitLogo size={60} />
             </span>
-            <h3 className="font-display text-[1.6471rem] leading-tight text-(--brand)">Let's build your plan</h3>
-            <p className="mt-2 max-w-sm text-[0.8824rem] leading-snug text-(--text-secondary)">
+            <h3 className="font-display text-display leading-tight text-(--brand)">Let's build your plan</h3>
+            <p className="mt-2 max-w-sm text-body-lg leading-snug text-(--text-secondary)">
               A few questions about your race, your goals and your week. rabbt turns them into a
               week-by-week plan with structured workouts, and can put them on your Garmin.
             </p>
@@ -300,20 +300,20 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
                 <div key={t as string} className="flex items-center gap-3 px-4 py-3">
                   <span className="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)"><I className="size-[17px]" /></span>
                   <span className="min-w-0">
-                    <span className="block text-[0.9412rem] text-(--text)">{t as string}</span>
-                    <span className="block text-[0.7647rem] text-(--text-muted)">{s as string}</span>
+                    <span className="block text-lead text-(--text)">{t as string}</span>
+                    <span className="block text-small text-(--text-muted)">{s as string}</span>
                   </span>
                 </div>
               )
             })}
           </Card>
-          <p className="px-1 text-center text-[0.7059rem] text-(--text-muted)">
+          <p className="px-1 text-center text-meta text-(--text-muted)">
             About 3 minutes.{me.garmin.connected ? ' rabbt can fill in what Garmin already knows.' : ''}
           </p>
           <div className="flex flex-col gap-2">
-            <Button variant="primary" className="h-12 text-[0.8824rem]" onClick={next}>Get started</Button>
-            <Button asChild variant="default" className="h-11 gap-1.5 text-[0.8235rem]">
-              <label htmlFor={ATTACH_INPUT_ID} onClick={onUploadPlan}><Upload className="size-4" /> I already have a plan</label>
+            <Button variant="primary" className="h-12 text-body-lg" onClick={next}>Get started</Button>
+            <Button asChild variant="default" className="h-11 gap-1.5 text-body">
+              <label htmlFor={ATTACH_INPUT_ID} onClick={onUploadPlan}><Upload className="size-5" /> I already have a plan</label>
             </Button>
           </div>
         </>
@@ -347,7 +347,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
               const ep: EventFields = Object.fromEntries(Object.entries({ type, location, url, info }).filter(([, v]) => v !== undefined))
               if (Object.keys(ep).length) setDraft((d) => ({ ...d, event: { ...d.event, ...ep } }))
             }} />
-          {weeks != null && g.date && g.date > todayIso() && <p className="-mt-3 px-4 text-[0.7647rem] text-(--text-muted)">{runwayHint(weeks)}</p>}
+          {weeks != null && g.date && g.date > todayIso() && <p className="-mt-3 px-4 text-small text-(--text-muted)">{runwayHint(weeks)}</p>}
           <Card>
             <Field label="Course notes" hint="Optional: hilly, hot, wetsuit, altitude…">
               <textarea className={areaCls} value={g.course ?? ''} maxLength={300} onChange={(e) => setG({ course: e.target.value })}
@@ -392,7 +392,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             This sets how hard the plan ramps up. All of it is optional except your experience.
           </StepIntro>
           {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
-          {note && <p className="px-1 text-[0.7647rem] text-(--accent)">{note}</p>}
+          {note && <p className="px-1 text-small text-(--accent)">{note}</p>}
           <YouFields a={a} setA={setA} sports={sports} />
         </>
       )}
@@ -404,7 +404,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             your Garmin heart-rate zones.
           </StepIntro>
           {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
-          {note && <p className="px-1 text-[0.7647rem] text-(--accent)">{note}</p>}
+          {note && <p className="px-1 text-small text-(--accent)">{note}</p>}
           <NumbersFields a={a} setA={setA} sports={sports} />
         </>
       )}
@@ -420,7 +420,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
       {step === 'review' && busy && (
         <div className="flex flex-col items-center px-2 pt-6 text-center">
-          <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Building your plan</h3>
+          <h3 className="font-display text-display-sm leading-tight text-(--brand)">Building your plan</h3>
           <RabbitLoader size={72} className="pt-4" label="Building your plan"
             cycle={['Mapping your weeks…', 'Placing long workouts…', 'Balancing hard and easy days…', 'Tapering into race day…']} />
         </div>
@@ -432,15 +432,15 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             Tweak anything below and the plan updates right away. Nothing is saved until you start it.
           </StepIntro>
           {preview.summary ? <PlanSummaryView s={preview.summary} /> : preview.error ? (
-            <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{preview.error}</p>
+            <p className="px-1 text-small text-(--danger)" role="alert">{preview.error}</p>
           ) : <RabbitLoader className="py-6" label="Sketching your plan" cycle={['Mapping your weeks…', 'Placing long workouts…', 'Balancing hard and easy days…']} />}
-          {preview.busy && preview.summary && <RabbitLoader inline className="px-1 text-[0.7059rem]" label="Updating…" />}
+          {preview.busy && preview.summary && <RabbitLoader inline className="px-1 text-meta" label="Updating…" />}
           <LeverFields v={{ available_days: a.available_days, long_day: a.long_day, weekly_hours: a.weekly_hours, plan_intensity: a.plan_intensity }}
             set={(p) => setA({ ...p, ...(p.available_days && a.long_day && !p.available_days.includes(a.long_day) ? { long_day: p.available_days.slice(-1)[0] ?? null } : {}) })}
             start={draft.start_date} setStart={(d) => setDraft((x) => ({ ...x, start_date: d }))} minStart={todayIso()} maxStart={g.date ?? undefined} />
           <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-[0.8235rem] font-medium text-(--text) [&::-webkit-details-marker]:hidden">
-              <span className="flex-1">Your answers</span><span className="text-[0.7059rem] text-(--accent)">Edit</span>
+            <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-body font-medium text-(--text) [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">Your answers</span><span className="text-meta text-(--accent)">Edit</span>
             </summary>
             <div className="border-t border-(--border)">
               <ReviewRow label="Race" onEdit={() => setStep('race')}
@@ -458,7 +458,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             </div>
           </details>
           {me.goal?.plan && !draft.newGoal && (
-            <p className="px-1 text-[0.7647rem] text-(--warning-text)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
+            <p className="px-1 text-small text-(--warning-text)">This replaces the current plan for {me.goal.title}. Workouts already synced to Garmin get cleaned up on the next sync.</p>
           )}
         </>
       )}
@@ -467,11 +467,11 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
         <>
           <div className="flex flex-col items-center px-2 pt-2 text-center">
             <RabbitNap size={56} mode="cheer" className="mb-2" />
-            <h3 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Your plan is ready</h3>
-            <p className="mt-1.5 text-[0.8235rem] text-(--text-secondary)">
+            <h3 className="font-display text-display-sm leading-tight text-(--brand)">Your plan is ready</h3>
+            <p className="mt-1.5 text-body text-(--text-secondary)">
               {plan.weeks.length} weeks to {g.title || 'race day'}, building from about {plan.start_hours} to {plan.peak_hours} hours a week.
             </p>
-            {plan.note && <p className="mt-1.5 text-[0.7647rem] text-(--text-muted)">{plan.note}</p>}
+            {plan.note && <p className="mt-1.5 text-small text-(--text-muted)">{plan.note}</p>}
           </div>
           <Card className="p-4"><PhaseStrip plan={plan} /></Card>
           <WeekPreview week={plan.weeks.find((w) => w.index === plan.current_week) ?? plan.weeks[0]!} />
@@ -483,25 +483,25 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
                   <ChipRow>
                     {[7, 14, 28].map((d) => <Chip key={d} selected={sync.days === d} onClick={() => setSync((s) => ({ ...s, days: d }))}>Next {d} days</Chip>)}
                   </ChipRow>
-                  <Button variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" loading={sync.busy} onClick={() => void doSync()}>
-                    <Watch className="size-4" /> {sync.result ? 'Sync again' : 'Sync to Garmin'}
+                  <Button variant="primary" className="h-11 gap-1.5 text-body" loading={sync.busy} onClick={() => void doSync()}>
+                    <Watch className="size-5" /> {sync.result ? 'Sync again' : 'Sync to Garmin'}
                   </Button>
-                  {sync.busy && <RabbitLoader inline className="text-[0.7647rem]" label="Sending to your watch…" />}
+                  {sync.busy && <RabbitLoader inline className="text-small" label="Sending to your watch…" />}
                   {sync.result && <SyncSummary result={sync.result} />}
-                  {sync.error && <p className="text-[0.7647rem] text-(--danger)">{sync.error}</p>}
+                  {sync.error && <p className="text-small text-(--danger)">{sync.error}</p>}
                 </div>
               ) : me.garmin.can_connect ? (
                 <GarminEmpty what="workout" compact />
-              ) : <p className="text-[0.7647rem] text-(--text-muted)">Garmin isn't available on this server.</p>}
+              ) : <p className="text-small text-(--text-muted)">Garmin isn't available on this server.</p>}
             </Field>
           </Card>
         </>
       )}
 
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
       {showProgress && step !== 'review' && sports.length > 0 && g.distance && (
         <div className="flex justify-center gap-1.5 pt-1 text-(--text-muted)" aria-hidden>
-          {sports.map((s) => { const I = SPORT_ICON[s]; return I ? <I key={s} className="size-3.5" /> : null })}
+          {sports.map((s) => { const I = SPORT_ICON[s]; return I ? <I key={s} className="size-4" /> : null })}
         </div>
       )}
     </Screen>
@@ -530,9 +530,9 @@ function runwayHint(weeks: number): string {
 function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
   return (
     <button type="button" onClick={onEdit} className="flex w-full items-start gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
-      <span className="w-[72px] shrink-0 pt-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</span>
-      <span className="min-w-0 flex-1 text-[0.8235rem] leading-snug text-(--text)">{value}</span>
-      <span className="text-[0.7059rem] text-(--accent)">Edit</span>
+      <span className="w-[72px] shrink-0 pt-0.5 text-caption font-semibold text-(--text-muted)">{label}</span>
+      <span className="min-w-0 flex-1 text-body leading-snug text-(--text)">{value}</span>
+      <span className="text-meta text-(--accent)">Edit</span>
     </button>
   )
 }
@@ -544,7 +544,7 @@ export function SyncSummary({ result }: { result: SyncResult }) {
     result.removed && `${result.removed} removed`,
   ].filter(Boolean)
   return (
-    <div className="flex flex-col gap-1 text-[0.7647rem]">
+    <div className="flex flex-col gap-1 text-small">
       <p className="text-(--accent)">{parts.length ? `${parts.join(', ')}.` : 'Nothing to sync in that window.'} Open Garmin Connect and sync your watch to see them.</p>
       {result.errors.map((e, i) => (
         <p key={i} className="text-(--danger)">{e.title}{e.date ? ` (${e.date})` : ''}: {e.error}</p>

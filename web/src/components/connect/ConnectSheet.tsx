@@ -139,7 +139,7 @@ function Link({ app, busy }: { app: ConnApp; busy?: boolean }) {
 
 export function StateChip({ state }: { state: ConnState }) {
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.6471rem] font-medium',
+    <span className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-caption font-medium',
       state === 'connected' ? 'bg-(--accent-subtle) text-(--accent)'
         : state === 'attention' ? 'bg-(--warning-subtle) text-(--warning-text)'
         : 'bg-(--bg-inset) text-(--text-muted)')}>
@@ -154,8 +154,8 @@ export function Bullets({ items, tone }: { items: string[]; tone: 'yes' | 'no' }
   return (
     <ul className="flex flex-col gap-1.5">
       {items.map((t) => (
-        <li key={t} className="flex items-start gap-2 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          <span aria-hidden className={cn('mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-[0.6471rem]',
+        <li key={t} className="flex items-start gap-2 text-small leading-snug text-(--text-secondary)">
+          <span aria-hidden className={cn('mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full text-caption',
             tone === 'yes' ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-inset) text-(--text-muted)')}>
             {tone === 'yes' ? <Check className="size-2.5" /> : <X className="size-2.5" />}
           </span>
@@ -319,8 +319,8 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
       <>
         <Link app={app} />
         <div className="text-center">
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">rabbt + {NAME[app]}</p>
-          <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+          <p className="font-display text-title leading-tight text-(--brand)">rabbt + {NAME[app]}</p>
+          <p className="mt-1 text-body leading-snug text-(--text-secondary)">
             {app === 'garmin' ? 'Your workouts, streak, fitness and personal bests fill in on their own.'
               : app === 'oura' ? 'Your readiness and sleep show in Progress and help rabbt ease your week after a rough night.'
               : app === 'whoop' ? 'Workouts you record on WHOOP show on their day and, if you share workouts, in your friends’ feed.'
@@ -328,34 +328,34 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
               : 'rabbt spots trips and busy days so your plan can work around them.'}
           </p>
         </div>
-        {loadErr && <p role="alert" className="text-[0.7647rem] text-(--danger)">{loadErr}</p>}
+        {loadErr && <p role="alert" className="text-small text-(--danger)">{loadErr}</p>}
         {reads.length > 0 && (
           <section aria-labelledby="conn-reads" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="conn-reads" className="text-[0.7647rem] font-semibold text-(--text)">rabbt will be able to see</h3>
+            <h3 id="conn-reads" className="text-small font-semibold text-(--text)">rabbt will be able to see</h3>
             <Bullets items={reads} tone="yes" />
           </section>
         )}
         {never.length > 0 && (
           <section aria-labelledby="conn-never" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-            <h3 id="conn-never" className="flex items-center gap-1.5 text-[0.7647rem] font-semibold text-(--text)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />Your privacy
+            <h3 id="conn-never" className="flex items-center gap-1.5 text-small font-semibold text-(--text)">
+              <ShieldCheck className="size-5 text-(--accent)" aria-hidden />Your privacy
             </h3>
             <Bullets items={never} tone="no" />
-            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
-              <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t.kept}
+            <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{t.kept}
             </p>
           </section>
         )}
         {available ? (
           <div className="flex flex-col gap-2">
-            <p className="flex items-start gap-2 text-[0.7059rem] leading-snug text-(--text-muted)">
+            <p className="flex items-start gap-2 text-meta leading-snug text-(--text-muted)">
               <How className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />{t.how}
             </p>
-            <Button variant="primary" className="h-12 w-full text-[0.8824rem]" onClick={cont}>{t.cta}</Button>
-            <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={onClose}>Not now</button>
+            <Button variant="primary" className="h-12 w-full text-body-lg" onClick={cont}>{t.cta}</Button>
+            <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={onClose}>Not now</button>
           </div>
         ) : (
-          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-center text-[0.7647rem] text-(--text-secondary)">
+          <p className="rounded-xl bg-(--bg-inset) px-3.5 py-3 text-center text-small text-(--text-secondary)">
             {me.owner ? `${SHORT[app]} isn’t set up on this server yet (it needs ${SHORT[app]} app credentials).`
               : `Connecting ${SHORT[app]} is coming soon.`}
           </p>
@@ -368,13 +368,13 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         <Link app="garmin" busy={gStep === 'connecting'} />
         <div>
           <Progress step={Math.max(0, gIndex)} total={GARMIN_STEPS.length} />
-          <p className="mt-2 text-center text-[0.7059rem] text-(--text-muted)">
+          <p className="mt-2 text-center text-meta text-(--text-muted)">
             Step {Math.max(0, gIndex) + 1} of {GARMIN_STEPS.length} · {GARMIN_STEPS[Math.max(0, gIndex)]!.label}
           </p>
         </div>
         <ConnectGarmin cooldownUntil={me.garmin.cooldown_until} onConnected={onGarminConnected} onStep={setGStep} />
         {me.garmin.fake && (
-          <p className="text-[0.6471rem] text-(--text-muted)">Fake Garmin (dev): try mfa@, wrong@, 429@ or cf@ emails; code 123456.</p>
+          <p className="text-caption text-(--text-muted)">Fake Garmin (dev): try mfa@, wrong@, 429@ or cf@ emails; code 123456.</p>
         )}
       </>
     )
@@ -389,7 +389,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
     body = (
       <div className="flex flex-col items-center gap-3 py-4 text-center" role="status">
         <Link app={app} busy />
-        <p className="text-[0.8235rem] text-(--text-secondary)">Opening {app === 'calendar' ? 'Google' : SHORT[app]}’s sign-in page…</p>
+        <p className="text-body text-(--text-secondary)">Opening {app === 'calendar' ? 'Google' : SHORT[app]}’s sign-in page…</p>
       </div>
     )
   } else if (view === 'importing') {
@@ -407,17 +407,17 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
       <>
         <div className="flex flex-col items-center gap-2 py-3 text-center">
           <RabbitNap size={52} mode="cheer" />
-          <p className="font-display text-[1.1765rem] leading-tight text-(--brand)">You’re all set</p>
-          <p className="text-[0.7647rem] text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to rabbt.`}</p>
+          <p className="font-display text-title leading-tight text-(--brand)">You’re all set</p>
+          <p className="text-small text-(--text-secondary)">{importNote ?? `${NAME[app]} is connected to rabbt.`}</p>
         </div>
         <section aria-labelledby="conn-next" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-          <h3 id="conn-next" className="text-[0.7647rem] font-semibold text-(--text)">What happens now</h3>
+          <h3 id="conn-next" className="text-small font-semibold text-(--text)">What happens now</h3>
           <Bullets items={NEXT[app]} tone="yes" />
         </section>
         {app !== 'calendar' && app !== 'trainingpeaks' && <ShareChoice />}
         {app === 'oura' && <SourcePref pref={pref} ouraOn />}
         {app === 'trainingpeaks' && tpSource && <TPSourcePref source={tpSource} onSaved={setTpSource} onToast={onToast} />}
-        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy}
+        <Button variant="primary" className="h-11 w-full text-body" loading={busy}
           onClick={() => void (app === 'oura' ? savePref(true) : onClose())}>Done</Button>
       </>
     )
@@ -428,11 +428,11 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
           <span className="flex size-14 items-center justify-center rounded-full bg-(--bg-inset) text-(--warning-text)" aria-hidden>
             <TriangleAlert className="size-7" />
           </span>
-          <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
+          <p className="text-body leading-snug text-(--text-secondary)">
             {SHORT[app]} didn’t finish connecting, so nothing was shared and nothing was changed. You can try again now.
           </p>
         </div>
-        <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={cont} disabled={!available}>Try again</Button>
+        <Button variant="primary" className="h-11 w-full text-body" onClick={cont} disabled={!available}>Try again</Button>
       </>
     )
   } else {
@@ -444,31 +444,31 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
           <AppTile app={app} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.9412rem] text-(--text)">{NAME[app]}</span>
-            <span className="block text-[0.7059rem] text-(--text-muted)">{syncedAgo(conn?.last_sync ?? null)}</span>
+            <span className="block truncate text-lead text-(--text)">{NAME[app]}</span>
+            <span className="block text-meta text-(--text-muted)">{syncedAgo(conn?.last_sync ?? null)}</span>
           </span>
           <StateChip state={state} />
         </div>
         {conn?.note && !conn.error && (
           <div className="flex flex-col gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5">
-            <p className="flex items-start gap-2 text-[0.7647rem] text-(--text-secondary)">
-              <RefreshCw className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />{conn.note}
+            <p className="flex items-start gap-2 text-small text-(--text-secondary)">
+              <RefreshCw className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />{conn.note}
             </p>
             {state === 'connected' && conn.kind === 'oauth' && (
-              <Button variant="default" className="h-11 text-[0.7647rem]" onClick={cont}>Reconnect {SHORT[app]}</Button>
+              <Button variant="default" className="h-11 text-small" onClick={cont}>Reconnect {SHORT[app]}</Button>
             )}
           </div>
         )}
         {conn?.error && (
-          <p role="alert" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7647rem] text-(--warning-text)">
-            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />{conn.error}
+          <p role="alert" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-small text-(--warning-text)">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />{conn.error}
           </p>
         )}
         {state === 'attention' ? (
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={cont}>Reconnect {SHORT[app]}</Button>
+          <Button variant="primary" className="h-11 w-full text-body" onClick={cont}>Reconnect {SHORT[app]}</Button>
         ) : (
-          <Button className="h-11 w-full text-[0.8235rem]" loading={busy} onClick={() => void syncNowFor()}>
-            <RefreshCw className="mr-1.5 size-3.5" aria-hidden />Sync now
+          <Button className="h-11 w-full text-body" loading={busy} onClick={() => void syncNowFor()}>
+            <RefreshCw className="mr-1.5 size-4" aria-hidden />Sync now
           </Button>
         )}
         {app === 'trainingpeaks' && tpSource && state !== 'attention' && (
@@ -478,7 +478,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
           <>
             <SourcePref pref={pref} ouraOn={me.oura.connected} />
             {pref.dirty && (
-              <Button variant="primary" className="h-11 w-full text-[0.8235rem]" loading={busy} onClick={() => void savePref(!!req.ask)}>
+              <Button variant="primary" className="h-11 w-full text-body" loading={busy} onClick={() => void savePref(!!req.ask)}>
                 Save
               </Button>
             )}
@@ -486,21 +486,21 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
         )}
         {reads.length > 0 && (
           <details className="rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-[0.7647rem] text-(--text-secondary)">
-              <ShieldCheck className="size-4 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
+            <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-small text-(--text-secondary)">
+              <ShieldCheck className="size-5 text-(--accent)" aria-hidden />What rabbt uses, and your privacy
             </summary>
             <div className="flex flex-col gap-2 pb-1.5">
               <Bullets items={reads} tone="yes" />
               <Bullets items={never} tone="no" />
-              <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-[0.7059rem] leading-snug text-(--text-muted)">
-                <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{TRUST[app].kept}
+              <p className="flex items-start gap-2 border-t border-(--border) pt-2 text-meta leading-snug text-(--text-muted)">
+                <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{TRUST[app].kept}
               </p>
             </div>
           </details>
         )}
         {confirm ? (
           <div role="group" aria-label={`Disconnect ${SHORT[app]}?`} className="flex flex-col gap-2 rounded-xl border border-(--danger) p-3.5">
-            <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+            <p className="text-small leading-snug text-(--text-secondary)">
               Disconnect {SHORT[app]}? rabbt stops reading from it and deletes its stored access{app === 'calendar' ? ' (and asks Google to revoke it)' : ''}. What’s already in rabbt stays. You can connect again anytime.
             </p>
             <div className="flex gap-2">
@@ -509,7 +509,7 @@ function AppConnectSheet({ me, req, onClose, onChanged, onToast }: SheetProps) {
             </div>
           </div>
         ) : (
-          <button type="button" className="min-h-11 text-[0.8235rem] text-(--danger)" onClick={() => setConfirm(true)}>
+          <button type="button" className="min-h-11 text-body text-(--danger)" onClick={() => setConfirm(true)}>
             Disconnect {SHORT[app]}
           </button>
         )}

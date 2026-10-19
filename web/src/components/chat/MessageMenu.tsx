@@ -70,15 +70,15 @@ export function MessageMenu({ target, onClose, onDiscuss, onToast }: {
       <div className="msg-menu-backdrop" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
       <div ref={menu} role="menu" className="msg-menu"
         style={pos ? { top: pos.top, left: pos.left, right: pos.right, transformOrigin: pos.origin } : { visibility: 'hidden', top: 0 }}>
-        <MenuItem icon={<Copy className="size-4" />} label="Copy"
+        <MenuItem icon={<Copy className="size-5" />} label="Copy"
           onClick={act(async () => { onToast((await copyText(text)) ? 'Copied' : "Couldn't copy") })} />
-        <MenuItem icon={<TextSelect className="size-4" />} label="Select text" onClick={() => setSelecting(true)} />
+        <MenuItem icon={<TextSelect className="size-5" />} label="Select text" onClick={() => setSelecting(true)} />
         {canShare && (
-          <MenuItem icon={<Share className="size-4" />} label="Share"
+          <MenuItem icon={<Share className="size-5" />} label="Share"
             onClick={act(async () => { await navigator.share({ text }).catch(() => {}) })} />
         )}
         {target.canDiscuss && (
-          <MenuItem icon={<MessagesSquare className="size-4" />} label="Discuss" onClick={act(onDiscuss)} />
+          <MenuItem icon={<MessagesSquare className="size-5" />} label="Discuss" onClick={act(onDiscuss)} />
         )}
       </div>
     </>
@@ -88,7 +88,7 @@ export function MessageMenu({ target, onClose, onDiscuss, onToast }: {
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button role="menuitem" onClick={onClick}
-      className="flex w-full items-center justify-between gap-6 px-4 py-2.5 text-left text-[0.8824rem] text-(--text) active:bg-(--bg-inset)">
+      className="flex w-full items-center justify-between gap-6 px-4 py-2.5 text-left text-body-lg text-(--text) active:bg-(--bg-inset)">
       {label}<span className="text-(--text-secondary)">{icon}</span>
     </button>
   )
@@ -98,7 +98,7 @@ function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: stri
 function SelectSheet({ text, onClose }: { text: string; onClose: () => void }) {
   // Drag-to-dismiss from the handle/header only: in the body, drags extend the selection.
   return (
-    <Sheet title="Select text" onClose={onClose} bodyDrags={false} bodyClassName="selectable overflow-y-auto whitespace-pre-wrap p-4 pb-[max(16px,env(safe-area-inset-bottom))] text-[0.8824rem] leading-relaxed">
+    <Sheet title="Select text" onClose={onClose} bodyDrags={false} bodyClassName="selectable overflow-y-auto whitespace-pre-wrap p-4 pb-[max(16px,env(safe-area-inset-bottom))] text-body-lg leading-relaxed">
           {text}
     </Sheet>
   )

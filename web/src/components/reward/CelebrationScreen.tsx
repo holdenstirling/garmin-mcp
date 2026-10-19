@@ -63,18 +63,18 @@ export function CelebrationScreen({ c, onClose }: { c: Celebration; onClose: () 
             <Icon className="size-11" aria-hidden="true" />
           </span>
         </div>
-        <p className="fx-cel-rise m-0 font-mono text-[0.7059rem] font-semibold uppercase tracking-widest opacity-90" style={{ animationDelay: '150ms' }}>
+        <p className="fx-cel-rise m-0 text-meta font-semibold opacity-90" style={{ animationDelay: '150ms' }}>
           {EYEBROW[c.kind]}
         </p>
-        <h2 id="cel-title" className="fx-cel-rise m-0 font-display text-[2.3529rem] leading-none" style={{ animationDelay: '220ms' }}>{c.title}</h2>
-        <p className="fx-cel-rise m-0 text-[1.0588rem] font-semibold" style={{ animationDelay: '300ms' }}>{c.subtitle}</p>
-        <p id="cel-line" className="fx-cel-rise m-0 max-w-xs text-[0.8824rem] leading-snug opacity-90" style={{ animationDelay: '380ms' }}>{c.line}</p>
+        <h2 id="cel-title" className="fx-cel-rise m-0 font-display text-display-2xl leading-none" style={{ animationDelay: '220ms' }}>{c.title}</h2>
+        <p className="fx-cel-rise m-0 text-title-sm font-semibold" style={{ animationDelay: '300ms' }}>{c.subtitle}</p>
+        <p id="cel-line" className="fx-cel-rise m-0 max-w-xs text-body-lg leading-snug opacity-90" style={{ animationDelay: '380ms' }}>{c.line}</p>
         {c.stats.length > 0 && (
           <ul className="fx-cel-rise m-0 grid w-full list-none gap-2 p-0" style={{ animationDelay: '460ms', gridTemplateColumns: `repeat(${c.stats.length}, minmax(0, 1fr))` }}>
             {c.stats.map((s) => (
               <li key={s.label} className="flex flex-col items-center gap-0.5 rounded-xl border border-(--bg)/25 px-2 py-2.5">
-                <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest opacity-80">{s.label}</span>
-                <span className="font-mono text-[1rem] font-medium tabular-nums">{s.value}</span>
+                <span className="text-caption font-semibold opacity-80">{s.label}</span>
+                <span className="font-mono text-lead font-medium tabular-nums">{s.value}</span>
               </li>
             ))}
           </ul>
@@ -84,15 +84,15 @@ export function CelebrationScreen({ c, onClose }: { c: Celebration; onClose: () 
             width={CARD_W} height={CARD_H} className="fx-cel-rise h-auto w-32 rounded-xl shadow-lg" style={{ animationDelay: '600ms' }} />
         )}
         <div className="mt-1 flex w-full flex-col gap-2">
-          <Button variant="default" className="h-12 gap-1.5 border-(--bg) bg-(--bg) text-[0.8824rem] text-(--brand)" loading={busy} disabled={!img}
+          <Button variant="default" className="h-12 gap-1.5 border-(--bg) bg-(--bg) text-body-lg text-(--brand)" loading={busy} disabled={!img}
             onClick={(e) => void share(e.currentTarget)}>
-            {canShare ? <><Share2 className="size-4" aria-hidden="true" /> Share</> : <><Download className="size-4" aria-hidden="true" /> Download image</>}
+            {canShare ? <><Share2 className="size-5" aria-hidden="true" /> Share</> : <><Download className="size-5" aria-hidden="true" /> Download image</>}
           </Button>
           <button ref={done} type="button" onClick={onClose}
-            className="min-h-12 rounded-(--radius) text-[0.8824rem] font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-(--bg)">
+            className="min-h-12 rounded-(--radius) text-body-lg font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-(--bg)">
             {c.kind === 'block' ? 'On to the next one' : 'Done'}
           </button>
-          {note && <p className="m-0 text-[0.7059rem] opacity-90" role="status">{note}</p>}
+          {note && <p className="m-0 text-meta opacity-90" role="status">{note}</p>}
         </div>
       </div>
     </div>

@@ -31,18 +31,18 @@ function Row({ sport, row, imperial, onToggle }: { sport: PaceSport; row: PaceRo
       <button type="button" aria-expanded={open} aria-controls={id} disabled={row.value == null} onClick={() => setOpen((v) => !v)}
         className="flex min-h-11 w-full items-center gap-3 text-left">
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] font-medium text-(--text)">{SPORT_NAME[sport]}</span>
-          <span className="block text-[0.6471rem] text-(--text-muted)">
+          <span className="block text-body font-medium text-(--text)">{SPORT_NAME[sport]}</span>
+          <span className="block text-caption text-(--text-muted)">
             {row.value == null ? 'Not set' : row.source ? row.source.label : 'Set in your profile'}
           </span>
         </span>
-        {row.value != null && <span className="font-mono text-[0.9412rem] tabular-nums text-(--text)">{fmtThreshold(sport, row.value, imperial)}</span>}
-        {row.value != null && <ChevronDown className={`size-4 shrink-0 text-(--text-muted) transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />}
+        {row.value != null && <span className="font-mono text-lead tabular-nums text-(--text)">{fmtThreshold(sport, row.value, imperial)}</span>}
+        {row.value != null && <ChevronDown className={`size-5 shrink-0 text-(--text-muted) transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />}
       </button>
-      {row.value == null && <p className="m-0 mt-1 text-[0.7059rem] leading-snug text-(--text-muted)">{EMPTY[sport]}</p>}
+      {row.value == null && <p className="m-0 mt-1 text-meta leading-snug text-(--text-muted)">{EMPTY[sport]}</p>}
       {open && row.value != null && (
         <div id={id} className="mt-1">
-          <ul className="m-0 grid list-none grid-cols-[auto_1fr_auto] gap-x-3 gap-y-1 p-0 text-[0.7059rem]">
+          <ul className="m-0 grid list-none grid-cols-[auto_1fr_auto] gap-x-3 gap-y-1 p-0 text-meta">
             {row.zones.map((z) => (
               <li key={z.zone} className="contents">
                 <span className="font-mono text-(--text-muted)">Z{z.zone}</span>
@@ -51,7 +51,7 @@ function Row({ sport, row, imperial, onToggle }: { sport: PaceSport; row: PaceRo
               </li>
             ))}
           </ul>
-          <label className="mt-2 flex min-h-11 items-center justify-between gap-3 text-[0.7059rem] text-(--text-secondary)">
+          <label className="mt-2 flex min-h-11 items-center justify-between gap-3 text-meta text-(--text-secondary)">
             Suggest updates from my workouts
             <input type="checkbox" className="size-5 accent-(--accent)" checked={row.suggestions} onChange={(e) => onToggle(e.target.checked)} />
           </label>
@@ -91,18 +91,18 @@ export function TrainingPaces({ refreshKey, onChanged }: {
     {v.pending.map((p) => (
       <button key={p.id} type="button" onClick={() => setSheet(p)}
         className="flex items-center gap-3 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-4 py-3 text-left active:opacity-80">
-        <TrendingUp className="size-5 shrink-0 text-(--accent)" aria-hidden />
+        <TrendingUp className="size-6 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.8235rem] font-medium text-(--text)">{SPORT_NAME[p.sport]}: {p.old != null ? `${fmtThreshold(p.sport, p.old, imperial)} → ` : ''}{fmtThreshold(p.sport, p.new, imperial)}</span>
-          <span className="block text-[0.6471rem] text-(--text-secondary)">rabbt suggests an update. Tap to see why.</span>
+          <span className="block text-body font-medium text-(--text)">{SPORT_NAME[p.sport]}: {p.old != null ? `${fmtThreshold(p.sport, p.old, imperial)} → ` : ''}{fmtThreshold(p.sport, p.new, imperial)}</span>
+          <span className="block text-caption text-(--text-secondary)">rabbt suggests an update. Tap to see why.</span>
         </span>
       </button>
     ))}
     {v.undo && (
       <div className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-2" role="status">
-        <p className="m-0 min-w-0 flex-1 text-[0.7059rem] text-(--text-secondary)">{v.undo.summary}</p>
+        <p className="m-0 min-w-0 flex-1 text-meta text-(--text-secondary)">{v.undo.summary}</p>
         <button type="button" disabled={busy} onClick={() => void undo()}
-          className="hit-44 min-h-11 shrink-0 px-2 text-[0.7647rem] font-medium text-(--accent) disabled:opacity-50">Undo</button>
+          className="hit-44 min-h-11 shrink-0 px-2 text-small font-medium text-(--accent) disabled:opacity-50">Undo</button>
       </div>
     )}
     <Card>

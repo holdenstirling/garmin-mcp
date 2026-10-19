@@ -28,16 +28,16 @@ export function EmptyState({ title, body, action, onAction, secondary, onSeconda
       {icon ? (
         <span aria-hidden className="flex size-14 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)">{icon}</span>
       ) : <RabbitNap size={compact ? 44 : 56} mode={mode} />}
-      <p className={cn('font-display leading-tight text-(--brand)', compact ? 'text-[1.0588rem]' : 'text-[1.1765rem]')}>{title}</p>
-      {body && <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-secondary)">{body}</p>}
+      <p className={cn('font-display leading-tight text-(--brand)', compact ? 'text-title-sm' : 'text-title')}>{title}</p>
+      {body && <p className="max-w-xs text-small leading-snug text-(--text-secondary)">{body}</p>}
       {action && onAction && (
         <button type="button" onClick={onAction}
-          className="mt-1 min-h-11 rounded-full bg-(--accent) px-5 text-[0.8235rem] font-semibold text-(--on-fill) active:opacity-80">
+          className="mt-1 min-h-11 rounded-full bg-(--accent) px-5 text-body font-semibold text-(--on-fill) active:opacity-80">
           {action}
         </button>
       )}
       {secondary && onSecondary && (
-        <button type="button" onClick={onSecondary} className="min-h-11 px-3 text-[0.7647rem] font-medium text-(--accent)">
+        <button type="button" onClick={onSecondary} className="min-h-11 px-3 text-small font-medium text-(--accent)">
           {secondary}
         </button>
       )}

@@ -52,17 +52,17 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
     <li className={cn('flex items-stretch', d.today && 'bg-(--accent-subtle)')}>
       <button type="button" onClick={() => onOpen(d.date)} aria-label={summary}
         className="flex w-14 shrink-0 flex-col items-center justify-center py-2 pl-1.5 leading-none active:bg-(--bg-inset)">
-        <span className={cn('text-[0.6471rem] font-semibold uppercase tracking-wide', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
+        <span className={cn('text-caption font-semibold', d.today ? 'text-(--accent)' : 'text-(--text-muted)')}>
           {d.weekday.slice(0, 3)}
         </span>
-        <span className={cn('mt-0.5 font-mono text-[0.8235rem]', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>
+        <span className={cn('mt-0.5 font-mono text-body', d.today ? 'font-semibold text-(--accent)' : 'text-(--text-secondary)')}>
           {Number(d.date.slice(8, 10))}
         </span>
       </button>
       <span className="flex min-w-0 flex-1 flex-col justify-center py-1">
         {work.length === 0 && d.extra.length === 0 && (
           <button type="button" onClick={() => onOpen(d.date)} tabIndex={-1} aria-hidden
-            className="flex min-h-11 items-center pr-3.5 text-left text-[0.7647rem] text-(--text-muted)">
+            className="flex min-h-11 items-center pr-3.5 text-left text-small text-(--text-muted)">
             {d.sessions.length ? 'Rest day' : 'Nothing planned'}
           </button>
         )}
@@ -74,12 +74,12 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
               aria-label={`${s.title}, ${STATE_WORD[s.status]}, ${dayLabel}. Open the workout`}
               className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
               <StateMark st={s.status} />
-              <Icon className="size-3.5 shrink-0 text-(--text-secondary)" aria-hidden />
-              <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
+              <Icon className="size-4 shrink-0 text-(--text-secondary)" aria-hidden />
+              <span className={cn('min-w-0 flex-1 truncate text-small', s.status === 'missed' ? 'text-(--text-muted) line-through' : 'text-(--text)')}>
                 {s.title}
               </span>
-              {line && <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">{line}</span>}
-              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+              {line && <span className="shrink-0 font-mono text-meta text-(--text-muted)">{line}</span>}
+              <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </button>
           )
         })}
@@ -90,12 +90,12 @@ function DayLine({ d, imperial, onOpen, onSheet }: {
               aria-label={`${a.name}, done, ${dayLabel}. ${a.id != null ? 'Open the workout' : 'Open this day'}`}
               className="flex min-h-11 min-w-0 items-center gap-2 pr-3 text-left active:bg-(--bg-inset)">
               <StateMark st="done" />
-              <Icon className="size-3.5 shrink-0 text-(--text-secondary)" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-[0.7647rem] text-(--text)">{a.name}</span>
-              <span className="shrink-0 font-mono text-[0.7059rem] text-(--text-muted)">
+              <Icon className="size-4 shrink-0 text-(--text-secondary)" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-small text-(--text)">{a.name}</span>
+              <span className="shrink-0 font-mono text-meta text-(--text-muted)">
                 {a.distance_km ? fmtDist(a.distance_km, imperial, a.sport) : fmtDuration(a.minutes)}
               </span>
-              <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
             </button>
           )
         })}
@@ -157,10 +157,10 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
     <button type="button" onClick={onOpen} aria-label={label}
       className="flex w-full items-end gap-3 border-b border-(--border) px-3.5 py-3 text-left active:bg-(--bg-inset)">
       <span className="min-w-0 flex-1" aria-hidden>
-        <span className="block font-mono text-[0.9412rem] font-semibold tabular-nums text-(--text)">{head}</span>
-        <span className="block text-[0.6471rem] text-(--text-muted)">{unit}</span>
+        <span className="block font-mono text-lead font-semibold tabular-nums text-(--text)">{head}</span>
+        <span className="block text-caption text-(--text-muted)">{unit}</span>
         {trend && (
-          <span className={cn('mt-1 flex items-center gap-1 text-[0.7059rem] font-medium leading-snug',
+          <span className={cn('mt-1 flex items-center gap-1 text-meta font-medium leading-snug',
             tone === 'behind' ? 'text-(--warning-text)' : tone === 'ahead' ? 'text-(--accent)' : 'text-(--text-secondary)')}>
             {allDone && <RabbitNap size={18} mode="cheer" className="shrink-0" />}{trend}
           </span>
@@ -174,7 +174,7 @@ export function WeekGlance({ week, miles, imperial, onOpen }: {
               style={{ height: `${Math.max(4, (Math.max(x.planned, x.done) / max) * 36)}px` }}>
               <span className="w-full rounded-[1px] bg-(--accent)" style={{ height: `${x.planned || x.done ? Math.min(100, (x.done / Math.max(x.planned, x.done)) * 100) : 0}%` }} />
             </span>
-            <span className={cn('text-[0.6471rem] leading-none', week.days[i]!.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
+            <span className={cn('text-caption leading-none', week.days[i]!.today ? 'font-semibold text-(--accent)' : 'text-(--text-muted)')}>
               {week.days[i]!.weekday.slice(0, 1)}
             </span>
           </span>
@@ -210,7 +210,7 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
     return (
       <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
         {error && !loading ? (
-          <button type="button" onClick={onRetry} className="min-h-11 w-full text-left text-[0.7647rem] text-(--text-muted)">
+          <button type="button" onClick={onRetry} className="min-h-11 w-full text-left text-small text-(--text-muted)">
             Couldn't load this week. <span className="underline">Retry</span>
           </button>
         ) : (
@@ -227,19 +227,19 @@ export function WeekPanel({ week, loading, error, onRetry, imperial, refreshKey,
   return (
     <section aria-label="This week" className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       <div className="flex items-center gap-2 border-b border-(--border) px-3.5 py-2">
-        <h2 className="min-w-0 flex-1 truncate font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+        <h2 className="min-w-0 flex-1 truncate text-caption font-semibold text-(--text-muted)">
           {weekTitle(week)}
         </h2>
       </div>
       <WeekGlance week={week} miles={miles} imperial={imperial} onOpen={onOpenWeek ?? onOpenPlan} />
-      {week.garmin_error && <p className="px-3.5 pt-2 text-[0.7059rem] text-(--warning-text)">{week.garmin_error}</p>}
+      {week.garmin_error && <p className="px-3.5 pt-2 text-meta text-(--warning-text)">{week.garmin_error}</p>}
       <ul className="divide-y divide-(--border)">
         {week.days.map((d) => <DayLine key={d.date} d={d} imperial={imperial} onOpen={onOpenDay} onSheet={(x) => setSheetDay(x.date)} />)}
       </ul>
       {sheet && <PlanDaySheet day={sheet} imperial={imperial} onClose={() => setSheetDay(null)} onAsk={onAskDay} />}
       <button type="button" onClick={onOpenPlan}
-        className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-(--border) text-[0.7647rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-        See full plan <ChevronRight className="size-3.5" aria-hidden />
+        className="flex min-h-11 w-full items-center justify-center gap-1 border-t border-(--border) text-small font-medium text-(--accent) active:bg-(--bg-inset)">
+        See full plan <ChevronRight className="size-4" aria-hidden />
       </button>
     </section>
   )

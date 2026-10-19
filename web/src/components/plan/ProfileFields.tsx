@@ -234,7 +234,7 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
                 <input className={inputCls} value={r.name} maxLength={60} placeholder="Race name" aria-label="Race name"
                   onChange={(e) => set(i, { name: e.target.value })} />
                 <button type="button" aria-label="Remove race" className="hit-44 shrink-0 rounded p-2 text-(--danger)"
-                  onClick={() => onChange(races.filter((_, j) => j !== i))}><Trash2 className="size-4" /></button>
+                  onClick={() => onChange(races.filter((_, j) => j !== i))}><Trash2 className="size-5" /></button>
               </div>
               <div className="flex gap-2">
                 <input className={inputCls} value={r.date} maxLength={10} placeholder="2024-06" aria-label="When"
@@ -247,9 +247,9 @@ function RaceHistoryField({ races, onChange }: { races: PastRace[]; onChange: (v
             </div>
           ))}
           {races.length < MAX_RACES && (
-            <Button variant="default" className="h-9 w-fit gap-1 px-3 text-[0.7647rem]"
+            <Button variant="default" className="h-9 w-fit gap-1 px-3 text-small"
               onClick={() => onChange([...races, { name: '', date: '', distance: '', result: '' }])}>
-              <Plus className="size-4" /> Add a race
+              <Plus className="size-5" /> Add a race
             </Button>
           )}
         </div>
@@ -264,7 +264,7 @@ export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
   const labelId = useId()  // the toggle can show twice on one page (unique ids)
   return (
     <div className="flex items-center justify-between gap-3 px-1">
-      <span id={labelId} className="text-[0.7647rem] text-(--text-secondary)">Units</span>
+      <span id={labelId} className="text-small text-(--text-secondary)">Units</span>
       <div role="radiogroup" aria-labelledby={labelId} className="flex rounded-full border border-(--border) p-0.5">
         {([['imperial', 'Miles', 'mi · lb · ft'], ['metric', 'Kilometers', 'km · kg · m']] as const).map(([v, name, hint]) => {
           const on = (a.units ?? guessUnits()) === v
@@ -272,8 +272,8 @@ export function UnitsToggle({ a, setA }: Pick<Props, 'a' | 'setA'>) {
             <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setA({ units: v })}
               className={cn('hit-44 flex min-h-9 flex-col items-center rounded-full px-3.5 py-1 leading-tight',
                 on ? 'bg-(--accent) text-(--on-fill)' : 'text-(--text-secondary)')}>
-              <span className="text-[0.7647rem] font-semibold">{name}</span>
-              <span className={cn('text-[0.6471rem]', on ? 'opacity-90' : 'text-(--text-muted)')}>{hint}</span>
+              <span className="text-small font-semibold">{name}</span>
+              <span className={cn('text-caption', on ? 'opacity-90' : 'text-(--text-muted)')}>{hint}</span>
             </button>
           )
         })}
@@ -287,10 +287,10 @@ export function GarminFill({ busy, onClick }: { busy: boolean; onClick: () => vo
     <button type="button" onClick={onClick} disabled={busy}
       className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5 text-left disabled:opacity-60">
       {busy
-        ? <RabbitLoader inline size={18} className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)" label="Asking Garmin…" />
+        ? <RabbitLoader inline size={18} className="min-w-0 flex-1 text-body text-(--accent)" label="Asking Garmin…" />
         : <>
-          <Watch className="size-4 shrink-0 text-(--accent)" />
-          <span className="min-w-0 flex-1 text-[0.8235rem] text-(--accent)">Fill in from Garmin</span>
+          <Watch className="size-5 shrink-0 text-(--accent)" />
+          <span className="min-w-0 flex-1 text-body text-(--accent)">Fill in from Garmin</span>
         </>}
     </button>
   )
@@ -319,7 +319,7 @@ export function PaceInput({ seconds, onChange, placeholder }: { seconds: number 
           setBad(s == null)
           if (s != null) onChange(s)
         }} />
-      {bad && <span role="alert" className="text-[0.7059rem] text-(--danger)">Enter minutes and seconds, like {placeholder}.</span>}
+      {bad && <span role="alert" className="text-meta text-(--danger)">Enter minutes and seconds, like {placeholder}.</span>}
     </div>
   )
 }

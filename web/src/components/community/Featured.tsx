@@ -74,23 +74,23 @@ function FeaturedCard({ f, wide, onOpenClub, onChange, onToast }: {
   const action = f.kind === 'listing' ? (
     f.join_url ? (
       <a href={f.join_url} target="_blank" rel="noopener noreferrer"
-        className="hit-44 inline-flex h-11 items-center gap-1.5 rounded-xl bg-(--accent) px-4 text-[0.7647rem] font-semibold text-(--on-fill)">
-        {f.link_only ? `See on ${f.link_only}` : 'Join'} <ExternalLink className="size-3.5" aria-hidden />
+        className="hit-44 inline-flex h-11 items-center gap-1.5 rounded-xl bg-(--accent) px-4 text-small font-semibold text-(--on-fill)">
+        {f.link_only ? `See on ${f.link_only}` : 'Join'} <ExternalLink className="size-4" aria-hidden />
       </a>
     ) : null
   ) : member ? (
     meet ? (
-      <Button variant={meet.my_rsvp === 'going' ? 'default' : 'primary'} className="h-11 gap-1.5 px-4 text-[0.7647rem]" loading={busy}
+      <Button variant={meet.my_rsvp === 'going' ? 'default' : 'primary'} className="h-11 gap-1.5 px-4 text-small" loading={busy}
         onClick={(e) => void rsvp(e.currentTarget)}>
-        <CalendarCheck className="size-4" /> {meet.my_rsvp === 'going' ? "You're going" : 'RSVP'}
+        <CalendarCheck className="size-5" /> {meet.my_rsvp === 'going' ? "You're going" : 'RSVP'}
       </Button>
     ) : (
-      <Button variant="default" className="h-11 px-4 text-[0.7647rem]" onClick={() => f.club_id && onOpenClub?.(f.club_id)}>Open club</Button>
+      <Button variant="default" className="h-11 px-4 text-small" onClick={() => f.club_id && onOpenClub?.(f.club_id)}>Open club</Button>
     )
   ) : f.requested ? (
-    <span className="text-[0.7059rem] text-(--text-muted)">Requested</span>
+    <span className="text-meta text-(--text-muted)">Requested</span>
   ) : f.full ? null : (
-    <Button variant="primary" className="h-11 px-4 text-[0.7647rem]" loading={busy} onClick={(e) => void join(e.currentTarget)}>
+    <Button variant="primary" className="h-11 px-4 text-small" loading={busy} onClick={(e) => void join(e.currentTarget)}>
       {f.privacy === 'approval' ? 'Ask to join' : 'Join'}
     </Button>
   )
@@ -100,35 +100,35 @@ function FeaturedCard({ f, wide, onOpenClub, onChange, onToast }: {
       className={cn('flex shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) p-3.5',
         wide ? 'w-full' : 'w-[85%] max-w-sm')}>
       <div className="flex items-start gap-2.5">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-[1.4118rem]" aria-hidden>
-          {f.kind === 'club' ? (f.emoji || '🐇') : <Users className="size-5 text-(--accent)" />}
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--bg-surface) text-title-lg" aria-hidden>
+          {f.kind === 'club' ? (f.emoji || '🐇') : <Users className="size-6 text-(--accent)" />}
         </span>
         <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center gap-1 rounded-full bg-(--accent) px-2 py-0.5 text-[0.6471rem] font-semibold uppercase tracking-wider text-(--on-fill)">
-            <Megaphone className="size-3" aria-hidden /> Featured
+          <span className="inline-flex items-center gap-1 rounded-full bg-(--accent) px-2 py-0.5 text-caption font-semibold text-(--on-fill)">
+            <Megaphone className="size-3.5" aria-hidden /> Featured
           </span>
           <button type="button" disabled={f.kind !== 'club' || !onOpenClub} onClick={() => f.club_id && onOpenClub?.(f.club_id)}
             className="mt-1 block w-full text-left disabled:cursor-default">
-            <h3 className="line-clamp-2 text-[0.9412rem] font-semibold leading-snug text-(--text)">{f.name}</h3>
+            <h3 className="line-clamp-2 text-lead font-semibold leading-snug text-(--text)">{f.name}</h3>
           </button>
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[0.7059rem] text-(--text-secondary)">
+          <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-(--text-secondary)">
             {sport && <span>{sport}</span>}
-            {place && <span className="inline-flex items-center gap-0.5">· {f.online ? <Globe className="size-3" aria-hidden /> : <MapPin className="size-3" aria-hidden />}{place}</span>}
+            {place && <span className="inline-flex items-center gap-0.5">· {f.online ? <Globe className="size-3.5" aria-hidden /> : <MapPin className="size-3.5" aria-hidden />}{place}</span>}
             {f.members != null && <span>· {f.members} member{f.members === 1 ? '' : 's'}</span>}
           </p>
         </div>
       </div>
-      {f.tagline && <p className="text-[0.8235rem] leading-snug text-(--text)">{f.tagline}</p>}
+      {f.tagline && <p className="text-body leading-snug text-(--text)">{f.tagline}</p>}
       {when && (
-        <p className="flex items-center gap-1.5 text-[0.7647rem] font-medium text-(--text)">
-          <Clock className="size-3.5 text-(--text-muted)" aria-hidden />
+        <p className="flex items-center gap-1.5 text-small font-medium text-(--text)">
+          <Clock className="size-4 text-(--text-muted)" aria-hidden />
           <span className="truncate">Next: {when}{meet ? ` · ${meet.title}` : ''}{meet?.where ? ` · ${meet.where}` : ''}</span>
           {meet && meet.going > 0 && <span className="shrink-0 text-(--text-muted)">· {meet.going} going</span>}
         </p>
       )}
       <div className="flex items-center gap-2">
         {action}
-        {msg && <span className="min-w-0 flex-1 truncate text-[0.7059rem] text-(--accent)" role="status">{msg}</span>}
+        {msg && <span className="min-w-0 flex-1 truncate text-meta text-(--accent)" role="status">{msg}</span>}
       </div>
     </article>
   )
@@ -164,26 +164,26 @@ export function FeatureSwitch({ clubId, listingId }: { clubId?: string; listingI
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   return (
     <Group label="App owner" footer={s.featured ? undefined : `${s.slots_left ?? 0} of 3 featured spots free.`}>
-      <Row icon={<Megaphone className="size-4 text-(--accent)" />} title="Feature this club"
+      <Row icon={<Megaphone className="size-5 text-(--accent)" />} title="Feature this club"
         subtitle="Top of Community and Explore, labelled Featured"
         trailing={<Switch label="Feature this club" checked={!!s.featured} disabled={busy} onChange={(v) => void save(v)} />} />
       {s.featured && (
         <div className="flex flex-col gap-2 px-3 py-2.5">
-          <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Tagline (optional)
+          <label className="flex flex-col gap-1 text-caption text-(--text-muted)">Tagline (optional)
             <input className={inputCls} maxLength={80} value={tagline} placeholder="Saturday long runs, all paces"
               onChange={(e) => setTagline(e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 text-[0.6471rem] text-(--text-muted)">Feature until (optional)
+          <label className="flex flex-col gap-1 text-caption text-(--text-muted)">Feature until (optional)
             <input type="date" className={inputCls} min={tomorrow} value={until} onChange={(e) => setUntil(e.target.value)} />
           </label>
-          <label className="flex min-h-11 items-center gap-2 text-[0.7647rem] text-(--text-secondary)">
+          <label className="flex min-h-11 items-center gap-2 text-small text-(--text-secondary)">
             <input type="checkbox" className="size-5" checked={online} onChange={(e) => setOnline(e.target.checked)} />
             Online / virtual club (show to everyone)
           </label>
-          <Button variant="primary" className="h-11 text-[0.7647rem]" loading={busy} onClick={() => void save(true)}>Save</Button>
+          <Button variant="primary" className="h-11 text-small" loading={busy} onClick={() => void save(true)}>Save</Button>
         </div>
       )}
-      {msg && <p className={cn('px-3 pb-2 text-[0.7059rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('px-3 pb-2 text-meta', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
     </Group>
   )
 }

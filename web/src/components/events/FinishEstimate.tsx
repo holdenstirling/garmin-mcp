@@ -34,9 +34,9 @@ export function FinishChip({ eventId, className }: { eventId: string; className?
   const { res } = useEventPrediction(eventId)
   if (!hasEstimate(res)) return null
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.7059rem] text-(--text-secondary)', className)}
+    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full bg-(--bg-elevated) px-2 py-0.5 text-meta text-(--text-secondary)', className)}
       title={`${CONF_LABEL[res.confidence]}: ${res.basis[0] ?? ''}`}>
-      <Timer className="size-3 shrink-0 text-(--accent)" aria-hidden />
+      <Timer className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
       <span className="sr-only">Estimated finish</span>
       <span aria-hidden>Est.</span> <span className="whitespace-nowrap font-mono font-medium text-(--text)">{res.text}</span>
     </span>
@@ -48,13 +48,13 @@ export function FinishEstimate({ eventId, athleteId, className }: { eventId: str
   const { res, error, retry } = useEventPrediction(eventId, athleteId)
   return (
     <section className={cn('flex flex-col gap-2', className)} aria-labelledby={`fe-${eventId}`}>
-      <h2 id={`fe-${eventId}`} className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+      <h2 id={`fe-${eventId}`} className="px-1 text-caption font-semibold text-(--text-muted)">
         Your estimated finish
       </h2>
       {error ? <ErrorState compact message={error} onRetry={retry} />
         : !res ? <RabbitLoader inline className="px-1 py-2" label="Timing your race" cycle={['Timing your race…', 'Finding your best recent efforts…', 'Adding up the climbing…']} />
           : hasEstimate(res) ? <Detail p={res} />
-            : <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">{res.reason}</p>}
+            : <p className="px-1 text-small leading-snug text-(--text-muted)">{res.reason}</p>}
     </section>
   )
 }
@@ -66,8 +66,8 @@ function Detail({ p }: { p: Prediction }) {
     <Card className="flex flex-col gap-3 p-3.5">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[1.4118rem] font-semibold leading-none text-(--text)">{p.text}</p>
-          <p className="mt-1 text-[0.7059rem] text-(--text-muted)">
+          <p className="font-mono text-title-lg font-semibold leading-none text-(--text)">{p.text}</p>
+          <p className="mt-1 text-meta text-(--text-muted)">
             Most likely ~{fmtClock(e.mid_s)} · {CONF_LABEL[p.confidence]}
           </p>
         </div>
@@ -81,20 +81,20 @@ function Detail({ p }: { p: Prediction }) {
         <dl className="grid grid-cols-3 gap-1 text-center min-[360px]:grid-cols-5">
           {p.splits!.map((s) => (
             <div key={s.leg} className="min-w-0 rounded-lg bg-(--bg-elevated) px-1 py-1.5">
-              <dt className="text-[0.6471rem] text-(--text-muted)">{LEG_LABEL[s.leg]}</dt>
-              <dd className="font-mono text-[0.7059rem] font-medium text-(--text)">{fmtClock(s.mid_s)}</dd>
+              <dt className="text-caption text-(--text-muted)">{LEG_LABEL[s.leg]}</dt>
+              <dd className="font-mono text-meta font-medium text-(--text)">{fmtClock(s.mid_s)}</dd>
             </div>
           ))}
         </dl>
       )}
       {p.cutoff && <CutoffLine c={p.cutoff} />}
       {p.projection && (
-        <p className="flex items-start gap-1.5 text-[0.7647rem] leading-snug text-(--text)">
-          <TrendingUp className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+        <p className="flex items-start gap-1.5 text-small leading-snug text-(--text)">
+          <TrendingUp className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
           <span><span className="font-medium">Projection: ~{fmtClock(p.projection.mid_s)}.</span> {p.projection.note}</span>
         </p>
       )}
-      <ul className="flex flex-col gap-0.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
+      <ul className="flex flex-col gap-0.5 text-meta leading-snug text-(--text-secondary)">
         {p.basis.map((b) => <li key={b}>{b}</li>)}
       </ul>
     </Card>
@@ -124,9 +124,9 @@ function CutoffLine({ c }: { c: NonNullable<Prediction['cutoff']> }) {
     : c.status === 'tight' ? `${fmtGap(c.margin_s)} inside the ${hours} cutoff; a rough day could push it close`
       : `About ${fmtGap(c.margin_s)} over the ${hours} cutoff right now: pacing and hiking practice matter most`
   return (
-    <p className={cn('flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.7647rem] leading-snug',
+    <p className={cn('flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-small leading-snug',
       c.status === 'safe' ? 'bg-(--success-subtle) text-(--success)' : 'bg-(--warning-subtle) text-(--warning-text)')}>
-      <Flag className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      <Flag className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>{text}</span>
     </p>
   )

@@ -34,7 +34,7 @@ export function RabbitMarkdown({ text, foldable = false, className }: {
       </div>
       {foldable && text.length > FOLD_AT && (
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-          className="hit-44 mt-1 text-[0.7647rem] font-medium text-(--accent)">
+          className="hit-44 mt-1 text-small font-medium text-(--accent)">
           {open ? 'Show less' : 'Show more'}
         </button>
       )}

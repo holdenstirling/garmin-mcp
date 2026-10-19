@@ -62,7 +62,7 @@ export function DayDot({ day }: { day: WeekDay }) {
   return (
     <span className="flex flex-col items-center gap-1" role="img"
       aria-label={`${day.weekday}${day.today ? ' (today)' : ''}: ${DAY_STATE_LABEL[st]}`}>
-      <span aria-hidden className={cn('text-[0.6471rem] leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
+      <span aria-hidden className={cn('text-caption leading-none', day.today ? 'font-semibold text-(--accent)' : 'text-muted-foreground')}>
         {day.weekday.charAt(0)}
       </span>
       <span className={cn('flex size-[18px] items-center justify-center rounded-full border text-(--on-fill)',
@@ -72,7 +72,7 @@ export function DayDot({ day }: { day: WeekDay }) {
           : st === 'missed' ? 'border-(--danger)/50 bg-(--danger)/10'
           : st === 'planned' ? 'border-(--border-strong) bg-transparent'
           : 'border-transparent bg-(--bg-elevated)')}>
-        {(st === 'done' || st === 'extra') && <Check className="size-3" strokeWidth={3} />}
+        {(st === 'done' || st === 'extra') && <Check className="size-3.5" strokeWidth={3} />}
       </span>
     </span>
   )
@@ -104,11 +104,11 @@ export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = true 
   return (
     <div className={cn('flex gap-3 px-2 py-1.5', list.length <= 1 && 'items-center', day.today && 'bg-(--accent-subtle)')}>
       <span className={cn('w-9 shrink-0 text-center leading-tight', list.length > 1 && 'pt-1')}>
-        <span className={cn('block text-[0.6471rem] font-semibold uppercase', day.today ? 'text-(--accent)' : 'text-muted-foreground')}>{day.weekday}</span>
-        <span className="block text-[0.7647rem] text-foreground/80">{date.getDate()}</span>
+        <span className={cn('block text-caption font-semibold uppercase', day.today ? 'text-(--accent)' : 'text-muted-foreground')}>{day.weekday}</span>
+        <span className="block text-small text-foreground/80">{date.getDate()}</span>
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        {!list.length && <span className="py-1 text-[0.7647rem] text-muted-foreground">Nothing planned</span>}
+        {!list.length && <span className="py-1 text-small text-muted-foreground">Nothing planned</span>}
         {list.map((it) => {
           const Icon = SPORT_ICON[it.sport]
           const id = `${day.date}:${it.key}`
@@ -123,25 +123,25 @@ export function DayRow({ day, openKey, onToggle, onAsk, onOpen, imperial = true 
                 aria-label={sheet ? `${it.title}${it.status === 'missed' ? ', missed' : it.status === 'done' || it.status === 'extra' ? ', done' : ''}: see everything` : undefined}
                 onClick={() => sheet ? onOpen!(day) : onToggle(expanded ? null : id)}
                 className={cn('flex w-full items-center gap-2 py-1 text-left disabled:cursor-default', sheet && 'min-h-11 active:opacity-70')}>
-                <Icon className={cn('size-3.5 shrink-0', it.status === 'done' || it.status === 'extra' ? 'text-(--accent)' : 'text-muted-foreground')} />
-                <span className={cn('min-w-0 flex-1 truncate text-[0.7647rem]', it.status === 'rest' ? 'text-muted-foreground' : 'text-foreground')}>
+                <Icon className={cn('size-4 shrink-0', it.status === 'done' || it.status === 'extra' ? 'text-(--accent)' : 'text-muted-foreground')} />
+                <span className={cn('min-w-0 flex-1 truncate text-small', it.status === 'rest' ? 'text-muted-foreground' : 'text-foreground')}>
                   {it.title}{dur && <span className="text-muted-foreground"> · {dur}</span>}
                 </span>
-                <span className={cn('shrink-0 text-[0.6471rem]',
+                <span className={cn('shrink-0 text-caption',
                   it.status === 'done' || it.status === 'extra' ? 'text-(--accent)' : it.status === 'missed' ? 'text-(--danger)' : 'text-muted-foreground')}>
                   {it.status === 'done' || it.status === 'extra' ? `✓ ${fmtMinutes(it.doneMinutes ?? 0)}` : it.status === 'missed' ? 'Missed' : ''}
                 </span>
-                {sheet && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+                {sheet && <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
               </button>
               {canOpen && !sheet && (
                 <span className={cn('session-detail', expanded && 'session-detail--open')}>
                   <span className="min-h-0 overflow-hidden">
                     <span className="flex flex-col gap-2 pb-2 pl-5.5">
-                      {it.detail && <span className="text-[0.7059rem] leading-snug text-muted-foreground">{it.detail}</span>}
+                      {it.detail && <span className="text-meta leading-snug text-muted-foreground">{it.detail}</span>}
                       <button type="button" tabIndex={expanded ? 0 : -1}
                         onClick={() => onAsk(day, it.session)}
-                        className="hit-44 inline-flex w-fit items-center gap-1.5 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.6471rem] font-medium text-(--accent) active:opacity-70">
-                        <MessageCircle className="size-3.5" /> Ask rabbt
+                        className="hit-44 inline-flex w-fit items-center gap-1.5 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-caption font-medium text-(--accent) active:opacity-70">
+                        <MessageCircle className="size-4" /> Ask rabbt
                       </button>
                     </span>
                   </span>
@@ -226,17 +226,17 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
           className="flex w-full items-center gap-2 px-3 pb-2 pt-2 text-left">
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
-              <span className="truncate text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              <span className="truncate text-caption font-semibold text-muted-foreground">
                 {where}{week ? ` · ${fmtRange(week.start, week.end)}` : ''}
               </span>
-              {reading && <span className="ml-auto shrink-0 text-[0.6471rem] text-muted-foreground">Reading your plan…</span>}
+              {reading && <span className="ml-auto shrink-0 text-caption text-muted-foreground">Reading your plan…</span>}
             </span>
             {week ? (
               <span className="mt-1.5 flex justify-between px-1">
                 {week.days.map((d) => <DayDot key={d.date} day={d} />)}
               </span>
             ) : failed ? (
-              <span className="mt-1.5 flex h-[30px] items-center px-1 text-[0.7059rem] text-muted-foreground">
+              <span className="mt-1.5 flex h-[30px] items-center px-1 text-meta text-muted-foreground">
                 Couldn't load this week.{onRetry ? ' Tap to retry' : ''}
               </span>
             ) : (
@@ -258,19 +258,19 @@ export function PlanPins({ goal, week, loading, error = false, onRetry, onOpenPl
             <button onClick={() => { setOpen(false); onOpenPlan() }}
               className="flex w-full items-center gap-3 border-b border-(--border) px-3 py-2.5 text-left active:bg-(--bg-inset)">
               <span className="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-(--accent-subtle) text-(--accent)">
-                <MapIcon className="size-4" />
+                <MapIcon className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.8235rem] font-medium text-foreground">{hasPlan ? 'Your plan' : 'Add your plan'}</span>
-                <span className="block truncate text-[0.6471rem] text-muted-foreground">
+                <span className="block text-body font-medium text-foreground">{hasPlan ? 'Your plan' : 'Add your plan'}</span>
+                <span className="block truncate text-caption text-muted-foreground">
                   {hasPlan ? (week?.focus?.replace(/\s*\([^)]*\)\s*$/, '') || goal.title) : 'Upload it or tell rabbt about it'}
                 </span>
               </span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </button>
-            {week?.garmin_error && <p className="px-2 py-1 text-[0.6471rem] text-(--warning-text)">{week.garmin_error}</p>}
-            {week?.plan_status === 'error' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Couldn't read this week from your plan. Showing what you've done.</p>}
-            {week?.plan_status === 'over_budget' && <p className="px-2 py-1 text-[0.6471rem] text-muted-foreground">Planned workouts show up tomorrow (today's limit is used up).</p>}
+            {week?.garmin_error && <p className="px-2 py-1 text-caption text-(--warning-text)">{week.garmin_error}</p>}
+            {week?.plan_status === 'error' && <p className="px-2 py-1 text-caption text-muted-foreground">Couldn't read this week from your plan. Showing what you've done.</p>}
+            {week?.plan_status === 'over_budget' && <p className="px-2 py-1 text-caption text-muted-foreground">Planned workouts show up tomorrow (today's limit is used up).</p>}
             <div className="divide-y divide-(--border)">
               {week?.days.map((d) => <DayRow key={d.date} day={d} imperial={imperial} openKey={openKey} onToggle={setOpenKey}
                 onAsk={(day, session) => { setOpen(false); onAskDay(day, session) }} />)}

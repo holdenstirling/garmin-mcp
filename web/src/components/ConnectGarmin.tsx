@@ -140,29 +140,29 @@ export function ConnectGarmin({ cooldownUntil, onConnected, onStep }: {
   if (job?.state === 'pending') {
     return (
       <div role="status" className="flex flex-col items-center gap-1 py-2 text-center">
-        <p className="text-[0.8235rem] font-medium text-(--text)">Signing in to Garmin…</p>
-        <p className="text-[0.7059rem] text-(--text-muted)">This can take up to a minute. You can keep this open.</p>
+        <p className="text-body font-medium text-(--text)">Signing in to Garmin…</p>
+        <p className="text-meta text-(--text-muted)">This can take up to a minute. You can keep this open.</p>
       </div>
     )
   }
 
-  const label = 'text-[0.7059rem] font-medium text-(--text-secondary)'
+  const label = 'text-meta font-medium text-(--text-secondary)'
   if (job?.state === 'needs_mfa') {
     return (
       <form onSubmit={submitCode} className="flex flex-col gap-2.5">
-        <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-3 text-[0.7647rem] leading-snug text-(--text-secondary)">
-          <Mail className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
+        <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-3 text-small leading-snug text-(--text-secondary)">
+          <Mail className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
           Garmin sent a verification code to your email or phone. Enter it here to finish signing in.
         </p>
         <label className="flex flex-col gap-1.5">
           <span className={label}>Verification code</span>
           <Input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8}
             placeholder="123456" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            className="h-12 text-center text-lg tracking-[0.4em]" autoFocus aria-invalid={!!message || undefined} />
+            className="h-12 text-center text-title-sm tracking-[0.4em]" autoFocus aria-invalid={!!message || undefined} />
         </label>
-        {message && <p role="alert" className="text-[0.7059rem] text-(--danger)">{message}</p>}
+        {message && <p role="alert" className="text-meta text-(--danger)">{message}</p>}
         {job.mfa_tries_left != null && job.mfa_tries_left < 3 && (
-          <p className="text-[0.7059rem] text-(--text-muted)">{job.mfa_tries_left} {job.mfa_tries_left === 1 ? 'try' : 'tries'} left</p>
+          <p className="text-meta text-(--text-muted)">{job.mfa_tries_left} {job.mfa_tries_left === 1 ? 'try' : 'tries'} left</p>
         )}
         <Button type="submit" variant="primary" className="h-12" loading={submitting} disabled={code.length < 4}>Verify and connect</Button>
       </form>
@@ -171,35 +171,35 @@ export function ConnectGarmin({ cooldownUntil, onConnected, onStep }: {
 
   return (
     <form onSubmit={submitLogin} className="flex flex-col gap-2.5">
-      <p className="flex items-center gap-1.5 text-[0.7647rem] font-semibold text-(--text)">
-        <Lock className="size-4 text-(--accent)" aria-hidden />Sign in with your Garmin account
+      <p className="flex items-center gap-1.5 text-small font-semibold text-(--text)">
+        <Lock className="size-5 text-(--accent)" aria-hidden />Sign in with your Garmin account
       </p>
       <label className="flex flex-col gap-1.5">
         <span className={label}>Email</span>
         <Input type="email" autoComplete="username" inputMode="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-          placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 text-base" required autoFocus />
+          placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-12 text-lead" required autoFocus />
       </label>
       <label className="flex flex-col gap-1.5">
         <span className={label}>Password</span>
         <span className="relative block">
           <Input type={show ? 'text' : 'password'} autoComplete="current-password" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-            placeholder="Garmin password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 pr-12 text-base" required />
+            placeholder="Garmin password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 pr-12 text-lead" required />
           <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}
             className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-(--text-muted)">
-            {show ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            {show ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
           </button>
         </span>
       </label>
-      {message && <p role="alert" className={`text-[0.7059rem] leading-snug ${coolingDown ? 'text-(--warning-text)' : 'text-(--danger)'}`}>{message}</p>}
+      {message && <p role="alert" className={`text-meta leading-snug ${coolingDown ? 'text-(--warning-text)' : 'text-(--danger)'}`}>{message}</p>}
       {coolingDown && !message && (
-        <p className="text-[0.7059rem] text-(--warning-text)">You can try again at {fmtTime(until!)}.</p>
+        <p className="text-meta text-(--warning-text)">You can try again at {fmtTime(until!)}.</p>
       )}
       <Button type="submit" variant="primary" className="h-12" loading={submitting}
         disabled={coolingDown || !email || !password}>
         {coolingDown ? `Try again at ${fmtTime(until!)}` : 'Sign in and connect'}
       </Button>
-      <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
-        <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+      <p className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-meta leading-snug text-(--text-secondary)">
+        <Lock className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
         rabbt passes your password to Garmin once to sign in and never stores it. rabbt keeps only Garmin’s sign-in token, encrypted, and you can disconnect anytime.
       </p>
     </form>

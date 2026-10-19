@@ -22,7 +22,7 @@ function PackRing({ done, total }: { done: number; total: number }) {
           className={cn('rb-ring', pct >= 1 ? 'stroke-(--brand)' : 'stroke-(--accent)')}
           strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ '--rb-ring': c } as React.CSSProperties} />
       </svg>
-      <span aria-hidden className="font-mono text-[0.6471rem] font-semibold text-(--text)">{done}/{total}</span>
+      <span aria-hidden className="font-mono text-caption font-semibold text-(--text)">{done}/{total}</span>
     </span>
   )
 }
@@ -59,39 +59,39 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
           className="mx-4 mt-3 shrink-0 rounded-xl border border-(--brand)/30 bg-(--bg-surface) px-3 pb-3 pt-2.5 shadow-sm">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-(--brand) text-(--on-fill)">
-              <Flag className="size-4" aria-hidden />
+              <Flag className="size-5" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+              <span className="block text-caption font-semibold text-(--text-muted)">
                 {card.race_day ? 'Race day' : 'Race week'}
               </span>
-              <span className="block truncate text-[0.9412rem] font-semibold leading-tight text-(--text)">{card.event.name}</span>
-              <span className="block font-display text-[1.0588rem] leading-tight text-(--brand)">{countdown(card.days)}</span>
+              <span className="block truncate text-lead font-semibold leading-tight text-(--text)">{card.event.name}</span>
+              <span className="block font-display text-title-sm leading-tight text-(--brand)">{countdown(card.days)}</span>
             </span>
             {card.packing.total > 0 && <PackRing done={card.packing.done} total={card.packing.total} />}
           </div>
-          <p className="mt-1.5 text-[0.7647rem] leading-snug text-(--text-secondary)">{card.taper.text}</p>
+          <p className="mt-1.5 text-small leading-snug text-(--text-secondary)">{card.taper.text}</p>
           {(card.today.length > 0 || card.readiness || card.tracking) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {card.today.slice(0, 2).map((s) => (
-                <span key={`${s.id}-${s.title}`} className="rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] text-(--text)">
+                <span key={`${s.id}-${s.title}`} className="rounded-full border border-(--border) px-2 py-0.5 text-meta text-(--text)">
                   Today: {s.title}{s.minutes ? ` · ${fmtDuration(s.minutes)}` : ''}
                 </span>
               ))}
               {card.readiness && (
-                <span className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-2 py-0.5 text-[0.7059rem] font-medium text-(--accent)">
+                <span className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-2 py-0.5 text-meta font-medium text-(--accent)">
                   Race grade {card.readiness.grade}
                 </span>
               )}
               {card.tracking && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-(--border) px-2 py-0.5 text-[0.7059rem] text-(--text-secondary)">
-                  <Radio className="size-3" aria-hidden /> Friends can follow
+                <span className="inline-flex items-center gap-1 rounded-full border border-(--border) px-2 py-0.5 text-meta text-(--text-secondary)">
+                  <Radio className="size-3.5" aria-hidden /> Friends can follow
                 </span>
               )}
             </div>
           )}
           <div className="mt-2.5">
-            <Button variant="primary" className="h-11 px-4 text-[0.8235rem]" onClick={() => onOpen(card.event.id)}>
+            <Button variant="primary" className="h-11 px-4 text-body" onClick={() => onOpen(card.event.id)}>
               {card.race_day ? 'Open race day' : 'Race-week plan'}
             </Button>
           </div>
@@ -99,21 +99,21 @@ export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; 
       )}
       {friends.length > 0 && (
         <section aria-label="Friends racing today" className="mx-4 mt-2 shrink-0 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2">
-          <p className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Friends racing today</p>
+          <p className="text-caption font-semibold text-(--text-muted)">Friends racing today</p>
           <ul className="mt-1 flex flex-col gap-1.5">
             {friends.slice(0, 4).map((f) => (
               <li key={`${f.user?.id}-${f.event.id}`} className="flex items-center gap-2">
                 <Avatar name={f.user?.name ?? 'Friend'} picture={f.user?.picture ?? ''} photo={f.user ? friendPhotoUrl(f.user) : null} size={28} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.8235rem] text-(--text)">{f.user?.name ?? 'Friend'} · {f.event.name}</span>
-                  <span className={cn('block truncate text-[0.7059rem]', f.state === 'finished' ? 'font-medium text-(--accent)' : 'text-(--text-secondary)')}>
+                  <span className="block truncate text-body text-(--text)">{f.user?.name ?? 'Friend'} · {f.event.name}</span>
+                  <span className={cn('block truncate text-meta', f.state === 'finished' ? 'font-medium text-(--accent)' : 'text-(--text-secondary)')}>
                     {statusLine(f, f.state === 'racing' && f.elapsed_s != null ? f.elapsed_s + since : null)}
                   </span>
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-[0.6471rem] text-(--text-muted)">Live times when their watch syncs. No live location.</p>
+          <p className="mt-1 text-caption text-(--text-muted)">Live times when their watch syncs. No live location.</p>
         </section>
       )}
     </>

@@ -11,8 +11,8 @@ import { predictFinish, type Estimate, type Finish } from '@/lib/explore2'
 /** One compact line for cards. */
 export function EstimateLine({ e, className }: { e: Estimate; className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1 text-[0.7059rem] text-(--text-secondary)', className)}>
-      <Timer className="size-3.5 shrink-0 text-(--accent)" aria-hidden />
+    <span className={cn('inline-flex items-center gap-1 text-meta text-(--text-secondary)', className)}>
+      <Timer className="size-4 shrink-0 text-(--accent)" aria-hidden />
       <span>Your estimate: <span className="font-mono font-medium text-(--text)">{e.text}</span>
         {e.label === 'rough guide' && <span className="text-(--text-muted)"> · rough guide</span>}</span>
     </span>
@@ -39,8 +39,8 @@ export function FinishChip({ type, distanceKm, date, climbM, elevationM }: {
   const tip = `${conf}.${f.basis.length ? ` Based on: ${f.basis.join('; ')}.` : ''} Pacing, weather and the day itself move it either way.`
   return (
     <div className="flex items-center gap-2 rounded-xl bg-(--bg-elevated) px-3 py-2">
-      <Timer className="size-4 shrink-0 text-(--accent)" aria-hidden />
-      <span className="min-w-0 flex-1 text-[0.7647rem] text-(--text-secondary)">
+      <Timer className="size-5 shrink-0 text-(--accent)" aria-hidden />
+      <span className="min-w-0 flex-1 text-small text-(--text-secondary)">
         Your estimated finish <span className="font-mono font-medium text-(--text)">{dur(f.mid_s)}</span>
         <span className="text-(--text-muted)"> ({dur(f.low_s)}–{dur(f.high_s)})</span>
       </span>

@@ -51,38 +51,38 @@ export function SoonSheet({ app, onClose, onChanged }: {
         <SoonTile app={cur.id} size={56} />
       </div>
       <div className="text-center">
-        <p className="font-display text-[1.2941rem] leading-tight text-(--brand)">rabbt + {cur.name}</p>
-        <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-[0.7059rem] font-medium text-(--text-secondary)">
-          <Clock className="size-3" aria-hidden /> Coming soon
+        <p className="font-display text-title-md leading-tight text-(--brand)">rabbt + {cur.name}</p>
+        <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-(--bg-inset) px-2.5 py-0.5 text-meta font-medium text-(--text-secondary)">
+          <Clock className="size-3.5" aria-hidden /> Coming soon
         </p>
       </div>
       <section className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-        <p className="text-[0.8235rem] font-semibold text-(--text)">What rabbt would use</p>
+        <p className="text-body font-semibold text-(--text)">What rabbt would use</p>
         <Bullets items={cur.would_use} tone="yes" />
       </section>
       <section className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-        <p className="text-[0.8235rem] font-semibold text-(--text)">Why it’s not here yet</p>
-        <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">{cur.why}</p>
-        <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <p className="text-body font-semibold text-(--text)">Why it’s not here yet</p>
+        <p className="text-small leading-snug text-(--text-secondary)">{cur.why}</p>
+        <p className="text-small leading-snug text-(--text-secondary)">
           Tell us you want it: the more people ask, the sooner we build it. Workouts would still count once, even if Garmin records them too.
         </p>
       </section>
       <div aria-live="polite" className="flex flex-col gap-2">
         {cur.wanted ? (
-          <p className="flex items-center justify-center gap-2 text-[0.8235rem] font-medium text-(--accent)">
-            <Check className="size-4" aria-hidden /> You asked for {cur.name}. We’ll let you know when it’s ready.
+          <p className="flex items-center justify-center gap-2 text-body font-medium text-(--accent)">
+            <Check className="size-5" aria-hidden /> You asked for {cur.name}. We’ll let you know when it’s ready.
           </p>
         ) : null}
         {cur.wanted_by != null && (
-          <p className="text-center text-[0.7059rem] text-(--text-muted)">
+          <p className="text-center text-meta text-(--text-muted)">
             {cur.wanted_by === 1 ? '1 person wants this' : `${cur.wanted_by} people want this`} (only you see this count)
           </p>
         )}
-        {err && <p role="alert" className="text-center text-[0.7647rem] text-(--danger)">{err}</p>}
+        {err && <p role="alert" className="text-center text-small text-(--danger)">{err}</p>}
       </div>
-      <Button variant={cur.wanted ? 'default' : 'primary'} className="h-11 w-full gap-1.5 text-[0.8235rem]" loading={busy}
+      <Button variant={cur.wanted ? 'default' : 'primary'} className="h-11 w-full gap-1.5 text-body" loading={busy}
         aria-pressed={cur.wanted} onClick={() => void toggle()}>
-        {cur.wanted ? 'I don’t need this anymore' : <><BellRing className="size-4" aria-hidden />I want this</>}
+        {cur.wanted ? 'I don’t need this anymore' : <><BellRing className="size-5" aria-hidden />I want this</>}
       </Button>
     </Sheet>
   )

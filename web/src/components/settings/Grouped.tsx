@@ -9,10 +9,10 @@ export function Group({ label, footer, children }: {
   return (
     <section className="flex flex-col gap-1.5">
       {label && (
-        <h2 className="px-4 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">{label}</h2>
+        <h2 className="px-4 text-caption font-semibold text-(--text-muted)">{label}</h2>
       )}
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">{children}</div>
-      {footer && <div className="px-4 text-[0.7647rem] leading-snug text-(--text-muted)">{footer}</div>}
+      {footer && <div className="px-4 text-small leading-snug text-(--text-muted)">{footer}</div>}
     </section>
   )
 }
@@ -37,10 +37,10 @@ export function Row({ icon, title, subtitle, trailing, onClick, danger, disabled
     <>
       {icon}
       <span className={cn('min-w-0 flex-1', center && 'text-center')}>
-        <span className={cn('block text-[0.9412rem] leading-snug', danger ? 'text-(--danger)' : 'text-(--text)')}>{title}</span>
-        {subtitle && <span className="mt-0.5 block text-[0.7647rem] leading-snug text-(--text-muted)">{subtitle}</span>}
+        <span className={cn('block text-lead leading-snug', danger ? 'text-(--danger)' : 'text-(--text)')}>{title}</span>
+        {subtitle && <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{subtitle}</span>}
       </span>
-      {trailing ?? (onClick && !center && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" />)}
+      {trailing ?? (onClick && !center && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" />)}
     </>
   )
   const cls = 'settings-row flex w-full items-center gap-3 px-4 py-3 text-left'

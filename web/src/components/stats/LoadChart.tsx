@@ -22,7 +22,7 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
   }, [base, attempt, track])
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h2>
+      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Fitness & form{l?.has_plan ? ' · forecast to race day' : ''}</h2>
       {error && !l ? <ErrorState compact message="Couldn't load your fitness chart." onRetry={() => setAttempt((n) => n + 1)} /> : (
       <Card className="p-4">
         {l && <Legend />}
@@ -34,8 +34,8 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
               <Stat label="Fatigue" term="fatigue" value={l.now?.atl} color="var(--chart-fatigue)" />
               <Stat label="Form" term="form" value={l.now?.tsb} color="var(--text)" signed />
             </div>
-            <p className="mt-3 text-[0.7647rem] leading-snug text-(--text-secondary)">{l.advice}</p>
-            <p className="mt-1 text-[0.6471rem] text-(--text-muted)">Dashed lines: what your plan adds.</p>
+            <p className="mt-3 text-small leading-snug text-(--text-secondary)">{l.advice}</p>
+            <p className="mt-1 text-caption text-(--text-muted)">Dashed lines: what your plan adds.</p>
           </>
         )}
       </Card>
@@ -46,7 +46,7 @@ export function LoadCard({ base = '/api' }: { base?: string }) {
 
 function Legend() {
   const item = (swatch: React.ReactNode, label: string) => (
-    <span className="flex items-center gap-1.5 text-[0.6471rem] text-(--text-muted)">{swatch}{label}</span>
+    <span className="flex items-center gap-1.5 text-caption text-(--text-muted)">{swatch}{label}</span>
   )
   return (
     <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -60,8 +60,8 @@ function Legend() {
 function Stat({ label, term, value, color, signed }: { label: string; term: Term; value?: number; color: string; signed?: boolean }) {
   return (
     <div>
-      <span className="flex items-center justify-center gap-1 text-[0.6471rem] text-(--text-muted)">{label}<InfoTip term={term} /></span>
-      <span className="font-display text-[1.1765rem]" style={{ color }}>{value == null ? '–' : `${signed && value > 0 ? '+' : ''}${Math.round(value)}`}</span>
+      <span className="flex items-center justify-center gap-1 text-caption text-(--text-muted)">{label}<InfoTip term={term} /></span>
+      <span className="font-display text-title" style={{ color }}>{value == null ? '–' : `${signed && value > 0 ? '+' : ''}${Math.round(value)}`}</span>
     </div>
   )
 }

@@ -25,14 +25,14 @@ export function DayEvents({ events, onOpen }: { events: RaceEvent[]; onOpen: (id
             <button type="button" onClick={() => onOpen(e.id)}
               aria-label={`Event: ${e.name}, ${KIND_LABEL[kind]}${e.time ? ` at ${e.time}` : ''}${e.recurring ? ', repeats weekly' : ''}. Open the event`}
               className="flex min-h-11 w-full items-center gap-2.5 rounded-lg border border-(--accent)/30 bg-(--accent-subtle) px-3 py-1.5 text-left active:opacity-80">
-              <I className="size-4 shrink-0 text-(--accent)" aria-hidden />
+              <I className="size-5 shrink-0 text-(--accent)" aria-hidden />
               <span className="min-w-0 flex-1" aria-hidden>
-                <span className="block truncate text-[0.7647rem] font-semibold text-(--text)">{e.name}</span>
-                <span className="block truncate text-[0.6471rem] text-(--text-muted)">
+                <span className="block truncate text-small font-semibold text-(--text)">{e.name}</span>
+                <span className="block truncate text-caption text-(--text-muted)">
                   {KIND_LABEL[kind]}{e.time ? ` · ${e.time}` : ''}{e.location ? ` · ${e.location}` : ''}
                 </span>
               </span>
-              {e.recurring && <Repeat className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />}
+              {e.recurring && <Repeat className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
             </button>
           </li>
         )

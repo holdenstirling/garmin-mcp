@@ -86,7 +86,7 @@ function CreateBlock({ onClose, onCreated }: { onClose: () => void; onCreated: (
     <Screen title="Start a block" subtitle="Same weeks, your own plans" onClose={guard.wrap(onClose)}
       footer={info ? (
         <div className="flex flex-col gap-2 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
-          {error && <p role="alert" className="text-[0.7647rem] text-(--danger)">{error}</p>}
+          {error && <p role="alert" className="text-small text-(--danger)">{error}</p>}
           {queued && <SaveStatus state="queued" />}
           <Button variant="primary" size="lg" className="hit-44 w-full" disabled={!ready || busy} loading={busy} onClick={() => void go()}>
             {crew.length || club ? 'Start and invite' : 'Start the block'}
@@ -156,7 +156,7 @@ function PlanPick({ current, value, onChange }: {
 }) {
   if (!current.has_goal) {
     return (
-      <p className="px-1 text-[0.7647rem] leading-snug text-(--text-muted)">
+      <p className="px-1 text-small leading-snug text-(--text-muted)">
         rabbt builds your own plan for the block from your profile: your days, your paces, your volume.
       </p>
     )
@@ -187,7 +187,7 @@ function BlockPage({ id, imperial, onClose }: { id: string; imperial: boolean; o
   return (
     <Screen title={b?.name ?? 'Training block'} subtitle={b ? weekLine(b.week) : undefined} onClose={onClose}>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">
-        <p role="status" aria-live="polite" className={cn('text-[0.7647rem] text-(--accent)', !note && 'sr-only')}>{note}</p>
+        <p role="status" aria-live="polite" className={cn('text-small text-(--accent)', !note && 'sr-only')}>{note}</p>
         {!b && !error && <RabbitLoader className="py-10" label="Loading" cycle={['Gathering the crew', 'Counting workouts']} />}
         {!b && error && <ErrorState message={error} onRetry={() => void load()} />}
         {b && !b.member && <Invite b={b} onJoined={(x) => setB(x)} onDeclined={onClose} />}
@@ -198,7 +198,7 @@ function BlockPage({ id, imperial, onClose }: { id: string; imperial: boolean; o
             {b.week.state !== 'upcoming' && <CheckIn b={b} onChanged={setB} onNote={setNote} />}
             {b.feed && (
               <section className="flex flex-col gap-2">
-                <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Block feed</h2>
+                <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Block feed</h2>
                 <CommunityFeed imperial={imperial} clubId={b.feed} clubName={b.name} />
               </section>
             )}
@@ -217,21 +217,21 @@ function GroupHero({ b }: { b: BlockDetail }) {
       {g && g.target > 0 ? <WeekRing done={g.done} target={g.target} size={64} />
         : <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)"><Users className="size-6" /></span>}
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">
+        <p className="text-caption text-(--text-muted) font-semibold">
           {b.week.state === 'upcoming' ? 'Starts soon' : 'Together this week'}
         </p>
         {b.week.state === 'upcoming' ? (
-          <p className="text-[0.9412rem] font-medium text-(--text)">Week 1 starts {fmtDay(b.week.monday)}</p>
+          <p className="text-lead font-medium text-(--text)">Week 1 starts {fmtDay(b.week.monday)}</p>
         ) : g ? (
           <>
-            <p className="text-[0.9412rem] font-medium text-(--text)">{g.done} of {g.target} sessions</p>
-            <p className="text-[0.7647rem] text-(--text-muted)">{g.closed} of {g.count} closed their week</p>
+            <p className="text-lead font-medium text-(--text)">{g.done} of {g.target} sessions</p>
+            <p className="text-small text-(--text-muted)">{g.closed} of {g.count} closed their week</p>
           </>
         ) : null}
-        {b.event && <p className="mt-0.5 truncate text-[0.7059rem] text-(--text-muted)">Race day: {b.event.name} · {fmtDay(b.event.date)}</p>}
+        {b.event && <p className="mt-0.5 truncate text-meta text-(--text-muted)">Race day: {b.event.name} · {fmtDay(b.event.date)}</p>}
         {(b.cheers?.length ?? 0) > 0 && (
-          <p className="mt-1 flex items-center gap-1 text-[0.7059rem] text-(--accent)">
-            <Megaphone className="size-3.5" aria-hidden />{cheerLine(b.cheers!)}
+          <p className="mt-1 flex items-center gap-1 text-meta text-(--accent)">
+            <Megaphone className="size-4" aria-hidden />{cheerLine(b.cheers!)}
           </p>
         )}
       </div>
@@ -265,8 +265,8 @@ function Crew({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: BlockDe
         <div key={p.user_id} className="settings-row flex items-center gap-3 px-4 py-2.5">
           <PersonAvatar u={p.user} size={36} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.9412rem] text-(--text)">{p.me ? 'You' : p.name}{p.owner ? ' · owner' : ''}</span>
-            <span className="block text-[0.7647rem] text-(--text-muted)">
+            <span className="block truncate text-lead text-(--text)">{p.me ? 'You' : p.name}{p.owner ? ' · owner' : ''}</span>
+            <span className="block text-small text-(--text-muted)">
               {p.target == null ? 'No numbers yet' : p.closed ? 'Week closed' : `${p.done} of ${p.target} sessions`}
             </span>
           </span>
@@ -275,7 +275,7 @@ function Crew({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: BlockDe
             <button type="button" disabled={p.cheered || busy === p.user_id}
               onClick={(e) => void cheer(p, e.currentTarget)}
               className="hit-44 inline-flex min-h-11 items-center rounded-full px-1 disabled:opacity-50">
-              <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-[0.7059rem] font-medium text-(--accent)">
+              <span className="rounded-full border border-(--accent)/40 bg-(--accent-subtle) px-3 py-1.5 text-meta font-medium text-(--accent)">
                 {p.cheered ? 'Cheered' : 'Cheer'}
               </span>
             </button>
@@ -323,13 +323,13 @@ function CheckIn({ b, onChanged, onNote }: { b: BlockDetail; onChanged: (b: Bloc
       </Field>
       {shown.length > 0 && (
         <ul className="flex flex-col border-t border-(--border)">
-          {lastWeek && <li className="px-4 pt-2.5 font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">Last week</li>}
+          {lastWeek && <li className="px-4 pt-2.5 text-caption text-(--text-muted) font-semibold">Last week</li>}
           {shown.map((c) => (
             <li key={c.user_id} className="flex items-start gap-2.5 px-4 py-2.5">
               <PersonAvatar u={c.user} size={28} />
-              <span className="min-w-0 flex-1 text-[0.8235rem] text-(--text)">
+              <span className="min-w-0 flex-1 text-body text-(--text)">
                 <span className="font-medium">{c.me ? 'You' : c.name}</span> · {FEEL_LABEL[c.feel]}
-                {c.note && <span className="block text-[0.7647rem] text-(--text-secondary)">{c.note}</span>}
+                {c.note && <span className="block text-small text-(--text-secondary)">{c.note}</span>}
               </span>
             </li>
           ))}
@@ -369,7 +369,7 @@ function Manage({ b, onChanged, onLeft, onNote }: {
       {confirm && (
         <Sheet title={confirm === 'leave' ? 'Leave this block?' : 'End this block?'} onClose={() => setConfirm(null)}
           bodyClassName="flex flex-col gap-3 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-          <p className="text-[0.8235rem] text-(--text-secondary)">
+          <p className="text-body text-(--text-secondary)">
             {confirm === 'leave' ? 'Your plan stays yours. You can be invited again later.' : 'Everyone keeps their own plan; the block page stops counting.'}
           </p>
           <Button variant="destructive" size="lg" className="hit-44 w-full" onClick={() => void act()}>
@@ -396,7 +396,7 @@ function InviteSheet({ b, onClose, onDone }: { b: BlockDetail; onClose: () => vo
     <Sheet title="Invite friends" onClose={onClose} bodyClassName="flex flex-col gap-3 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {error && <ErrorState compact message={error} />}
       {!info && !error && <RabbitLoader inline label="Loading" />}
-      {info && open.length === 0 && <p className="text-[0.8235rem] text-(--text-muted)">Everyone who follows you back is already in or invited.</p>}
+      {info && open.length === 0 && <p className="text-body text-(--text-muted)">Everyone who follows you back is already in or invited.</p>}
       <ChipRow>
         {open.map((f) => (
           <Chip key={f.id} selected={pick.includes(f.id)} onClick={() => setPick((p) => p.includes(f.id) ? p.filter((x) => x !== f.id) : [...p, f.id])}>
@@ -433,17 +433,17 @@ function Invite({ b, onJoined, onDeclined }: { b: BlockDetail; onJoined: (b: Blo
     <>
       <Card className="flex flex-col gap-3 p-4">
         {b.invited_by && (
-          <p className="flex items-center gap-2 text-[0.8235rem] text-(--text-secondary)">
+          <p className="flex items-center gap-2 text-body text-(--text-secondary)">
             <PersonAvatar u={b.invited_by} size={28} />{b.invited_by.name} invited you
           </p>
         )}
-        {b.club && !b.invited_by && <p className="text-[0.8235rem] text-(--text-secondary)">Open to {b.club.name}</p>}
-        <p className="text-[0.9412rem] text-(--text)">
+        {b.club && !b.invited_by && <p className="text-body text-(--text-secondary)">Open to {b.club.name}</p>}
+        <p className="text-lead text-(--text)">
           {b.weeks} weeks from {fmtDay(b.start)} · {b.members} {b.members === 1 ? 'person' : 'people'} so far
         </p>
-        {b.event && <p className="text-[0.7647rem] text-(--text-muted)">Everyone trains for {b.event.name} on {fmtDay(b.event.date)}.</p>}
-        <p className="text-[0.7647rem] text-(--text-muted)">You train on your own plan, built from your numbers, on the same weeks as the crew.</p>
-        {error && <p role="alert" className="text-[0.7647rem] text-(--danger)">{error}</p>}
+        {b.event && <p className="text-small text-(--text-muted)">Everyone trains for {b.event.name} on {fmtDay(b.event.date)}.</p>}
+        <p className="text-small text-(--text-muted)">You train on your own plan, built from your numbers, on the same weeks as the crew.</p>
+        {error && <p role="alert" className="text-small text-(--danger)">{error}</p>}
         <div className="flex gap-2">
           <Button variant="primary" size="lg" className="hit-44 flex-1" loading={busy} disabled={busy} onClick={() => void join({})}>Join the block</Button>
           {b.invited_by && (
@@ -454,7 +454,7 @@ function Invite({ b, onJoined, onDeclined }: { b: BlockDetail; onJoined: (b: Blo
       {choose && (
         <Sheet title="Your plan for this block" onClose={() => setChoose(null)}
           bodyClassName="flex flex-col gap-2 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-          <p className="text-[0.8235rem] text-(--text-secondary)">You already have {choose.goal ?? 'a goal'}. Nothing changes until you pick.</p>
+          <p className="text-body text-(--text-secondary)">You already have {choose.goal ?? 'a goal'}. Nothing changes until you pick.</p>
           <OptionCard selected={false} title={`Keep ${choose.goal ?? 'my plan'}`}
             description="Join and count the sessions you already have planned." onClick={() => void join({ plan: 'keep' })} />
           <OptionCard selected={false} title="Build me a block plan"

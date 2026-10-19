@@ -55,7 +55,7 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
   const shown = all ? items : items.slice(0, max)
   return (
     <section className="flex flex-col gap-2" aria-label="What your data says">
-      <h2 className="flex items-center gap-1 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+      <h2 className="flex items-center gap-1 px-1 text-caption font-semibold text-(--text-muted)">
         What your data says
         <InfoTip label="these insights" align="start"
           text="Patterns rabbt spots in your Garmin workouts, plan, check-ins and gear, worked out with fixed rules, not guesses. Tap one for the numbers." />
@@ -71,7 +71,7 @@ export function InsightsCard({ refresh = 0, max = SHOWN, onOpenPlan, onOpenSessi
       </Card>
       {items.length > max && (
         <button type="button" onClick={() => setAll((a) => !a)} aria-expanded={all}
-          className="hit-44 self-center text-[0.7059rem] font-medium text-(--accent)">
+          className="hit-44 self-center text-meta font-medium text-(--accent)">
           {all ? 'Show fewer' : `Show all ${items.length}`}
         </button>
       )}
@@ -116,42 +116,42 @@ function Row({ i, open, onToggle, onDismiss, onOpenPlan, onOpenSession, onOpenGe
       <button type="button" onClick={onToggle} aria-expanded={open}
         className="flex min-h-11 w-full items-start gap-2.5 px-3.5 py-3 text-left active:bg-(--bg-inset)">
         <span className={cn('mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full', t.bg, t.color)}>
-          <Icon className="size-4" aria-hidden />
+          <Icon className="size-5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <span className="sr-only">{t.label}: </span>
-          <span className={cn('block text-[0.8235rem] font-semibold leading-tight', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
-          {!open && <span className="mt-0.5 block truncate text-[0.7059rem] text-(--text-muted)">{i.explanation}</span>}
+          <span className={cn('block text-body font-semibold leading-tight', i.impact === 'watch' ? 'text-(--warning-text)' : 'text-(--text)')}>{i.title}</span>
+          {!open && <span className="mt-0.5 block truncate text-meta text-(--text-muted)">{i.explanation}</span>}
         </span>
-        <ChevronDown className={cn('mt-1 size-4 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+        <ChevronDown className={cn('mt-1 size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open && (
         <div className="flex flex-col gap-2.5 px-3.5 pb-3.5 pl-[3.25rem]">
-          <p className="text-[0.7647rem] leading-snug text-(--text)">
+          <p className="text-small leading-snug text-(--text)">
             {i.explanation}
             {TERM[i.id.split(':')[0]!] && <InfoTip term={TERM[i.id.split(':')[0]!]} className="ml-1" align="end" />}
           </p>
           {i.evidence && i.evidence.values.length > 0 && <Spark e={i.evidence} />}
-          <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">
+          <p className="text-meta leading-snug text-(--text-secondary)">
             <span className="font-semibold">Why it matters: </span>{i.why}
           </p>
           {(i.confidence === 'low' || i.uses_oura) && (
-            <p className="text-[0.6471rem] text-(--text-muted)">
+            <p className="text-caption text-(--text-muted)">
               {i.confidence === 'low' ? 'Early pattern: based on only a few days. ' : ''}
               {i.uses_oura ? 'Uses your Oura data: shown here only, never sent to rabbt or your coach.' : ''}
             </p>
           )}
-          {note && <p role="status" className="text-[0.7059rem] text-(--accent)">{note}</p>}
+          {note && <p role="status" className="text-meta text-(--accent)">{note}</p>}
           <div className="flex flex-wrap items-center gap-3">
             {run && !note && (
-              <Button variant="primary" className="hit-44 h-8 px-3 text-[0.7059rem]" disabled={busy} onClick={() => void run()}>
+              <Button variant="primary" className="hit-44 h-8 px-3 text-meta" disabled={busy} onClick={() => void run()}>
                 {confirm ? 'Tap again to apply' : a.label}
               </Button>
             )}
             {confirm && (
-              <button type="button" className="hit-44 text-[0.7059rem] text-(--text-muted)" onClick={() => setConfirm(false)}>Cancel</button>
+              <button type="button" className="hit-44 text-meta text-(--text-muted)" onClick={() => setConfirm(false)}>Cancel</button>
             )}
-            <button type="button" onClick={onDismiss} className="hit-44 text-[0.7059rem] text-(--text-muted) underline-offset-2 hover:underline">
+            <button type="button" onClick={onDismiss} className="hit-44 text-meta text-(--text-muted) underline-offset-2 hover:underline">
               Not now
             </button>
           </div>
@@ -173,7 +173,7 @@ function Spark({ e }: { e: Evidence }) {
         <span className="h-2 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)">
           <span className={cn('block h-full rounded-full', pct >= 80 ? 'bg-(--warning)' : 'bg-(--accent)')} style={{ width: `${pct}%` }} />
         </span>
-        <span className="text-[0.7059rem] text-(--text-muted)">{Math.round(pct)}%</span>
+        <span className="text-meta text-(--text-muted)">{Math.round(pct)}%</span>
       </div>
     )
   }
@@ -203,7 +203,7 @@ function Spark({ e }: { e: Evidence }) {
             strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
         )}
       </svg>
-      <figcaption className="flex max-w-[240px] justify-between text-[0.6471rem] text-(--text-muted)">
+      <figcaption className="flex max-w-[240px] justify-between text-caption text-(--text-muted)">
         <span>{e.labels[0]}</span>
         {e.target != null && <span>dashed: {e.kind === 'bars' && e.unit === '%' ? 'guideline' : 'target'} {fmt(e.target)}</span>}
         <span>{e.labels[n - 1]}</span>

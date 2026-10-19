@@ -39,8 +39,8 @@ export function ConfirmHost() {
             btns[(i + (e.shiftKey ? btns.length - 1 : 1)) % btns.length]?.focus()
           }
         }}>
-        <p id="confirm-title" className="text-[0.9412rem] font-semibold leading-snug text-(--text)">{req.message}</p>
-        {req.detail && <p id="confirm-detail" className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">{req.detail}</p>}
+        <p id="confirm-title" className="text-lead font-semibold leading-snug text-(--text)">{req.message}</p>
+        {req.detail && <p id="confirm-detail" className="mt-1 text-body leading-snug text-(--text-secondary)">{req.detail}</p>}
         <div className="mt-4 flex gap-2">
           <Button ref={cancelRef} variant="default" className="h-11 flex-1" onClick={() => done(false)}>{req.cancel ?? 'Cancel'}</Button>
           <Button variant={req.danger ? 'destructive' : 'primary'} className="h-11 flex-1" onClick={() => done(true)}>{req.confirm ?? 'OK'}</Button>

@@ -57,20 +57,20 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
   const p = state.profile
   return (
     <section aria-label="Training buddies" className="flex flex-col gap-1.5">
-      <h2 className="px-4 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Training buddies</h2>
+      <h2 className="px-4 text-caption font-semibold text-(--text-muted)">Training buddies</h2>
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {!p ? (
         <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
           <div className="flex items-start gap-3">
-            <IconTile><Users className="size-5" /></IconTile>
+            <IconTile><Users className="size-6" /></IconTile>
             <div className="min-w-0">
-              <p className="text-[0.8824rem] font-semibold text-(--text)">Find people your pace near you</p>
-              <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+              <p className="text-body-lg font-semibold text-(--text)">Find people your pace near you</p>
+              <p className="text-small leading-snug text-(--text-secondary)">
                 rabbt matches you with runners and riders {state.area.city ? `around ${state.area.city}` : 'near you'} who train at a similar easy pace and at the same times of day.
               </p>
             </div>
           </div>
-          <p className="text-[0.7059rem] leading-snug text-(--text-muted)">
+          <p className="text-meta leading-snug text-(--text-muted)">
             Off until you turn it on. Others see your pace range, usual times, city and about how far away you are. Never your exact location, heart rate or workouts.
           </p>
           <Button variant="primary" className="h-11" onClick={() => setEditing(true)}>Find training buddies</Button>
@@ -78,20 +78,20 @@ export function BuddiesSection({ imperial }: { imperial: boolean }) {
       ) : (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-            <p className="min-w-0 flex-1 text-[0.7647rem] text-(--text-secondary)">
+            <p className="min-w-0 flex-1 text-small text-(--text-secondary)">
               {p.paused ? 'Paused: you don\'t show up for anyone.' : `You're visible to people your pace ${state.area.city ? `around ${state.area.city}` : 'nearby'} · within ${state.area.radius_mi} mi.`}
             </p>
-            <Button variant="ghost" className="h-11 gap-1 px-2 text-[0.7647rem]" loading={busy === 'pause'} onClick={() => void setPaused(!p.paused)}
+            <Button variant="ghost" className="h-11 gap-1 px-2 text-small" loading={busy === 'pause'} onClick={() => void setPaused(!p.paused)}
               aria-label={p.paused ? 'Resume training buddies' : 'Pause training buddies'}>
-              {p.paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}{p.paused ? 'Resume' : 'Pause'}
+              {p.paused ? <Play className="size-5" aria-hidden /> : <Pause className="size-5" aria-hidden />}{p.paused ? 'Resume' : 'Pause'}
             </Button>
             <Button variant="ghost" className="h-11 w-11 p-0" aria-label="Edit my buddy profile" onClick={() => setEditing(true)}>
-              <Pencil className="size-4" aria-hidden />
+              <Pencil className="size-5" aria-hidden />
             </Button>
           </div>
           {!p.paused && matches === null && <RabbitLoader className="py-6" label="Finding matches" cycle={LOADING} />}
           {!p.paused && matches?.length === 0 && (
-            <p className="rounded-xl border border-dashed border-(--border-strong) px-4 py-3 text-[0.7647rem] text-(--text-muted)">
+            <p className="rounded-xl border border-dashed border-(--border-strong) px-4 py-3 text-small text-(--text-muted)">
               No matches yet. As more people near you turn this on, they'll show up here. A wider area (Change, at the top of Local) finds more.
             </p>
           )}
@@ -118,22 +118,22 @@ function MatchCard({ m, imperial, onHi, onNotNow }: { m: BuddyMatch; imperial: b
       <div className="flex items-center gap-3">
         <TapAvatar p={m.person} size={40} />
         <div className="min-w-0 flex-1">
-          <PersonLink id={m.person.id} name={m.person.name} className="block truncate text-[0.8824rem] font-semibold text-(--text)" />
-          <p className="truncate text-[0.7059rem] text-(--text-muted)">
+          <PersonLink id={m.person.id} name={m.person.name} className="block truncate text-body-lg font-semibold text-(--text)" />
+          <p className="truncate text-meta text-(--text-muted)">
             {m.following && m.follows_you ? 'Friends' : m.following ? 'You follow them' : m.follows_you ? 'Follows you' : m.city}
           </p>
         </div>
       </div>
       <ul className="flex flex-wrap gap-1.5" aria-label="Why you match">
-        {m.chips.map((c) => <li key={c} className="rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.7059rem] font-medium text-(--accent)">{c}</li>)}
+        {m.chips.map((c) => <li key={c} className="rounded-full bg-(--accent-subtle) px-2.5 py-1 text-meta font-medium text-(--accent)">{c}</li>)}
       </ul>
-      <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="text-small leading-snug text-(--text-secondary)">
         {[band && `Easy ${band}`, m.slots.length ? slotsText(m.slots.slice(0, 4)) : '', m.race && `Training for ${m.race}`].filter(Boolean).join(' · ')}
       </p>
-      {m.note && <p className="text-[0.7647rem] italic leading-snug text-(--text)">“{m.note}”</p>}
+      {m.note && <p className="text-small italic leading-snug text-(--text)">“{m.note}”</p>}
       <div className="flex gap-2">
-        <Button variant="primary" className="h-11 flex-1 gap-1.5" onClick={onHi}><MessageCircle className="size-4" aria-hidden />Say hi</Button>
-        <Button variant="default" className="h-11 gap-1.5 px-4" onClick={onNotNow} aria-label={`Not now: hide ${m.person.name}`}><X className="size-4" aria-hidden />Not now</Button>
+        <Button variant="primary" className="h-11 flex-1 gap-1.5" onClick={onHi}><MessageCircle className="size-5" aria-hidden />Say hi</Button>
+        <Button variant="default" className="h-11 gap-1.5 px-4" onClick={onNotNow} aria-label={`Not now: hide ${m.person.name}`}><X className="size-5" aria-hidden />Not now</Button>
       </div>
     </article>
   )
@@ -163,7 +163,7 @@ function SayHiSheet({ m, onClose }: { m: BuddyMatch; onClose: () => void }) {
           <textarea className={areaCls} maxLength={400} value={text} onChange={(e) => setText(e.target.value)}
             placeholder={`Hi ${m.person.name}! rabbt matched us as training buddies. Want to train together sometime?`} />
         </Field>
-        {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+        {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
       </div>
     </Sheet>
   )
@@ -223,7 +223,7 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
           </Button>
         </div>
       }>
-      <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="text-small leading-snug text-(--text-secondary)">
         Filled in from your recent workouts; change anything. Others see these ranges, your usual times, city and about how far away you are. Never your exact location, heart rate or workouts.
       </p>
       <Field label="Sports"><MultiChoice value={sports} options={BUDDY_SPORTS} onChange={setSports} /></Field>
@@ -231,11 +231,11 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
         <Field label={`Easy run pace, per ${unit}`} hint="The pace you can chat at. A range works best.">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-1">
-              <span className="text-[0.7059rem] text-(--text-muted)">From (faster)</span>
+              <span className="text-meta text-(--text-muted)">From (faster)</span>
               <DurationInput label="Easy pace, faster end" withHours={false} value={runPace[0]} onChange={(v) => setRunPace(([, b]) => [v, b])} />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[0.7059rem] text-(--text-muted)">To (slower)</span>
+              <span className="text-meta text-(--text-muted)">To (slower)</span>
               <DurationInput label="Easy pace, slower end" withHours={false} value={runPace[1]} onChange={(v) => setRunPace(([a]) => [a, v])} />
             </div>
           </div>
@@ -253,7 +253,7 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
       <Field label="Usual times" hint={slots.length ? slotsText(slots) : 'Tap the times you usually train.'}>
         <div role="group" aria-label="Usual training times" className="grid grid-cols-[auto_repeat(7,minmax(0,1fr))] items-center gap-1">
           <span />
-          {WEEKDAYS.map((d) => <span key={d} className="text-center text-[0.6471rem] font-semibold uppercase text-(--text-muted)">{d.slice(0, 2)}</span>)}
+          {WEEKDAYS.map((d) => <span key={d} className="text-center text-caption font-semibold uppercase text-(--text-muted)">{d.slice(0, 2)}</span>)}
           {WHEN.map((w) => (
             <SlotRow key={w} when={w} slots={slots} onToggle={toggle} />
           ))}
@@ -265,7 +265,7 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
       <Field label="A short note (optional)">
         <textarea className={areaCls} maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Easy miles, coffee after" />
       </Field>
-      {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
+      {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
     </Sheet>
   )
 }
@@ -273,13 +273,13 @@ function BuddyEditor({ state, imperial, onClose, onSaved }: { state: BuddyState;
 function SlotRow({ when, slots, onToggle }: { when: string; slots: string[]; onToggle: (s: string) => void }) {
   return (
     <>
-      <span className="pr-1 text-[0.7059rem] capitalize text-(--text-secondary)">{when}</span>
+      <span className="pr-1 text-meta capitalize text-(--text-secondary)">{when}</span>
       {WEEKDAYS.map((d) => {
         const k = `${d}-${when}`
         const on = slots.includes(k)
         return (
           <button key={k} type="button" aria-pressed={on} aria-label={`${d} ${when}`} onClick={() => onToggle(k)}
-            className={cn('h-11 rounded-md border text-[0.7059rem]', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) bg-(--bg-surface) text-(--text-muted)')}>
+            className={cn('h-11 rounded-md border text-meta', on ? 'border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border) bg-(--bg-surface) text-(--text-muted)')}>
             {on ? '✓' : ''}
           </button>
         )

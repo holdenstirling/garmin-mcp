@@ -8,16 +8,16 @@ export function BodyLinks() {
     <button type="button" onClick={onClick} className="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-(--bg-inset)">
       <IconTile>{icon}</IconTile>
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8235rem] font-medium text-(--text)">{title}</span>
-        <span className="block text-[0.7059rem] text-(--text-muted)">{sub}</span>
+        <span className="block text-body font-medium text-(--text)">{title}</span>
+        <span className="block text-meta text-(--text-muted)">{sub}</span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
   return (
     <section aria-label="Body logs" className="flex flex-col divide-y divide-(--border) overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
-      {row(<Utensils className="size-4" />, 'Fueling', 'Carbs per hour that work for you, vs your race target', () => openBody({ view: 'fueling' }))}
-      {row(<Bandage className="size-4" />, 'Body & niggles', 'Track aches; rabbt eases the plan around them', () => openBody({ view: 'niggles' }))}
+      {row(<Utensils className="size-5" />, 'Fueling', 'Carbs per hour that work for you, vs your race target', () => openBody({ view: 'fueling' }))}
+      {row(<Bandage className="size-5" />, 'Body & niggles', 'Track aches; rabbt eases the plan around them', () => openBody({ view: 'niggles' }))}
     </section>
   )
 }

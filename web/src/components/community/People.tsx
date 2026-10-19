@@ -49,9 +49,9 @@ export function PeopleSection({ onChanged }: { imperial?: boolean; onChanged?: (
         <Group label="Suggested">
           {sug.slice(0, 8).map(({ user: u, reason }) => (
             <Row key={u.id} icon={<TapAvatar p={u} size={30} />} title={<PersonLink id={u.id} name={u.name} />} subtitle={reason}
-              trailing={done[u.id] ? <span className="text-[0.7059rem] text-(--accent)">{done[u.id]}</span> : (
-                <Button variant="default" className="h-8 gap-1 px-2.5 text-[0.7059rem]" loading={busy === u.id} disabled={busy != null}
-                  onClick={() => void follow(u)}><UserPlus className="size-3.5" /> Follow</Button>
+              trailing={done[u.id] ? <span className="text-meta text-(--accent)">{done[u.id]}</span> : (
+                <Button variant="default" className="h-8 gap-1 px-2.5 text-meta" loading={busy === u.id} disabled={busy != null}
+                  onClick={() => void follow(u)}><UserPlus className="size-4" /> Follow</Button>
               )} />
           ))}
         </Group>

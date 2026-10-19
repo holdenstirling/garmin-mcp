@@ -91,7 +91,7 @@ function DistanceChart({ s, imperial }: { s: DistSport; imperial: boolean }) {
   const last = weeks.length - 1
   return (
     <>
-      <p className="m-0 text-[0.7647rem] text-(--text-secondary)" aria-live="polite">
+      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
         <span className="font-medium text-(--text)">Week of {shortDate(cur.start)}{sel === last ? ' (so far)' : ''}:</span>{' '}
         {fmtVal(vals[sel]!, s.sport)} {u}{goals[sel] != null ? ` of ${fmtVal(goals[sel]!, s.sport)} ${u} goal` : ''}
       </p>
@@ -115,7 +115,7 @@ function DistanceChart({ s, imperial }: { s: DistSport; imperial: boolean }) {
             className="fill-(--text-muted) text-[12px]" aria-hidden="true">{i === last ? 'This week' : shortDate(weeks[i]!.start)}</text>
         ))}
       </svg>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.7059rem] text-(--text-secondary)" aria-hidden="true">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-(--text-secondary)" aria-hidden="true">
         <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-[3px] bg-(--accent)" /> Done</span>
         {hasGoal && <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0.5 w-3 rounded bg-(--text)" /> Plan goal</span>}
         <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-[3px] bg-(--accent) opacity-50" /> This week so far</span>
@@ -147,7 +147,7 @@ function PaceChart({ t }: { t: Trends['pace'] }) {
   const ticks = [lo, (lo + hi) / 2, hi]
   return (
     <>
-      <p className="m-0 text-[0.7647rem] text-(--text-secondary)" aria-live="polite">
+      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
         <span className="font-medium text-(--text)">Week of {shortDate(cur.start)}:</span> {mmss(cur.sec)}/{u} at {t.ref_hr} bpm
         <span className="text-(--text-muted)"> · {cur.runs} easy run{cur.runs === 1 ? '' : 's'}</span>
       </p>
@@ -224,7 +224,7 @@ function SleepCharts({ t }: { t: Trends['sleep'] }) {
   }
   return (
     <>
-      <p className="m-0 text-[0.7647rem] text-(--text-secondary)" aria-live="polite">
+      <p className="m-0 text-small text-(--text-secondary)" aria-live="polite">
         <span className="font-medium text-(--text)">{shortDate(cur.date)}:</span>{' '}
         {cur.load ? `${cur.load} ${t.measure === 'load' ? 'load' : 'min'}` : 'rest day'}
         {' · '}{cur.sleep_h != null ? `${cur.sleep_h} h sleep that night` : 'no sleep data that night'}
@@ -233,7 +233,7 @@ function SleepCharts({ t }: { t: Trends['sleep'] }) {
         aria-label={`Sleep each night and ${loadWord} the day before, last ${pts.length} days. Use left and right arrows to read each day.`}>
         {mini(pts.map((p) => p.sleep_h), sleepMax, h2, 'Sleep (hours)', (v) => String(v))}
         {mini(pts.map((p) => p.load), loadMax, h2, t.measure === 'load' ? 'Training load' : 'Minutes trained', compact)}
-        <div className="flex justify-between pl-[12%] text-[0.6471rem] text-(--text-muted)" aria-hidden="true">
+        <div className="flex justify-between pl-[12%] text-caption text-(--text-muted)" aria-hidden="true">
           <span>{shortDate(pts[0]!.date)}</span><span>Today</span>
         </div>
       </div>
@@ -257,7 +257,7 @@ function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport
   if (view === 'distance' && sport) {
     const u = unitWord(imperial, sport.sport)
     return (
-      <table className="w-full text-[0.7059rem] tabular-nums text-(--text)">
+      <table className="w-full text-meta tabular-nums text-(--text)">
         <caption className="sr-only">{SPORT_LABEL[sport.sport]} per week</caption>
         <thead><tr><th className={cls}>Week of</th><th className={cls}>Done ({u})</th><th className={cls}>Goal ({u})</th></tr></thead>
         <tbody>{sport.weeks.slice().reverse().map((w) => (
@@ -269,7 +269,7 @@ function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport
   }
   if (view === 'pace') {
     return (
-      <table className="w-full text-[0.7059rem] tabular-nums text-(--text)">
+      <table className="w-full text-meta tabular-nums text-(--text)">
         <caption className="sr-only">Pace at {t.pace.ref_hr} bpm per week</caption>
         <thead><tr><th className={cls}>Week of</th><th className={cls}>Pace /{imperial ? 'mi' : 'km'}</th><th className={cls}>Easy runs</th></tr></thead>
         <tbody>{t.pace.points.slice().reverse().map((p) => (
@@ -279,7 +279,7 @@ function DataTable({ view, t, sport }: { view: View; t: Trends; sport: DistSport
     )
   }
   return (
-    <table className="w-full text-[0.7059rem] tabular-nums text-(--text)">
+    <table className="w-full text-meta tabular-nums text-(--text)">
       <caption className="sr-only">Sleep and training per day</caption>
       <thead><tr><th className={cls}>Day</th><th className={cls}>{t.sleep.measure === 'load' ? 'Load' : 'Minutes'}</th><th className={cls}>Sleep that night</th></tr></thead>
       <tbody>{t.sleep.points.slice().reverse().map((p) => (
@@ -325,13 +325,13 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="m-0 flex items-center gap-1 text-[0.8824rem] font-semibold text-(--text)">
+        <h3 className="m-0 flex items-center gap-1 text-body-lg font-semibold text-(--text)">
           Trends <InfoTip label={views.find(([v]) => v === view)![1]} text={WHY[view]} align="start" />
         </h3>
         {!empty && (
           <button type="button" onClick={() => setTable((x) => !x)} aria-pressed={table}
-            className="hit-44 inline-flex items-center gap-1 text-[0.7059rem] text-(--text-muted)">
-            {table ? <><ChevronRight className="size-3.5 rotate-180" aria-hidden /> Chart</> : <><Table2 className="size-3.5" aria-hidden /> Table</>}
+            className="hit-44 inline-flex items-center gap-1 text-meta text-(--text-muted)">
+            {table ? <><ChevronRight className="size-4 rotate-180" aria-hidden /> Chart</> : <><Table2 className="size-4" aria-hidden /> Table</>}
           </button>
         )}
       </div>
@@ -339,7 +339,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
       <span className="seg__pill" aria-hidden />
         {views.map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
-            className={cn('min-h-11 flex-1 rounded-full text-[0.7647rem] font-medium transition-colors',
+            className={cn('min-h-11 flex-1 rounded-full text-small font-medium transition-colors',
               view === v ? 'text-(--text)' : 'text-(--text-muted)')}>{l}</button>
         ))}
       </div>
@@ -351,9 +351,9 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
           ))}
         </div>
       )}
-      {takeaway && !empty && <p className="m-0 text-[0.8235rem] font-medium leading-snug text-(--text)">{takeaway}</p>}
+      {takeaway && !empty && <p className="m-0 text-body font-medium leading-snug text-(--text)">{takeaway}</p>}
       {empty ? (
-        <p className="m-0 py-4 text-center text-[0.7647rem] text-(--text-muted)">{empty}</p>
+        <p className="m-0 py-4 text-center text-small text-(--text-muted)">{empty}</p>
       ) : table ? (
         <div className="max-h-64 overflow-y-auto"><DataTable view={view} t={t} sport={cur} /></div>
       ) : view === 'distance' && cur ? (
@@ -364,7 +364,7 @@ export function TrendsCard({ loadKey = 0 }: { loadKey?: number }) {
         <SleepCharts t={t.sleep} />
       )}
       {view === 'sleep' && !empty && t.sleep.source && (
-        <p className="m-0 text-[0.6471rem] text-(--text-muted)">Sleep from {t.sleep.source === 'oura' ? 'Oura' : 'Garmin'} · only you see this</p>
+        <p className="m-0 text-caption text-(--text-muted)">Sleep from {t.sleep.source === 'oura' ? 'Oura' : 'Garmin'} · only you see this</p>
       )}
     </div>
   )

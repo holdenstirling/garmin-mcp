@@ -21,7 +21,7 @@ export const stripFirst = (intents: readonly Intent[]) => {
   return p === 'consistent' || p === 'community' || p === 'events' || p === 'coach'
 }
 
-const chip = 'flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[0.7647rem] font-medium active:opacity-70'
+const chip = 'flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-small font-medium active:opacity-70'
 const chipAccent = 'border-(--accent)/30 bg-(--accent-subtle) text-(--accent)'
 const chipPlain = 'border-(--border) bg-(--bg-surface) text-(--text-secondary)'
 
@@ -69,9 +69,9 @@ function ConsistentStrip({ progress, onOpen, refreshKey }: { progress: Progress 
       )}
       {ch !== undefined && (
         <button type="button" className={cn(chip, chipPlain)} onClick={() => onOpen('progress')}>
-          <Trophy className="size-4 text-(--accent)" />
+          <Trophy className="size-5 text-(--accent)" />
           {ch ? `${ch.name} · ${Math.round(ch.pct)}%` : 'Pick a challenge'}
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-4" />
         </button>
       )}
     </Strip>
@@ -89,13 +89,13 @@ function CommunityStrip({ onOpen, refreshKey }: { onOpen: (t: HomeTarget) => voi
   return (
     <HopIn as="section" className="mx-4 mt-2 shrink-0 rounded-xl border border-(--border) bg-(--bg-surface)" aria-label="From your community">
       <button type="button" onClick={() => onOpen('friends')} className="flex min-h-11 w-full items-center gap-2 px-3 pt-2 text-left">
-        <Users className="size-4 shrink-0 text-(--accent)" />
-        <span className="flex-1 text-[0.7059rem] font-semibold uppercase tracking-wider text-(--text-muted)">From your community</span>
-        <ChevronRight className="size-4 text-(--text-muted)" />
+        <Users className="size-5 shrink-0 text-(--accent)" />
+        <span className="flex-1 text-meta font-semibold text-(--text-muted)">From your community</span>
+        <ChevronRight className="size-5 text-(--text-muted)" />
       </button>
       <ul className="px-3 pb-2">
         {items.map((h) => (
-          <li key={h.id} className="truncate py-0.5 text-[0.7647rem] text-(--text)">
+          <li key={h.id} className="truncate py-0.5 text-small text-(--text)">
             {h.who && <span className="font-semibold">{h.who}: </span>}{h.title}
             {h.subtitle && <span className="text-(--text-muted)"> · {h.subtitle}</span>}
           </li>
@@ -119,13 +119,13 @@ function EventsStrip({ onOpen, refreshKey }: { onOpen: (t: HomeTarget) => void; 
     <Strip label="Your events">
       {next && (
         <button type="button" className={cn(chip, chipAccent, 'max-w-[70%]')} onClick={() => onOpen('events')}>
-          <CalendarDays className="size-4 shrink-0" />
+          <CalendarDays className="size-5 shrink-0" />
           <span className="truncate">{next.name}</span>
           <span className="shrink-0 font-semibold">· {countdown(next.date)}</span>
         </button>
       )}
       <button type="button" className={cn(chip, next ? chipPlain : chipAccent)} onClick={() => onOpen('explore')}>
-        <MapPin className="size-4" /> Explore near you
+        <MapPin className="size-5" /> Explore near you
       </button>
     </Strip>
   )
@@ -136,12 +136,12 @@ function CoachStrip({ me, onOpen }: { me: Me; onOpen: (t: HomeTarget) => void })
     <Strip label="Your coach">
       {me.coaches > 0 ? (
         <button type="button" className={cn(chip, me.coach_unread > 0 ? chipAccent : chipPlain)} onClick={() => onOpen('coach')}>
-          <MessageCircle className="size-4" />
+          <MessageCircle className="size-5" />
           {me.coach_unread > 0 ? `${me.coach_unread} new from your coach` : 'Message your coach'}
         </button>
       ) : (
         <button type="button" className={cn(chip, chipAccent)} onClick={() => onOpen('findcoach')}>
-          <UserRound className="size-4" /> Find a coach <ChevronRight className="size-3.5" />
+          <UserRound className="size-5" /> Find a coach <ChevronRight className="size-4" />
         </button>
       )}
     </Strip>

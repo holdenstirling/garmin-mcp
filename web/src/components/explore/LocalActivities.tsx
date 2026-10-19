@@ -39,7 +39,7 @@ export function groupAsk(a: LocalActivity): string {
   return `Would "${a.name}"${when ? ` (${when})` : ''} fit my plan?`
 }
 
-const linkCls = 'inline-flex min-h-11 items-center gap-1.5 text-[0.7647rem] font-medium'
+const linkCls = 'inline-flex min-h-11 items-center gap-1.5 text-small font-medium'
 const cardCls = 'flex w-[78%] max-w-[300px] shrink-0 snap-start flex-col gap-2 rounded-2xl border border-(--border) bg-(--bg-surface) p-3.5'
 
 export function PlaceCard({ p, imperial, onAsk, className, style }: {
@@ -51,21 +51,21 @@ export function PlaceCard({ p, imperial, onAsk, className, style }: {
   return (
     <article className={cn(cardCls, className)} style={style}>
       <div className="flex items-start gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" /></span>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-6" /></span>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[0.8824rem] font-medium leading-snug text-(--text)">{p.name}</p>
-          <p className="truncate text-[0.7059rem] text-(--text-muted)">
+          <p className="line-clamp-2 text-body-lg font-medium leading-snug text-(--text)">{p.name}</p>
+          <p className="truncate text-meta text-(--text-muted)">
             {p.named ? `${p.kind_label} · ` : ''}{fmtDist(p.distance_km, imperial)} away
           </p>
         </div>
       </div>
-      {extra && <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">{extra}</p>}
+      {extra && <p className="text-meta leading-snug text-(--text-secondary)">{extra}</p>}
       <div className="mt-auto flex flex-col">
         <a href={p.osm_url} target="_blank" rel="noopener noreferrer" className={cn(linkCls, 'text-(--accent)')}>
-          <MapIcon className="size-3.5" /> Open map
+          <MapIcon className="size-4" /> Open map
         </a>
         <button type="button" className={cn(linkCls, 'text-left text-(--text-secondary)')} onClick={() => onAsk(placeAsk(p, imperial))}>
-          <MessageCircle className="size-3.5" /> Ask rabbt
+          <MessageCircle className="size-4" /> Ask rabbt
         </button>
       </div>
     </article>
@@ -81,21 +81,21 @@ export function GroupCard({ a, onAsk, className, style }: {
   return (
     <article className={cn(cardCls, className)} style={style}>
       <div className="flex items-start gap-2.5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-5" /></span>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)"><Icon className="size-6" /></span>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[0.8824rem] font-medium leading-snug text-(--text)">{a.name}</p>
-          {a.organizer && a.organizer !== a.name && <p className="truncate text-[0.7059rem] text-(--text-muted)">{a.organizer}</p>}
+          <p className="line-clamp-2 text-body-lg font-medium leading-snug text-(--text)">{a.name}</p>
+          {a.organizer && a.organizer !== a.name && <p className="truncate text-meta text-(--text-muted)">{a.organizer}</p>}
         </div>
       </div>
-      {when && <p className="text-[0.7647rem] font-medium leading-snug text-(--text)">{when}</p>}
-      {meta && <p className="text-[0.7059rem] leading-snug text-(--text-secondary)">{meta}</p>}
-      <span className="w-fit rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] text-(--text-secondary)">From the web</span>
+      {when && <p className="text-small font-medium leading-snug text-(--text)">{when}</p>}
+      {meta && <p className="text-meta leading-snug text-(--text-secondary)">{meta}</p>}
+      <span className="w-fit rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption text-(--text-secondary)">From the web</span>
       <div className="mt-auto flex flex-col">
         <a href={a.url} target="_blank" rel="noopener noreferrer" className={cn(linkCls, 'text-(--accent)')}>
-          Website <ExternalLink className="size-3.5" />
+          Website <ExternalLink className="size-4" />
         </a>
         <button type="button" className={cn(linkCls, 'text-left text-(--text-secondary)')} onClick={() => onAsk(groupAsk(a))}>
-          <MessageCircle className="size-3.5" /> Ask rabbt
+          <MessageCircle className="size-4" /> Ask rabbt
         </button>
       </div>
     </article>
@@ -108,8 +108,8 @@ export function CardRow({ children }: { children: React.ReactNode }) {
 
 function Title({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="flex items-center gap-1.5 px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
-      <MapPin className="size-3.5" />{children}
+    <h2 className="flex items-center gap-1.5 px-1 text-caption font-semibold text-(--text-muted)">
+      <MapPin className="size-4" />{children}
     </h2>
   )
 }
@@ -131,7 +131,7 @@ export function NearYouSection({ imperial, onAsk, reloadKey = 0 }: { imperial: b
         {res.items.slice(0, 4).map((a) => <GroupCard key={a.id} a={a} onAsk={onAsk} />)}
         {res.places.slice(0, 8).map((p) => <PlaceCard key={p.id} p={p} imperial={imperial} onAsk={onAsk} />)}
       </CardRow>
-      <p className="px-1 text-[0.6471rem] text-(--text-muted)">
+      <p className="px-1 text-caption text-(--text-muted)">
         Places from OpenStreetMap.{res.items.length ? ` Groups: ${WEB_NOTE.toLowerCase()}` : ''}
       </p>
     </section>
@@ -170,7 +170,7 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
   if (!res) return null
   if (res.disabled) {
     return (
-      <p className="rounded-xl bg-(--bg-elevated) px-3.5 py-3 text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="rounded-xl bg-(--bg-elevated) px-3.5 py-3 text-small leading-snug text-(--text-secondary)">
         Local picks are off. Turn on "Use my location for local picks" in Settings to see places and groups near you.
       </p>
     )
@@ -185,7 +185,7 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
   return (
     <section className="flex flex-col gap-4">
       {where && (
-        <p className="px-1 text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <p className="px-1 text-small leading-snug text-(--text-secondary)">
           Things to do around <span className="font-medium text-(--text)">{where}</span>.
         </p>
       )}
@@ -194,14 +194,14 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
           <Chip selected={!only} onClick={() => setOnly(null)}><span className="whitespace-nowrap">All</span></Chip>
           {res.places.length > 0 && (
             <Chip selected={only === 'places'} onClick={() => setOnly(only === 'places' ? null : 'places')}>
-              <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin className="size-3.5" />Places</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin className="size-4" />Places</span>
             </Chip>
           )}
           {chips.map((c) => {
             const Icon = GROUP_ICON[c]
             return (
               <Chip key={c} selected={only === c} onClick={() => setOnly(only === c ? null : c)}>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap"><Icon className="size-3.5" />{res.chips[c] ?? c}</span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap"><Icon className="size-4" />{res.chips[c] ?? c}</span>
               </Chip>
             )
           })}
@@ -211,29 +211,29 @@ export function LocalActivities({ onAsk, imperial = true, onLocationChanged }: {
         <div className="flex flex-col gap-2">
           <Title>Groups and leagues</Title>
           <CardRow>{groups.map((a) => <GroupCard key={a.id} a={a} onAsk={onAsk} />)}</CardRow>
-          <p className="px-1 text-[0.6471rem] text-(--text-muted)">{WEB_NOTE}</p>
+          <p className="px-1 text-caption text-(--text-muted)">{WEB_NOTE}</p>
         </div>
       )}
       {res.groups_state === 'limit' && res.items.length === 0 && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Today's rabbt web searches are used up. Groups and leagues show up tomorrow.</p>
+        <p className="px-1 text-meta text-(--text-muted)">Today's rabbt web searches are used up. Groups and leagues show up tomorrow.</p>
       )}
       {places.length > 0 && (
         <div className="flex flex-col gap-2">
           <Title>Places to play</Title>
           <CardRow>{places.map((p) => <PlaceCard key={p.id} p={p} imperial={imperial} onAsk={onAsk} />)}</CardRow>
-          <p className="px-1 text-[0.6471rem] text-(--text-muted)">From OpenStreetMap. Check access and hours before you go.</p>
+          <p className="px-1 text-caption text-(--text-muted)">From OpenStreetMap. Check access and hours before you go.</p>
         </div>
       )}
       {res.places_state === 'busy' && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">Lots of people are looking right now. Try again in a few seconds for places.</p>
+        <p className="px-1 text-meta text-(--text-muted)">Lots of people are looking right now. Try again in a few seconds for places.</p>
       )}
       {res.places_state === 'failed' && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">The map service isn't answering, so places are missing for now.</p>
+        <p className="px-1 text-meta text-(--text-muted)">The map service isn't answering, so places are missing for now.</p>
       )}
       {groups.length === 0 && places.length === 0 && res.groups_state !== 'limit' && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <RabbitLoader decorative gentle size={44} />
-          <p className="max-w-xs text-[0.7647rem] leading-snug text-(--text-muted)">rabbt didn't find anything nearby this week. Check back next week.</p>
+          <p className="max-w-xs text-small leading-snug text-(--text-muted)">rabbt didn't find anything nearby this week. Check back next week.</p>
         </div>
       )}
     </section>

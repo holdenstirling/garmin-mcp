@@ -61,8 +61,8 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
                 : undefined} />
           )}
           {ask && (
-            <Button variant="default" className="h-11 flex-1 gap-1.5 text-[0.8235rem]" onClick={ask}>
-              <MessageCircle className="size-4" aria-hidden /> Ask rabbt
+            <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={ask}>
+              <MessageCircle className="size-5" aria-hidden /> Ask rabbt
             </Button>
           )}
         </>
@@ -77,7 +77,7 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
       )}
       {error && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <p className="text-[0.8235rem] text-(--text-muted)">{error}</p>
+          <p className="text-body text-(--text-muted)">{error}</p>
           <Button variant="default" onClick={load}>Try again</Button>
         </div>
       )}
@@ -88,11 +88,11 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
       )}
       {v && (
         <Related items={[
-          { key: 'planned', icon: <CalendarDays className="size-4" />, label: v.planned ? `The planned ${v.planned.title}` : '', sub: 'What the plan asked for',
+          { key: 'planned', icon: <CalendarDays className="size-5" />, label: v.planned ? `The planned ${v.planned.title}` : '', sub: 'What the plan asked for',
             onClick: v.planned ? () => { const p = v.planned!; close(); window.setTimeout(() => openWorkout(p.id, p.date), 220) } : null },
-          { key: 'day', icon: <CalendarDays className="size-4" />, label: 'This day in your plan', sub: v.start ? fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' }) : undefined,
+          { key: 'day', icon: <CalendarDays className="size-5" />, label: 'This day in your plan', sub: v.start ? fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' }) : undefined,
             onClick: v.start ? () => { const d = v.start!.slice(0, 10); close(); window.setTimeout(() => openPlanDay(d), 220) } : null },
-          { key: 'ask', icon: <MessageCircle className="size-4" />, label: 'Ask rabbt about it', onClick: ask ?? null },
+          { key: 'ask', icon: <MessageCircle className="size-5" />, label: 'Ask rabbt about it', onClick: ask ?? null },
         ]} link={{ kind: 'activity', id: String(v.id) }} />
       )}
     </Screen>
@@ -134,9 +134,9 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       {v.planned && (
         <section aria-label="Planned workout" className="flex flex-col gap-2">
           {v.planned.went && <HowItWent w={v.planned.went} imperial={imperial} sport={v.sport} />}
-          <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-[0.8235rem]"
+          <Button variant="default" className="h-11 gap-1.5 self-start px-4 text-body"
             onClick={() => { const p = v.planned!; onClose(); window.setTimeout(() => openWorkout(p.id, p.date), 220) }}>
-            <CalendarDays className="size-4" aria-hidden /> See the planned {v.planned.title}
+            <CalendarDays className="size-5" aria-hidden /> See the planned {v.planned.title}
           </Button>
         </section>
       )}
@@ -146,8 +146,8 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-3.5 pt-2 min-[400px]:grid-cols-3">
             {stats.map(([k, x]) => (
               <div key={k} className="min-w-0">
-                <dt className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">{k}</dt>
-                <dd className="truncate font-mono text-[0.8824rem] font-semibold tabular-nums text-(--text)">{x}</dd>
+                <dt className="text-caption text-(--text-muted) font-semibold">{k}</dt>
+                <dd className="truncate font-mono text-body-lg font-semibold tabular-nums text-(--text)">{x}</dd>
               </div>
             ))}
           </dl>
@@ -163,12 +163,12 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
       )}
       {v.garmin_url && (
         <a href={v.garmin_url} target="_blank" rel="noopener noreferrer"
-          className="flex min-h-11 items-center justify-center gap-1.5 text-[0.7647rem] font-medium text-(--accent)">
-          <ExternalLink className="size-3.5" aria-hidden /> Open in Garmin Connect
+          className="flex min-h-11 items-center justify-center gap-1.5 text-small font-medium text-(--accent)">
+          <ExternalLink className="size-4" aria-hidden /> Open in Garmin Connect
         </a>
       )}
       {!v.ai && (
-        <p className="px-1 text-[0.7059rem] text-(--text-muted)">
+        <p className="px-1 text-meta text-(--text-muted)">
           Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; rabbt's coaching doesn't use it.
         </p>
       )}
@@ -188,15 +188,15 @@ function ZonesCard({ z }: { z: NonNullable<ActivityView['zones']> }) {
         </div>
         <ul className="flex flex-col">
           {z.zones.map((x, i) => (
-            <li key={x.zone} className="flex min-h-9 items-center gap-2 text-[0.7647rem]">
+            <li key={x.zone} className="flex min-h-9 items-center gap-2 text-small">
               <span className="size-2.5 shrink-0 rounded-full border border-(--border)" style={{ background: COLORS[i] }} aria-hidden />
               <span className="w-24 shrink-0 text-(--text)">Z{x.zone} {x.label}</span>
-              <span className="flex-1 font-mono text-[0.7059rem] text-(--text-muted)">{x.low}–{x.high} bpm</span>
+              <span className="flex-1 font-mono text-meta text-(--text-muted)">{x.low}–{x.high} bpm</span>
               <span className="font-mono tabular-nums text-(--text)">{x.s ? hms(x.s) : '–'}</span>
             </li>
           ))}
         </ul>
-        {z.basis === 'average' && <p className="text-[0.7059rem] text-(--text-muted)">Estimate from your average heart rate (no laps with heart rate).</p>}
+        {z.basis === 'average' && <p className="text-meta text-(--text-muted)">Estimate from your average heart rate (no laps with heart rate).</p>}
       </div>
     </SectionCard>
   )
@@ -208,8 +208,8 @@ function LapsCard({ laps, imperial, sport }: { laps: ActivityView['laps']; imper
   return (
     <SectionCard title={`Laps (${laps.length})`}>
       <div className="overflow-x-auto px-3.5 pt-2">
-        <table className="w-full text-left text-[0.7647rem] tabular-nums">
-          <thead className="font-mono text-[0.6471rem] uppercase tracking-widest text-(--text-muted)">
+        <table className="w-full text-left text-small tabular-nums">
+          <thead className="text-caption text-(--text-muted) font-semibold">
             <tr><th className="py-1 pr-2 font-semibold">#</th><th className="py-1 pr-2 font-semibold">Dist</th><th className="py-1 pr-2 font-semibold">Time</th>
               <th className="py-1 pr-2 font-semibold">{paced ? 'Pace' : 'Speed'}</th>{showHr && <th className="py-1 font-semibold">HR</th>}</tr>
           </thead>
@@ -253,23 +253,23 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
   }
   return (
     <section aria-label="How did it go" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <h4 className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">How did it go?</h4>
+      <h4 className="text-caption font-semibold text-(--text-muted)">How did it go?</h4>
       {ck && !editing && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap gap-1.5">
             {checkinChips(ck).map((x) => (
-              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-[0.7059rem] font-medium',
+              <span key={x.label} className={cn('rounded-full border px-2 py-0.5 text-meta font-medium',
                 x.warn ? 'border-(--warning)/30 bg-(--warning-subtle) text-(--warning-text)' : 'border-(--border) text-(--text)')}>{x.label}</span>
             ))}
           </div>
-          {ck.text && <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">“{ck.text}”</p>}
-          <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => setEditing(true)}>Add another note</button>
+          {ck.text && <p className="text-small leading-snug text-(--text-secondary)">“{ck.text}”</p>}
+          <button type="button" className="hit-44 self-start text-small font-medium text-(--accent)" onClick={() => setEditing(true)}>Add another note</button>
         </div>
       )}
       {form && (
         <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="flex items-baseline justify-between text-[0.7647rem] text-(--text)">
+            <span className="flex items-baseline justify-between text-small text-(--text)">
               <span>Effort (RPE)</span>
               <span className="font-mono font-semibold tabular-nums text-(--accent)" aria-hidden>{rpe}/10 · {RPE_WORD[rpe]}</span>
             </span>
@@ -286,25 +286,25 @@ function ActivityFeedback({ v, onAsk, onSaved }: { v: ActivityView; onAsk?: () =
           </div>
           <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 600))} rows={2} placeholder="Anything else? Legs, sleep, weather… (optional)"
             aria-label="Note about this workout"
-            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-[0.8235rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-          {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+            className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-body text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
           <div className="flex gap-2">
-            <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy} onClick={() => void save()}>Save</Button>
-            {editing && <Button variant="ghost" className="h-11 px-3 text-[0.8235rem]" onClick={() => setEditing(false)}>Cancel</Button>}
+            <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} onClick={() => void save()}>Save</Button>
+            {editing && <Button variant="ghost" className="h-11 px-3 text-body" onClick={() => setEditing(false)}>Cancel</Button>}
           </div>
         </div>
       )}
       {fb && (
         <div className={cn('flex flex-col gap-1.5 rounded-lg border px-3 py-2.5', TONE[fb.tone])} aria-live="polite">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold text-(--text)"><RabbitLogo size={16} current className="shrink-0 text-(--accent)" /> {fb.headline}</p>
+          <p className="flex items-center gap-1.5 text-body font-semibold text-(--text)"><RabbitLogo size={16} current className="shrink-0 text-(--accent)" /> {fb.headline}</p>
           <div className="flex flex-col gap-1">
-            {fb.lines.map((l) => <p key={l} className="m-0 text-[0.8235rem] leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
+            {fb.lines.map((l) => <p key={l} className="m-0 text-body leading-normal text-(--text-secondary)"><RabbitInline text={l} /></p>)}
           </div>
         </div>
       )}
       {onAsk && (
-        <Button variant="default" className="h-11 gap-1.5 text-[0.8235rem]" onClick={onAsk}>
-          <MessageCircle className="size-4" aria-hidden /> Ask rabbt for feedback on this workout
+        <Button variant="default" className="h-11 gap-1.5 text-body" onClick={onAsk}>
+          <MessageCircle className="size-5" aria-hidden /> Ask rabbt for feedback on this workout
         </Button>
       )}
     </section>

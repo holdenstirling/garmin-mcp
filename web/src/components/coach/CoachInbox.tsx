@@ -43,25 +43,25 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
   return (
     <Screen title="Your coach" subtitle={coaches.map((c) => c.email).join(', ')} closing={closing} onClose={close}>
       {threads === null && !error && <RabbitLoader className="py-16" label="Loading messages…" />}
-      {error && <p className="px-1 text-[0.8235rem] text-(--danger)">{error}</p>}
+      {error && <p className="px-1 text-body text-(--danger)">{error}</p>}
       {coaches.length === 0 && threads !== null && (
-        <p className="px-1 py-6 text-center text-[0.8235rem] text-(--text-muted)">No coach yet. Invite one from Settings › Coaches.</p>
+        <p className="px-1 py-6 text-center text-body text-(--text-muted)">No coach yet. Invite one from Settings › Coaches.</p>
       )}
       {coaches.map((c) => (
-        <Button key={c.email} variant="primary" className="h-11 gap-1.5 text-[0.8235rem]" onClick={() => void startGeneral(c.email)}>
-          <MessageSquare className="size-4" /> Message {c.email.split('@')[0]}
+        <Button key={c.email} variant="primary" className="h-11 gap-1.5 text-body" onClick={() => void startGeneral(c.email)}>
+          <MessageSquare className="size-5" /> Message {c.email.split('@')[0]}
         </Button>
       ))}
       {notes.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Notes from your coach</h2>
+          <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Notes from your coach</h2>
           {notes.map((n) => (
             <Card key={n.id} className="px-4 py-3">
-              <p className="flex items-start gap-2 text-[0.8235rem] leading-snug text-(--text)">
-                {n.pinned ? <Pin className="mt-0.5 size-3.5 shrink-0 text-(--accent)" /> : <StickyNote className="mt-0.5 size-3.5 shrink-0 text-(--text-muted)" />}
+              <p className="flex items-start gap-2 text-body leading-snug text-(--text)">
+                {n.pinned ? <Pin className="mt-0.5 size-4 shrink-0 text-(--accent)" /> : <StickyNote className="mt-0.5 size-4 shrink-0 text-(--text-muted)" />}
                 <span className="whitespace-pre-wrap">{n.text}</span>
               </p>
-              <p className="mt-1 text-[0.6471rem] text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)} · rabbt follows these too</p>
+              <p className="mt-1 text-caption text-(--text-muted)">{n.coach.split('@')[0]} · {timeAgo(n.ts)} · rabbt follows these too</p>
             </Card>
           ))}
         </section>
@@ -74,7 +74,7 @@ export function CoachInbox({ onClose, openThreadId, onChanged }: {
 export function ThreadList({ threads, onOpen, me }: { threads: ThreadSummary[]; onOpen: (id: string) => void; me: 'athlete' | 'coach' }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Conversations</h2>
+      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Conversations</h2>
       <Card>
         <div className="divide-y divide-(--border)">
           {threads.map((t) => (
@@ -82,17 +82,17 @@ export function ThreadList({ threads, onOpen, me }: { threads: ThreadSummary[]; 
               className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">
               <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl',
                 t.session_id || t.event_id ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-elevated) text-(--text-secondary)')}>
-                {t.event_id ? <Flag className="size-4" /> : t.session_id ? <Dumbbell className="size-4" /> : <MessageSquare className="size-4" />}
+                {t.event_id ? <Flag className="size-5" /> : t.session_id ? <Dumbbell className="size-5" /> : <MessageSquare className="size-5" />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8824rem] text-(--text)">{t.title}</span>
-                <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+                <span className="block truncate text-body-lg text-(--text)">{t.title}</span>
+                <span className="block truncate text-meta text-(--text-muted)">
                   {t.last ? `${t.last.from === me ? 'You: ' : ''}${t.last.text}` : 'No messages yet'}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-[0.6471rem] text-(--text-muted)">{timeAgo(t.updated)}</span>
-                <ChevronRight className="size-4 text-(--text-muted)" />
+                <span className="text-caption text-(--text-muted)">{timeAgo(t.updated)}</span>
+                <ChevronRight className="size-5 text-(--text-muted)" />
               </span>
             </button>
           ))}

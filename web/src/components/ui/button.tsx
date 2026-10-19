@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-    "hit-44 inline-flex items-center justify-center whitespace-nowrap rounded-(--radius) text-[0.7647rem] font-medium transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45 active:scale-[0.97]",
+    "hit-44 inline-flex items-center justify-center whitespace-nowrap rounded-(--radius) text-small font-medium transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45 active:scale-[0.97]",
     {
         variants: {
             variant: {
@@ -14,14 +14,14 @@ const buttonVariants = cva(
                 outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
                 secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
                 ghost: "border border-transparent hover:bg-secondary hover:text-foreground text-muted-foreground",
-                ghostDanger: "border border-transparent text-destructive hover:bg-destructive/10 hover:border-destructive text-[0.6471rem]",
+                ghostDanger: "border border-transparent text-destructive hover:bg-destructive/10 hover:border-destructive text-caption",
                 approve: "press bg-accent text-(--on-fill) font-semibold hover:bg-accent/90 dark:bg-accent",
                 reject: "border border-border bg-secondary text-foreground font-semibold hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive",
                 link: "text-primary underline-offset-4 hover:underline",
             },
             size: {
                 default: "h-8 px-3.5 py-1.5",
-                sm: "h-6 px-2 text-[0.6471rem]",
+                sm: "h-6 px-2 text-caption",
                 lg: "h-10 rounded-md px-8",
                 icon: "relative h-8 w-8 after:absolute after:-inset-1.5 rounded-full border-none shadow-none shrink-0 flex items-center justify-center auto-cols-auto p-0 hover:bg-secondary hover:text-foreground",
             },

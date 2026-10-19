@@ -37,8 +37,8 @@ function DiscardDialog({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: (
       <div className="absolute inset-0 bg-black/50" onClick={onKeep} />
       <div ref={box} role="alertdialog" aria-modal="true" aria-labelledby="unsaved-title" aria-describedby="unsaved-desc"
         className="relative z-10 mx-4 w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">
-        <h3 id="unsaved-title" className="text-[0.9412rem] font-semibold text-(--text)">You have unsaved changes</h3>
-        <p id="unsaved-desc" className="mt-1.5 text-[0.8235rem] text-(--text-muted)">
+        <h3 id="unsaved-title" className="text-lead font-semibold text-(--text)">You have unsaved changes</h3>
+        <p id="unsaved-desc" className="mt-1.5 text-body text-(--text-muted)">
           Keep editing to finish, or discard what you changed.
         </p>
         <div className="mt-4 flex justify-end gap-2">
@@ -54,7 +54,7 @@ function DiscardDialog({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: (
 /** "Restored your unsaved draft · Discard" line for the top of a form. */
 export function DraftRestored({ onDiscard, note }: { onDiscard: () => void; note?: string }) {
   return (
-    <p className="flex flex-wrap items-center gap-x-2 px-1 text-[0.7059rem] text-(--text-muted)" role="status">
+    <p className="flex flex-wrap items-center gap-x-2 px-1 text-meta text-(--text-muted)" role="status">
       <span>Restored your unsaved draft{note ? ` · ${note}` : ''}.</span>
       <button type="button" className="hit-44 underline" onClick={onDiscard}>Discard draft</button>
     </p>

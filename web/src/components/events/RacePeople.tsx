@@ -26,7 +26,7 @@ import {
   type Together,
 } from '@/lib/racepeople'
 
-const label = 'font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)'
+const label = 'text-caption font-semibold text-(--text-muted)'
 const shortDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 
 function PersonAvatar({ u, size = 32, friend }: { u: SocialUser; size?: number; friend?: boolean }) {
@@ -48,11 +48,11 @@ export function PeopleRow({ s, onOpen, className }: { s?: PeopleSummary; onOpen:
     : `${s.racing ? `${s.racing} racing with you` : `${n} ${n === 1 ? 'person' : 'people'}`}${s.pending ? ` · ${s.pending} invited` : ''}`
   return (
     <button type="button" onClick={onOpen}
-      className={cn('flex min-h-11 w-full items-center gap-2 border-t border-(--border) px-3.5 py-2 text-left text-[0.7059rem] font-medium active:bg-(--bg-inset)', className)}>
-      {s && s.people.length > 0 ? <AvatarStack people={s.people} /> : <Users className="size-3.5 text-(--accent)" />}
+      className={cn('flex min-h-11 w-full items-center gap-2 border-t border-(--border) px-3.5 py-2 text-left text-meta font-medium active:bg-(--bg-inset)', className)}>
+      {s && s.people.length > 0 ? <AvatarStack people={s.people} /> : <Users className="size-4 text-(--accent)" />}
       <span className="min-w-0 flex-1 truncate text-(--text-secondary)">{text}</span>
-      <span className="flex items-center gap-1 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-[0.6471rem] font-semibold text-(--accent)">
-        <UserPlus className="size-3" /> Invite
+      <span className="flex items-center gap-1 rounded-full bg-(--accent-subtle) px-2.5 py-1 text-caption font-semibold text-(--accent)">
+        <UserPlus className="size-3.5" /> Invite
       </span>
     </button>
   )
@@ -68,10 +68,10 @@ function Tabs<T extends string>({ value, options, onChange }: { value: T; option
       <span className="seg__pill" aria-hidden />
       {options.map(([t, name, badge]) => (
         <button key={t} type="button" role="tab" aria-selected={value === t} onClick={() => onChange(t)}
-          className={cn('hit-44 flex-1 rounded-full py-1.5 text-[0.7059rem] font-medium transition-colors',
+          className={cn('hit-44 flex-1 rounded-full py-1.5 text-meta font-medium transition-colors',
             value === t ? 'text-(--text)' : 'text-(--text-muted)')}>
           {name}
-          {!!badge && <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-[0.6471rem] font-semibold text-(--on-fill)">{badge}</span>}
+          {!!badge && <span className="ml-1 rounded-full bg-(--accent) px-1.5 text-caption font-semibold text-(--on-fill)">{badge}</span>}
         </button>
       ))}
     </div>
@@ -88,7 +88,7 @@ function RoleChips({ value, onChange }: { value: RaceRole; onChange: (r: RaceRol
             className={cn('plan-chip', value === r && 'plan-chip--on')}>{name}</button>
         ))}
       </div>
-      {hint && <p className="text-[0.7059rem] text-(--text-muted)">{hint}</p>}
+      {hint && <p className="text-meta text-(--text-muted)">{hint}</p>}
     </div>
   )
 }
@@ -155,13 +155,13 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
           <p className={label}>Coming</p>
           {coming.map((p) => (
             <div key={p.id} className="flex min-h-11 items-center gap-2.5">
-              {p.user ? <PersonAvatar u={p.user} /> : <Users className="size-5 text-(--accent)" />}
-              <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">
+              {p.user ? <PersonAvatar u={p.user} /> : <Users className="size-6 text-(--accent)" />}
+              <span className="min-w-0 flex-1 truncate text-body text-(--text)">
                 {p.user?.name ?? p.coach_email ?? p.email ?? 'Someone'}
               </span>
-              <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-[0.6471rem] font-semibold text-(--text-secondary)">{ROLE_LABEL[p.role]}</span>
+              <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">{ROLE_LABEL[p.role]}</span>
               <button type="button" aria-label="Remove" className="hit-44 flex size-11 items-center justify-center text-(--text-muted)"
-                disabled={busy === p.id} onClick={() => void remove(p.id)}><X className="size-4" /></button>
+                disabled={busy === p.id} onClick={() => void remove(p.id)}><X className="size-5" /></button>
             </div>
           ))}
         </section>
@@ -174,17 +174,17 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
         <p className={label}>Your friends</p>
         {friends === null && <div className="skeleton h-11" aria-hidden />}
         {friends !== null && pickable.length === 0 && (
-          <p className="text-[0.7647rem] text-(--text-muted)">
+          <p className="text-small text-(--text-muted)">
             {friends.length === 0 ? 'Follow friends (Local → People) to invite them here, or share a link with family and crew.' : 'Everyone on your list is already invited.'}
           </p>
         )}
         {pickable.map((f) => (
           <div key={f.id} className="flex min-h-11 items-center gap-2.5">
             <PersonAvatar u={f} friend />
-            <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{f.name}</span>
-            <Button variant="default" className="h-11 gap-1 px-3 text-[0.7059rem]" loading={busy === f.id}
+            <span className="min-w-0 flex-1 truncate text-body text-(--text)">{f.name}</span>
+            <Button variant="default" className="h-11 gap-1 px-3 text-meta" loading={busy === f.id}
               onClick={(e) => { const el = e.currentTarget; void invite(f.id, { role, user_id: f.id }, el) }}>
-              <UserPlus className="size-3.5" /> Invite
+              <UserPlus className="size-4" /> Invite
             </Button>
           </div>
         ))}
@@ -194,8 +194,8 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
           <p className={label}>Your coach</p>
           {v.coaches.map((c) => (
             <div key={c} className="flex min-h-11 items-center gap-2.5">
-              <span className="min-w-0 flex-1 truncate text-[0.8235rem] text-(--text)">{c.split('@')[0]}</span>
-              <Button variant="default" className="h-11 px-3 text-[0.7059rem]" loading={busy === c}
+              <span className="min-w-0 flex-1 truncate text-body text-(--text)">{c.split('@')[0]}</span>
+              <Button variant="default" className="h-11 px-3 text-meta" loading={busy === c}
                 onClick={() => void invite(c, { role: 'coach', coach_email: c })}>Add as coach</Button>
             </div>
           ))}
@@ -206,11 +206,11 @@ function FriendsTab({ eventId, v, friends, onUpdate }: {
           <input className={inputCls} value={other} onChange={(e) => setOther(e.target.value)} placeholder="email or code" autoCapitalize="off" />
           <Button variant="primary" className="h-11 px-3" aria-label="Send invite" disabled={!other.trim()} loading={busy === 'other'}
             onClick={() => void invite('other', other.includes('@') ? { role, email: other.trim() } : { role, code: other.trim() })}>
-            <Send className="size-4" />
+            <Send className="size-5" />
           </Button>
         </div>
       </Field>
-      {msg && <p className={cn('text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
     </>
   )
 }
@@ -231,29 +231,29 @@ function LinkTab({ eventId, v, onUpdate }: { eventId: string; v: RacePeopleView;
   }
   return (
     <>
-      <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+      <p className="text-small leading-snug text-(--text-secondary)">
         A private page for crew and family without rabbt: the race, your countdown and your crew notes. Never health data or chats.
       </p>
       {v.share_url ? (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
-            <input className={cn(inputCls, 'text-[0.7647rem]')} readOnly value={v.share_url} onFocus={(e) => e.currentTarget.select()} aria-label="Crew link" />
-            <Button variant="primary" className="h-11 gap-1 px-3 text-[0.7059rem]"
+            <input className={cn(inputCls, 'text-small')} readOnly value={v.share_url} onFocus={(e) => e.currentTarget.select()} aria-label="Crew link" />
+            <Button variant="primary" className="h-11 gap-1 px-3 text-meta"
               onClick={() => { void navigator.clipboard?.writeText(v.share_url!).then(() => setMsg({ text: 'Link copied.', ok: true }), () => {}) }}>
-              <Copy className="size-3.5" /> Copy
+              <Copy className="size-4" /> Copy
             </Button>
           </div>
           <div className="flex gap-2">
-            <Button variant="default" className="h-11 flex-1 text-[0.7059rem]" loading={busy === 'new'}
+            <Button variant="default" className="h-11 flex-1 text-meta" loading={busy === 'new'}
               onClick={() => void run('new', async () => ({ share_url: (await makeCrewLink(eventId)).url }), 'New link made. The old one stopped working.')}>New link</Button>
-            <Button variant="ghost" className="h-11 flex-1 text-[0.7059rem] text-(--danger)" loading={busy === 'off'}
+            <Button variant="ghost" className="h-11 flex-1 text-meta text-(--danger)" loading={busy === 'off'}
               onClick={() => void run('off', async () => { await stopCrewLink(eventId); return { share_url: null } }, 'Link turned off.')}>Turn off</Button>
           </div>
         </div>
       ) : (
-        <Button variant="primary" className="h-11 gap-1.5 text-[0.7647rem]" loading={busy === 'new'}
+        <Button variant="primary" className="h-11 gap-1.5 text-small" loading={busy === 'new'}
           onClick={() => void run('new', async () => ({ share_url: (await makeCrewLink(eventId)).url }))}>
-          <Link2 className="size-4" /> Create crew link
+          <Link2 className="size-5" /> Create crew link
         </Button>
       )}
       <Card>
@@ -269,11 +269,11 @@ function LinkTab({ eventId, v, onUpdate }: { eventId: string; v: RacePeopleView;
         <input className={inputCls} value={s.tracking_url} placeholder="https://" inputMode="url" autoCapitalize="off"
           onChange={(e) => setS((x) => ({ ...x, tracking_url: e.target.value }))} />
       </Field>
-      <Button variant="primary" className="h-11 text-[0.7647rem]" disabled={!dirty} loading={busy === 'save'}
+      <Button variant="primary" className="h-11 text-small" disabled={!dirty} loading={busy === 'save'}
         onClick={() => void run('save', async () => ({ settings: (await putCrew(eventId, { crew_notes: s.crew_notes, tracking_url: s.tracking_url })).settings }), 'Saved.')}>
         Save crew info
       </Button>
-      {msg && <p className={cn('text-[0.7647rem]', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
+      {msg && <p className={cn('text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
     </>
   )
 }
@@ -282,8 +282,8 @@ function ToggleRow({ title, sub, checked, onChange }: { title: string; sub: stri
   return (
     <div className="flex min-h-11 items-center gap-3 border-b border-(--border) px-4 py-2.5 last:border-b-0">
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.8235rem] text-(--text)">{title}</span>
-        <span className="block text-[0.7059rem] text-(--text-muted)">{sub}</span>
+        <span className="block text-body text-(--text)">{title}</span>
+        <span className="block text-meta text-(--text-muted)">{sub}</span>
       </span>
       <Switch checked={checked} onChange={onChange} label={title} />
     </div>
@@ -292,21 +292,21 @@ function ToggleRow({ title, sub, checked, onChange }: { title: string; sub: stri
 
 function PendingTab({ eventId, people, onUpdate }: { eventId: string; people: RacePeopleView['people']; onUpdate: (x: RacePeopleView) => void }) {
   const [busy, setBusy] = useState<string | null>(null)
-  if (people.length === 0) return <p className="py-4 text-center text-[0.7647rem] text-(--text-muted)">No invites waiting.</p>
+  if (people.length === 0) return <p className="py-4 text-center text-small text-(--text-muted)">No invites waiting.</p>
   return (
     <section className="flex flex-col gap-1.5">
       {people.map((p) => (
         <div key={p.id} className="flex min-h-11 items-center gap-2.5">
-          {p.user ? <PersonAvatar u={p.user} /> : <Users className="size-5 text-(--text-muted)" />}
+          {p.user ? <PersonAvatar u={p.user} /> : <Users className="size-6 text-(--text-muted)" />}
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8235rem] text-(--text)">{p.user?.name ?? p.email}</span>
-            <span className="block text-[0.6471rem] text-(--text-muted)">{ROLE_LABEL[p.role]} · waiting</span>
+            <span className="block truncate text-body text-(--text)">{p.user?.name ?? p.email}</span>
+            <span className="block text-caption text-(--text-muted)">{ROLE_LABEL[p.role]} · waiting</span>
           </span>
-          <Button variant="ghost" className="h-11 px-3 text-[0.7059rem]" loading={busy === p.id}
+          <Button variant="ghost" className="h-11 px-3 text-meta" loading={busy === p.id}
             onClick={async () => { setBusy(p.id); try { onUpdate(await removeRacePerson(eventId, p.id)) } finally { setBusy(null) } }}>Cancel</Button>
         </div>
       ))}
-      <p className="text-[0.7059rem] text-(--text-muted)">Invites by email only show the address you typed.</p>
+      <p className="text-meta text-(--text-muted)">Invites by email only show the address you typed.</p>
     </section>
   )
 }
@@ -351,26 +351,26 @@ export function RacingTogether({ eventId }: { eventId: string }) {
             <div key={m.user.id + i} className="flex min-h-11 items-center gap-2.5">
               <button type="button" className="shrink-0 rounded-full" aria-label={`Open ${m.user.name}'s profile`} onClick={() => openPerson(m.user!.id)}><PersonAvatar u={m.user} size={36} /></button>
               <span className="min-w-0 flex-1">
-                <PersonLink id={m.user.id} name={m.user.name} className="block truncate text-[0.8824rem] font-medium text-(--text)" />
-                <span className="block text-[0.7059rem] text-(--text-muted)">{countdown(m.date)}{m.finish ? ` · ~${m.finish}` : ''}</span>
+                <PersonLink id={m.user.id} name={m.user.name} className="block truncate text-body-lg font-medium text-(--text)" />
+                <span className="block text-meta text-(--text-muted)">{countdown(m.date)}{m.finish ? ` · ~${m.finish}` : ''}</span>
               </span>
-              {m.grade && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-[0.7059rem] font-semibold text-(--accent)">{m.grade}</span>}
+              {m.grade && <span className="rounded-full bg-(--accent-subtle) px-2 py-0.5 font-mono text-meta font-semibold text-(--accent)">{m.grade}</span>}
             </div>
           ))}
-          <Button ref={cheerRef} variant="default" className="press h-11 w-fit gap-1.5 text-[0.7647rem]" loading={busy === 'cheer'} onClick={() => void cheer()}>
-            <Megaphone className="size-4" /> Cheer
+          <Button ref={cheerRef} variant="default" className="press h-11 w-fit gap-1.5 text-small" loading={busy === 'cheer'} onClick={() => void cheer()}>
+            <Megaphone className="size-5" /> Cheer
           </Button>
         </div>
         <div className="flex flex-col gap-1.5 border-t border-(--border) pt-2.5">
           <p className={label}>Race chat</p>
           {msgs.length > 6 && !all && (
-            <button type="button" className="hit-44 w-fit text-[0.7059rem] text-(--accent)" onClick={() => setAll(true)}>Show all {msgs.length}</button>
+            <button type="button" className="hit-44 w-fit text-meta text-(--accent)" onClick={() => setAll(true)}>Show all {msgs.length}</button>
           )}
-          {shown.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Say hi, plan the drive, swap pacing ideas.</p>}
+          {shown.length === 0 && <p className="text-small text-(--text-muted)">Say hi, plan the drive, swap pacing ideas.</p>}
           {shown.map((m) => (
-            <p key={m.id} className={cn('max-w-[85%] rounded-xl px-3 py-1.5 text-[0.8235rem] leading-snug',
+            <p key={m.id} className={cn('max-w-[85%] rounded-xl px-3 py-1.5 text-body leading-snug',
               m.mine ? 'self-end bg-(--accent-subtle) text-(--text)' : 'self-start bg-(--bg-inset) text-(--text)')}>
-              {!m.mine && <b className="mr-1 text-[0.7059rem] text-(--text-secondary)">{m.by.name}</b>}
+              {!m.mine && <b className="mr-1 text-meta text-(--text-secondary)">{m.by.name}</b>}
               {m.kind === 'cheer' ? `📣 ${m.text || 'Let’s go!'}` : m.text}
             </p>
           ))}
@@ -378,7 +378,7 @@ export function RacingTogether({ eventId }: { eventId: string }) {
             <input className={inputCls} value={text} maxLength={500} placeholder="Message your teammates" aria-label="Message"
               onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) void send() }} />
             <Button variant="primary" className="h-11 px-3" aria-label="Send" disabled={!text.trim()} loading={busy === 'send'} onClick={() => void send()}>
-              <Send className="size-4" />
+              <Send className="size-5" />
             </Button>
           </div>
         </div>
@@ -386,7 +386,7 @@ export function RacingTogether({ eventId }: { eventId: string }) {
           <ToggleRow title="Share my readiness grade" sub="With teammates on this event" checked={t.me.team_grade} onChange={(v) => void share('team_grade', v)} />
           <ToggleRow title="Share my estimated finish" sub="With teammates on this event" checked={t.me.team_finish} onChange={(v) => void share('team_finish', v)} />
         </div>
-        {err && <p className="text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+        {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
       </Field>
     </Card>
   )
@@ -413,21 +413,21 @@ export function RaceInvitesInbox({ onChanged }: { onChanged?: () => void }) {
         <div key={i.id} className="flex flex-col gap-2 rounded-xl border border-(--accent)/40 bg-(--accent-subtle) px-3.5 py-3">
           <div className="flex items-center gap-2.5">
             {i.from && <PersonAvatar u={i.from} size={36} />}
-            <p className="min-w-0 flex-1 text-[0.8235rem] leading-snug text-(--text)">
+            <p className="min-w-0 flex-1 text-body leading-snug text-(--text)">
               {inviteLine(i.from?.name ?? 'A friend', i.role, i.event.name)}
-              <span className="block text-[0.7059rem] text-(--text-muted)">{shortDate(i.event.date)}{i.event.location ? ` · ${i.event.location}` : ''}</span>
+              <span className="block text-meta text-(--text-muted)">{shortDate(i.event.date)}{i.event.location ? ` · ${i.event.location}` : ''}</span>
             </p>
           </div>
-          {i.role === 'racing' && <p className="text-[0.7059rem] text-(--text-secondary)">Accepting adds it to your events.</p>}
+          {i.role === 'racing' && <p className="text-meta text-(--text-secondary)">Accepting adds it to your events.</p>}
           <div className="flex gap-2">
-            <Button variant="primary" className="press h-11 flex-1 text-[0.7647rem]" loading={busy === i.id}
+            <Button variant="primary" className="press h-11 flex-1 text-small" loading={busy === i.id}
               onClick={(e) => { const el = e.currentTarget; void answer(i, true, el) }}>Accept</Button>
-            <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" disabled={busy === i.id}
+            <Button variant="default" className="h-11 flex-1 text-small" disabled={busy === i.id}
               onClick={(e) => { const el = e.currentTarget; void answer(i, false, el) }}>Decline</Button>
           </div>
         </div>
       ))}
-      {err && <p className="px-1 text-[0.7059rem] text-(--danger)" role="alert">{err}</p>}
+      {err && <p className="px-1 text-meta text-(--danger)" role="alert">{err}</p>}
     </section>
   )
 }
@@ -439,7 +439,7 @@ export function FollowingRaces({ refreshKey = 0 }: { refreshKey?: number }) {
   if (races.length === 0) return null
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Events you're following</h2>
+      <h2 className="px-1 text-caption font-semibold text-(--text-muted)">Events you're following</h2>
       {races.map((r) => <FollowedCard key={r.id} r={r} onLeave={() => setRaces((x) => x.filter((y) => y.id !== r.id))} />)}
     </section>
   )
@@ -454,8 +454,8 @@ function FollowedCard({ r, onLeave }: { r: FollowedRace; onLeave: () => void }) 
     <div className="overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
       {n === 0 && (
         <div className="flex flex-col gap-1 bg-(--accent) px-3.5 py-2.5 text-(--on-fill)">
-          <p className="flex items-center gap-1.5 text-[0.8235rem] font-semibold"><Flag className="size-4" /> Race day!</p>
-          <p className="text-[0.7059rem] leading-snug opacity-90">
+          <p className="flex items-center gap-1.5 text-body font-semibold"><Flag className="size-5" /> Race day!</p>
+          <p className="text-meta leading-snug opacity-90">
             rabbt doesn't do live tracking. {link ? 'Follow along on the ' : ''}
             {link && <a href={link} target="_blank" rel="noopener noreferrer" className="underline">{r.tracking_url ? 'official tracker' : 'race website'}</a>}
           </p>
@@ -465,35 +465,35 @@ function FollowedCard({ r, onLeave }: { r: FollowedRace; onLeave: () => void }) 
         className="flex min-h-11 w-full items-center gap-3 px-3.5 py-3 text-left active:bg-(--bg-inset)">
         {r.athlete && <PersonAvatar u={r.athlete} size={36} />}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9412rem] font-medium text-(--text)">{r.event.name}</span>
-          <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+          <span className="block truncate text-lead font-medium text-(--text)">{r.event.name}</span>
+          <span className="block truncate text-meta text-(--text-muted)">
             {r.athlete?.name ?? 'Friend'} · {shortDate(r.event.date)}{r.event.location ? ` · ${r.event.location}` : ''}
           </span>
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
-          <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider text-(--text-secondary)">{ROLE_LABEL[r.role]}</span>
-          <span className="text-[0.6471rem] text-(--text-muted)">{countdown(r.event.date)}</span>
+          <span className="rounded-full bg-(--bg-elevated) px-2 py-0.5 text-caption font-semibold text-(--text-secondary)">{ROLE_LABEL[r.role]}</span>
+          <span className="text-caption text-(--text-muted)">{countdown(r.event.date)}</span>
         </span>
       </button>
       {open && (
-        <div className="flex flex-col gap-2 border-t border-(--border) px-3.5 py-3 text-[0.7647rem]">
+        <div className="flex flex-col gap-2 border-t border-(--border) px-3.5 py-3 text-small">
           <p className={label}>Crew notes</p>
           <p className="whitespace-pre-wrap leading-snug text-(--text)">{r.crew_notes || 'No crew notes yet.'}</p>
           {r.event.start_time && <p className="text-(--text-secondary)">Start: {r.event.start_time}</p>}
           {link && n !== 0 && (
             <a href={link} target="_blank" rel="noopener noreferrer" className="hit-44 flex w-fit items-center gap-1 text-(--accent)">
-              <ExternalLink className="size-3.5" /> {r.tracking_url ? 'Tracking link' : 'Race website'}
+              <ExternalLink className="size-4" /> {r.tracking_url ? 'Tracking link' : 'Race website'}
             </a>
           )}
           {confirm ? (
             <div className="flex items-center gap-2">
               <span className="flex-1 text-(--text-secondary)">Stop following this event?</span>
-              <Button variant="default" className="h-11 px-3 text-[0.7059rem]" onClick={() => setConfirm(false)}>Keep</Button>
-              <Button variant="destructive" className="h-11 px-3 text-[0.7059rem]"
+              <Button variant="default" className="h-11 px-3 text-meta" onClick={() => setConfirm(false)}>Keep</Button>
+              <Button variant="destructive" className="h-11 px-3 text-meta"
                 onClick={() => { void leaveRace(r.id).then(onLeave, () => setConfirm(false)) }}>Stop</Button>
             </div>
           ) : (
-            <button type="button" className="hit-44 w-fit text-[0.7059rem] text-(--text-muted)" onClick={() => setConfirm(true)}>Stop following</button>
+            <button type="button" className="hit-44 w-fit text-meta text-(--text-muted)" onClick={() => setConfirm(true)}>Stop following</button>
           )}
         </div>
       )}
@@ -521,16 +521,16 @@ export function InviteToRaceSheet({ friend, onClose }: { friend: SocialUser; onC
       <RoleChips value={role} onChange={setRole} />
       {error && <ErrorState compact message={error} />}
       {!events && !error && <div className="skeleton h-14" aria-hidden />}
-      {events && events.length === 0 && <p className="text-[0.7647rem] text-(--text-muted)">Add an event in Schedule → Events first.</p>}
+      {events && events.length === 0 && <p className="text-small text-(--text-muted)">Add an event in Schedule → Events first.</p>}
       {events?.map((e) => (
         <div key={e.id} className="flex min-h-11 items-center gap-2.5">
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8824rem] text-(--text)">{e.name}</span>
-            <span className="block truncate text-[0.7059rem] text-(--text-muted)">{done[e.id] ?? `${shortDate(e.date)} · ${countdown(e.date)}`}</span>
+            <span className="block truncate text-body-lg text-(--text)">{e.name}</span>
+            <span className="block truncate text-meta text-(--text-muted)">{done[e.id] ?? `${shortDate(e.date)} · ${countdown(e.date)}`}</span>
           </span>
-          <Button variant={done[e.id] ? 'ghost' : 'default'} className="h-11 gap-1 px-3 text-[0.7059rem]" loading={busy === e.id}
+          <Button variant={done[e.id] ? 'ghost' : 'default'} className="h-11 gap-1 px-3 text-meta" loading={busy === e.id}
             disabled={!!done[e.id]} onClick={() => void invite(e)}>
-            {done[e.id] ? <Check className="size-4" /> : <><UserPlus className="size-3.5" /> Invite</>}
+            {done[e.id] ? <Check className="size-5" /> : <><UserPlus className="size-4" /> Invite</>}
           </Button>
         </div>
       ))}

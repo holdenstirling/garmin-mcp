@@ -33,7 +33,7 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
   const imperial = data.units !== 'metric'
   return (
     <section aria-label="Next 3 days" className="flex flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
-      <h2 className="flex items-center justify-between px-3.5 pt-3 pb-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">
+      <h2 className="flex items-center justify-between px-3.5 pt-3 pb-1 text-caption font-semibold text-(--text-muted)">
         <span>Next 3 days</span>
         {data.place && <span className="truncate pl-2 font-sans normal-case tracking-normal">{data.place}</span>}
       </h2>
@@ -46,16 +46,16 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
               <button type="button" onClick={() => openPlanDay(d.date)}
                 aria-label={`${label(d.date, data.today, i)}${w ? `: ${w.summary}, high ${fmtTemp(w.hi_c, imperial)}, low ${fmtTemp(w.lo_c, imperial)}${w.rain_pct ? `, ${w.rain_pct}% rain` : ''}` : ''}. Open this day`}
                 className="flex w-[4.75rem] shrink-0 flex-col items-start gap-0.5 rounded-lg py-1 text-left active:bg-(--bg-inset)">
-                <span className="text-[0.7647rem] font-semibold text-(--text)">{label(d.date, data.today, i)}</span>
+                <span className="text-small font-semibold text-(--text)">{label(d.date, data.today, i)}</span>
                 {w ? (
-                  <span className="flex items-center gap-1 text-[0.7059rem] text-(--text-secondary)" aria-hidden>
+                  <span className="flex items-center gap-1 text-meta text-(--text-secondary)" aria-hidden>
                     <WI className="size-4 text-(--accent)" />{fmtTemp(w.hi_c, imperial)}<span className="text-(--text-muted)">/{fmtTemp(w.lo_c, imperial)}</span>
                   </span>
-                ) : <span className="text-[0.6471rem] text-(--text-muted)" aria-hidden>No forecast</span>}
-                {w?.rain_pct != null && w.rain_pct >= 30 && <span className="text-[0.6471rem] text-(--text-muted)" aria-hidden>{w.rain_pct}% rain</span>}
+                ) : <span className="text-caption text-(--text-muted)" aria-hidden>No forecast</span>}
+                {w?.rain_pct != null && w.rain_pct >= 30 && <span className="text-caption text-(--text-muted)" aria-hidden>{w.rain_pct}% rain</span>}
               </button>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                {d.sessions.length === 0 && <span className="py-2 text-[0.7647rem] text-(--text-muted)">{data.has_plan ? 'Rest day' : w?.summary ?? ''}</span>}
+                {d.sessions.length === 0 && <span className="py-2 text-small text-(--text-muted)">{data.has_plan ? 'Rest day' : w?.summary ?? ''}</span>}
                 {d.sessions.map((s) => {
                   const I = SPORT_ICON[s.sport as Sport] ?? SPORT_ICON.other
                   const warn = s.badges.filter((b) => b !== 'rain' || s.badges.length === 1).slice(0, 2)
@@ -63,23 +63,23 @@ export function NextDays({ refreshKey }: { refreshKey?: number }) {
                     <button key={s.id} type="button" onClick={() => openWorkout(s.id, d.date)}
                       aria-label={`${s.title}${s.time ? ` at ${fmtHour(s.time, imperial)}` : ''}${s.minutes ? `, ${fmtDuration(s.minutes)}` : ''}${warn.length ? `. Weather: ${warn.map((b) => BADGE[b].label).join(', ')}` : ''}. Open workout`}
                       className="flex min-h-11 w-full items-center gap-2 rounded-lg text-left active:bg-(--bg-inset)">
-                      <I className="size-4 shrink-0 text-(--text-secondary)" aria-hidden />
+                      <I className="size-5 shrink-0 text-(--text-secondary)" aria-hidden />
                       <span className="min-w-0 flex-1" aria-hidden>
-                        <span className="block truncate text-[0.8235rem] text-(--text)">{s.title}</span>
-                        <span className="block truncate text-[0.6471rem] text-(--text-muted)">
+                        <span className="block truncate text-body text-(--text)">{s.title}</span>
+                        <span className="block truncate text-caption text-(--text-muted)">
                           {[s.time ? fmtHour(s.time, imperial) : null, s.minutes ? fmtDuration(s.minutes) : null].filter(Boolean).join(' · ')}
                         </span>
                       </span>
                       {warn.map((b) => {
                         const B = BADGE[b]
                         return (
-                          <span key={b} aria-hidden className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[0.6471rem] font-medium',
+                          <span key={b} aria-hidden className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption font-medium',
                             B.warn ? 'bg-(--warning-subtle) text-(--warning-text)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
                             <B.icon className="size-3" />{b === 'heat' && s.pct ? `+${Math.round(s.pct)}%` : B.label}
                           </span>
                         )
                       })}
-                      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+                      <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
                     </button>
                   )
                 })}

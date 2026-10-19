@@ -996,7 +996,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <button type="button" className={HEADER_ICON}
         aria-label={notifCount > 0 ? `Notifications, ${notifCount} unread` : 'Notifications'}
         onClick={() => { dropSheet(); setNotifsOpen(true) }}>
-        <Bell className="size-5" aria-hidden />
+        <Bell className="size-6" aria-hidden />
         {notifCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
       </button>
     )}
@@ -1004,7 +1004,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     <button type="button" className={HEADER_ICON} data-tour="chat"
       aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with rabbt and friends'}
       onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
-      <MessagesSquare className="size-5" aria-hidden />
+      <MessagesSquare className="size-6" aria-hidden />
       {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
     <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
@@ -1019,7 +1019,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <header className="flex shrink-0 items-center gap-2 border-b border-(--border) px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))]">
         {!isLog && (
           <Button variant="ghost" size="icon" className="-mr-1" aria-label="Back to rabbt" onClick={slideBack}>
-            <ChevronLeft className="size-5" />
+            <ChevronLeft className="size-6" />
           </Button>
         )}
         <h1 className="sr-only">{isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}</h1>
@@ -1030,10 +1030,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <RabbitLogo size={32} thinking={!under && status === 'streaming'} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-display text-lg leading-tight text-(--brand)">
+            <span className="block truncate font-display text-title-sm leading-tight text-(--brand)">
               {isLog ? 'rabbt' : pending ? 'New chat' : thread?.title || 'New chat'}
             </span>
-            <span className="block truncate text-[0.6471rem] leading-tight text-muted-foreground">
+            <span className="block truncate text-caption leading-tight text-muted-foreground">
               {goal ? `${goal.title}${countdown ? ` · ${countdown}` : ''}` : 'No goal set'}
             </span>
           </span>
@@ -1068,7 +1068,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       const seed = m.turnKind === 'seed'
       return (
         <div key={m.id} className={seed ? 'rounded-xl border border-dashed border-border p-2' : ''}>
-          {seed && <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From rabbt's log</p>}
+          {seed && <p className="mb-1 pl-1 text-caption font-semibold text-muted-foreground">From rabbt's log</p>}
           <CoachHeader label={m.label} ts={m.ts} />
           <MessageBubble message={m} showLabel={r.showLabel} pressProps={press} />
           {inLog && m.turnKind === 'proactive' && m.turnId && coachThread && (
@@ -1100,11 +1100,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <button type="button" onClick={() => setHomeView('chat')}
                 className="mx-4 mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2 text-left active:opacity-80">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-(--brand)"><RabbitLogo size={20} /></span>
-                <span className="min-w-0 flex-1 text-[0.8235rem] font-medium text-(--accent)">
+                <span className="min-w-0 flex-1 text-body font-medium text-(--accent)">
                   {waiting > 0 ? `rabbt needs your OK on ${waiting === 1 ? 'a change' : `${waiting} changes`}`
                     : `rabbt has ${logNew} new ${logNew === 1 ? 'note' : 'notes'} for you`}
                 </span>
-                <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+                <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
               </button>
             )}
             {!upnext && !upnextTried && me.garmin.connected && <HomeCardSkeleton />}
@@ -1180,8 +1180,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         {/* Ask Rabbit: switches to Chat with the composer focused. */}
         <div className="shrink-0 border-t border-(--border) bg-background px-4 pb-2 pt-2">
           <button type="button" onClick={askFromHome} disabled={!me.chat.available}
-            className="mx-auto flex min-h-11 w-full max-w-2xl items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-4 text-left text-[0.8235rem] text-(--text-muted) active:bg-(--bg-inset) disabled:opacity-50">
-            <MessageCircle className="size-4 shrink-0" aria-hidden />
+            className="mx-auto flex min-h-11 w-full max-w-2xl items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-4 text-left text-body text-(--text-muted) active:bg-(--bg-inset) disabled:opacity-50">
+            <MessageCircle className="size-5 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 truncate">{me.chat.available ? 'Ask rabbt anything…' : 'Chat isn’t configured yet'}</span>
           </button>
         </div>
@@ -1250,10 +1250,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               className="flex min-h-12 items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3 text-left active:opacity-80">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--accent) text-(--on-fill)"><RabbitLogo size={18} current /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.8824rem] font-semibold text-(--accent)">Turn your plan into full workouts</span>
-                <span className="block text-[0.7059rem] text-(--text-muted)">Zones, pace and cadence for every day. You review it first.</span>
+                <span className="block text-body-lg font-semibold text-(--accent)">Turn your plan into full workouts</span>
+                <span className="block text-meta text-(--text-muted)">Zones, pace and cadence for every day. You review it first.</span>
               </span>
-              <ChevronRight className="size-4 shrink-0 text-(--accent)" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-(--accent)" aria-hidden />
             </button>
           )}
           {weekLead}
@@ -1271,10 +1271,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.9412rem] font-semibold text-(--accent)">Build my plan</span>
-                  <span className="block text-[0.7059rem] text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
+                  <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                  <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
                 </span>
-                <ChevronRight className="size-4 shrink-0 text-(--accent)" />
+                <ChevronRight className="size-5 shrink-0 text-(--accent)" />
               </button>
               <Group>
                 <SettingsRow icon={<Icon tone="muted"><Upload /></Icon>} title="I already have a plan"
@@ -1314,9 +1314,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <Segmented label="Schedule" value={schedView} onChange={setSchedView}
           options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
       </div>
-      <Button variant="primary" className="mt-2 h-11 shrink-0 gap-1 px-3.5 text-[0.7647rem]" aria-haspopup="dialog"
+      <Button variant="primary" className="mt-2 h-11 shrink-0 gap-1 px-3.5 text-small" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
-        <Plus className="size-4" aria-hidden />Add
+        <Plus className="size-5" aria-hidden />Add
       </Button>
     </div>
   )
@@ -1423,7 +1423,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">
             {pending.seedMsg && (
               <div className="rounded-xl border border-dashed border-border p-2">
-                <p className="mb-1 pl-1 text-[0.6471rem] font-semibold uppercase tracking-widest text-muted-foreground">From rabbt's log</p>
+                <p className="mb-1 pl-1 text-caption font-semibold text-muted-foreground">From rabbt's log</p>
                 <CoachHeader label={pending.seedMsg.label} ts={pending.seedMsg.ts} />
                 <MessageBubble message={pending.seedMsg} showLabel={false} />
               </div>
@@ -1431,11 +1431,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <div className="chat-empty flex flex-1 flex-col items-center justify-center py-6 text-center">
               <EmptyHero suggestions={pending.seedMsg ? undefined : TOPIC_SUGGESTIONS.map((q) => (
                     <button key={q} disabled={!me.chat.available || busy}
-                      className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                      className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-small text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                       onClick={() => void sendPending(q, [])}>{q}</button>
                   ))}>
                 {!pending.seedMsg && <RabbitLogo size={64} className="mb-3 opacity-40" />}
-                <p className="mb-2 font-display text-xl leading-tight text-(--brand)">
+                <p className="mb-2 font-display text-title leading-tight text-(--brand)">
                   {pending.seedMsg ? 'What would you like to ask about this?' : 'Ready when you are.'}
                 </p>
               </EmptyHero>
@@ -1448,7 +1448,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           <RabbitLoader size={56} label="Loading chat" />
         </div>
       ) : loadError && items.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-[0.8235rem] text-muted-foreground" role="alert">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-body text-muted-foreground" role="alert">
           <p>Couldn't load this chat.</p>
           <button type="button" className="min-h-11 underline" onClick={() => void retry()}>Retry</button>
         </div>
@@ -1459,10 +1459,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <span className="logo-tile mb-4 flex size-16 items-center justify-center rounded-[18px] bg-(--brand) shadow-sm">
                 <RabbitLogo size={52} />
               </span>
-              <p className="font-display text-[1.6471rem] leading-tight text-(--brand)">
+              <p className="font-display text-display leading-tight text-(--brand)">
                 Hi{me.profile.name ? ` ${me.profile.name.split(' ')[0]}` : ''}, let's build your plan
               </p>
-              <p className="mt-2 text-[0.8235rem] leading-snug text-(--text-secondary)">
+              <p className="mt-2 text-body leading-snug text-(--text-secondary)">
                 Tell rabbt about your race, your goals and your week. You'll get a plan from today to race day, with workouts you can send straight to your Garmin.
               </p>
             </div>
@@ -1470,26 +1470,26 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.9412rem] font-semibold text-(--accent)">Build my plan</span>
-                <span className="block text-[0.7059rem] text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
+                <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
               </span>
-              <ChevronRight className="size-4 shrink-0 text-(--accent)" />
+              <ChevronRight className="size-5 shrink-0 text-(--accent)" />
             </button>
             <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
               <label htmlFor={ATTACH_INPUT_ID} onClick={() => setDraft((d) => ({ text: "Here's my training plan.", n: (d?.n ?? 0) + 1 }))}
                 className="flex cursor-pointer items-center gap-3 px-4 py-3 active:bg-(--bg-inset)">
-                <Upload className="size-4 shrink-0 text-(--text-secondary)" />
+                <Upload className="size-5 shrink-0 text-(--text-secondary)" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.8235rem] text-(--text)">I already have a plan</span>
-                  <span className="block text-[0.6471rem] text-(--text-muted)">Send a PDF or screenshots from a coach or app</span>
+                  <span className="block text-body text-(--text)">I already have a plan</span>
+                  <span className="block text-caption text-(--text-muted)">Send a PDF or screenshots from a coach or app</span>
                 </span>
               </label>
               <button type="button" onClick={() => tellRabbit("I'm training for ")}
                 className="flex w-full items-center gap-3 border-t border-(--border) px-4 py-3 text-left active:bg-(--bg-inset)">
-                <MessageCircle className="size-4 shrink-0 text-(--text-secondary)" />
+                <MessageCircle className="size-5 shrink-0 text-(--text-secondary)" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.8235rem] text-(--text)">Just chat with rabbt</span>
-                  <span className="block text-[0.6471rem] text-(--text-muted)">Describe your race and training in your own words</span>
+                  <span className="block text-body text-(--text)">Just chat with rabbt</span>
+                  <span className="block text-caption text-(--text-muted)">Describe your race and training in your own words</span>
                 </span>
               </button>
             </div>
@@ -1499,14 +1499,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <div className="chat-empty flex flex-1 flex-col items-center justify-center px-6 text-center">
           <EmptyHero gap={20} suggestions={suggestions.map((s) => (
               <button key={s} disabled={!me.chat.available}
-                className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-[0.7647rem] text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
+                className="min-h-11 w-full cursor-pointer rounded-(--radius) border border-border bg-background px-3.5 py-2.5 text-left text-small text-foreground/80 transition-all hover:bg-secondary disabled:opacity-50"
                 onClick={() => void (isCoach ? sendFromLog(s, []) : send(s))}>{s}</button>
             ))}>
           <RabbitLogo size={80} className="mb-3 opacity-40" />
-          <p className="mb-2 font-display text-2xl leading-tight text-(--brand)">
+          <p className="mb-2 font-display text-title-lg leading-tight text-(--brand)">
             {isCoach ? 'Chat with rabbt' : 'Ready when you are.'}
           </p>
-          <p className="text-[0.7647rem] text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             {isCoach ? 'Morning briefs and workout notes land here. Ask anything about your training.'
               : 'Ask about your training, recovery or what to do next.'}
           </p>
@@ -1523,7 +1523,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {renderRows(shownRows, isCoach)}
             <ReplyChips chips={chips} disabled={busy} onPick={(t) => void (isCoach ? sendFromLog(t, []) : send(t))} />
             {thinking && (
-              <div className="flex items-center gap-2 pl-1 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 pl-1 text-body text-muted-foreground">
                 <div className="thinking-dots flex items-center gap-[3px]" role="status" aria-label="rabbt is thinking"><span /><span /><span /></div>
               </div>
             )}

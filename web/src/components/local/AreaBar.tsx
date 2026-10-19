@@ -54,14 +54,14 @@ export function AreaBar({ imperial, what = 'clubs, leagues and meetups', classNa
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
         aria-label={where ? `Your area: near ${where}, within ${radiusLabel(r, imperial)}. Change` : 'Set your area'}
         className={cn('flex min-h-11 w-full items-center gap-2.5 rounded-full border border-(--border) bg-(--bg-surface) px-3.5 text-left active:bg-(--bg-inset)', className)}>
-        <MapPin className="size-4 shrink-0 text-(--accent)" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-[0.7647rem] text-(--text)" aria-hidden>
+        <MapPin className="size-5 shrink-0 text-(--accent)" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-small text-(--text)" aria-hidden>
           {s === null ? <span className="text-(--text-muted)">Finding your area…</span>
             : where ? <>Near <span className="font-semibold">{where}</span> · within {radiusLabel(r, imperial)}</>
             : <span className="font-medium text-(--accent)">Set your area to see what's near you</span>}
         </span>
-        <span className="shrink-0 text-[0.7059rem] font-medium text-(--accent)" aria-hidden>{where ? 'Change' : 'Set'}</span>
-        <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+        <span className="shrink-0 text-meta font-medium text-(--accent)" aria-hidden>{where ? 'Change' : 'Set'}</span>
+        <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       {open && <AreaSheet state={s} imperial={imperial} what={what} onClose={() => setOpen(false)}
         onChanged={(n) => { setS(n); announce(n) }} />}
@@ -92,18 +92,18 @@ function AreaSheet({ state, imperial, what, onClose, onChanged }: {
     <Sheet title="Your area" onClose={onClose}
       footer={
         <div className="border-t border-(--border) bg-(--bg) px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={onClose}>Done</Button>
+          <Button variant="primary" className="h-11 w-full text-body" onClick={onClose}>Done</Button>
         </div>
       }>
       <div className="flex flex-col gap-4">
-        <p className="text-[0.7647rem] leading-snug text-(--text-secondary)">
+        <p className="text-small leading-snug text-(--text-secondary)">
           {where ? <>Showing {what} near <span className="font-semibold text-(--text)">{where}</span>.</> : `Pick where to look for ${what}.`}
           {' '}rabbt keeps only a rough spot (about 1 km), never your exact location.
         </p>
 
-        <Button variant="default" className="h-12 justify-start gap-2.5 px-4 text-[0.8235rem]" loading={busy === 'locate'}
+        <Button variant="default" className="h-12 justify-start gap-2.5 px-4 text-body" loading={busy === 'locate'}
           onClick={() => void act('locate', shareDeviceLocation)}>
-          <LocateFixed className="size-4 text-(--accent)" aria-hidden />
+          <LocateFixed className="size-5 text-(--accent)" aria-hidden />
           {saved?.source === 'device' ? 'Update to where I am now' : 'Use my location'}
         </Button>
         {busy === 'locate' && <RabbitLoader className="py-1" label="Finding you" cycle={['Asking your phone…', 'Finding your neighborhood…']} />}
@@ -114,16 +114,16 @@ function AreaSheet({ state, imperial, what, onClose, onChanged }: {
               <input className={inputCls} inputMode="numeric" autoComplete="postal-code" maxLength={5} placeholder="80223" value={zip}
                 onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))}
                 onKeyDown={(e) => { if (e.key === 'Enter' && zip.length === 5) void act('zip', () => saveZipLocation(zip)) }} />
-              <Button variant="default" className="h-11 shrink-0 px-4 text-[0.7647rem]" loading={busy === 'zip'} disabled={zip.length !== 5}
+              <Button variant="default" className="h-11 shrink-0 px-4 text-small" loading={busy === 'zip'} disabled={zip.length !== 5}
                 onClick={() => void act('zip', () => saveZipLocation(zip))}>Use zip</Button>
             </div>
           </Field>
         ) : (
-          <button type="button" className="hit-44 self-start text-[0.7647rem] font-medium text-(--accent)" onClick={() => setZipOpen(true)}>
+          <button type="button" className="hit-44 self-start text-small font-medium text-(--accent)" onClick={() => setZipOpen(true)}>
             Enter a zip code instead
           </button>
         )}
-        {err && <p className="text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+        {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}
 
         <Field label="How far to look">
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="How far to look">
@@ -137,7 +137,7 @@ function AreaSheet({ state, imperial, what, onClose, onChanged }: {
         </Field>
 
         {saved && (
-          <button type="button" className="hit-44 self-start text-[0.7059rem] text-(--text-muted) underline-offset-2 hover:underline"
+          <button type="button" className="hit-44 self-start text-meta text-(--text-muted) underline-offset-2 hover:underline"
             disabled={busy != null} onClick={() => void act('forget', forgetLocation)}>
             Forget this spot and use my home city
           </button>

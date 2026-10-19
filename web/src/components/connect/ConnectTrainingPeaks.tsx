@@ -36,55 +36,55 @@ export function ConnectTrainingPeaks({ onConnected }: { onConnected: (name: stri
     <div className="flex flex-col gap-3.5">
       <div>
         <Progress step={step} total={STEPS.length} />
-        <p className="mt-2 text-center text-[0.7059rem] text-(--text-muted)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
+        <p className="mt-2 text-center text-meta text-(--text-muted)">Step {step + 1} of {STEPS.length} · {STEPS[step]}</p>
       </div>
 
       {step === 0 && (
         <>
-          <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">
+          <p className="text-body leading-snug text-(--text-secondary)">
             On a computer, open TrainingPeaks and sign in as you normally do. Keep that tab open.
           </p>
           <a href="https://app.trainingpeaks.com" target="_blank" rel="noopener noreferrer"
-            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) text-[0.8235rem] text-(--accent) active:bg-(--bg-inset)">
-            Open TrainingPeaks <ExternalLink className="size-3.5" aria-hidden />
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-(--border) text-body text-(--accent) active:bg-(--bg-inset)">
+            Open TrainingPeaks <ExternalLink className="size-4" aria-hidden />
           </a>
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={() => setStep(1)}>I’m signed in</Button>
+          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(1)}>I’m signed in</Button>
         </>
       )}
 
       {step === 1 && (
         <>
-          <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-[0.7647rem] leading-snug text-(--text-secondary)">
+          <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-small leading-snug text-(--text-secondary)">
             <li>In the TrainingPeaks tab, open developer tools (F12, or Cmd+Option+I on a Mac).</li>
             <li>Go to <b>Application</b> (Chrome, Edge) or <b>Storage</b> (Firefox, Safari), then <b>Cookies</b> → app.trainingpeaks.com.</li>
             <li>Find <b>Production_tpAuth</b> and copy its whole <b>Value</b> (a long line of letters and numbers).</li>
           </ol>
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" onClick={() => setStep(2)}>I copied it</Button>
-          <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={() => setStep(0)}>Back</button>
+          <Button variant="primary" className="h-11 w-full text-body" onClick={() => setStep(2)}>I copied it</Button>
+          <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(0)}>Back</button>
         </>
       )}
 
       {step === 2 && (
         <>
           <label className="flex flex-col gap-1.5">
-            <span className="text-[0.7647rem] text-(--text-secondary)">Production_tpAuth value</span>
+            <span className="text-small text-(--text-secondary)">Production_tpAuth value</span>
             <textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3}
               autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
-              className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-[0.7647rem] text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-small text-(--text) placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               placeholder="Paste the value here" aria-describedby="tp-paste-help" />
           </label>
-          {err && <p role="alert" className="text-[0.7647rem] text-(--danger)">{err}</p>}
-          <Button variant="primary" className="h-11 w-full text-[0.8235rem]" disabled={value.trim().length < 20} onClick={() => void connect()}>
+          {err && <p role="alert" className="text-small text-(--danger)">{err}</p>}
+          <Button variant="primary" className="h-11 w-full text-body" disabled={value.trim().length < 20} onClick={() => void connect()}>
             Connect TrainingPeaks
           </Button>
-          <button type="button" className="min-h-11 text-[0.7647rem] text-(--text-muted)" onClick={() => setStep(1)}>Back</button>
+          <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => setStep(1)}>Back</button>
         </>
       )}
 
       {step === 3 && <div className="flex justify-center py-6"><RabbitLoader label="Checking with TrainingPeaks…" /></div>}
 
-      <p id="tp-paste-help" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-[0.7059rem] leading-snug text-(--text-secondary)">
-        <Lock className="mt-0.5 size-3.5 shrink-0 text-(--accent)" aria-hidden />
+      <p id="tp-paste-help" className="flex items-start gap-2 rounded-xl bg-(--bg-inset) px-3.5 py-2.5 text-meta leading-snug text-(--text-secondary)">
+        <Lock className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
         <span>
           Why not your password? TrainingPeaks has no public connection for apps and its sign-in uses a captcha,
           so rabbt can’t sign in for you. The value you paste lets rabbt see your calendar; it’s stored encrypted
@@ -114,15 +114,15 @@ export function TPSourcePref({ source, onSaved, onToast }: {
   }
   return (
     <fieldset role="radiogroup" aria-label="Source of truth" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5">
-      <legend className="px-1 font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted)">Source of truth</legend>
+      <legend className="px-1 text-caption font-semibold text-(--text-muted)">Source of truth</legend>
       {(['trainingpeaks', 'rabbit'] as const).map((s) => (
         <button key={s} type="button" role="radio" aria-checked={source === s} disabled={!!busy} onClick={() => void pick(s)}
           className={cn('flex min-h-11 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left',
             source === s ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) active:bg-(--bg-inset)')}>
-          <span className={cn('text-[0.8235rem]', source === s ? 'text-(--accent)' : 'text-(--text)')}>
+          <span className={cn('text-body', source === s ? 'text-(--accent)' : 'text-(--text)')}>
             {TP_SOURCE_LABEL[s]}{busy === s ? '…' : ''}
           </span>
-          <span className="text-[0.7059rem] leading-snug text-(--text-muted)">{TP_SOURCE_HINT[s]}</span>
+          <span className="text-meta leading-snug text-(--text-muted)">{TP_SOURCE_HINT[s]}</span>
         </button>
       ))}
     </fieldset>

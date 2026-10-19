@@ -28,7 +28,7 @@ export function GradeBadge({ grade, size = 'sm', className }: { grade: string; s
   return (
     <span aria-label={`Readiness grade ${grade}`}
       className={cn('inline-flex shrink-0 items-center justify-center rounded-full border font-display leading-none',
-        size === 'lg' ? 'size-16 text-[1.8824rem]' : size === 'md' ? 'size-11 text-[1.1765rem]' : 'size-9 text-[0.9412rem]',
+        size === 'lg' ? 'size-16 text-display-lg' : size === 'md' ? 'size-11 text-title' : 'size-9 text-lead',
         GRADE_CLS[grade[0] ?? 'C'] ?? GRADE_CLS.C, className)}>
       {grade}
     </span>
@@ -37,7 +37,7 @@ export function GradeBadge({ grade, size = 'sm', className }: { grade: string; s
 
 export function StatusChip({ status, className }: { status: ReadinessStatus; className?: string }) {
   return (
-    <span className={cn('inline-flex shrink-0 rounded-full px-2 py-0.5 font-mono text-[0.6471rem] font-semibold uppercase tracking-wider', STATUS_CLS[status], className)}>
+    <span className={cn('inline-flex shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold', STATUS_CLS[status], className)}>
       {STATUS_LABEL[status]}
     </span>
   )
@@ -61,12 +61,12 @@ export function ReadinessSection({ r, error, onRetry }: { r: Readiness | null; e
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <StatusChip status={r.status} />
-              <span className="text-[0.6471rem] text-(--text-muted)">{r.score}/100</span>
+              <span className="text-caption text-(--text-muted)">{r.score}/100</span>
               <InfoTip label="the readiness grade" align="end"
                 text="A weighted score of fitness trajectory, key sessions, consistency, course and conditions, and health. It comes from your Garmin training, plan and check-ins, and updates as you train." />
             </div>
-            <p className="mt-1 text-[0.9412rem] font-medium leading-snug text-(--text)">{headlineRest(r.headline)}</p>
-            <p className="mt-0.5 text-[0.7059rem] leading-snug text-(--text-muted)">{r.summary}</p>
+            <p className="mt-1 text-lead font-medium leading-snug text-(--text)">{headlineRest(r.headline)}</p>
+            <p className="mt-0.5 text-meta leading-snug text-(--text-muted)">{r.summary}</p>
           </div>
         </div>
       </Card>
@@ -82,8 +82,8 @@ export function ReadinessSection({ r, error, onRetry }: { r: Readiness | null; e
           <Field label="Do next">
             <ol className="flex flex-col gap-2">
               {r.actions.map((a, i) => (
-                <li key={a} className="flex gap-2.5 text-[0.8235rem] leading-snug text-(--text)">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) font-mono text-[0.6471rem] font-semibold text-(--accent)">{i + 1}</span>
+                <li key={a} className="flex gap-2.5 text-body leading-snug text-(--text)">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) font-mono text-caption font-semibold text-(--accent)">{i + 1}</span>
                   <span className="min-w-0 flex-1">{a}</span>
                 </li>
               ))}
@@ -106,16 +106,16 @@ function ComponentRow({ c }: { c: ReadinessComponent }) {
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
         className="flex min-h-11 min-w-0 flex-1 flex-col gap-1 py-2.5 pl-4 text-left active:bg-(--bg-inset)">
         <span className="flex w-full items-center gap-2.5">
-          <span className="w-32 shrink-0 truncate text-[0.8235rem] font-medium text-(--text)">{c.label}</span>
+          <span className="w-32 shrink-0 truncate text-body font-medium text-(--text)">{c.label}</span>
           <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-(--bg-elevated)" role="meter"
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.score} aria-label={`${c.label} ${c.score} of 100`}>
             <span className={cn('block h-full rounded-full', barCls(c.score))} style={{ width: `${Math.max(4, c.score)}%` }} />
           </span>
-          <span className="w-7 shrink-0 text-right font-mono text-[0.6471rem] text-(--text-muted)">{c.score}</span>
-          <ChevronDown className={cn('size-4 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+          <span className="w-7 shrink-0 text-right font-mono text-caption text-(--text-muted)">{c.score}</span>
+          <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
         </span>
-        <span className={cn('text-[0.7059rem] leading-snug text-(--text-secondary)', !open && 'truncate')}>{c.detail}</span>
-        {open && <span className="text-[0.6471rem] text-(--text-muted)">Counts for {c.weight}% of the grade.</span>}
+        <span className={cn('text-meta leading-snug text-(--text-secondary)', !open && 'truncate')}>{c.detail}</span>
+        {open && <span className="text-caption text-(--text-muted)">Counts for {c.weight}% of the grade.</span>}
       </button>
       <InfoTip className="mr-3 mt-3.5 ml-1" label={c.label} text={c.tip} align="end" />
     </div>
@@ -131,13 +131,13 @@ export function ReadinessRow({ g, onClick, extra }: { g: RaceGrade; onClick: () 
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <StatusChip status={g.status} />
-          <span className="truncate text-[0.6471rem] text-(--text-muted)">Readiness & race fit</span>
+          <span className="truncate text-caption text-(--text-muted)">Readiness & race fit</span>
         </span>
-        <span className="mt-0.5 block truncate text-[0.7647rem] text-(--text)">{headlineRest(g.headline)}</span>
+        <span className="mt-0.5 block truncate text-small text-(--text)">{headlineRest(g.headline)}</span>
         {/* The finish estimate gets its own line instead of squeezing the label. */}
         {extra && <span className="mt-1 flex">{extra}</span>}
       </span>
-      <ChevronRight className="size-3.5 shrink-0 text-(--text-muted)" aria-hidden />
+      <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }
@@ -167,12 +167,12 @@ export function MainRaceGrade({ onOpen, className, loadKey = 0 }: {
       <GradeBadge grade={g.grade} size="md" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[0.8824rem] font-medium text-(--text)">{g.name}</span>
+          <span className="truncate text-body-lg font-medium text-(--text)">{g.name}</span>
           <StatusChip status={g.status} />
         </span>
-        <span className="mt-0.5 block truncate text-[0.7059rem] text-(--text-muted)">{headlineRest(g.headline)}</span>
+        <span className="mt-0.5 block truncate text-meta text-(--text-muted)">{headlineRest(g.headline)}</span>
       </span>
-      <ListChecks className="size-4 shrink-0 text-(--text-muted)" aria-hidden />
+      <ListChecks className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
     </button>
   )
 }
@@ -184,10 +184,10 @@ export function RaceGradeLine({ g }: { g: RaceGrade }) {
       <GradeBadge grade={g.grade} size="md" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[0.8235rem] font-medium text-(--text)">{g.name}</span>
+          <span className="truncate text-body font-medium text-(--text)">{g.name}</span>
           <StatusChip status={g.status} />
         </span>
-        <span className="mt-0.5 block text-[0.7059rem] leading-snug text-(--text-muted)">{g.headline}</span>
+        <span className="mt-0.5 block text-meta leading-snug text-(--text-muted)">{g.headline}</span>
       </span>
     </div>
   )

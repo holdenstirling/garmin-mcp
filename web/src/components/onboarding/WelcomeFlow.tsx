@@ -87,25 +87,25 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <span className="rb-jump inline-flex" style={{ animationDelay: '380ms' }}><RabbitLogo size={78} /></span>
       </HopIn>
       <HopIn index={2} className="flex flex-col gap-3">
-        {first && <p className="text-[0.8235rem] font-medium text-(--text-secondary)">Hi {first}, welcome to rabbt</p>}
-        <h1 className="font-display text-[1.8824rem] leading-[1.15] text-(--brand)">
+        {first && <p className="text-body font-medium text-(--text-secondary)">Hi {first}, welcome to rabbt</p>}
+        <h1 className="font-display text-display-lg leading-[1.15] text-(--brand)">
           Train smarter. Find your people. Never miss the start line.
         </h1>
-        <p className="text-[0.9412rem] leading-snug text-(--text-secondary)">
+        <p className="text-lead leading-snug text-(--text-secondary)">
           rabbt is your coach, your crew and your calendar of what's next.
         </p>
       </HopIn>
       <HopIn index={4} className="flex flex-wrap justify-center gap-2" aria-hidden="true">
         {(['Training', 'Social support', 'Events'] as const).map((t) => (
-          <span key={t} className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-3 py-1 text-[0.7059rem] font-medium text-(--accent)">{t}</span>
+          <span key={t} className="rounded-full border border-(--accent)/30 bg-(--accent-subtle) px-3 py-1 text-meta font-medium text-(--accent)">{t}</span>
         ))}
       </HopIn>
     </div>
   ) : step === 'pick' ? (
     <div className="flex flex-1 flex-col gap-3 px-4 pb-2">
       <div className="px-1">
-        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">What brings you to rabbt?</h2>
-        <p className="mt-1 text-[0.8235rem] leading-snug text-(--text-secondary)">
+        <h2 className="font-display text-display-sm leading-tight text-(--brand)">What brings you to rabbt?</h2>
+        <p className="mt-1 text-body leading-snug text-(--text-secondary)">
           Pick all that fit. Tap the most important one first.
         </p>
       </div>
@@ -121,13 +121,13 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
                   on ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
                 <span className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl',
                   on ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary)')}>
-                  <Icon className="size-5" />
+                  <Icon className="size-6" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className={cn('block text-[0.9412rem] font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{o.title}</span>
-                  <span className="block text-[0.7647rem] leading-snug text-(--text-muted)">{o.help}</span>
+                  <span className={cn('block text-lead font-semibold', on ? 'text-(--accent)' : 'text-(--text)')}>{o.title}</span>
+                  <span className="block text-small leading-snug text-(--text-muted)">{o.help}</span>
                 </span>
-                <span aria-hidden="true" className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border text-[0.7647rem] font-bold',
+                <span aria-hidden="true" className={cn('flex size-7 shrink-0 items-center justify-center rounded-full border text-small font-bold',
                   on ? 'rb-pop border-(--accent) bg-(--accent) text-(--on-fill)' : 'border-(--border-strong)')} key={on ? `on${at}` : 'off'}>
                   {on ? at + 1 : ''}
                 </span>
@@ -136,8 +136,8 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           )
         })}
       </div>
-      {picks.length > 1 && <p className="px-1 text-[0.7059rem] text-(--text-muted)">Numbers show what matters most. Tap again to change.</p>}
-      {err && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{err}</p>}
+      {picks.length > 1 && <p className="px-1 text-meta text-(--text-muted)">Numbers show what matters most. Tap again to change.</p>}
+      {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </div>
   ) : (
     <div className="flex flex-1 flex-col gap-4 px-5">
@@ -145,43 +145,43 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <span className="logo-tile flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-(--brand) shadow-sm">
           <RabbitLogo size={40} />
         </span>
-        <h2 className="font-display text-[1.5294rem] leading-tight text-(--brand)">Here's your rabbt</h2>
+        <h2 className="font-display text-display-sm leading-tight text-(--brand)">Here's your rabbt</h2>
       </HopIn>
-      <p className="text-[0.8235rem] leading-snug text-(--text-secondary)">What we'll set up next, made for how you use rabbt:</p>
+      <p className="text-body leading-snug text-(--text-secondary)">What we'll set up next, made for how you use rabbt:</p>
       <ul className="flex flex-col gap-2.5">
         {plan.bullets.map((b, i) => (
           <HopIn as="li" key={b} index={i + 1} className="flex items-start gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-3.5" /></span>
-            <span className="text-[0.8824rem] leading-snug text-(--text)">{b}</span>
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill)"><Check className="size-4" /></span>
+            <span className="text-body-lg leading-snug text-(--text)">{b}</span>
           </HopIn>
         ))}
       </ul>
-      <p className="text-[0.7059rem] text-(--text-muted)">Change this any time in Settings, under How you use rabbt.</p>
+      <p className="text-meta text-(--text-muted)">Change this any time in Settings, under How you use rabbt.</p>
     </div>
   )
 
   const footer = (
     <div className="flex flex-col gap-1 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
       {step === 'hello' && (
-        <Button variant="primary" className="h-12 w-full text-[0.9412rem]" onClick={() => setStep('pick')}>
-          Let's go <ChevronRight className="ml-1 size-4" />
+        <Button variant="primary" className="h-12 w-full text-lead" onClick={() => setStep('pick')}>
+          Let's go <ChevronRight className="ml-1 size-5" />
         </Button>
       )}
       {step === 'pick' && (saving ? (
         <div className="flex h-12 items-center justify-center"><RabbitLoader inline size={24} label={SAVING[0]} cycle={SAVING} /></div>
       ) : (
-        <Button variant="primary" className="h-12 w-full text-[0.9412rem]" disabled={!picks.length} onClick={() => void save()}>
+        <Button variant="primary" className="h-12 w-full text-lead" disabled={!picks.length} onClick={() => void save()}>
           {err ? 'Try again' : picks.length ? 'Continue' : 'Pick at least one'}
         </Button>
       ))}
       {step === 'yours' && (
-        <Button ref={cta} variant="primary" className="h-12 w-full text-[0.9412rem]"
+        <Button ref={cta} variant="primary" className="h-12 w-full text-lead"
           onClick={() => onFinish({ saved: true, intents: picks, next: plan.next?.step ?? null })}>
-          {plan.next?.label ?? "Let's go"} <ChevronRight className="ml-1 size-4" />
+          {plan.next?.label ?? "Let's go"} <ChevronRight className="ml-1 size-5" />
         </Button>
       )}
       {step !== 'yours' || plan.next ? (
-        <button type="button" className="min-h-11 text-[0.8235rem] text-(--text-muted) underline-offset-2 active:underline"
+        <button type="button" className="min-h-11 text-body text-(--text-muted) underline-offset-2 active:underline"
           onClick={step === 'yours' ? () => onFinish({ saved: true, intents: picks, next: null }) : skip}>
           {mode === 'edit' && step !== 'yours' ? 'Cancel' : 'Skip for now'}
         </button>
@@ -207,7 +207,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           {progress}
           {step !== 'yours' ? (
             <button type="button" className="flex size-11 items-center justify-center text-(--text-muted)" aria-label="Skip for now" onClick={skip}>
-              <X className="size-5" />
+              <X className="size-6" />
             </button>
           ) : <span className="w-11" />}
         </div>
@@ -222,15 +222,15 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         <div className="sheet-handle" />
         <div className="modal-header">
           <h2 id="wf-title" className="modal-title">
-            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-[0.6471rem] font-bold uppercase text-(--on-fill)">New</span>Tell rabbt how you use it</>
+            {mode === 'lite' ? <><span className="mr-1.5 rounded-full bg-(--accent) px-1.5 py-0.5 text-caption font-bold uppercase text-(--on-fill)">New</span>Tell rabbt how you use it</>
               : 'How you use rabbt'}
           </h2>
           <button type="button" className="modal-close" aria-label={mode === 'edit' ? 'Close' : 'Skip for now'}
-            onClick={step === 'yours' ? () => onFinish({ saved: true, intents: picks, next: null }) : skip}><X className="size-4" /></button>
+            onClick={step === 'yours' ? () => onFinish({ saved: true, intents: picks, next: null }) : skip}><X className="size-5" /></button>
         </div>
         <div className="modal-body flex flex-col overflow-y-auto pt-3">
           {mode === 'lite' && step === 'pick' && (
-            <p className="mb-2 px-5 text-[0.7647rem] leading-snug text-(--text-muted)">
+            <p className="mb-2 px-5 text-small leading-snug text-(--text-muted)">
               rabbt now does training, social support and finding events. Tell us what matters to you and we'll show that first.
             </p>
           )}

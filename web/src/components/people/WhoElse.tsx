@@ -34,25 +34,25 @@ export function WhoElse({ sport, date, eventName, eventDate, share, invite }: {
       <SectionLabel>{eventName ? 'Who else is going?' : 'Who else is doing this?'}</SectionLabel>
       <div className="settings-group overflow-hidden rounded-xl border border-(--border) bg-(--bg-surface)">
         {rows.length === 0 && (
-          <p className="flex items-center gap-2 px-3.5 py-3 text-[0.7647rem] text-(--text-muted)">
-            <Users className="size-4 shrink-0" aria-hidden /> None of your friends {eventName ? 'have this race on their calendar yet' : 'have done this this week yet'}.
+          <p className="flex items-center gap-2 px-3.5 py-3 text-small text-(--text-muted)">
+            <Users className="size-5 shrink-0" aria-hidden /> None of your friends {eventName ? 'have this race on their calendar yet' : 'have done this this week yet'}.
           </p>
         )}
         {rows.map(({ p, line }) => (
           <div key={p.id} className="flex min-h-12 items-center gap-3 px-3.5 py-1.5">
             <PersonAvatar p={p} size={32} />
             <span className="min-w-0 flex-1">
-              <PersonLink id={p.id} name={p.name} className="block truncate text-[0.8235rem] font-medium text-(--text)" />
-              <span className="block truncate text-[0.7059rem] text-(--text-muted)">{line}</span>
+              <PersonLink id={p.id} name={p.name} className="block truncate text-body font-medium text-(--text)" />
+              <span className="block truncate text-meta text-(--text-muted)">{line}</span>
             </span>
-            <Button variant="default" className="h-9 shrink-0 px-3 text-[0.7059rem]" aria-label={`Invite ${p.name}`}
+            <Button variant="default" className="h-9 shrink-0 px-3 text-meta" aria-label={`Invite ${p.name}`}
               onClick={() => inviteToJoin(share, [p.id])}>Invite</Button>
           </div>
         ))}
         {invite && (
           <button type="button" onClick={() => inviteToJoin(share)}
-            className="flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left text-[0.8235rem] font-medium text-(--accent) active:bg-(--bg-inset)">
-            <UserPlus className="size-4" aria-hidden /> Invite friends to join
+            className="flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left text-body font-medium text-(--accent) active:bg-(--bg-inset)">
+            <UserPlus className="size-5" aria-hidden /> Invite friends to join
           </button>
         )}
       </div>

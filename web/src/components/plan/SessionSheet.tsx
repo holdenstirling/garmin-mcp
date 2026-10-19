@@ -97,13 +97,13 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
     : []
 
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const section = 'font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--text-muted) px-1 -mb-2'
+  const section = 'text-caption font-semibold text-(--text-muted) px-1 -mb-2'
   return (
     <Sheet title={session ? session.title : 'Add a workout'} className="modal--tall" footer={!locked ? (
         // Pinned under the form so Save is always in reach (also with the keyboard open).
         <div className="flex gap-2">
-          <Button variant="default" className="h-11 px-5 text-[0.8235rem]" disabled={!!busy} onClick={close}>Cancel</Button>
-          <Button variant="primary" className="h-11 flex-1 text-[0.8235rem]" loading={busy === 'save'}
+          <Button variant="default" className="h-11 px-5 text-body" disabled={!!busy} onClick={close}>Cancel</Button>
+          <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'}
             disabled={!adding && Object.keys(changed).length === 0} onClick={() => void save()}>
             {adding ? 'Add workout' : Object.keys(changed).length === 0 ? 'No changes yet' : 'Save changes'}
           </Button>
@@ -111,14 +111,14 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
       ) : undefined} onClose={close} closing={closing} onDismissed={onDismissed} extra={guard.dialog} dismissible={!busy}
       bodyClassName="settings flex flex-col gap-4 overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
       {draft.restored && <DraftRestored onDiscard={draft.discard} />}
-      <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+      <p className="px-1 text-small text-(--text-muted)">
         {fmtDay(d.date, { weekday: 'long', month: 'long', day: 'numeric' })}{d.time ? ` at ${d.time}` : ''}
         {session?.synced && ' · on your Garmin calendar'}
       </p>
-      {meta && <p className="-mt-3 px-1 font-mono text-[0.7647rem] tabular-nums text-(--text-secondary)">{meta}</p>}
+      {meta && <p className="-mt-3 px-1 font-mono text-small tabular-nums text-(--text-secondary)">{meta}</p>}
 
       {locked ? (
-        <p className="px-1 text-[0.7647rem] text-(--text-muted)">
+        <p className="px-1 text-small text-(--text-muted)">
           {readOnly ? 'You can view this plan but not change it.' : isRace ? 'Race day stays put. Change the race date by rebuilding the plan.' : 'This day has passed, so it can\'t be changed.'}
         </p>
       ) : (
@@ -151,14 +151,14 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
                 <div className="flex items-center gap-2">
                   <input type="time" className={inputCls} value={d.time ?? ''} step={300} aria-label="Start time"
                     onChange={(e) => set({ time: e.target.value })} />
-                  {d.time && <Button variant="ghost" className="h-11 shrink-0 px-3 text-[0.7647rem]" onClick={() => set({ time: '' })}>Clear</Button>}
+                  {d.time && <Button variant="ghost" className="h-11 shrink-0 px-3 text-small" onClick={() => set({ time: '' })}>Clear</Button>}
                 </div>
               </Field>
             )}
             {onMove && session && !isRace && (
               <div className="border-t border-(--border) px-4 py-2">
-                <Button variant="ghost" className="h-11 gap-1.5 px-0 text-[0.7647rem] text-(--accent)" onClick={onMove}>
-                  <CalendarDays className="size-4" /> Move or swap with another day
+                <Button variant="ghost" className="h-11 gap-1.5 px-0 text-small text-(--accent)" onClick={onMove}>
+                  <CalendarDays className="size-5" /> Move or swap with another day
                 </Button>
               </div>
             )}
@@ -182,7 +182,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
       {note && (
         <Card>
           <Field label={note.source === 'coach' ? 'Coach notes' : 'Why + how'}>
-            <div className="flex flex-col gap-1 text-[0.8235rem] leading-snug">
+            <div className="flex flex-col gap-1 text-body leading-snug">
               <p className="text-(--text)">{note.why}</p>
               {note.how && <p className="text-(--text-secondary)">{note.how}</p>}
               {note.cues && <p className="text-(--text-muted)">{note.cues}</p>}
@@ -196,7 +196,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
             <div className="flex flex-col gap-2">
               {steps.map((g, i) => (
                 <div key={i} className="flex flex-col gap-1">
-                  {g.label && <span className="text-[0.7059rem] font-medium text-(--text-secondary)">{g.label}</span>}
+                  {g.label && <span className="text-meta font-medium text-(--text-secondary)">{g.label}</span>}
                   <ol className="flex flex-col gap-1">
                     {g.steps.map((s, j) => <StepItem key={j} s={s} />)}
                   </ol>
@@ -211,7 +211,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
           <Field label={session.kind === 'mobility' ? 'Mobility' : 'Exercises'}>
             <ul className="flex flex-col gap-1.5">
               {session.exercises!.map((e) => (
-                <li key={e.name} className="flex gap-2 text-[0.8235rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+                <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
               ))}
             </ul>
           </Field>
@@ -220,7 +220,7 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
               hint="General prehab, not a diagnosis. If pain is sharp, getting worse or changes how you move, see a physio.">
               <ul className="flex flex-col gap-1.5">
                 {session.prehab!.map((e) => (
-                  <li key={e.name} className="flex gap-2 text-[0.8235rem]"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
+                  <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
                 ))}
               </ul>
             </Field>
@@ -230,19 +230,19 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
       {session?.fuel && (
         <Card>
           <Field label="Fueling">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.8235rem] text-(--text)">
-              <span><b className="font-display text-[1.0588rem]">{session.fuel.carbs_g_per_h}</b> g carbs/h</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-body text-(--text)">
+              <span><b className="font-display text-title-sm">{session.fuel.carbs_g_per_h}</b> g carbs/h</span>
               {session.fuel.total_carbs_g != null && <span className="text-(--text-muted)">≈{session.fuel.total_carbs_g} g total</span>}
               {session.fuel.fluid_ml_per_h && <span className="text-(--text-muted)">{session.fuel.fluid_ml_per_h} ml fluid/h</span>}
               {session.fuel.sodium_mg_per_h && <span className="text-(--text-muted)">{session.fuel.sodium_mg_per_h} mg sodium/h</span>}
             </div>
-            <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{session.fuel.note}</p>
-            {session.fuel_hint && <p className="text-[0.7059rem] leading-snug text-(--text-muted)">{session.fuel_hint}. Food ideas before, during and after are on the workout page.</p>}
+            <p className="text-meta leading-snug text-(--text-muted)">{session.fuel.note}</p>
+            {session.fuel_hint && <p className="text-meta leading-snug text-(--text-muted)">{session.fuel_hint}. Food ideas before, during and after are on the workout page.</p>}
           </Field>
         </Card>
       )}
       {session?.detail && locked && steps.length === 0 && (
-        <p className="px-1 text-[0.8235rem] text-(--text-secondary)">{session.detail}</p>
+        <p className="px-1 text-body text-(--text-secondary)">{session.detail}</p>
       )}
       {!locked && !adding && (
         <Card>
@@ -258,38 +258,38 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
       {(onOpenWorkout && session && date === today && session.sport !== 'rest' && session.kind !== 'race') || onAsk || onMessage ? (
         <div className="flex flex-wrap gap-2">
           {onOpenWorkout && session && date === today && session.sport !== 'rest' && session.kind !== 'race' && (
-            <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onOpenWorkout}>
-              <Zap className="size-4" /> Today's workout
+            <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={onOpenWorkout}>
+              <Zap className="size-5" /> Today's workout
             </Button>
           )}
           {onAsk && (
-            <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onAsk}>
-              <MessageCircle className="size-4" /> Ask rabbt
+            <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={onAsk}>
+              <MessageCircle className="size-5" /> Ask rabbt
             </Button>
           )}
           {onMessage && (
-            <Button variant="default" className="h-11 gap-1.5 px-4 text-[0.8235rem]" onClick={onMessage}>
-              <Send className="size-4" /> {messageLabel ?? 'Message'}
+            <Button variant="default" className="h-11 gap-1.5 px-4 text-body" onClick={onMessage}>
+              <Send className="size-5" /> {messageLabel ?? 'Message'}
             </Button>
           )}
         </div>
       ) : null}
 
-      {error && <p className="px-1 text-[0.7647rem] text-(--danger)" role="alert">{error}</p>}
+      {error && <p className="px-1 text-small text-(--danger)" role="alert">{error}</p>}
 
       {onDelete && !locked && (
         <div className="mt-2 border-t border-(--border) pt-4">
           {confirmDelete ? (
             <div className="flex flex-col gap-2 rounded-xl border border-(--danger)/40 px-3.5 py-3" role="alertdialog" aria-label="Delete this session?">
-              <p className="text-[0.8235rem] text-(--text)">Delete {session?.title ?? 'this workout'}? {session?.synced ? 'It comes off your watch on the next sync.' : ''}</p>
+              <p className="text-body text-(--text)">Delete {session?.title ?? 'this workout'}? {session?.synced ? 'It comes off your watch on the next sync.' : ''}</p>
               <div className="flex gap-2">
-                <Button variant="default" className="h-11 flex-1 text-[0.7647rem]" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                <Button variant="default" className="h-11 flex-1 text-[0.7647rem] text-(--danger)" loading={busy === 'delete'} onClick={() => void remove()}>Delete</Button>
+                <Button variant="default" className="h-11 flex-1 text-small" onClick={() => setConfirmDelete(false)}>Keep it</Button>
+                <Button variant="default" className="h-11 flex-1 text-small text-(--danger)" loading={busy === 'delete'} onClick={() => void remove()}>Delete</Button>
               </div>
             </div>
           ) : (
-            <Button variant="ghost" className="h-11 w-full gap-1.5 text-[0.7647rem] text-(--danger)" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="size-4" /> Delete this session
+            <Button variant="ghost" className="h-11 w-full gap-1.5 text-small text-(--danger)" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="size-5" /> Delete this session
             </Button>
           )}
         </div>
@@ -311,8 +311,8 @@ function SessionCheckIn({ session }: { session: PlanSession }) {
     <Card>
       <Field label="How did it feel?">
         {latest && <CheckinChips c={latest} />}
-        <Button variant="default" className="h-10 gap-1.5 self-start px-3.5 text-[0.7647rem]" onClick={() => setOpen(true)}>
-          <Mic className="size-4" /> {latest ? 'Check in again' : 'How did it feel?'}
+        <Button variant="default" className="h-10 gap-1.5 self-start px-3.5 text-small" onClick={() => setOpen(true)}>
+          <Mic className="size-5" /> {latest ? 'Check in again' : 'How did it feel?'}
         </Button>
       </Field>
       <VoiceCheckIn open={open} onClose={() => setOpen(false)} sessionId={session.id} title={session.title}
@@ -325,17 +325,17 @@ export function StepItem({ s }: { s: Step }) {
   if (s.type === 'repeat') {
     return (
       <li className="rounded-lg border border-(--border) px-3 py-2">
-        <span className="font-mono text-[0.6471rem] font-semibold uppercase tracking-widest text-(--accent)">{s.reps} times</span>
+        <span className="text-caption font-semibold text-(--accent)">{s.reps} times</span>
         <ol className="mt-1 flex flex-col gap-1">{s.steps.map((x, i) => <StepItem key={i} s={x} />)}</ol>
       </li>
     )
   }
   const tone = s.type === 'work' ? 'bg-(--accent)' : s.type === 'steady' ? 'bg-(--accent)/60' : 'bg-(--bg-elevated)'
   return (
-    <li className="flex items-center gap-2.5 text-[0.8235rem]">
+    <li className="flex items-center gap-2.5 text-body">
       <span className={`h-5 w-1 shrink-0 rounded-full ${tone}`} />
       <span className="flex-1 text-(--text)">{stepText(s)}</span>
-      <span className="text-[0.7059rem] text-(--text-muted)">{ZONE_LABEL[s.zone] ?? ''}</span>
+      <span className="text-meta text-(--text-muted)">{ZONE_LABEL[s.zone] ?? ''}</span>
     </li>
   )
 }

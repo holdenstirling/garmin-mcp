@@ -23,16 +23,16 @@ export function WorkoutCardView({ card, imperial, onOpen }: { card: DMWorkoutCar
   const body = (
     <>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)" aria-hidden>
-        <Icon className="size-5" />
+        <Icon className="size-6" />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-[0.8235rem] font-semibold text-(--text)">{card.title}</span>
-        <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+        <span className="block truncate text-body font-semibold text-(--text)">{card.title}</span>
+        <span className="block truncate text-meta text-(--text-muted)">
           {card.planned ? 'Planned · ' : ''}{card.date ? fmtDay(card.date, { weekday: 'short', month: 'short', day: 'numeric' }) : ''}
         </span>
-        {stats.length > 0 && <span className="mt-0.5 block font-mono text-[0.7647rem] tabular-nums text-(--text)">{stats.join(' · ')}</span>}
+        {stats.length > 0 && <span className="mt-0.5 block font-mono text-small tabular-nums text-(--text)">{stats.join(' · ')}</span>}
       </span>
-      {open && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+      {open && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
     </>
   )
   const cls = 'flex w-full min-w-[220px] items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5'
@@ -47,18 +47,18 @@ export function EventCardView({ card }: { card: DMEventCard }) {
   const body = (
     <>
       <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent-subtle) text-(--accent)" aria-hidden>
-        <CalendarDays className="size-5" />
+        <CalendarDays className="size-6" />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-[0.8235rem] font-semibold text-(--text)">{card.name}</span>
-        <span className="block truncate text-[0.7059rem] text-(--text-muted)">
+        <span className="block truncate text-body font-semibold text-(--text)">{card.name}</span>
+        <span className="block truncate text-meta text-(--text-muted)">
           {card.repeat_text || (card.date ? fmtDay(card.date, { weekday: 'short', month: 'short', day: 'numeric' }) : '')}{card.time ? ` · ${card.time}` : ''}
         </span>
         {card.neighborhood && (
-          <span className="mt-0.5 flex items-center gap-1 text-[0.7059rem] text-(--text-secondary)"><MapPin className="size-3" aria-hidden />{card.neighborhood}</span>
+          <span className="mt-0.5 flex items-center gap-1 text-meta text-(--text-secondary)"><MapPin className="size-3.5" aria-hidden />{card.neighborhood}</span>
         )}
       </span>
-      {open && <ChevronRight className="size-4 shrink-0 text-(--text-muted)" aria-hidden />}
+      {open && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
     </>
   )
   const cls = 'flex w-full min-w-[220px] items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5'
