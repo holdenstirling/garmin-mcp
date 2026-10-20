@@ -44,7 +44,7 @@ QUESTS: list[tuple[str, str, str, int, bool]] = [
     ("garmin", "Connect Garmin", "Your workouts count automatically", 100, False),
     ("sports", "Pick your favorite sports", "Shapes your plan and stats", 50, False),
     ("goal", "Set a goal or race", "Or just train to stay fit", 100, False),
-    ("plan", "Build your plan", "A week-by-week plan made for you", 200, False),
+    ("plan", "Get a plan", "A week-by-week plan made for you", 200, False),
     ("sync", "Send workouts to your watch", "Planned sessions show up on Garmin", 100, False),
     ("notify", "Turn on notifications", "Morning briefs and coach messages", 50, False),
     ("calendar", "Connect Google Calendar", "Plans around busy days and travel", 50, True),

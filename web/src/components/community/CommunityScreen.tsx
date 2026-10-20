@@ -27,19 +27,23 @@ import { getCommunityHome, listGroups, type Featured, type FeedGroup } from '@/l
 import { FeaturedStrip } from './Featured'
 import { GroupPage, GroupSheet } from './Groups'
 import { openFindFriends } from '@/lib/friends'
-import { openNewEvent } from '@/lib/events'
+import { NewEventSheet } from '@/components/events/EventsScreen'
+import { MEETUP_KINDS } from '@/lib/events'
 import { Button } from '@/components/ui/button'
 import { CalendarPlus } from 'lucide-react'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
-export function CommunityScreen({ section = 'feed', imperial, view, onView, onChanged, club, onClub }: {
+export function CommunityScreen({ section = 'feed', imperial, view, onView, onChanged, club, onClub, onOpenPlan, onBuildPlan }: {
   /** which tab: Feed (the feed and feed groups) or Clubs (clubs and people) */
   section?: 'feed' | 'clubs'
   imperial: boolean; view: CommunityView; onView: (v: CommunityView) => void; onChanged?: () => void
   /** an open club page (from a meetup reminder or the "You're going" strip) */
   club: string | null; onClub: (id: string | null) => void
+  /** for the meetup form's plan links */
+  onOpenPlan?: () => void; onBuildPlan?: () => void
 }) {
+  const [newMeetup, setNewMeetup] = useState(false)
   const [settings, setSettings] = useState(false)
   const [featured, setFeatured] = useState<Featured[] | undefined>(undefined)
   const [group, setGroup] = useState<string | null>(null)
@@ -55,15 +59,15 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
-    <Screen title={section === 'feed' ? 'Feed' : 'Local'}
+    <Screen title={section === 'feed' ? 'Friends' : 'Near me'}
       subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Clubs, leagues and meetups near you'}
-      headerExtra={section === 'clubs' ? <Segmented label="Local" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
+      headerExtra={section === 'clubs' ? <Segmented label="Near me" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
         options={[['clubs', 'Near you'], ['people', 'People']] as const} /> : undefined}>
       {view === 'clubs' && (
         <div className="flex flex-col gap-2">
           <PostRunButton onPosted={() => setRunsKey((k) => k + 1)} />
-          <Button variant="ghost" className="h-11 w-full gap-1.5 text-body" onClick={openNewEvent}>
-            <CalendarPlus className="size-5" aria-hidden /> Create an event
+          <Button variant="ghost" className="h-11 w-full gap-1.5 text-body" onClick={() => setNewMeetup(true)}>
+            <CalendarPlus className="size-5" aria-hidden /> Post another kind of meetup
           </Button>
         </div>
       )}
@@ -82,7 +86,11 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
       {view === 'people' && <BlocksEntry compact />}
       {settings && <SharingSheet onClose={() => setSettings(false)} />}
-    </Screen>
+    {newMeetup && (
+        <NewEventSheet only={MEETUP_KINDS} title="Post a meetup" imperial={imperial} onClose={() => setNewMeetup(false)}
+          onSaved={() => { setRunsKey((k) => k + 1); onChanged?.() }} onOpenPlan={() => onOpenPlan?.()} onBuildPlan={() => onBuildPlan?.()} />
+      )}
+      </Screen>
   )
 }
 

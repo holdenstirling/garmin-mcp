@@ -129,7 +129,7 @@ export function welcomePlan(intents: readonly Intent[], ctx: { garmin: boolean; 
   const garmin = { step: 'garmin' as const, label: 'Connect Garmin' }
   let next: WelcomePlan['next'] = null
   switch (list[0]) {
-    case 'train': next = !ctx.hasPlan ? { step: 'plan', label: 'Build my plan' } : ctx.garmin ? null : garmin; break
+    case 'train': next = !ctx.hasPlan ? { step: 'plan', label: 'Get a plan' } : ctx.garmin ? null : garmin; break
     case 'consistent': next = ctx.garmin ? { step: 'progress', label: 'See my streak' } : garmin; break
     case 'community': next = { step: 'friend', label: 'Find my people' }; break
     case 'events': next = { step: 'local', label: "See what's near me" }; break

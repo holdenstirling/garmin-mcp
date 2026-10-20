@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 
 const PLACE_LABEL: Record<string, string> = {
-  local: 'Local', home: 'Home', discover: 'Discover', explore: 'Explore', directory_empty: 'Empty club list', search: 'Search',
+  local: 'Near me', home: 'Today', discover: 'Discover', explore: 'Explore', directory_empty: 'Empty club list', search: 'Search',
 }
 
 const EMPTY: PartnerDraft = {
@@ -97,7 +97,7 @@ function PartnerForm({ p, kinds, onSaved, onClose }: {
       <label className="flex min-h-11 items-start gap-3 text-body text-(--text)">
         <input type="checkbox" className="mt-0.5 size-5 accent-(--accent)" checked={d.sponsored} onChange={(e) => set('sponsored', e.target.checked)} />
         <span>Sponsored placement
-          <span className="block text-small text-(--text-secondary)">Also shown as one “Sponsored partner” card in the find-clubs screens (Local, Discover, Explore, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
+          <span className="block text-small text-(--text-secondary)">Also shown as one “Sponsored partner” card in the find-clubs screens (Near me, Find a race, search) for people in these cities or who search one of their zip codes. Always labelled sponsored.</span>
         </span>
       </label>
       {err && <p className="text-small text-(--danger)" role="alert">{err}</p>}

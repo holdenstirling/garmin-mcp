@@ -110,6 +110,8 @@ import { NearTonight } from '@/components/home/NearTonight'
 import { NEW_EVENT_EVENT } from '@/lib/events'
 import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
 import { CircleQuestionMark } from 'lucide-react'
+import { CALENDAR_KINDS, requestPostRun } from '@/lib/events'
+import { NewEventSheet } from '@/screens/lazyScreens'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -273,6 +275,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [schedView, setSchedView] = useState<ScheduleView>(() => { try { return sessionStorage.getItem('rabbit.tab') === 'races' ? 'events' : 'plan' } catch { return 'plan' } })
   // Schedule "+ Add": the add sheet, and requests handed to the plan / events pages.
   const [addOpen, setAddOpen] = useState(false)
+  const [calendarAdd, setCalendarAdd] = useState(false) // Plan + Add -> Add to my calendar (race, trip, big day)
   const [addWorkout, setAddWorkout] = useState<{ date: string; n: number } | null>(null)
   const [eventReq, setEventReq] = useState<EventRequest | null>(null)
   const [communityView, setCommunityView] = useState<CommunityView>('feed')
@@ -1186,7 +1189,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {athlete && (
               <HomeStart hasPlan={builtPlan}
                 planLine={upnext?.session ? `Today: ${upnext.session.title}${upnext.session.minutes ? `, ${upnext.session.minutes} min` : ''}` : null}
-                onLocal={() => openCommunity('clubs')} onNewEvent={newEvent} onPlan={openPlan} onSetup={startSetup} />
+                onLocal={() => openCommunity('clubs')} onNewEvent={() => { openCommunity('clubs'); requestPostRun() }} onPlan={openPlan} onSetup={startSetup} />
             )}
             {athlete && <NearTonight hasPlan={builtPlan} refreshKey={feedTick} onOpenClub={(c) => openCommunity('clubs', c)}
               onPlanChanged={() => { loadToday(); loadWeek() }} />}
@@ -1196,7 +1199,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
               {athlete && builtPlan && <SickBanner />}
               {!upnext && !upnextTried && me.garmin.connected && <UpNextSkeleton />}
-              {upnext && (
+              {/* No plan and no goal: the "Get a plan" start card above already says it. */}
+              {upnext && upnext.kind !== 'set_goal' && (
                 <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                   onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
                   onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
@@ -1313,7 +1317,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Schedule" top={scheduleTop} action={meButton}>
+        <TabScreen key="planner" title="Plan" top={scheduleTop} action={meButton}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             addRequest={addWorkout} onAddHandled={() => setAddWorkout(null)} onOpenEvent={openEvent}
             onRebuild={startSetup}
@@ -1327,8 +1331,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
-        <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
+      <TabScreen key="start" title="Plan" top={scheduleTop} action={meButton}>
+        <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'}>
           {goal && <RaceSwitcher title={goal.title} date={goal.date}
             sub={goal.plan ? `Your plan file${week?.index ? ` · wk ${week.index}${week.weeks ? `/${week.weeks}` : ''}` : ''}` : 'No plan for this race yet'}
             onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
@@ -1349,7 +1353,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Your plan file" subtitle={planLine(week, goal)}
                 onClick={() => open('plan')} />
-              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in rabbt"
+              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Get a plan in rabbt"
                 subtitle="Editable sessions you can send to your Garmin" onClick={startSetup} />
             </Group>
           ) : (
@@ -1358,7 +1362,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                  <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
                   <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-(--accent)" />
@@ -1369,7 +1373,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               </Group>
             </>
           )}
-          <BlocksEntry />
+          {(goal || builtPlan) && <BlocksEntry />}
         </Screen>
       </TabScreen>
     )
@@ -1398,8 +1402,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const scheduleTop = (
     <div className="mx-auto flex w-full max-w-xl items-center gap-2">
       <div className="min-w-0 flex-1">
-        <Segmented label="Schedule" value={schedView} onChange={setSchedView}
-          options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
+        <Segmented label="Plan" value={schedView} onChange={setSchedView}
+          options={[['plan', 'Training'], ['events', 'Calendar'], ['discover', 'Find a race']] as const} />
       </div>
       <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body max-[359px]:w-11 max-[359px]:px-0" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
@@ -1410,13 +1414,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function scheduleTab() {
     if (schedView === 'plan') return planTab()
     return schedView === 'events' ? (
-      <TabScreen key="events" title="Schedule" top={scheduleTop} action={meButton}>
+      <TabScreen key="events" title="Plan" top={scheduleTop} action={meButton}>
         <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} request={eventReq} onRequestHandled={() => setEventReq(null)} onDiscover={openDiscover}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={() => setSchedView('plan')} onBuildPlan={startSetup} />
       </TabScreen>
     ) : (
-      <TabScreen key="discover" title="Schedule" top={scheduleTop} action={meButton}>
+      <TabScreen key="discover" title="Plan" top={scheduleTop} action={meButton}>
         <ExploreScreen imperial={imperial} onAsk={tellRabbit} onChanged={onChange} />
       </TabScreen>
     )
@@ -1557,7 +1561,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
                 <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--accent)" />
@@ -1642,9 +1646,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {addOpen && (
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
-          onEvent={newEvent}
+          onEvent={() => setCalendarAdd(true)}
           onTravel={openTravel} onSick={openSick}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
+      )}
+      {calendarAdd && (
+        <NewEventSheet only={CALENDAR_KINDS} title="Add to my calendar" imperial={imperial} onClose={() => setCalendarAdd(false)}
+          onSaved={() => { onChange(); loadWeek(); setEventReq((r) => ({ n: (r?.n ?? 0) + 1 })) }} onOpenPlan={openPlan} onBuildPlan={startSetup} />
       )}
       {visited.has('feed') && (
         <div className={tabCls('feed')} data-tab-hidden={tab !== 'feed' || undefined}>
@@ -1658,7 +1666,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <div className={tabCls('clubs')} data-tab-hidden={tab !== 'clubs' || undefined}>
           <TabScreen key="clubs" action={meButton}>
             <CommunityScreen section="clubs" imperial={imperial} view={communityView === 'feed' ? 'clubs' : communityView}
-              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub} />
+              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub}
+              onOpenPlan={openPlan} onBuildPlan={startSetup} />
           </TabScreen>
         </div>
       )}

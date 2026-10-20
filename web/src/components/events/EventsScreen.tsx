@@ -165,7 +165,7 @@ export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onB
             {changed && (
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-4 py-3.5">
                 <p className="min-w-[12rem] flex-1 text-body leading-snug text-(--accent)">
-                  {hasBuiltPlan ? 'Rebuild your plan to fit these changes in.' : 'Build a plan around your main event.'}
+                  {hasBuiltPlan ? 'Rebuild your plan to fit these changes in.' : 'Get a plan built around your main event.'}
                 </p>
                 <Button variant="default" className="h-11 px-4 text-body font-semibold text-(--accent)" onClick={hasBuiltPlan ? onOpenPlan : onBuildPlan}>
                   {hasBuiltPlan ? 'Open plan' : 'Build plan'}
@@ -311,8 +311,10 @@ function EventCardButton({ e, onClick, bare }: { e: RaceEvent; onClick: () => vo
   )
 }
 
-function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent, onOpenPlan, onBuildPlan, imperial }: {
+function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent, onOpenPlan, onBuildPlan, imperial, only, newTitle }: {
   event: RaceEvent | null; isFirst: boolean; imperial: boolean
+  /** a new event offers only these kinds, with this title (see NewEventSheet) */
+  only?: EventKind[]; newTitle?: string
   onClose: () => void; onSaved: (list: RaceEvent[]) => void
   /** a change made on the page (skip a date) that keeps it open */
   onUpdated: (list: RaceEvent[]) => void
@@ -364,7 +366,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
   }
 
   return (
-    <Screen title={event ? event.name : 'Add an event'} subtitle={event?.main ? 'Your main event' : undefined}
+    <Screen title={event ? event.name : newTitle ?? 'Add an event'} subtitle={event?.main ? 'Your main event' : undefined}
       closing={closing} onClose={guard.wrap(close)} onBack={guard.wrap(close)}
       footer={<>
         <Button variant="primary" className="h-11 flex-1 text-body" loading={busy === 'save'}
@@ -401,7 +403,7 @@ function EventEditor({ event, isFirst, onClose, onSaved, onUpdated, onOpenEvent,
         <ShareButton label="Share or text this event" target={{ kind: 'event', ref: event.id, label: event.name }}
           onSendInRabbit={() => shareToFriends({ type: 'event', ref: { id: event.id }, label: event.name })} />
       )}
-      {!event && <KindPicker value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
+      {!event && <KindPicker only={only} value={kind} onChange={(k) => setV((x) => ({ ...kindDefaults(k, isFirst), name: x.name, date: x.date, location: x.location }))} />}
       {kind && (<>
       <EventBasics value={v} onChange={set} eventId={event?.id} allowPast={past} />
       <EventKindFields value={v} onChange={set} />
@@ -516,5 +518,18 @@ function DebriefCard({ event, result, notes, onSaved }: {
         )}
       </Field>
     </Card>
+  )
+}
+
+/** A new event right where you are (no jump to another tab): Near me's "Post a meetup"
+ * offers meetup kinds; Plan's "Add to my calendar" offers race, trip and life days. */
+export function NewEventSheet({ only, title, imperial = true, onClose, onSaved, onOpenPlan, onBuildPlan }: {
+  only: EventKind[]; title: string; imperial?: boolean
+  onClose: () => void; onSaved?: () => void; onOpenPlan: () => void; onBuildPlan: () => void
+}) {
+  return (
+    <EventEditor event={null} isFirst={false} imperial={imperial} only={only} newTitle={title}
+      onClose={onClose} onSaved={() => onSaved?.()} onUpdated={() => {}} onOpenEvent={() => {}}
+      onOpenPlan={onOpenPlan} onBuildPlan={onBuildPlan} />
   )
 }

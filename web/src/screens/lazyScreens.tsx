@@ -158,3 +158,4 @@ export const FindFriendsScreen = split(() => import('@/components/friends/FindFr
 // Heavier pieces that only show on demand: the voice/typed check-in sheet and chat charts.
 export const VoiceCheckIn = split(() => import('@/components/checkin/VoiceCheckIn').then((m) => m.VoiceCheckIn), 'popup')
 export const Chart = split(() => import('@/components/chat/Chart').then((m) => m.Chart), 'popup')
+export const NewEventSheet = split(() => import('@/components/events/EventsScreen').then((m) => m.NewEventSheet))

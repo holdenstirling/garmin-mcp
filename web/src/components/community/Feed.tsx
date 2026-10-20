@@ -213,7 +213,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
               title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
               body={clubId ? 'Share the first news with the club: a meetup recap, a race, a welcome.'
                 : group ? "Members' workouts and posts show up here. Share the plan for Saturday, a photo from the run, a cheer. Only the group sees it."
-                : filter === 'clubs' ? 'Posts from clubs you join show up here. Find one in Local.'
+                : filter === 'clubs' ? 'Posts from clubs you join show up here. Find one in Near me.'
                 : following === 0 ? "Follow friends to see their workouts here as soon as they sync. Then make a group for your crew."
                 : 'Workouts your friends share show up here as soon as they sync. First races, new PRs, comebacks: share yours too.'}
               action={group ? (

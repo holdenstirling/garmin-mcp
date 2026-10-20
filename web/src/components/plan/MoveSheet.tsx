@@ -213,7 +213,7 @@ export function MoveSessionSheet({ sessionId, onClose, onMoved }: { sessionId: s
     return (
       <Sheet title="Move this session" onClose={onClose} bodyClassName="flex flex-col gap-4 p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         {err || (data && !hit)
-          ? <p className="text-body text-(--text-secondary)" role="alert">{err ?? "Couldn't find this workout in your plan. Open Schedule to move it."}</p>
+          ? <p className="text-body text-(--text-secondary)" role="alert">{err ?? "Couldn't find this workout in your plan. Open the Plan tab to move it."}</p>
           : <RabbitLoader className="py-10" label="Loading your week" cycle={['Loading your week…', 'Finding free days…']} />}
       </Sheet>
     )

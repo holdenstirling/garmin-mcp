@@ -32,14 +32,14 @@ export function HomeStart({ hasPlan, planLine, onLocal, onNewEvent, onPlan, onSe
   return (
     <section aria-label="Start here" className="flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-3">
-        <Tile tone="accent" icon={<MapPin className="size-5" aria-hidden />} title="Near you"
-          line="Clubs, group runs, leagues and events" onClick={onLocal} />
+        <Tile tone="accent" icon={<MapPin className="size-5" aria-hidden />} title="Near me"
+          line="Runs, clubs, leagues and events" onClick={onLocal} />
         <Tile tone="brand" icon={<CalendarDays className="size-5" aria-hidden />} title={hasPlan ? 'Your plan' : 'Get a plan'}
           line={hasPlan ? (planLine || 'See your weeks and adjust') : 'For a race or just to get fitter'} onClick={hasPlan ? onPlan : onSetup} />
       </div>
       <button type="button" onClick={onNewEvent}
         className="inline-flex min-h-11 items-center gap-1.5 self-start px-1 text-small font-semibold text-(--accent)">
-        <Plus className="size-4" aria-hidden /> Create an event or meetup
+        <Plus className="size-4" aria-hidden /> Post a run for others to join
       </button>
     </section>
   )
