@@ -100,12 +100,12 @@ def test_welcome_mode_first_run_vs_existing() -> None:
 
 def test_save_and_skip(env) -> None:  # noqa: F811
     now = datetime(2026, 10, 14, 12, tzinfo=UTC)
-    a = intent.save(env.store, "andrew", ["train", "community"], now=now)
+    a = intent.save(env.store, "holden", ["train", "community"], now=now)
     assert a["intents"] == ["train", "community"] and a["welcomed_at"] == "2026-10-14T12:00:00+00:00"
-    a = intent.save(env.store, "andrew", None, skip=True)
+    a = intent.save(env.store, "holden", None, skip=True)
     assert a["intents"] == ["train", "community"]  # skip keeps the earlier answer
     with pytest.raises(CoachError):
-        intent.save(env.store, "andrew", ["nope"])
+        intent.save(env.store, "holden", ["nope"])
 
 
 # -------------------------------------------------------------------- API --
@@ -117,7 +117,7 @@ def _app(env, tmp_path, user: str):  # noqa: F811
 
 
 def test_api_first_run_existing_and_coach(env, tmp_path) -> None:  # noqa: F811
-    new_app, _ = _app(env, tmp_path, "andrew")  # no Garmin, nothing set up
+    new_app, _ = _app(env, tmp_path, "holden")  # no Garmin, nothing set up
     old_app, agent = _app(env, tmp_path, "friend")  # Garmin connected: an existing user
     coach_app, _ = _app(env, tmp_path, coach_user_id("coach@example.com"))
 

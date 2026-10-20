@@ -180,7 +180,7 @@ def test_agentic_onboarding_plan_and_goal_switch(tmp_path, fernet_key) -> None:
     backend = Scripted([])
     agent = Agent(svc, store, backend, daily_token_budget=1_000_000)
     pdf = agent.attachments.save("friend", "plan.pdf", PDF)
-    stranger = agent.attachments.save("andrew", "theirs.pdf", PDF)
+    stranger = agent.attachments.save("holden", "theirs.pdf", PDF)
 
     backend.steps = [
         ([], [tool_block("save_plan", {"summary": "wk1 base"})], "tool_use"),  # no goal yet

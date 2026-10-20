@@ -113,7 +113,7 @@ class Harness:
         self.key = fernet_key
         self.settings = Settings(
             public_base_url=BASE, data_dir=tmp_path, app_enabled=True, google_client_id="g-client",
-            allowed_google_users=_parse_email_map(["friend@example.com:friend", "andrew@example.com:andrew"]))
+            allowed_google_users=_parse_email_map(["friend@example.com:friend", "holden@example.com:holden"]))
         self.google = Google()
         self.service = make_service(provider, registry)
         self.rebuild()
@@ -366,7 +366,7 @@ async def test_coach_accounts_still_get_403(h: Harness) -> None:
 
 @run
 async def test_non_owner_cannot_invite_unless_enabled(h: Harness) -> None:
-    h.rebuild(replace(h.settings, owner_user_ids=("andrew",)))
+    h.rebuild(replace(h.settings, owner_user_ids=("holden",)))
     async with h.client() as c:
         await sign_in(h, c)  # friend: allowlisted but not the owner
         assert (await c.post("/app/api/invites", json={}, headers=JSON_HDRS)).status_code == 403

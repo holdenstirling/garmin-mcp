@@ -176,11 +176,11 @@ def test_attachment_quota_per_user(env, monkeypatch) -> None:
         atts.save("friend", "a.png", PNG)
     with pytest.raises(AttachmentError, match="limit"):
         atts.save("friend", "a.png", PNG)
-    atts.save("andrew", "a.png", PNG)  # per user
+    atts.save("holden", "a.png", PNG)  # per user
     monkeypatch.setattr(att_mod, "MAX_BYTES_PER_USER", 250)
-    atts.save("andrew", "a.png", PNG)
+    atts.save("holden", "a.png", PNG)
     with pytest.raises(AttachmentError, match="limit"):
-        atts.save("andrew", "a.png", PNG)
+        atts.save("holden", "a.png", PNG)
 
 
 # 5 ---------------------------------------------------------------------------

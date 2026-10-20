@@ -7,7 +7,7 @@ Status: Phase 1 built on branch `rabbit-web` (2026-10-11): config, encrypted sto
 
 ## Goal
 
-Give a non-technical friend the same Garmin-backed training agent Andrew has in
+Give a non-technical friend the same Garmin-backed training agent Holden has in
 claude.ai, without requiring a paid AI subscription, a GitHub account, or any
 terminal work. The friend's whole setup:
 
@@ -17,7 +17,7 @@ terminal work. The friend's whole setup:
 4. Tap **Turn on notifications**.
 
 After that he chats with the agent in the app and gets pushed messages (new
-workout feedback, a morning brief). Andrew pays the Claude API costs.
+workout feedback, a morning brief). Holden pays the Claude API costs.
 
 ## Non-goals (v1)
 
@@ -34,7 +34,7 @@ Rabbit runs as its **own service** on the same VM (`rabbit.service`, 127.0.0.1:8
 own system user, data dir, release dir, env file and Fernet key), from the same
 codebase with `MCP_ENABLED=false`. Caddy routes `/app*` to it and everything else
 to the MCP server, so testing, deploying or crashing Rabbit never interrupts the
-claude.ai connector (changed 2026-10-11 at Andrew's request; originally one process).
+claude.ai connector (changed 2026-10-11 at Holden's request; originally one process).
 
 Resources (e2-micro, 1 GB RAM + 1 GB swap, shared vCPU): measured idle RSS is ~75 MB
 per process; the Anthropic SDK adds ~56 MB, so Rabbit is ~130 MB plus a few MB per
@@ -46,7 +46,7 @@ it's ever tight: e2-small (2 GB), which leaves the free tier (check current pric
 
 Garmin rotates the refresh token on every refresh, so a given user's tokens must
 be owned by exactly one process. Rabbit users' tokens live only in Rabbit's data
-dir; Andrew's MCP tokens live only in the MCP server's. If Andrew also uses
+dir; Holden's MCP tokens live only in the MCP server's. If Holden also uses
 Rabbit, he connects Garmin separately inside Rabbit (its own login, its own
 token chain).
 
@@ -64,7 +64,7 @@ Caddy ─┬─► garmin-mcp.service :8000   /mcp, /authorize, /token, /github/
           └─ GarminService → Registry → UnofficialProvider (existing, unchanged)
 ```
 
-The MCP server for claude.ai keeps working exactly as today. Andrew can keep
+The MCP server for claude.ai keeps working exactly as today. Holden can keep
 using claude.ai + the routine, use the web app, or both.
 
 ## Decisions (with reasons)
@@ -74,7 +74,7 @@ using claude.ai + the routine, use the web app, or both.
 | Surface | Installable web app (PWA) with Web Push | No App Store, no $99/yr, no 90-day TestFlight expiry; deploys with `./deploy.sh`. iOS supports Web Push for Home Screen web apps since 16.4. |
 | Frontend | Vite + React 19 SPA, ported from Dolly's chat UI (`web-mcp`, MIT) | Dolly's chat is already a phone-width single-column UI (built for the extension side panel) with streaming markdown, tool cards and bottom sheets. Every chat file is `'use client'` with no `next/*` imports, so it runs in a plain Vite SPA. Built locally by `deploy.sh`; the VM never needs Node. See "Frontend" below. |
 | Identity | Google OAuth (authorization code + PKCE), server-side, `openid email` scopes | Mirrors the GitHub flow in `auth.py`: exchange code, read userinfo once, discard Google tokens. No JWT library needed. Only non-sensitive scopes, so the consent screen can be published without Google app verification. |
-| Allowlist | `ALLOWED_GOOGLE_USERS=<email>:<user_id>`; Google `sub` is bound on first sign-in and required to match afterwards | Andrew doesn't know the friend's `sub` in advance. Binding on first login gets the same stability guarantee as numeric GitHub IDs. Requires `email_verified=true`. |
+| Allowlist | `ALLOWED_GOOGLE_USERS=<email>:<user_id>`; Google `sub` is bound on first sign-in and required to match afterwards | Holden doesn't know the friend's `sub` in advance. Binding on first login gets the same stability guarantee as numeric GitHub IDs. Requires `email_verified=true`. |
 | Sessions | Opaque random token in a `__Host-` cookie (Secure, HttpOnly, SameSite=Lax, Path=/), SHA-256 hash stored server-side, 90-day sliding expiry | Survives restarts (hashes persist encrypted, like refresh tokens today). Lax rather than Strict so the session is sent on the redirect back from Google. |
 | Agent harness | Hand-written tool loop on the `anthropic` Python SDK (1.x) | The SDK is built on `httpx2`, which matches the project; its constraints (`httpx2>=2,<3`, `anyio>=4.1,<5`, `pydantic<3`) fit the current lock. A manual loop (rather than the beta tool runner) makes it easy to stream progress to the browser and enforce per-user budgets. The Claude Agent SDK and Vercel AI SDK were ruled out earlier (too heavy / wrong language and process). |
 | Model | `claude-haiku-5-5` for chat (effort `low`/`medium`); optionally `claude-sonnet-5-5` for the morning brief | Haiku 5.5 is $0.10 / $0.50 per MTok input/output. A typical chat turn with two or three tool calls is roughly 20-40k input tokens, i.e. well under a cent. Sonnet 5.5 ($2 / $10) only where quality matters more. Both configurable. |
@@ -115,7 +115,7 @@ New settings, all optional so the app is off unless configured:
 - `AGENT_MODEL=claude-haiku-5-5`, `AGENT_PROACTIVE_MODEL=claude-opus-5-5` (briefs and workout notes)
 - `AGENT_DAILY_TOKEN_BUDGET` per user (default e.g. 2M tokens)
 - `VAPID_PRIVATE_KEY_SECRET_NAME`, `VAPID_SUBJECT=mailto:...`
-- `POLL_USERS=andrew:routine,friend:app` replaces `POLL_USER_ID` (keep `POLL_USER_ID` as an alias for `<id>:routine`)
+- `POLL_USERS=holden:routine,friend:app` replaces `POLL_USER_ID` (keep `POLL_USER_ID` as an alias for `<id>:routine`)
 
 Validation follows the existing style: fail at startup with a clear message on
 malformed entries.
@@ -392,7 +392,7 @@ pairing-code fallback needed). Web Push delivered; Apple's endpoint host is `web
 - Install a stub PWA from the VM. Confirm the Google sign-in redirect round-trip
   returns into the standalone app with the session cookie set, not into Safari.
   iOS has historically been inconsistent here.
-  - Fallback if it fails: a one-time pairing code. Andrew runs
+  - Fallback if it fails: a one-time pairing code. Holden runs
     `garmin-mcp-admin invite friend`, the friend types the 6-digit code into
     the installed app, and the server issues the session. This is robust
     because no cross-app redirect is involved.
@@ -447,9 +447,9 @@ New attack surface and the control for each:
 
 Residual risks to accept explicitly:
 
-- The friend's Garmin password transits Andrew's server once.
+- The friend's Garmin password transits Holden's server once.
 - Conversation content is sent to the Anthropic API.
-- Andrew, as server operator, can technically decrypt the friend's data.
+- Holden, as server operator, can technically decrypt the friend's data.
 
 ## Known iOS limitations (accepted for now)
 
@@ -462,10 +462,10 @@ Residual risks to accept explicitly:
 - **Keyboard accessory bar** (arrows + checkmark) can't be hidden from the web.
 - **Haptics:** only the native text-selection tick (used by the long-press menu).
 
-## Open questions for Andrew
+## Open questions for Holden
 
 1. **Branding**: reuse Dolly's look (tokens, fonts) as-is, or give the coach its own palette/name? The tokens make this a small change either way.
 2. **Models**: Haiku 5.5 for chat and Sonnet 5.5 for briefs, or Haiku for everything?
-3. **Andrew's own use**: stay on claude.ai + the routine, or also use the web app (`POLL_USERS=andrew:app`)?
+3. **Holden's own use**: stay on claude.ai + the routine, or also use the web app (`POLL_USERS=holden:app`)?
 4. **Friend's plan**: does he have a training plan to give the agent (a document to paste into notes), or should the agent coach from his data alone in v1?
 5. **Commit first**: the poller work in the working tree is uncommitted. Commit it before starting, so Phase 4 builds on a clean base.

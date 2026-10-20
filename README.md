@@ -373,8 +373,8 @@ Every variable is listed and explained in [`.env.example`](.env.example).
 
 ## License
 
-[MIT](LICENSE). Based on [anlinguist/garmin-mcp](https://github.com/anlinguist/garmin-mcp) by
-Andrew Nelson. The TrainingPeaks endpoints and structured-workout format were worked out with
+[MIT](LICENSE). Includes MIT-licensed code from
+[anlinguist/garmin-mcp](https://github.com/anlinguist/garmin-mcp) (see LICENSE). The TrainingPeaks endpoints and structured-workout format were worked out with
 reference to [JamsusMaximus/TrainingPeaks-MCP](https://github.com/JamsusMaximus/TrainingPeaks-MCP)
 (MIT). Garmin, TrainingPeaks and Ironman are trademarks of their owners; this project isn't
 affiliated with any of them.

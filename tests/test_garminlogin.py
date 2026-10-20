@@ -156,19 +156,19 @@ def test_one_login_at_a_time_server_wide(env) -> None:
     first = lm.start("friend", "ok@x.com", PASSWORD)
     assert first.state == "pending"
     with pytest.raises(Busy):
-        lm.start("andrew", "ok@x.com", PASSWORD)
+        lm.start("holden", "ok@x.com", PASSWORD)
     run.drain()
     assert first.state == "ok"
-    assert lm.start("andrew", "ok@x.com", PASSWORD).state == "pending"
+    assert lm.start("holden", "ok@x.com", PASSWORD).state == "pending"
 
 
 def test_jobs_are_bound_to_their_user(env) -> None:
     lm = env["make"]()
     job = lm.start("friend", "mfa@x.com", PASSWORD)
     with pytest.raises(KeyError):
-        lm.status("andrew", job.id)
+        lm.status("holden", job.id)
     with pytest.raises(KeyError):
-        lm.submit_mfa("andrew", job.id, "123456")
+        lm.submit_mfa("holden", job.id, "123456")
     assert lm.status("friend", job.id).state == "needs_mfa"
 
 

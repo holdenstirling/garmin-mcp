@@ -1,7 +1,7 @@
 """garmin-mcp-login: one-time interactive Garmin login that writes encrypted tokens.
 
 Run on the VM (same egress IP as the server) as the service user:
-    sudo garmin-mcp-login --user andrew   (wrapper installed by bootstrap-vm.sh)
+    sudo garmin-mcp-login --user holden   (wrapper installed by bootstrap-vm.sh)
 
 Makes exactly one login attempt per run. It never retries automatically:
 Garmin rate-limits logins per IP/fingerprint. The password is held only in
@@ -28,7 +28,7 @@ MAX_MFA_CODE_TRIES = 3
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--user", required=True, help="internal user id (e.g. andrew)")
+    ap.add_argument("--user", required=True, help="internal user id (e.g. holden)")
     ap.add_argument("--email", help="Garmin email (prompted if omitted)")
     ap.add_argument("--delete", action="store_true", help="delete stored tokens and exit")
     args = ap.parse_args(argv)

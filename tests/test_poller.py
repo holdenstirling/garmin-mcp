@@ -234,7 +234,7 @@ def test_daily_fire_cap(env) -> None:
 def test_reauth_backs_off_until_tokens_change(env) -> None:
     p = env.poller()
     p.poll()
-    env.garmin.error = ReauthRequired("andrew")
+    env.garmin.error = ReauthRequired("holden")
     assert p.poll()["error"] == "reauth_required"
     env.garmin.error = None
     env.clock.t += 60

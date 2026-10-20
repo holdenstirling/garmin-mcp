@@ -162,7 +162,7 @@ class Harness:
     def __init__(self, env, tmp_path) -> None:
         self.settings = Settings(
             public_base_url=BASE, data_dir=tmp_path, app_enabled=True, google_client_id="g-client",
-            allowed_google_users=_parse_email_map(["friend@example.com:friend", "andrew@example.com:andrew"]))
+            allowed_google_users=_parse_email_map(["friend@example.com:friend", "holden@example.com:holden"]))
         self.google = Google()
         self.agent, _ = env.agent([])
         self.auth = WebAuth(self.settings, env.store, "g-secret", http=self.google.client())

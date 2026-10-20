@@ -57,7 +57,7 @@ def _client(app) -> httpx2.AsyncClient:
 
 def test_upload_guards_and_owner_only(env, tmp_path) -> None:
     app, agent, _, _ = _app(env, tmp_path)
-    other, *_ = _app(env, tmp_path, user="andrew")
+    other, *_ = _app(env, tmp_path, user="holden")
 
     async def go() -> None:
         async with _client(app) as c:
@@ -149,7 +149,7 @@ def test_read_file_reopens_own_uploads_only(env, tmp_path) -> None:
     from tests.test_agent import go, tool_block
     app, agent, backend, runner = _app(env, tmp_path)
     mine = agent.attachments.save("friend", "plan.pdf", PDF)
-    theirs = agent.attachments.save("andrew", "x.pdf", PDF)
+    theirs = agent.attachments.save("holden", "x.pdf", PDF)
     backend.steps = [
         ([], [tool_block("read_file", {"attachment_id": mine["id"]}),
               tool_block("read_file", {"attachment_id": theirs["id"]}, 1)], "tool_use"),

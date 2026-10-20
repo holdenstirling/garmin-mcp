@@ -86,7 +86,7 @@ class Harness:
             public_base_url=BASE, data_dir=tmp_path, app_enabled=True,
             google_client_id="g-client",
             allowed_google_users=_parse_email_map(
-                ["friend@example.com:friend", "andrew@example.com:andrew"]),
+                ["friend@example.com:friend", "holden@example.com:holden"]),
             vapid_subject="mailto:ops@example.com",
         )
         self.google = Google()
@@ -228,7 +228,7 @@ async def test_allowlist_removal_revokes_existing_session(h: Harness) -> None:
     async with h.client() as c:
         await sign_in(h, c)
         token = c.cookies.get(h.auth.session_cookie)
-    h.rebuild(replace(h.settings, allowed_google_users={"andrew@example.com": "andrew"}))
+    h.rebuild(replace(h.settings, allowed_google_users={"holden@example.com": "holden"}))
     async with h.client() as c:
         c.cookies.set(h.auth.session_cookie, token, domain=HOST)
         assert (await c.get("/app/api/me")).status_code == 401
@@ -349,13 +349,13 @@ async def test_push_subscriptions_are_per_user(h: Harness) -> None:
     async with h.client() as c:
         await sign_in(h, c)
         await c.post("/app/api/push/subscribe", headers=JSON_HDRS, content=json.dumps(sub).encode())
-    h.google.sub, h.google.email = "g-222", "andrew@example.com"
+    h.google.sub, h.google.email = "g-222", "holden@example.com"
     async with h.client() as c:
         await sign_in(h, c)
         me = (await c.get("/app/api/me")).json()
-        assert me["user_id"] == "andrew" and me["push"]["subscriptions"] == 0
+        assert me["user_id"] == "holden" and me["push"]["subscriptions"] == 0
         await c.post("/app/api/push/test", headers=JSON_HDRS, content=b"{}")
-    assert h.pushsvc.requests == []  # andrew's test push never reached the friend's device
+    assert h.pushsvc.requests == []  # holden's test push never reached the friend's device
 
 
 def test_email_map_parsing() -> None:
@@ -372,7 +372,7 @@ def test_broken_app_config_keeps_mcp_up(tmp_path, monkeypatch, fernet_key) -> No
 
     for k, v in {"PUBLIC_BASE_URL": "http://localhost:8000", "DATA_DIR": str(tmp_path),
                  "GARMIN_MCP_FERNET_KEY": fernet_key, "APP_ENABLED": "true",
-                 "GITHUB_CLIENT_ID": "gh", "ALLOWED_GITHUB_USERS": "1:andrew",
+                 "GITHUB_CLIENT_ID": "gh", "ALLOWED_GITHUB_USERS": "1:holden",
                  "GITHUB_CLIENT_SECRET": "s"}.items():
         monkeypatch.setenv(k, v)
     monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
@@ -486,14 +486,14 @@ async def test_connect_garmin_guards(h: Harness) -> None:
         assert no_origin.status_code == 403
         assert (await c.post("/app/api/garmin/login", headers=JSON_HDRS, content=json.dumps(
             {"email": "ok@example.com", "password": "x" * 300}).encode())).status_code == 400
-    h.google.sub, h.google.email = "g-222", "andrew@example.com"
+    h.google.sub, h.google.email = "g-222", "holden@example.com"
     async with h.client() as c:
         await sign_in(h, c)  # a different user can't see or finish friend's login
         assert (await c.get(f"/app/api/garmin/login/{job['job_id']}")).status_code == 404
         r = await c.post("/app/api/garmin/mfa", headers=JSON_HDRS, content=json.dumps(
             {"job_id": job["job_id"], "code": "123456"}).encode())
         assert r.status_code == 404
-    assert h.tokens.load("andrew") is None and h.tokens.load("friend") is None
+    assert h.tokens.load("holden") is None and h.tokens.load("friend") is None
 
 
 def test_password_never_reaches_logs_or_responses(h: Harness, caplog) -> None:

@@ -113,7 +113,7 @@ class FakeSession(GarminSession):
 class FakeProvider(GarminProvider):
     def __init__(self) -> None:
         self.garmin = FakeGarmin()
-        self.sessions: dict[str, FakeSession] = {"andrew": FakeSession("andrew", self.garmin)}
+        self.sessions: dict[str, FakeSession] = {"holden": FakeSession("holden", self.garmin)}
 
     def get_client(self, user_id: str) -> FakeSession:
         if user_id not in self.sessions:

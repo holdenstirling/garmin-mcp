@@ -39,7 +39,7 @@ def test_approved_goal_change_is_saved(env) -> None:
         assert req["summary"]["title"] == "Update your goal?"
         assert {"field": "Date", "from": "2027-06-27", "to": "2027-06-12"} in req["summary"]["changes"]
         assert agent.coach.active_goal("friend")["date"] == "2027-06-27"  # not yet
-        assert runner.resolve("andrew", turn.id, req["approvalCallId"], True, None) is False  # wrong user
+        assert runner.resolve("holden", turn.id, req["approvalCallId"], True, None) is False  # wrong user
         assert runner.resolve("friend", turn.id, req["approvalCallId"], True, None) is True
         await runner.wait_idle()
         assert agent.coach.active_goal("friend")["date"] == "2027-06-12"
@@ -73,13 +73,13 @@ def test_plan_rewrite_needs_approval_first_plan_does_not(env) -> None:
         (["ok"], [], "end_turn")])
     from tests.test_agent import go
     events = []
-    go(agent, "andrew", "here's my plan", events.append)  # onboarding: no approvals needed
+    go(agent, "holden", "here's my plan", events.append)  # onboarding: no approvals needed
     assert not any(e["type"] == "approval-request" for e in events)
-    assert agent.coach.active_goal("andrew")["plan"] == "v1"
-    assert agent.approval_needed("andrew", "save_plan", {"summary": "v2"})["title"] == \
+    assert agent.coach.active_goal("holden")["plan"] == "v1"
+    assert agent.approval_needed("holden", "save_plan", {"summary": "v2"})["title"] == \
         "Replace your plan summary?"
-    assert agent.approval_needed("andrew", "save_goal", {"event": "70.3"}) is None  # no change
-    assert agent.approval_needed("andrew", "update_notes", {"notes": "x"}) is None
+    assert agent.approval_needed("holden", "save_goal", {"event": "70.3"}) is None  # no change
+    assert agent.approval_needed("holden", "update_notes", {"notes": "x"}) is None
 
 
 def test_background_turns_cannot_change_goal(env) -> None:

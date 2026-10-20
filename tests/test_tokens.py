@@ -18,9 +18,9 @@ def _mode(p: Path) -> int:
 
 def test_roundtrip_and_encrypted_at_rest(tmp_path: Path, fernet_key: str) -> None:
     store = EncryptedFileTokenStore(tmp_path / "tokens", fernet_key)
-    store.save("andrew", BLOB)
-    assert store.load("andrew") == BLOB
-    raw = (tmp_path / "tokens" / "andrew.fernet").read_bytes()
+    store.save("holden", BLOB)
+    assert store.load("holden") == BLOB
+    raw = (tmp_path / "tokens" / "holden.fernet").read_bytes()
     assert b"refresh-secret" not in raw and b"di_token" not in raw
     assert Fernet(fernet_key).decrypt(raw).decode() == BLOB
 
@@ -30,17 +30,17 @@ def test_permissions(tmp_path: Path, fernet_key: str) -> None:
     d.mkdir(mode=0o755)
     os.chmod(d, 0o755)
     store = EncryptedFileTokenStore(d, fernet_key)
-    store.save("andrew", BLOB)
+    store.save("holden", BLOB)
     assert _mode(d) == 0o700
-    assert _mode(d / "andrew.fernet") == 0o600
+    assert _mode(d / "holden.fernet") == 0o600
 
 
 def test_refuses_world_readable_file(tmp_path: Path, fernet_key: str) -> None:
     store = EncryptedFileTokenStore(tmp_path, fernet_key)
-    store.save("andrew", BLOB)
-    os.chmod(tmp_path / "andrew.fernet", 0o644)
+    store.save("holden", BLOB)
+    os.chmod(tmp_path / "holden.fernet", 0o644)
     with pytest.raises(TokenStoreError, match="permissions"):
-        store.load("andrew")
+        store.load("holden")
 
 
 def test_missing_user_returns_none(tmp_path: Path, fernet_key: str) -> None:
@@ -48,27 +48,27 @@ def test_missing_user_returns_none(tmp_path: Path, fernet_key: str) -> None:
 
 
 def test_wrong_key(tmp_path: Path, fernet_key: str) -> None:
-    EncryptedFileTokenStore(tmp_path, fernet_key).save("andrew", BLOB)
+    EncryptedFileTokenStore(tmp_path, fernet_key).save("holden", BLOB)
     other = EncryptedFileTokenStore(tmp_path, Fernet.generate_key())
     with pytest.raises(TokenStoreError, match="could not decrypt") as exc:
-        other.load("andrew")
+        other.load("holden")
     assert "refresh-secret" not in str(exc.value)
 
 
 def test_atomic_write_preserves_old_file_on_failure(tmp_path: Path, fernet_key: str,
                                                     monkeypatch: pytest.MonkeyPatch) -> None:
     store = EncryptedFileTokenStore(tmp_path, fernet_key)
-    store.save("andrew", BLOB)
+    store.save("holden", BLOB)
 
     def boom(*a, **k):
         raise OSError("disk full")
 
     monkeypatch.setattr(os, "replace", boom)
     with pytest.raises(OSError):
-        store.save("andrew", '{"di_token": "new"}')
+        store.save("holden", '{"di_token": "new"}')
     monkeypatch.undo()
-    assert store.load("andrew") == BLOB  # old contents intact
-    assert [p.name for p in tmp_path.iterdir()] == ["andrew.fernet"]  # no temp left behind
+    assert store.load("holden") == BLOB  # old contents intact
+    assert [p.name for p in tmp_path.iterdir()] == ["holden.fernet"]  # no temp left behind
 
 
 def test_atomic_write_uses_rename(tmp_path: Path, fernet_key: str,
@@ -83,10 +83,10 @@ def test_atomic_write_uses_rename(tmp_path: Path, fernet_key: str,
         return real(src, dst)
 
     monkeypatch.setattr(os, "replace", spy)
-    store.save("andrew", BLOB)
+    store.save("holden", BLOB)
     assert len(seen) == 1
     src, dst = seen[0]
-    assert src.startswith(".andrew.fernet.") and src.endswith(".tmp") and dst == "andrew.fernet"
+    assert src.startswith(".holden.fernet.") and src.endswith(".tmp") and dst == "holden.fernet"
 
 
 @pytest.mark.parametrize("uid", ["../etc/passwd", "a/b", "", "UPPER", ".hidden", "x" * 65])
@@ -100,6 +100,6 @@ def test_refuses_symlinked_file(tmp_path: Path, fernet_key: str) -> None:
     store = EncryptedFileTokenStore(tmp_path / "t", fernet_key)
     target = tmp_path / "elsewhere"
     target.write_bytes(b"x")
-    (tmp_path / "t" / "andrew.fernet").symlink_to(target)
+    (tmp_path / "t" / "holden.fernet").symlink_to(target)
     with pytest.raises(OSError):
-        store.load("andrew")
+        store.load("holden")

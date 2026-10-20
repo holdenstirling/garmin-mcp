@@ -146,7 +146,7 @@ def test_week_endpoint_caches_and_counts_budget(env, tmp_path) -> None:
 
 def test_week_without_plan_or_garmin(env) -> None:
     agent, backend = env.agent([])
-    w = asyncio.run(WeekPlanner(agent).week("andrew"))  # no goal, Garmin not connected
+    w = asyncio.run(WeekPlanner(agent).week("holden"))  # no goal, Garmin not connected
     assert w["plan_status"] == "none" and w["index"] is None and w["garmin_error"]
     assert backend.calls == []
 

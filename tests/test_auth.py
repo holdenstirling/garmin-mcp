@@ -45,7 +45,7 @@ def _github_mock(user_id: str) -> httpx2.AsyncClient:
 def _settings(tmp_path: Path) -> Settings:
     return Settings(
         public_base_url=BASE, data_dir=tmp_path, github_client_id="gh-client",
-        allowed_github_users={ALLOWED_GH_ID: "andrew"},
+        allowed_github_users={ALLOWED_GH_ID: "holden"},
     )
 
 
