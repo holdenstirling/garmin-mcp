@@ -10,22 +10,60 @@ import { putAthlete } from '@/lib/api'
 import type { AthleteFull } from '@/lib/plan'
 import type { FuelPart, FuelPlan } from '@/lib/workout'
 import { cn } from '@/lib/utils'
+import { foodEmoji } from '@/lib/foodEmoji'
 
 function Chips({ items }: { items: string[] }) {
   if (!items.length) return null
   return (
     <ul className="mt-2 flex flex-wrap gap-2" aria-label="Ideas">
-      {items.map((x) => (
-        <li key={x} className="rounded-full bg-(--bg-inset) px-3 py-1.5 text-meta leading-tight text-(--text-secondary)">{x}</li>
-      ))}
+      {items.map((x) => {
+        const e = foodEmoji(x)
+        return (
+          <li key={x} className="inline-flex items-center gap-1.5 rounded-full bg-(--bg-inset) px-3 py-1.5 text-meta leading-tight text-(--text-secondary)">
+            {e && <span aria-hidden className="text-body leading-none">{e}</span>}{x}
+          </li>
+        )
+      })}
     </ul>
   )
 }
 
-function Row({ label, part, children, first }: { label: string; part: FuelPart; children?: React.ReactNode; first?: boolean }) {
+/** Two food emoji for a row's header: from its own ideas, else a default per moment. */
+function cluster(part: FuelPart, fallback: string[]): string[] {
+  const got = [...new Set(part.items.map(foodEmoji).filter((x): x is string => !!x))]
+  return (got.length ? got : fallback).slice(0, 2)
+}
+
+/** When to eat, at a glance: before, start, during, finish, after. Decoration plus short words. */
+export function FuelTimeline({ fp }: { fp: FuelPlan }) {
+  const every = /every (\d+) ?min/i.exec(fp.during.plan || '')?.[1]
+  const during = fp.during.carbs_g_per_h > 0 ? (every ? `Every ${every} min` : 'Little and often') : 'Sip water'
+  const steps: { e: string; label: string }[] = [
+    { e: cluster(fp.before, ['🍌'])[0], label: fp.before.when || 'Before' },
+    { e: '🏁', label: 'Start' },
+    { e: fp.during.carbs_g_per_h > 0 ? (cluster(fp.during, ['⚡'])[0]) : '💧', label: during },
+    { e: '🎉', label: 'Finish' },
+    { e: cluster(fp.after, ['🥛'])[0], label: fp.after.when || 'After' },
+  ]
+  return (
+    <ol aria-label="When to eat" className="mx-4 mt-2 grid grid-cols-5 gap-1 rounded-xl bg-(--bg-inset) px-1 py-3">
+      {steps.map((s, i) => (
+        <li key={i} className="relative flex min-w-0 flex-col items-center gap-1 text-center">
+          {i > 0 && <span aria-hidden className="absolute right-1/2 top-4 h-0.5 w-full -translate-y-1/2 bg-(--border)" />}
+          <span aria-hidden className="relative z-[1] flex size-8 items-center justify-center rounded-full bg-(--bg-surface) text-body shadow-sm">{s.e}</span>
+          <span className="text-caption leading-tight text-(--text-secondary)">{s.label}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function Row({ label, part, children, first, icons }: { label: string; part: FuelPart; children?: React.ReactNode; first?: boolean; icons?: string[] }) {
   return (
     <div className={cn('flex flex-col gap-1 px-4 py-3.5', !first && 'border-t border-(--border)')}>
-      <span className="text-meta font-semibold text-(--accent)">{label}</span>
+      <span className="flex items-center gap-2 text-meta font-semibold text-(--accent)">
+        {icons && icons.length > 0 && <span aria-hidden className="text-lead leading-none">{icons.join('')}</span>}{label}
+      </span>
       <div className="min-w-0">
         <p className="text-body leading-snug text-(--text)">
           {part.when ? <><b className="font-semibold">{part.when}: </b>{part.headline}</> : <b className="font-semibold">{part.headline}</b>}
@@ -57,11 +95,12 @@ export function FuelSection({ fp, ahead, onSaved }: { fp: FuelPlan; ahead: boole
           <Moon className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />{fp.night_before}
         </p>
       )}
+      <FuelTimeline fp={fp} />
       <div className="mt-1 flex flex-col">
-        <Row label="Before" part={fp.before} first>
+        <Row label="Before" part={fp.before} first icons={cluster(fp.before, ['🍌', '🥣'])}>
           {fp.before.hydration && <p className="mt-1 text-small text-(--text-muted)">{fp.before.hydration}</p>}
         </Row>
-        <Row label="During" part={{ ...d, when: undefined, tip: d.note ?? null }}>
+        <Row label="During" part={{ ...d, when: undefined, tip: d.note ?? null }} icons={d.carbs_g_per_h > 0 ? cluster(d, ['⚡', '🥤']) : ['💧']}>
           <p className="mt-1 text-body leading-snug text-(--text-secondary)">
             {d.carbs_g_per_h > 0 ? <><span className="text-(--text)">{d.plan}</span>{d.start ? `. ${d.start}` : ''}</> : d.plan}
           </p>
@@ -73,7 +112,7 @@ export function FuelSection({ fp, ahead, onSaved }: { fp: FuelPlan; ahead: boole
           )}
           {d.heat && <p className="mt-1 text-small text-(--text-muted)">{d.heat}</p>}
         </Row>
-        <Row label="After" part={fp.after} />
+        <Row label="After" part={fp.after} icons={cluster(fp.after, ['🥛', '🍳'])} />
       </div>
       {(fp.caffeine || fp.learn_more) && (
         <div className="flex flex-col gap-2 border-t border-(--border) px-4 pb-4 pt-3">

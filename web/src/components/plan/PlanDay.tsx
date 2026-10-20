@@ -4,7 +4,7 @@
 // Rabbit note, "Learn more" (what the session is, why it's in the plan, how it should feel,
 // the zones it uses), and actions: Ready to go, Move, Swap, Edit, Ask Rabbit.
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Utensils, Wrench } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, CalendarDays, CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Maximize2, MessageCircle, MoveRight, Pencil, Plane, Play, Plus, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RabbitNote } from '@/components/ui/brand'
 import { RabbitNap } from '@/components/anim'
@@ -24,6 +24,7 @@ import { addDays, mondayOf } from './MoveSheet'
 import { paceText } from './PlanCalendar'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { SportTile } from '@/components/ui/SportTile'
+import { foodEmoji } from '@/lib/foodEmoji'
 
 export type DayActions = {
   onEdit: (s: PlanSession) => void
@@ -224,7 +225,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
       )}
       {(s.fuel_hint || s.fuel) && (
         <p className="mx-4 mt-4 flex items-start gap-1.5 text-small leading-snug text-(--text-secondary)">
-          <Utensils className="mt-0.5 size-4 shrink-0 text-(--accent)" aria-hidden />
+          <span aria-hidden className="shrink-0 text-body leading-tight">{foodEmoji(s.fuel_hint ?? '') ?? '🍌'}</span>
           <span>{s.fuel_hint
             ? <><span className="font-semibold text-(--text)">Fuel:</span>{s.fuel_hint.replace(/^Fuel:/, '')}. Full before, during and after on the workout page.</>
             : <><span className="font-semibold text-(--text)">Fuel:</span> about {s.fuel!.carbs_g_per_h} g carbs an hour{s.fuel!.note ? `. ${s.fuel!.note}` : ''}</>}</span>

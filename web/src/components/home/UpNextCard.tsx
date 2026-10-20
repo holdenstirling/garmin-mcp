@@ -3,7 +3,7 @@
 // your plan > a group run tonight/tomorrow > set a goal. It wraps the Today card's advice, so
 // that card isn't shown separately.
 import { Suspense, lazy, useState, type ReactNode } from 'react'
-import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Thermometer, Users, Watch, Waves, Zap, Utensils } from 'lucide-react'
+import { CalendarClock, Check, Flag, Lightbulb, Moon, Route, Target, Thermometer, Users, Watch, Waves, Zap } from 'lucide-react'
 import { useSick } from '@/components/plan/SickHost'
 import { Button } from '@/components/ui/button'
 import { InfoTip } from '@/components/ui/InfoTip'
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { openSick } from '@/lib/sick'
 import { openWorkout } from '@/lib/workoutnav'
 import { openActivity } from '@/lib/activitynav'
+import { foodEmoji } from '@/lib/foodEmoji'
 
 // "Move" today's session to another day (loaded on first use).
 const MoveSessionSheet = lazy(() => import('@/components/plan/MoveSheet').then((m) => ({ default: m.MoveSessionSheet })))
@@ -152,7 +153,7 @@ export function UpNextCard({ up, week, insight, onOpenInsight, onStart, onToday,
       {up.detail && <p className="mt-3 text-body leading-normal text-(--text-secondary)">{up.detail}</p>}
       {up.fuel && (
         <p className="mt-3 flex items-start gap-2 text-small leading-snug text-(--text-secondary)">
-          <Utensils className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden /><span>{up.fuel}</span>
+          <span aria-hidden className="shrink-0 text-lead leading-tight">{foodEmoji(up.fuel) ?? '🍌'}</span><span>{up.fuel}</span>
         </p>
       )}
       {chips.length > 0 && (
