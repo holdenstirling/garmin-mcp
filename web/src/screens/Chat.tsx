@@ -106,6 +106,8 @@ import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
 import { cn } from '@/lib/utils'
 import { HomeStart } from '@/components/home/HomeStart'
 import { NEW_EVENT_EVENT } from '@/lib/events'
+import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
+import { CircleHelp } from 'lucide-react'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -1244,6 +1246,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 }} />
               )}
             </Section>
+            <button type="button" onClick={openHowItWorks}
+              className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
+              <CircleHelp className="size-5" aria-hidden /> New here? How rabbt works
+            </button>
           </div>
         </div>
         {/* Ask Rabbit: switches to Chat with the composer focused. */}
@@ -1672,6 +1678,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {voice && <VoiceCheckIn open sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />}
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
+      <HowItWorksHost />
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : s === 'local' ? openCommunity('clubs') : doQuest(s)} />
 
       {notifsOpen && <NotificationsSheet onClose={() => setNotifsOpen(false)} />}

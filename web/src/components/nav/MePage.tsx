@@ -16,6 +16,8 @@ import type { Progress } from '@/lib/progress'
 import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
 import type { LegalSlug } from '@/lib/legal'
 import { openFindFriends } from '@/lib/friends'
+import { openHowItWorks } from '@/components/onboarding/HowItWorks'
+import { CircleHelp } from 'lucide-react'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
   | 'connections' | 'access' | 'usage' | 'partners' | 'legal'
@@ -58,6 +60,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
       </button>
 
       <Group label="Your account">
+        <Row icon={<Icon><CircleHelp /></Icon>} title="How rabbt works" subtitle="A quick tour of what you can do" onClick={openHowItWorks} />
         {me.role === 'athlete' && (
           <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         )}
