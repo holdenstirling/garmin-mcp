@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { ASK_EVENT } from '@/lib/askrabbt'
 import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
-import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, FileText, History, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
@@ -118,7 +118,7 @@ const COACH_SUGGESTIONS = [
   'Am I recovered enough for a hard workout today?',
   "How's my sleep been lately?",
 ]
-const TOPIC_SUGGESTIONS = ['Help me plan next week.', 'Can I move my long ride to Sunday?', 'What should I eat before a long run?']
+const TOPIC_SUGGESTIONS = ['Find me a run club this week.', 'Build me a plan for a 10K.', 'What should I eat before a long run?']
 
 type Row =
   | { kind: 'message'; item: ChatMessage; showLabel: boolean }
@@ -1041,8 +1041,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
     <button type="button" className={HEADER_ICON} data-tour="chat"
-      aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with rabbt and friends'}
-      onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
+      aria-label={dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages'}
+      onClick={() => { setChatsView('people'); open('threads') }}>
       <MessagesSquare className="size-6" aria-hidden />
       {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
@@ -1287,7 +1287,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
       else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: smooth() })
-      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
+      else setHomeView('home') // Today again from rabbt's chat: back to Today
       return
     }
     if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
@@ -1496,10 +1496,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
-      {atLog && !typing && (
-        <div className="shrink-0 px-5 pb-2 pt-1">
-          <Segmented label="rabbt" value={homeView} onChange={setHomeView}
-            options={[['home', 'Home'], ['chat', logNew > 0 && !readingLog ? `Chat · ${logNew} new` : 'Chat']] as const} />
+      {atLog && !typing && homeView === 'chat' && (
+        <div className="shrink-0 px-5 pb-1 pt-1">
+          {/* One way to rabbt: the Ask bar on Today opens this chat; Back returns to Today. */}
+          {homeView === 'chat' && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" className="-ml-2 h-11 gap-1 px-2 text-body" onClick={() => setHomeView('home')}>
+                <ChevronLeft className="size-5" aria-hidden /> Today
+              </Button>
+              <span className="flex-1" />
+              <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" onClick={() => { setChatsView('rabbit'); open('threads') }}>
+                <History className="size-5" aria-hidden /> Past chats
+              </Button>
+            </div>
+          )}
         </div>
       )}
       {showHome ? renderHome() : (
