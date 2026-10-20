@@ -3146,6 +3146,25 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             raise ValueError("body")
         if store is None:
             raise _UserError("Location isn't available on this server.", 503)
+        place_in = body.get("place")
+        if isinstance(place_in, str) and not re.fullmatch(r"\s*\d{5}\s*", place_in):
+            # "Denver, CO" (onboarding's "Where do you run?"): a city needs its state
+            parts = [p.strip() for p in place_in.split(",") if p.strip()]
+            st = _geo.state_code(parts[-1]) if len(parts) >= 2 else ""
+            if not parts or not st:
+                raise _UserError("Add the state too, like Denver, CO. Or enter a zip code.")
+            place = await _geocoder.city_place(", ".join(parts[:-1])[:60], st)
+            if place.get("lat") is None:
+                raise _UserError("Couldn't find that place. Try a zip code.")
+            place = {**place, "zip": str(place.get("zip") or "")}
+            lat2, lon2 = _geo.round2(place["lat"], place["lon"])
+            source = "manual"
+            entry = await anyio.to_thread.run_sync(
+                lambda: _geo.save_location(store, user_id, place, lat2, lon2, source, time.time()))
+            log_event(logger, logging.INFO, "location_set", user_id=user_id, source=source, has_zip=bool(entry["zip"]))
+            return await _x2_location_resp(user_id)
+        if isinstance(place_in, str):
+            body["zip"] = place_in.strip()
         if body.get("zip") is not None:
             zip_ = str(body.get("zip") or "").strip()
             if not re.fullmatch(r"\d{5}", zip_):
@@ -3553,6 +3572,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         clb = _clubs.Clubs(store, is_athlete=soc.is_athlete, related=lambda a, b: soc.follows(a, b) or soc.follows(b, a),
                            blocked=soc.blocked_between, race_groups=rp.groups_of if race_routes else None)
         acct.on_delete("clubs", lambda u: [clb.leave(u, c) for c in clb.ids_of(u) if not str(c).startswith("r-")])
+        acct.on_delete("club regulars", clb.forget_regular)
         acct.add_extra("clubs", lambda u: [{"id": c, "name": clb.name_of(c, u)} for c in clb.ids_of(u)])
         cm = _cmm.Community(store, social=soc, clubs=clb, now=_ag._now, moment=_ag.moments.post, name=_soc_name,
                             quiet=lambda u: _ag.moments.quiet(_ag._now(u)),
@@ -3648,7 +3668,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             if page is None:
                 return HTMLResponse(_cp.render_message("Club not found", "This club page isn't available."),
                                     status_code=404, headers=_cp.HEADERS)
-            return HTMLResponse(_cp.render_page(page, base=_cp_base, token=tok), headers=_cp.HEADERS)
+            resp = HTMLResponse(_cp.render_page(page, base=_cp_base, token=tok), headers=_cp.HEADERS)
+            if not request.cookies.get("rb_ref") and re.fullmatch(r"[a-z0-9-]{1,60}", slug):
+                # traction.py: "N people joined rabbt from your club page" (a slug, nothing else)
+                resp.set_cookie("rb_ref", f"club:{slug}", max_age=7 * 86400, path="/app", httponly=True,
+                                samesite="lax", secure=not local)
+            return resp
 
         async def club_page_rsvp(request: Request) -> Response:
             if not host_ok(request):
@@ -5230,10 +5255,31 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # usage.py: privacy-first usage counts. POST /app/api/usage batches whitelisted events
     # (daily counters only; DNT / GPC / "Don't count my usage" drop them); GET
     # /app/api/usage/summary is owners only (access owners), last 30 days.
-    from . import usage as _usage
+    from . import traction as _traction, usage as _usage
     usage_svc = _usage.Usage(store) if store is not None else None
     if usage_svc is not None:
         acct.on_delete("usage counts", usage_svc.forget)
+
+    def _area_coords(uid: str) -> tuple[Any, Any] | None:
+        saved = _geo.load_saved(store, uid)
+        return (saved.get("lat"), saved.get("lon")) if saved else None
+    # traction.py: activation firsts, core-job retention, sources, referrals, Denver share, pulse
+    tract = _traction.Traction(store, area_of=_area_coords) if store is not None else None
+    if tract is not None:
+        acct.on_delete("traction counts", tract.forget)
+
+    def _not_counted(request: Request, uid: str) -> bool:
+        return request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1" \
+            or store is None or store.user_doc(uid, "profile").load().get("usage_off") is True
+
+    def _ref_of(request: Request) -> str | None:
+        """Where a new person came from: the club page / invite link sets a first-party cookie."""
+        raw = (request.cookies.get("rb_ref") or "")[:80]
+        if raw == "invite":
+            return raw
+        if raw.startswith("club:") and re.fullmatch(r"club:[a-z0-9-]{1,60}", raw):
+            return raw
+        return None
 
     async def usage_post(request: Request, user_id: str) -> Response:
         if usage_svc is None or store is None:
@@ -5241,12 +5287,57 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         raw = await request.body()
         if len(raw) > _usage.MAX_BODY:
             return _err(413, "too many events")
-        if request.headers.get("dnt") == "1" or request.headers.get("sec-gpc") == "1" \
-                or store.user_doc(user_id, "profile").load().get("usage_off") is True:
+        if _not_counted(request, user_id):
             return JSONResponse({"counted": 0})
         body = json.loads(raw or b"null")
         n = await anyio.to_thread.run_sync(lambda: usage_svc.record(user_id, body))
+        if tract is not None and n:
+            ref = _ref_of(request)
+            events = _usage.clean_batch(body, time.time())
+
+            def _trace() -> None:
+                tract.active(user_id, ref)
+                tract.from_events(user_id, events)
+            await anyio.to_thread.run_sync(_trace)
         return JSONResponse({"counted": n})
+
+    async def traction_summary(request: Request, user_id: str) -> Response:
+        if not auth.is_owner(user_id):
+            return _err(403, "Only the app's owners can see usage.")
+        if tract is None or store is None:
+            return _err(503, "Usage isn't available on this server.")
+        return JSONResponse(await anyio.to_thread.run_sync(
+            lambda: tract.summary(store.global_doc("clubs").load())))
+
+    async def heard_post(request: Request, user_id: str) -> Response:
+        """Optional "How did you hear about rabbt?" (onboarding). Counted only as a tally."""
+        body = await read_json(request)
+        if not isinstance(body, dict) or body.get("source") not in _traction.SOURCES:
+            raise ValueError("source")
+        if tract is not None and not _not_counted(request, user_id):
+            await anyio.to_thread.run_sync(lambda: tract.set_source(user_id, body["source"]))
+        return JSONResponse({"ok": True})
+
+    async def pulse_get(request: Request, user_id: str) -> Response:
+        due = tract is not None and not _not_counted(request, user_id) and \
+            await anyio.to_thread.run_sync(lambda: tract.pulse_due(user_id))
+        return JSONResponse({"ask": bool(due)})
+
+    async def pulse_post(request: Request, user_id: str) -> Response:
+        """{score: 0-10, note?} or {dismiss: true}: asked once either way."""
+        body = await read_json(request)
+        if not isinstance(body, dict) or tract is None:
+            raise ValueError("body")
+        score = None if body.get("dismiss") is True else body.get("score")
+        if score is None and body.get("dismiss") is not True:
+            raise ValueError("score")
+        try:
+            name = _soc_name(user_id) if soc is not None else ""
+        except Exception:
+            name = ""
+        counted = not _not_counted(request, user_id)
+        await anyio.to_thread.run_sync(lambda: tract.pulse(user_id, score, body.get("note"), name=name, counted=counted))
+        return JSONResponse({"ok": True})
 
     async def usage_summary(request: Request, user_id: str) -> Response:
         if not auth.is_owner(user_id):
@@ -5258,6 +5349,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     home_routes += [
         Route("/app/api/usage", _api(usage_post, mutating=True), methods=["POST"]),
         Route("/app/api/usage/summary", _api(usage_summary, mutating=False), methods=["GET"]),
+        Route("/app/api/usage/traction", _api(traction_summary, mutating=False), methods=["GET"]),
+        Route("/app/api/heard", _api(heard_post, mutating=True), methods=["POST"]),
+        Route("/app/api/pulse", _api(pulse_get, mutating=False), methods=["GET"]),
+        Route("/app/api/pulse", _api(pulse_post, mutating=True), methods=["POST"]),
     ]
 
     # ------------------------------------------------- invites + passkeys --
@@ -5629,8 +5724,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             # Read per request: the dev build rewrites it on save.
             html = (WEB_DIST / "index.html").read_text().replace(
                 "__RABBIT_ORIGIN__", settings.public_base_url)
-            return HTMLResponse(html, headers={"Cache-Control": "no-cache",
+            resp = HTMLResponse(html, headers={"Cache-Control": "no-cache",
                                                "Content-Security-Policy": CSP})
+            if request.url.path.startswith("/app/join/") and not request.cookies.get("rb_ref"):
+                resp.set_cookie("rb_ref", "invite", max_age=7 * 86400, path="/app", httponly=True,
+                                samesite="lax", secure=request.url.scheme == "https")
+            return resp
         routes += [Route("/app/", index, methods=["GET", "HEAD"]),
                    Route("/app/join/{token}", index, methods=["GET", "HEAD"]),  # SPA join page
                    Route("/app/index.html", index, methods=["GET", "HEAD"]),
