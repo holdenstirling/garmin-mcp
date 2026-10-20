@@ -135,7 +135,7 @@ class Settings:
     anthropic_api_key_secret_name: str = ""
     agent_model: str = "claude-haiku-5-5"
     agent_effort: str = "low"
-    agent_proactive_model: str = "claude-opus-5-5"
+    agent_proactive_model: str = "claude-haiku-5-5"
     directory_model: str = "claude-haiku-5-5"  # clubs & leagues directory page extraction
     agent_daily_token_budget: int = 2_000_000
     agent_max_concurrent: int = 2
@@ -262,7 +262,7 @@ class Settings:
             agent_model=os.environ.get("AGENT_MODEL", "claude-haiku-5-5").strip(),
             agent_effort=os.environ.get("AGENT_EFFORT", "low").strip(),
             agent_proactive_model=(os.environ.get("AGENT_PROACTIVE_MODEL", "").strip()
-                                   or "claude-opus-5-5"),
+                                   or "claude-haiku-5-5"),
             directory_model=(os.environ.get("DIRECTORY_MODEL", "").strip() or "claude-haiku-5-5"),
             agent_daily_token_budget=_int("AGENT_DAILY_TOKEN_BUDGET", 2_000_000),
             agent_max_concurrent=_int("AGENT_MAX_CONCURRENT", 2),
