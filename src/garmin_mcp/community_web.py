@@ -51,7 +51,17 @@ with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, c
     POST   /app/api/community/clubs/{cid}/meetups    {title, start, repeat, where, pace?, level?, notes?}
     PATCH  /app/api/community/clubs/{cid}/meetups/{mid}
     DELETE /app/api/community/clubs/{cid}/meetups/{mid}
-    POST   /app/api/community/clubs/{cid}/meetups/{mid}/rsvp {status: going|maybe|none}
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/rsvp {status: going|maybe|none, accept_waiver?, token?}
+    GET    /app/api/community/clubs/{cid}/meetups/{mid}/roster      organizers: who's going, waitlist, check-ins
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/checkin     {who, on}
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/skip        {date, skip}  weekly runs
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/duplicate
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/message     {text}  push to everyone going
+    GET    /app/api/community/clubs/{cid}/meetups/{mid}/waivers?format=csv
+    POST   /app/api/community/clubs/{cid}/meetups/{mid}/report      {reason?}
+    GET    /app/api/community/clubs/{cid}/dashboard                  organizers
+    POST   /app/api/community/clubs/{cid}/link                       the public club page /app/c/<slug>
+    GET    /app/api/community/runs/nearby?hours=                     my clubs' runs + public runs nearby
     POST   /app/api/community/clubs/{cid}/challenges {template, period}  admins: start a club challenge
     POST   /app/api/community/clubs/{cid}/challenges/{gid}/join
 """
@@ -389,8 +399,9 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         c["people"] = [{**p, "user": person(p["user_id"])} for p in c["people"]]
         c["pending"] = [person(u) for u in c.get("pending") or []]
         c["invited"] = [person(u) for u in c.get("invited") or []]
-        if c["role"] is None:  # a non-member sees the card only
+        if c["role"] is None:  # a non-member sees the card and the club's public runs only
             c["upcoming"], c["challenges"] = [], []
+            c["meetups"] = [{**m, "going": [person(u) for u in m["going"]]} for m in clubs.meetups(uid, cid, now(uid))]
             return c
         c["meetups"] = [{**m, "going": [person(u) for u in m["going"]]} for m in clubs.meetups(uid, cid, now(uid))]
         ups = clubs.upcoming(uid, cid, events=events, shares_races=shares_races, today=today(uid))
@@ -492,14 +503,124 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
                 push(u, f"meetup-cancel:{u}:{mid}", 3600, "Meetup cancelled", f"A {name} meetup you planned to join was cancelled.")
             return JSONResponse({"ok": True})
         b = await body_of(request)
-        return JSONResponse({"meetup": _meetup_out(await run(lambda: clubs.update_meetup(user_id, cid, mid, b, now(user_id))))})
+        m = await run(lambda: clubs.update_meetup(user_id, cid, mid, b, now(user_id)))
+        tell = m.pop("tell", [])
+        if tell:
+            _tell(tell, mid, "meetup-moved", "Club run changed",
+                  f"{m.get('title') or 'Your club run'}: now {m.get('where') or ''}. Check the time and spot.")
+        return JSONResponse({"meetup": _meetup_out(m)})
+
+    def _tell(uids: list[str], mid: str, key: str, title: str, body: str) -> None:
+        for u in uids:
+            push(u, f"{key}:{u}:{mid}", 1800, title, body)
 
     async def meetup_rsvp(request: Request, user_id: str) -> Response:
         cid = cid_of(request)
         mid = valid_mid(request.path_params["meetup_id"])
         b = await body_of(request)
-        m = await run(lambda: clubs.rsvp(user_id, cid, mid, b.get("status"), now(user_id)))
+        tok = b.get("token") if isinstance(b.get("token"), str) else None
+        m = await run(lambda: clubs.rsvp(user_id, cid, mid, b.get("status"), now(user_id),
+                                         accept_waiver=b.get("accept_waiver") is True, token=tok))
+        promoted = m.pop("promoted", None)
+        if promoted and not promoted.startswith("g:"):
+            push(promoted, f"meetup-promoted:{promoted}:{mid}", 1800, "You're in",
+                 f"A spot opened up for {m.get('title') or 'the run'}. You're going.")
         return JSONResponse({"meetup": _meetup_out(m)})
+
+    async def meetup_roster(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        r = await run(lambda: clubs.roster(user_id, cid, mid, now(user_id)))
+        for row in r["rows"]:
+            if row["kind"] == "user":
+                row["user"] = person(row["id"])
+                row["name"] = (row["user"] or {}).get("name") or first_name(row["id"])
+        return JSONResponse({"roster": r})
+
+    async def meetup_checkin(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        b = await body_of(request)
+        r = await run(lambda: clubs.checkin(user_id, cid, mid, b.get("who"), b.get("on") is not False, now(user_id)))
+        for row in r["rows"]:
+            if row["kind"] == "user":
+                row["user"] = person(row["id"])
+                row["name"] = (row["user"] or {}).get("name") or first_name(row["id"])
+        return JSONResponse({"roster": r})
+
+    async def meetup_skip(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        b = await body_of(request)
+        m, tell = await run(lambda: clubs.skip_week(user_id, cid, mid, b.get("date"), b.get("skip") is not False, now(user_id)))
+        _tell(tell, mid, "meetup-skip", "Club run skipped this week",
+              f"{m.get('title') or 'Your club run'} isn't on {b.get('date')}. See you the week after.")
+        return JSONResponse({"meetup": _meetup_out(m)})
+
+    async def meetup_duplicate(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        m = await run(lambda: clubs.duplicate(user_id, cid, mid, now(user_id)))
+        return JSONResponse({"meetup": _meetup_out(m)}, status_code=201)
+
+    async def meetup_message(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        b = await body_of(request)
+        text, uids = await run(lambda: clubs.message_targets(user_id, cid, mid, b.get("text"), now(user_id)))
+        name = await run(lambda: clubs.name_of(cid, user_id)) or "Your club"
+        for u in uids:
+            push(u, f"meetup-msg:{u}:{mid}:{hash(text) & 0xffff}", 600, name, text)
+        return JSONResponse({"ok": True, "sent": len(uids)})
+
+    async def meetup_waivers(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        rows = await run(lambda: clubs.waiver_rows(user_id, cid, mid))
+        if request.query_params.get("format") == "csv":
+            import csv
+            import io
+            from datetime import datetime as _dt, timezone as _tz
+            buf = io.StringIO()
+            w = csv.writer(buf)
+            w.writerow(["name", "email", "type", "accepted_at_utc"])
+            for r in rows:
+                nm = r.get("name") if r["kind"] == "guest" else first_name(r["id"])
+                at = _dt.fromtimestamp(r["at"], _tz.utc).strftime("%Y-%m-%d %H:%M") if r.get("at") else ""
+                w.writerow([nm or "", r.get("email") or "", "rabbt member" if r["kind"] == "user" else "web sign-up", at])
+            return Response(buf.getvalue(), media_type="text/csv",
+                            headers={"Content-Disposition": f'attachment; filename="rabbt-waivers-{mid}.csv"'})
+        for r in rows:
+            if r["kind"] == "user":
+                r["name"] = first_name(r["id"])
+        return JSONResponse({"waivers": rows})
+
+    async def meetup_report(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        mid = valid_mid(request.path_params["meetup_id"])
+        b = await body_of(request)
+        await run(lambda: clubs.report_run(user_id, cid, mid, b.get("reason")))
+        return JSONResponse({"ok": True, "message": "Thanks. We'll take a look."})
+
+    async def club_dashboard(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        return JSONResponse({"dashboard": await run(lambda: clubs.dashboard(user_id, cid, now(user_id)))})
+
+    async def club_link(request: Request, user_id: str) -> Response:
+        cid = cid_of(request)
+        path = await run(lambda: clubs.share_link(user_id, cid))
+        return JSONResponse({"path": f"/app{path}", "url": f"{origin}/app{path}"})
+
+    async def runs_nearby(request: Request, user_id: str) -> Response:
+        h = home(user_id)
+        try:
+            hours = max(6, min(72, int(request.query_params.get("hours") or 36)))
+        except ValueError:
+            hours = 36
+        rows = await run(lambda: clubs.nearby_runs(user_id, now(user_id), city=h.get("city") or "",
+                                                   state=h.get("state") or "", hours=hours))
+        return JSONResponse({"runs": [_meetup_out(m) for m in rows], "city": h.get("city") or "",
+                             "state": h.get("state") or ""})
 
     # ------------------------------------------------------- challenges --
     async def challenge_start(request: Request, user_id: str) -> Response:
@@ -569,6 +690,16 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         Route(f"{C}/meetups", wrap(meetup_add, mutating=True), methods=["POST"]),
         Route(f"{C}/meetups/{{meetup_id}}", wrap(meetup_one, mutating=True), methods=["PATCH", "DELETE"]),
         Route(f"{C}/meetups/{{meetup_id}}/rsvp", wrap(meetup_rsvp, mutating=True), methods=["POST"]),
+        Route(f"{C}/meetups/{{meetup_id}}/roster", wrap(meetup_roster, mutating=False), methods=["GET"]),
+        Route(f"{C}/meetups/{{meetup_id}}/checkin", wrap(meetup_checkin, mutating=True), methods=["POST"]),
+        Route(f"{C}/meetups/{{meetup_id}}/skip", wrap(meetup_skip, mutating=True), methods=["POST"]),
+        Route(f"{C}/meetups/{{meetup_id}}/duplicate", wrap(meetup_duplicate, mutating=True), methods=["POST"]),
+        Route(f"{C}/meetups/{{meetup_id}}/message", wrap(meetup_message, mutating=True), methods=["POST"]),
+        Route(f"{C}/meetups/{{meetup_id}}/waivers", wrap(meetup_waivers, mutating=False), methods=["GET"]),
+        Route(f"{C}/meetups/{{meetup_id}}/report", wrap(meetup_report, mutating=True), methods=["POST"]),
+        Route(f"{C}/dashboard", wrap(club_dashboard, mutating=False), methods=["GET"]),
+        Route(f"{C}/link", wrap(club_link, mutating=True), methods=["POST"]),
+        Route(f"{P}/runs/nearby", wrap(runs_nearby, mutating=False), methods=["GET"]),
         Route(f"{C}/challenges", wrap(challenge_start, mutating=True), methods=["POST"]),
         Route(f"{C}/challenges/{{challenge_id}}/join", wrap(challenge_join, mutating=True), methods=["POST"]),
     ]

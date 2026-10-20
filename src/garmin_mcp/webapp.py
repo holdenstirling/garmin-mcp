@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import html
 import inspect
 import json
 import logging
@@ -518,6 +519,14 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         return _coach().get_thread(user_id, thread_id) if isinstance(thread_id, str) else None
 
     atts: AttachmentStore | None = AttachmentStore(store) if store is not None else None
+    from .chatcap import ChatCap as _ChatCap
+    chat_cap = _ChatCap(store, getattr(settings, "agent_daily_messages", 40)) if store is not None else None
+
+    def _chat_today(uid: str) -> date:
+        try:
+            return chat.agent._now(uid).date() if chat is not None else date.today()
+        except Exception:
+            return date.today()
 
     async def chat_send(request: Request, user_id: str) -> Response:
         if chat is None or atts is None:
@@ -536,6 +545,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         thread = _thread_or_404(user_id, body.get("thread_id"))
         if thread is None:
             return _err(404, "thread not found")
+        if chat_cap is not None and not chat_cap.allowed(user_id, _chat_today(user_id)):
+            log_event(logger, logging.INFO, "chat_daily_cap", user_id=user_id, cap=chat_cap.cap)
+            return JSONResponse({"error": chat_cap.message(), "code": "daily_cap"}, status_code=429)
         if thread["kind"] == "topic" and not thread.get("title"):
             words = " ".join(message.split())
             _coach().rename_thread(user_id, thread["id"],
@@ -546,6 +558,9 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         except TurnBusy as e:
             return JSONResponse({"error": "A reply is already in progress.",
                                  "turn_id": e.turn_id}, status_code=409)
+        if chat_cap is not None:
+            n = chat_cap.count(user_id, _chat_today(user_id))
+            log_event(logger, logging.INFO, "chat_message_count", user_id=user_id, n=n)
         return _ndjson(turn, 0)
 
     async def chat_approval(request: Request, user_id: str) -> Response:
@@ -3602,6 +3617,188 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             home=_cm_home, local_groups=_local_finder.cached, chal=chal, chal_error=_chal.ChallengeError,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
             host_ok=host_ok, origin=settings.public_base_url)
+
+        # Club runs (clubs.py): the public club page /app/c/<slug> (clubpage.py: a link for an
+        # Instagram bio, RSVP with name + email, waitlist, add to calendar, cancel link), the
+        # check-in buddy (buddycheck.py) and "count this club run as today's run" (plans.py).
+        from . import buddycheck as _bc, clubpage as _cp
+        _cp_base = settings.public_base_url.rstrip("/")
+        _cp_limit: dict[str, list[float]] = {}
+
+        def _cp_allow(key: str, limit: int, window: float) -> bool:
+            t0 = time.monotonic()
+            recent = [x for x in _cp_limit.get(key, []) if t0 - x < window]
+            if len(recent) >= limit:
+                _cp_limit[key] = recent
+                return False
+            _cp_limit[key] = recent + [t0]
+            return True
+
+        def _cp_now() -> datetime:
+            return datetime.now(ZoneInfo(default_tz)).replace(tzinfo=None)
+
+        async def club_page(request: Request) -> Response:
+            if not host_ok(request):
+                return HTMLResponse("Not found", status_code=404, headers=_cp.HEADERS)
+            slug = request.path_params["slug"]
+            tok = request.query_params.get("t") or None
+            mid = request.path_params.get("mid")
+            page = await anyio.to_thread.run_sync(lambda: clb.public_page(slug, _cp_now(), token=tok, mid=mid))
+            if page is None:
+                return HTMLResponse(_cp.render_message("Club not found", "This club page isn't available."),
+                                    status_code=404, headers=_cp.HEADERS)
+            return HTMLResponse(_cp.render_page(page, base=_cp_base, token=tok), headers=_cp.HEADERS)
+
+        async def club_page_rsvp(request: Request) -> Response:
+            if not host_ok(request):
+                return HTMLResponse("Not found", status_code=404, headers=_cp.HEADERS)
+            origin_h = request.headers.get("origin")
+            if origin_h and origin_h.rstrip("/") != _cp_base and not local:
+                return HTMLResponse("Forbidden", status_code=403, headers=_cp.HEADERS)
+            slug, mid = request.path_params["slug"], request.path_params["mid"]
+            tok = request.query_params.get("t") or None
+            ip = request.client.host if request.client else "?"
+            form = await request.form()
+            name, email = str(form.get("name") or ""), str(form.get("email") or "")
+            if form.get("website"):  # the honeypot: bots fill every field
+                return HTMLResponse(_cp.render_message("Thanks", "We got it."), headers=_cp.HEADERS)
+            if not _cp_allow(f"ip:{ip}", 20, 3600) or not _cp_allow(f"em:{email.lower()}", 6, 3600):
+                return HTMLResponse(_cp.render_message("Slow down", "Too many sign-ups from here. Try again in an hour."),
+                                    status_code=429, headers=_cp.HEADERS)
+            try:
+                res = await anyio.to_thread.run_sync(lambda: clb.guest_rsvp(
+                    slug, mid, name, email, form.get("waiver") == "yes", _cp_now(), token=tok))
+            except _clubs.ClubError as e:
+                page = await anyio.to_thread.run_sync(lambda: clb.public_page(slug, _cp_now(), token=tok))
+                if page is None:
+                    return HTMLResponse(_cp.render_message("Club not found", e.message), status_code=404, headers=_cp.HEADERS)
+                return HTMLResponse(_cp.render_page(page, base=_cp_base, token=tok, error=e.message, error_run=mid,
+                                                    form={"name": name, "email": email}),
+                                    status_code=e.status if e.status != 409 else 400, headers=_cp.HEADERS)
+            page = await anyio.to_thread.run_sync(lambda: clb.public_page(slug, _cp_now(), token=tok, mid=mid))
+            run_ = next((r for r in (page or {}).get("runs", []) if r["id"] == mid), None)
+            if page is None or run_ is None:
+                return HTMLResponse(_cp.render_message("You're set", "See you there."), headers=_cp.HEADERS)
+            return HTMLResponse(_cp.render_done(page, run_, res, base=_cp_base), headers=_cp.HEADERS)
+
+        async def club_page_ics(request: Request) -> Response:
+            if not host_ok(request):
+                return Response("Not found", status_code=404)
+            slug, mid = request.path_params["slug"], request.path_params["mid"]
+            page = await anyio.to_thread.run_sync(lambda: clb.public_page(slug, _cp_now(), mid=mid,
+                                                                          token=request.query_params.get("t") or None))
+            run_ = next((r for r in (page or {}).get("runs", []) if r["id"] == mid), None)
+            if page is None or run_ is None:
+                return Response("Not found", status_code=404)
+            body = _cp.ics(run_, page["name"], f"{_cp_base}/app/c/{page['slug']}")
+            return Response(body, media_type="text/calendar",
+                            headers={"Content-Disposition": f'attachment; filename="{page["slug"]}.ics"',
+                                     "Cache-Control": "no-store"})
+
+        async def club_page_cancel(request: Request) -> Response:
+            if not host_ok(request):
+                return HTMLResponse("Not found", status_code=404, headers=_cp.HEADERS)
+            slug, mid = request.path_params["slug"], request.path_params["mid"]
+            secret = request.query_params.get("s") or ""
+            if request.method == "GET":
+                action = f"/app/c/{slug}/r/{mid}/cancel?s={secret}"
+                body = (f'<form method=post action="{html.escape(action, quote=True)}"><button type=submit>'
+                        "Cancel my spot</button></form>")
+                page = _cp.render_message("Can't make it?", "Tap below to give your spot to someone else.", slug=slug)
+                return HTMLResponse(page.replace("</section>", body + "</section>", 1), headers=_cp.HEADERS)
+            try:
+                promoted = await anyio.to_thread.run_sync(lambda: clb.guest_cancel(slug, mid, secret))
+            except _clubs.ClubError as e:
+                return HTMLResponse(_cp.render_message("Couldn't cancel", e.message, slug=slug), status_code=404,
+                                    headers=_cp.HEADERS)
+            if promoted and not promoted.startswith("g:"):
+                _cm_push(promoted, f"meetup-promoted:{promoted}:{mid}", 1800, "You're in",
+                         "A spot opened up for your club run. You're going.")
+            return HTMLResponse(_cp.render_message("Spot cancelled", "Thanks for letting them know.", slug=slug),
+                                headers=_cp.HEADERS)
+
+        community_routes += [
+            Route("/app/c/{slug}", club_page, methods=["GET"]),
+            Route("/app/c/{slug}/r/{mid}.ics", club_page_ics, methods=["GET"]),  # before the run page
+            Route("/app/c/{slug}/r/{mid}", club_page, methods=["GET"]),
+            Route("/app/c/{slug}/r/{mid}/rsvp", club_page_rsvp, methods=["POST"]),
+            Route("/app/c/{slug}/r/{mid}/cancel", club_page_cancel, methods=["GET", "POST"]),
+        ]
+
+        def _bc_mutual(a: str, b: str) -> bool:
+            return soc.follows(a, b) and soc.follows(b, a) and not soc.blocked_between(a, b)
+
+        def _bc_notify(to: str, key: str, title: str, body: str) -> None:
+            _cm_push(to, key, 3600, title, body)
+        buddy = _bc.BuddyCheck(store, mutual=_bc_mutual, notify=_bc_notify, name=_soc_name)
+        acct.on_delete("check-in buddy", buddy.forget)
+        if chat_cap is not None:
+            acct.on_delete("chat usage", chat_cap.forget)
+        _bc_tick_prev = _ag.moments.on_tick
+
+        def _bc_tick(uid: str) -> None:
+            if _bc_tick_prev is not None:
+                _bc_tick_prev(uid)
+            try:
+                buddy.tick(uid)
+            except Exception as e:  # a buddy nudge never breaks the tick
+                log_event(logger, logging.WARNING, "buddy_tick_failed", user_id=uid, error=type(e).__name__)
+        _ag.moments.on_tick = _bc_tick
+
+        async def buddy_get(request: Request, user_id: str) -> Response:
+            v = await anyio.to_thread.run_sync(lambda: buddy.view(user_id))
+            return JSONResponse(v | {"buddy_user": _soc_person(v["buddy"]) if v["buddy"] else None})
+
+        async def buddy_post(request: Request, user_id: str) -> Response:
+            b = await read_json(request)
+            if not isinstance(b, dict):
+                raise ValueError("body")
+            act = b.get("action")
+            try:
+                if act == "set":
+                    v = await anyio.to_thread.run_sync(lambda: buddy.set_buddy(user_id, b.get("buddy")))
+                elif act == "start":
+                    v = await anyio.to_thread.run_sync(lambda: buddy.start(user_id, b.get("minutes")))
+                elif act == "back":
+                    v = await anyio.to_thread.run_sync(lambda: buddy.back(user_id))
+                else:
+                    raise ValueError("action")
+            except _bc.BuddyError as e:
+                return _err(e.status, e.message)
+            return JSONResponse(v | {"buddy_user": _soc_person(v["buddy"]) if v["buddy"] else None})
+
+        async def club_swap(request: Request, user_id: str) -> Response:
+            b = await read_json(request)
+            if not isinstance(b, dict):
+                raise ValueError("body")
+            if b.get("undo"):
+                sid = b.get("session_id")
+                if not isinstance(sid, str) or len(sid) > 64:
+                    raise ValueError("session_id")
+                plan = await anyio.to_thread.run_sync(lambda: plans.undo_club_run(user_id, sid))
+                return JSONResponse({"plan": public_plan(plan, plans.today(user_id))})
+            cid = _clubs.valid_cid(b.get("club_id"))
+            mid = _clubs.valid_mid(b.get("meetup_id"))
+            runs = await anyio.to_thread.run_sync(lambda: clb.my_meetups(user_id, _ag._now(user_id), days=14))
+            m = next((x for x in runs if x["id"] == mid and x["club"]["id"] == cid), None)
+            if m is None:
+                near = await anyio.to_thread.run_sync(lambda: clb.nearby_runs(
+                    user_id, _ag._now(user_id), city=_cm_home(user_id).get("city") or "",
+                    state=_cm_home(user_id).get("state") or "", hours=72))
+                m = next((x for x in near if x["id"] == mid and x["club"]["id"] == cid), None)
+            if m is None or not m.get("next"):
+                return _err(404, "That club run isn't coming up.")
+            minutes = b.get("minutes") if isinstance(b.get("minutes"), int) else None
+            plan = await anyio.to_thread.run_sync(lambda: plans.swap_for_club_run(
+                user_id, m["next"][:10], {"club_id": cid, "meetup_id": mid, "title": m["title"],
+                                          "club": m["club"]["name"], "minutes": minutes}))
+            return JSONResponse({"plan": public_plan(plan, plans.today(user_id))})
+
+        community_routes += [
+            Route("/app/api/buddy", _plan_api(buddy_get, mutating=False), methods=["GET"]),
+            Route("/app/api/buddy", _plan_api(buddy_post, mutating=True), methods=["POST"]),
+            Route("/app/api/plan/club-run", _plan_api(club_swap, mutating=True), methods=["POST"]),
+        ]
 
         # App icon badge + one-tap home actions (unread.py, quickactions.py, friends_web.py):
         # every push carries the unread total as `badge` (sw.js sets the app badge).
