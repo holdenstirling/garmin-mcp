@@ -180,6 +180,12 @@ export function countdown(d: string): string {
   return `${Math.round(n / 30.4)} months`
 }
 
+/** Start a new event from anywhere (Home, Local): screens/Chat opens Schedule > Events with the editor. */
+export const NEW_EVENT_EVENT = 'rabbit:new-event'
+export function openNewEvent() {
+  try { window.dispatchEvent(new Event(NEW_EVENT_EVENT)) } catch { /* old browsers */ }
+}
+
 /** Open one event's page from anywhere (a plan day's "From: …" line, search): screens/Chat
  * switches to the tab that shows events on OPEN_EVENT_EVENT; EventsScreen opens the event from
  * sessionStorage on mount, or from the event while it's already showing. */

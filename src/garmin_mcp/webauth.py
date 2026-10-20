@@ -76,8 +76,9 @@ def _is_google_photo(url: str) -> bool:
 class _Pending:
     verifier: str
     created: float
-    kind: str = "login"            # or "calendar": connecting Google Calendar
+    kind: str = "login"            # or "calendar": connecting Google Calendar; "join": joining by invite
     user_id: str | None = None     # who asked (calendar flow)
+    invite: str | None = None      # the invite token (join flow; kept in memory only)
 
 
 class WebAuth:
@@ -102,6 +103,9 @@ class WebAuth:
         self.calendar: GoogleCalendar | None = (
             GoogleCalendar(store, settings.google_client_id, google_client_secret, http=http, clock=clock)
             if settings.google_client_id else None)
+        # Joining with Google from an invite link: the same hook as the passkey join (auto-follow
+        # the inviter, their moment). Set by the server.
+        self.on_join: Any = None
         self.oura: OuraClient | None = None  # set by the server when an Oura app is configured
         self.whoop: WhoopClient | None = None  # set by the server when a WHOOP app is configured
         self.coach_links = CoachLinks(store, athlete_emails=lambda: {
@@ -160,7 +164,7 @@ class WebAuth:
     def _add_pending(self, state: str, pending: _Pending) -> None:
         """Remember a pending OAuth state. Sign-in and connect flows use separate tables, and a
         full table evicts its oldest entry, so nobody can lock others out by spamming /start."""
-        table = self._pending if pending.kind == "login" else self._connect_pending
+        table = self._pending if pending.kind in ("login", "join") else self._connect_pending
         with self._lock:
             for k in [k for k, v in table.items() if pending.created - v.created >= PENDING_TTL]:
                 del table[k]
@@ -200,6 +204,29 @@ class WebAuth:
         return resp
 
     # ------------------------------------------------------------ calendar --
+    async def start_join(self, request: Request, token: str) -> Response:
+        """"Continue with Google" on an invite page: Google sign-in that creates the member
+        from that invite (one use, like the passkey join) and binds their Google account, so
+        they can sign in with Google from then on. Google sign-in stays closed to everyone else."""
+        if self.access.find_invite(token) is None:
+            return self._fail("invite")
+        state = secrets.token_urlsafe(32)
+        verifier, challenge = _pkce_pair()
+        self._add_pending(state, _Pending(verifier, self._clock(), kind="join", invite=token))
+        query = urlencode({
+            "client_id": self.s.google_client_id,
+            "redirect_uri": self.s.google_callback_url,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "prompt": "select_account",
+        })
+        resp = RedirectResponse(f"{GOOGLE_AUTH_URL}?{query}", status_code=302)
+        self._cookie(resp, self.state_cookie, state, PENDING_TTL)
+        return resp
+
     async def start_calendar(self, request: Request) -> Response:
         """Connect Google Calendar (read-only) for the signed-in athlete. Same client and
         callback as sign-in; the pending record remembers who asked."""
@@ -324,7 +351,13 @@ class WebAuth:
         user_id = None
         if verified:
             user_id = (self.s.allowed_google_users.get(email.lower())
-                       or self.coach_links.user_id_for_email(email))
+                       or self.coach_links.user_id_for_email(email)
+                       or self._joined_with_google(sub))
+        if user_id is None and pending.kind == "join" and verified:
+            joined = self._join_with_google(pending.invite or "", sub, email, profile)
+            if isinstance(joined, RedirectResponse):
+                return joined
+            user_id = joined
         if user_id is None:
             log_event(logger, logging.WARNING, "google_user_not_allowed", verified=verified)
             return self._fail("not_allowed")
@@ -340,6 +373,36 @@ class WebAuth:
                            samesite="lax")
         self.set_session_cookie(resp, token)
         return resp
+
+    def _joined_with_google(self, sub: str) -> str | None:
+        """A member who joined with this Google account (and still has access)."""
+        uid = (self._identities_doc.load().get("google_sub") or {}).get(sub)
+        return str(uid) if uid and self.access.is_member(str(uid)) else None
+
+    def _join_with_google(self, token: str, sub: str, email: str, profile: dict[str, str]) -> str | RedirectResponse:
+        """Create the member from the invite (one use) and bind this Google account to them."""
+        from .access import AccessError, clean_name, normalize_email
+        found = self.access.find_invite(token)
+        if found is None:
+            return self._fail("invite")
+        try:
+            em = normalize_email(email)
+            name = clean_name((profile.get("name") or em.split("@")[0])[:40])
+        except Exception:
+            return self._fail("google")
+        user_id = "u_" + secrets.token_hex(8)
+        try:
+            inviter = self.access.add_member(invite_id=found[0], user_id=user_id, name=name, email=em,
+                                             taken=lambda e: e in self.athlete_emails())
+        except AccessError as e:
+            return self._fail("account_exists" if e.status == 409 else "invite")
+        log_event(logger, logging.INFO, "member_joined", user_id=user_id, invite=found[0], via="google")
+        if self.on_join is not None and inviter:
+            try:
+                self.on_join(user_id, inviter, name)
+            except Exception as e:  # the account exists either way
+                log_event(logger, logging.WARNING, "member_join_hook_failed", user_id=user_id, error=type(e).__name__)
+        return user_id
 
     def _bind_identity(self, sub: str, user_id: str) -> bool:
         """Pin Google ``sub`` <-> user_id on first sign-in; require a match afterwards."""

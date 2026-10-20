@@ -119,7 +119,7 @@ CSP = "; ".join([
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",  # React/Radix set inline style attributes
-    "img-src 'self' data: blob: https://lh3.googleusercontent.com",  # blob: composer previews
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://tile.openstreetmap.org",  # blob: composer previews; OSM tiles for the Local map
     "font-src 'self'",
     "connect-src 'self'",
     "manifest-src 'self'",
@@ -5067,12 +5067,22 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     from . import passkey_web as _pkw
     passkey_routes = _pkw.make_routes(auth=auth, api=_api, host_ok=host_ok, read_json=read_json,
                                       on_join=_invite_joined)
+    auth.on_join = _invite_joined  # joining with Google from an invite runs the same hook
+    from .access import RateLimit as _RateLimit
+    join_google_limit = _RateLimit(30, 600)
 
     # --------------------------------------------------------------- auth --
     async def google_start(request: Request) -> Response:
         if not host_ok(request):
             return _err(400, "bad host")
         return await auth.start(request)
+
+    async def google_join(request: Request) -> Response:
+        if not host_ok(request):
+            return _err(400, "bad host")
+        if not join_google_limit.allow(request.client.host if request.client else "?"):
+            return _err(429, "Too many tries. Wait a minute and try again.")
+        return await auth.start_join(request, str(request.path_params["token"]))
 
     async def google_callback(request: Request) -> Response:
         if not host_ok(request):
@@ -5176,6 +5186,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app", app_root, methods=["GET"]),
         Route("/app/auth/google/start", google_start, methods=["GET"]),
         Route("/app/auth/google/callback", google_callback, methods=["GET"]),
+        Route("/app/auth/google/join/{token}", google_join, methods=["GET"]),
         Route("/app/auth/logout", logout, methods=["POST"]),
         *passkey_routes,
         *home_routes,

@@ -14,7 +14,7 @@
 // owner's order, and the sub-line maps them to coach / crew / calendar.
 import { useEffect, useRef, useState } from 'react'
 import { useDialog } from '@/hooks/useDialog'
-import { CalendarDays, Check, ChevronRight, Compass, Flame, Target, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, MapPin, Sparkle, Compass, Flame, Target, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { HopIn, burst } from '@/components/anim'
@@ -23,7 +23,7 @@ import type { Me } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import {
   INTENT_OPTIONS, intentsOf, onOpenWelcome, saveIntents, setCurrentIntents, skipWelcome, welcomeOf, welcomePlan,
-  type Intent, type NextStep,
+  type Intent, type NextStep, QUICK_STARTS,
 } from '@/lib/intent'
 import { TAGLINE } from '@/lib/legal'
 
@@ -48,6 +48,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   const [picks, setPicks] = useState<Intent[]>(initial)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [more, setMore] = useState(false)
   const cta = useRef<HTMLButtonElement>(null)
   const box = useRef<HTMLDivElement>(null)
 
@@ -63,11 +64,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     if (step === 'yours') onFinish({ saved: true, intents: picks, next: null })
     else skip()
   })
-  async function save() {
+  async function save(list: Intent[] = picks) {
     setSaving(true); setErr(null)
     try {
-      await saveIntents(picks)
-      setCurrentIntents(picks)
+      await saveIntents(list)
+      setCurrentIntents(list)
+      setPicks(list)
       setStep('yours')
     } catch (e) { setErr((e as Error).message || "Couldn't save just now.") }
     finally { setSaving(false) }
@@ -104,11 +106,36 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     <div className="flex flex-1 flex-col gap-4 px-5 pb-2">
       <div className="px-1">
         <h2 className="font-display text-display-sm leading-tight text-(--brand)">What brings you to rabbt?</h2>
-        <p className="mt-1 text-body leading-snug text-(--text-secondary)">
-          Pick all that fit. Tap the most important one first.
-        </p>
+        <p className="mt-1 text-body leading-snug text-(--text-secondary)">Pick one to start. You can do everything either way.</p>
       </div>
+      <div className="flex flex-col gap-2.5" role="group" aria-label="Start with">
+        {QUICK_STARTS.map((q, i) => {
+          const Icon = q.id === 'local' ? MapPin : q.id === 'plan' ? CalendarDays : Sparkle
+          return (
+            <HopIn key={q.id} index={i}>
+              <button type="button" disabled={saving} onClick={() => void save(q.intents)}
+                className={cn('flex min-h-[76px] w-full items-center gap-3.5 rounded-2xl border px-4 py-3.5 text-left active:scale-[0.99]',
+                  q.id === 'both' ? 'border-(--border) bg-(--bg-surface)' : 'border-(--accent)/40 bg-(--accent-subtle)')}>
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)">
+                  <Icon className="size-6" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-lead font-semibold text-(--text)">{q.title}</span>
+                  <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">{q.help}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+              </button>
+            </HopIn>
+          )
+        })}
+      </div>
+      <button type="button" aria-expanded={more} onClick={() => setMore((m) => !m)}
+        className="flex min-h-11 items-center gap-1.5 self-start px-1 text-body font-semibold text-(--accent)">
+        {more ? 'Fewer reasons' : 'More reasons'} <ChevronDown className={cn('size-5 transition-transform', more && 'rotate-180')} aria-hidden />
+      </button>
+      {more && (
       <div className="flex flex-col gap-2.5" role="group" aria-label="What brings you to rabbt">
+        <p className="px-1 text-small text-(--text-muted)">Pick all that fit. Tap the most important one first.</p>
         {INTENT_OPTIONS.map((o, i) => {
           const at = picks.indexOf(o.id)
           const on = at >= 0
@@ -135,7 +162,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           )
         })}
       </div>
-      {picks.length > 1 && <p className="px-1 text-small text-(--text-muted)">Numbers show what matters most. Tap again to change.</p>}
+      )}
       {err && <p className="px-1 text-small text-(--danger)" role="alert">{err}</p>}
     </div>
   ) : (
@@ -168,11 +195,11 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       )}
       {step === 'pick' && (saving ? (
         <div className="flex h-12 items-center justify-center"><RabbitLoader inline size={24} label={SAVING[0]} cycle={SAVING} /></div>
-      ) : (
+      ) : more ? (
         <Button variant="primary" className="h-12 w-full text-lead" disabled={!picks.length} onClick={() => void save()}>
           {err ? 'Try again' : picks.length ? 'Continue' : 'Pick at least one'}
         </Button>
-      ))}
+      ) : null)}
       {step === 'yours' && (
         <Button ref={cta} variant="primary" className="h-12 w-full text-lead"
           onClick={() => onFinish({ saved: true, intents: picks, next: plan.next?.step ?? null })}>

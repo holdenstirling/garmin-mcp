@@ -8,7 +8,9 @@ import { hapticTap } from '@/lib/haptics'
 import { PasskeySignIn } from '@/components/settings/PasskeySignIn'
 
 const ERRORS: Record<string, string> = {
-  not_allowed: "That Google account isn't on the invite list yet. Ask the person who invited you for an invite link.",
+  not_allowed: "That Google account doesn't have a rabbt account yet. Ask a friend on rabbt for an invite link, then tap Continue with Google on it.",
+  invite: 'That invite link has expired or is used up. Ask for a new one.',
+  account_exists: 'That email already has a rabbt account. Sign in with your passkey instead.',
   expired: 'That sign-in took too long or got interrupted. Try once more.',
   cancelled: 'Sign-in was cancelled.',
   google: "Couldn't reach Google. Check your connection and try again.",

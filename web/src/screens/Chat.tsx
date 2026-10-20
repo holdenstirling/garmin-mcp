@@ -104,6 +104,10 @@ import { SearchButton } from '@/components/search/Search'
 import { Tour } from '@/components/onboarding/Tour'
 import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
 import { cn } from '@/lib/utils'
+import { HomeStart } from '@/components/home/HomeStart'
+import { NEW_EVENT_EVENT } from '@/lib/events'
+import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
+import { CircleQuestionMark } from 'lucide-react'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -389,6 +393,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setTab(t)
   }
   const openPlan = () => { setSchedView('plan'); goTab('plan') }
+  const newEvent = () => { closePages(); setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }
+  useEffect(() => {
+    window.addEventListener(NEW_EVENT_EVENT, newEvent)
+    return () => window.removeEventListener(NEW_EVENT_EVENT, newEvent)
+  })
   const openRaces = () => { setSchedView('events'); goTab('plan') }
   const openDiscover = () => { setSchedView('discover'); goTab('plan') }
   const openEvent = (id: string) => { setSchedView('events'); setEventReq((r) => ({ open: id, n: (r?.n ?? 0) + 1 })); goTab('plan') }
@@ -1163,6 +1172,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {/* 1. Hello, today's date and the race you're training for. */}
             <HomeGreeting name={me.profile.name} race={athlete ? race : null} onRace={goal ? openPlan : undefined} />
 
+            {/* 1b. The two things people come for: something to do near you, and a plan. */}
+            {athlete && (
+              <HomeStart hasPlan={builtPlan}
+                planLine={upnext?.session ? `Today: ${upnext.session.title}${upnext.session.minutes ? `, ${upnext.session.minutes} min` : ''}` : null}
+                onLocal={() => openCommunity('clubs')} onNewEvent={newEvent} onPlan={openPlan} onSetup={startSetup} />
+            )}
+
             {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
             <div className="flex flex-col gap-3 empty:hidden">
               {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
@@ -1230,6 +1246,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 }} />
               )}
             </Section>
+            <button type="button" onClick={openHowItWorks}
+              className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
+              <CircleQuestionMark className="size-5" aria-hidden /> New here? How rabbt works
+            </button>
           </div>
         </div>
         {/* Ask Rabbit: switches to Chat with the composer focused. */}
@@ -1610,7 +1630,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {addOpen && (
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
-          onEvent={() => { setSchedView('events'); setEventReq((r) => ({ add: true, n: (r?.n ?? 0) + 1 })); goTab('plan') }}
+          onEvent={newEvent}
           onTravel={openTravel} onSick={openSick}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
       )}
@@ -1658,7 +1678,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {voice && <VoiceCheckIn open sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />}
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
-      <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : doQuest(s)} />
+      <HowItWorksHost />
+      <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : s === 'local' ? openCommunity('clubs') : doQuest(s)} />
 
       {notifsOpen && <NotificationsSheet onClose={() => setNotifsOpen(false)} />}
       {newDm && (
