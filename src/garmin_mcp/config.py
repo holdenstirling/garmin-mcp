@@ -135,8 +135,6 @@ class Settings:
     anthropic_api_key_secret_name: str = ""
     agent_model: str = "claude-haiku-5-5"
     agent_effort: str = "low"
-    # Daily notes, workout feedback and briefs: Haiku by default (about 7x cheaper than Opus);
-    # AGENT_PROACTIVE_MODEL overrides it.
     agent_proactive_model: str = "claude-haiku-5-5"
     directory_model: str = "claude-haiku-5-5"  # clubs & leagues directory page extraction
     agent_daily_token_budget: int = 2_000_000
