@@ -12,6 +12,10 @@ export type PlanSession = {
   detail: string; meters?: number | null; edited?: boolean; synced: boolean; travel?: string | null; sick?: string | null; sick_return?: string | null
   /** made from one of the athlete's events (group ride, B race, trip...): lib/events openEvent */
   event_id?: string | null
+  /** counted as a club run (lib/plan countClubRun) */
+  club_run?: { club_id: string; meetup_id: string; label: string } | null
+  /** why rabbt (or you) changed it, in one line */
+  why?: { kind: 'club' | 'sick' | 'travel' | 'readiness' | 'you'; text: string } | null
   exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
   fuel?: { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string } | null
   /** one line, e.g. "Fuel: 1 gel every 30 min · recovery snack after" (null when water is enough) */
@@ -212,3 +216,9 @@ export function placedEventLabel(e: BuiltPlan['events'][number]): string {
   if (k === 'group_activity' || k === 'other') return `${k === 'other' ? 'session' : 'group activity'}${e.occurrences && e.occurrences > 1 ? ` ×${e.occurrences}` : ''}`
   return k === 'milestone' ? 'life event' : k
 }
+
+/** Count a club run as that day's run (the plan keeps the week's load about the same). */
+export const countClubRun = (clubId: string, meetupId: string) =>
+  sendJSON<{ plan: BuiltPlan }>('POST', '/api/plan/club-run', { club_id: clubId, meetup_id: meetupId })
+export const undoClubRun = (sessionId: string) =>
+  sendJSON<{ plan: BuiltPlan }>('POST', '/api/plan/club-run', { undo: true, session_id: sessionId })

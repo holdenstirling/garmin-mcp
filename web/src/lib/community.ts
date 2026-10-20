@@ -134,7 +134,24 @@ export type ClubSummary = {
 export type Meetup = {
   id: string; title: string; start: string; repeat: 'none' | 'weekly'; where: string; pace: string; level: Level
   notes: string; by: string; next: string | null; going: (SocialUser | null)[]; maybe: number
-  my_rsvp: 'going' | 'maybe' | null; mine: boolean; club?: { id: string; name: string; emoji: string }
+  my_rsvp: 'going' | 'maybe' | 'waitlist' | null; mine: boolean; club?: { id: string; name: string; emoji: string; member?: boolean }
+  groups?: PaceGroup[]; walk?: boolean; beginner?: boolean; women?: boolean
+  capacity?: number | null; count?: number; guests?: number; spots_left?: number | null; waitlist?: number; wait_pos?: number | null
+  see?: RunSee; waiver?: string; paid?: string; lat?: number | null; lng?: number | null; skips?: string[]
+  waiver_signed?: boolean; checked_in?: boolean; token?: string | null
+}
+export type PaceGroup = { label: string; pace: string }
+export type RunSee = 'public' | 'club' | 'private'
+export const RUN_SEE: [RunSee, string][] = [['public', 'Anyone'], ['club', 'Club members'], ['private', 'Only people I invite']]
+export type RosterRow = {
+  id: string; kind: 'user' | 'guest'; status: 'going' | 'maybe' | 'waitlist'; name?: string; email?: string
+  checked_in: boolean; waiver: boolean; waiver_at?: number | null; user?: SocialUser | null
+}
+export type Roster = { date: string | null; next: string | null; rows: RosterRow[]; going: number; checked_in: number; waitlist: number }
+export type ClubDashboard = {
+  members: number; requests: number; link: string | null
+  runs: { id: string; title: string; next: string; count: number; capacity: number | null; waitlist: number; see: RunSee }[]
+  attendance: { date: string; going: number; checkins: number }[]
 }
 export type ClubChallenge = {
   id: string; name: string; period: 'week' | 'month'; period_end: string; metric: Metric; sport: string | null
@@ -162,7 +179,11 @@ export type PostInput = {
 export type ClubInput = {
   name?: string; sport?: Sport; city?: string; state?: string; description?: string; emoji?: string; privacy?: 'open' | 'approval'; visibility?: 'public' | 'private'
 }
-export type MeetupInput = { title: string; start: string; repeat: 'none' | 'weekly'; where: string; pace?: string; level?: Level; notes?: string }
+export type MeetupInput = {
+  title: string; start: string; repeat: 'none' | 'weekly'; where: string; pace?: string; level?: Level; notes?: string
+  groups?: PaceGroup[]; walk?: boolean; beginner?: boolean; women?: boolean; capacity?: number | null; see?: RunSee
+  waiver?: string; paid?: string; lat?: number | null; lng?: number | null
+}
 
 const P = '/api/community'
 const pp = (id: string) => `${P}/posts/${encodeURIComponent(id)}`
@@ -239,9 +260,29 @@ export const removeMember = (id: string, uid: string) =>
   sendJSON<{ club: ClubDetail }>('DELETE', `${cp(id)}/members/${encodeURIComponent(uid)}`)
 export const addMeetup = (id: string, b: MeetupInput) => postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups`, b)
 export const deleteMeetup = (id: string, mid: string) => sendJSON<{ ok: boolean }>('DELETE', `${cp(id)}/meetups/${encodeURIComponent(mid)}`)
-export const rsvpMeetup = (id: string, mid: string, status: 'going' | 'maybe' | 'none') =>
+export const rsvpMeetup = (id: string, mid: string, status: 'going' | 'maybe' | 'none', acceptWaiver = false) =>
   status === 'none' ? postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status })
-    : counted(postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status }), 'rsvp', { kind: 'meetup' })
+    : counted(postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`,
+      { status, ...(acceptWaiver ? { accept_waiver: true } : {}) }), 'rsvp', { kind: 'meetup' })
+const mp = (id: string, mid: string) => `${cp(id)}/meetups/${encodeURIComponent(mid)}`
+export const updateMeetup = (id: string, mid: string, b: Partial<MeetupInput>) => sendJSON<{ meetup: Meetup }>('PATCH', mp(id, mid), b)
+export const getRoster = (id: string, mid: string) => getJSON<{ roster: Roster }>(`${mp(id, mid)}/roster`)
+export const checkIn = (id: string, mid: string, who: string, on: boolean) =>
+  postJSON<{ roster: Roster }>(`${mp(id, mid)}/checkin`, { who, on })
+export const skipWeek = (id: string, mid: string, date: string, skip: boolean) =>
+  postJSON<{ meetup: Meetup }>(`${mp(id, mid)}/skip`, { date, skip })
+export const duplicateRun = (id: string, mid: string) => postJSON<{ meetup: Meetup }>(`${mp(id, mid)}/duplicate`)
+export const messageRunners = (id: string, mid: string, text: string) =>
+  postJSON<{ ok: boolean; sent: number }>(`${mp(id, mid)}/message`, { text })
+export const waiverCsvUrl = (id: string, mid: string) => `/app${mp(id, mid)}/waivers?format=csv`
+export const reportRun = (id: string, mid: string, reason?: string) => postJSON<{ ok: boolean }>(`${mp(id, mid)}/report`, { reason })
+export const getClubDashboard = (id: string) => getJSON<{ dashboard: ClubDashboard }>(`${cp(id)}/dashboard`)
+export const getClubLink = (id: string) => postJSON<{ path: string; url: string }>(`${cp(id)}/link`)
+export const getNearbyRuns = (hours = 36) => getJSON<{ runs: Meetup[]; city: string }>(`${P}/runs/nearby?hours=${hours}`)
+/** Short tags for a run: beginner, walkers, women-only. */
+export function runTags(m: Pick<Meetup, 'beginner' | 'walk' | 'women'>): string[] {
+  return [m.beginner && 'No one left behind', m.walk && 'Walkers welcome', m.women && 'Women only'].filter(Boolean) as string[]
+}
 export const startClubChallenge = (id: string, template: string, period: 'week' | 'month') =>
   postJSON<{ club: ClubDetail }>(`${cp(id)}/challenges`, { template, period })
 export const joinClubChallenge = (id: string, gid: string) =>

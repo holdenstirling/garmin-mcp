@@ -22,6 +22,7 @@ Storage: global ``clubs`` doc ``{"clubs": {cid: {...}}, "codes": {code: cid}}``.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import secrets
 import threading
@@ -48,6 +49,20 @@ WHERE_LEN = 120
 PACE_LEN = 40
 NOTE_LEN = 200
 REMIND_H = 18
+GROUP_LABEL_LEN = 30
+GROUP_PACE_LEN = 20
+MAX_GROUPS = 4
+WAIVER_LEN = 1500
+PAID_LEN = 80
+MAX_CAPACITY = 500
+MAX_GUESTS = 300
+GUEST_NAME_LEN = 40
+GUEST_EMAIL_LEN = 120
+MESSAGE_LEN = 280
+HISTORY_KEEP = 16
+# Who sees a club run: public (the club's public link page, Local, anyone signed in can RSVP),
+# club (members) or private (members who already RSVP'd, admins, and anyone with the run's link).
+RUN_SEE = ("public", "club", "private")
 DISCOVER_MAX = 20
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LEN = 8
@@ -89,6 +104,24 @@ def clean(text: Any, limit: int, what: str, *, required: bool = False) -> str:
     return s
 
 
+def clean_block(text: Any, limit: int, what: str) -> str:
+    """Like ``clean`` but keeps line breaks (a waiver's paragraphs)."""
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        raise ClubError(f"{what} must be text")
+    lines = [" ".join(_CTRL.sub("", ln).split()) for ln in text.replace("\r\n", "\n").split("\n")]
+    s = "\n".join(lines).strip()
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    if len(s) > limit:
+        raise ClubError(f"{what} can be up to {limit} characters.")
+    return s
+
+
+def _digest(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()[:24]
+
+
 def race_cid(gid: str) -> str:
     return f"r-{gid}"
 
@@ -113,15 +146,19 @@ def next_occurrence(m: dict[str, Any], now: datetime) -> datetime | None:
     None once a one-off is over. ``now`` is naive local time."""
     start = datetime.fromisoformat(m["start"])
     since = now - timedelta(hours=2)
-    if start >= since:
-        return start
+    skips = set(m.get("skips") or [])
     if m.get("repeat") != "weekly":
-        return None
-    weeks = (since - start).days // 7
-    t = start + timedelta(weeks=weeks)
-    while t < since:
+        return start if start >= since and start.date().isoformat() not in skips else None
+    t = start
+    if t < since:
+        t = start + timedelta(weeks=(since - start).days // 7)
+        while t < since:
+            t += timedelta(weeks=1)
+    for _ in range(60):  # skipped weeks (at most a year of them)
+        if t.date().isoformat() not in skips:
+            return t
         t += timedelta(weeks=1)
-    return t
+    return None
 
 
 class Clubs:
@@ -618,6 +655,22 @@ class Clubs:
         return self._update(apply)
 
     # ------------------------------------------------------------ meetups --
+    # A meetup is a club run: one-off or weekly, with pace groups, a walk option, beginner and
+    # women-only flags, an optional cap (then a waitlist), an optional waiver, a "paid at the
+    # door" note and an optional map pin. RSVPs are per occurrence (its date): signed-in people
+    # in ``rsvps[date][uid]`` (going | maybe | waitlist), people from the public link page in
+    # ``guests[date][gid]``. ``waitq[date]`` orders the waitlist; ``checkins[date]`` lists who
+    # showed up (uids and ``g:<gid>``); ``history[date]`` keeps counts once a date is past.
+
+    @staticmethod
+    def _flag(body: dict[str, Any], key: str) -> bool:
+        v = body.get(key)
+        if v is None:
+            return False
+        if not isinstance(v, bool):
+            raise ClubError(f"{key} must be true or false")
+        return v
+
     def _meetup_fields(self, body: Any, *, partial: bool) -> dict[str, Any]:
         if not isinstance(body, dict):
             raise ClubError("bad request")
@@ -642,7 +695,75 @@ class Clubs:
             out["level"] = lv
         if not partial or "notes" in body:
             out["notes"] = clean(body.get("notes"), NOTE_LEN, "Notes")
+        if not partial or "groups" in body:
+            gs = body.get("groups") or []
+            if not isinstance(gs, list) or len(gs) > MAX_GROUPS:
+                raise ClubError(f"Up to {MAX_GROUPS} pace groups.")
+            groups = []
+            for g in gs:
+                if not isinstance(g, dict):
+                    raise ClubError("bad pace group")
+                label = clean(g.get("label"), GROUP_LABEL_LEN, "Group name")
+                pace = clean(g.get("pace"), GROUP_PACE_LEN, "Group pace")
+                if label or pace:
+                    groups.append({"label": label or "Group", "pace": pace})
+            out["groups"] = groups
+        for k in ("walk", "beginner", "women"):
+            if not partial or k in body:
+                out[k] = self._flag(body, k)
+        if not partial or "capacity" in body:
+            cap = body.get("capacity")
+            if cap in (None, "", 0):
+                out["capacity"] = None
+            elif isinstance(cap, bool) or not isinstance(cap, int) or not 1 <= cap <= MAX_CAPACITY:
+                raise ClubError(f"Spots can be 1 to {MAX_CAPACITY}, or leave it empty for no limit.")
+            else:
+                out["capacity"] = cap
+        if not partial or "see" in body:
+            s = body.get("see") or "club"
+            if s not in RUN_SEE:
+                raise ClubError("Who can see it: public, club or private.")
+            out["see"] = s
+        if not partial or "waiver" in body:
+            out["waiver"] = clean_block(body.get("waiver"), WAIVER_LEN, "Waiver")
+        if not partial or "paid" in body:
+            out["paid"] = clean(body.get("paid"), PAID_LEN, "Cost")
+        if not partial or "lat" in body or "lng" in body:
+            lat, lng = body.get("lat"), body.get("lng")
+            if lat is None and lng is None:
+                out["lat"] = out["lng"] = None
+            else:
+                ok = (isinstance(lat, int | float) and not isinstance(lat, bool) and -90 <= lat <= 90
+                      and isinstance(lng, int | float) and not isinstance(lng, bool) and -180 <= lng <= 180)
+                if not ok:
+                    raise ClubError("Drop the pin on the map again.")
+                out["lat"], out["lng"] = round(float(lat), 5), round(float(lng), 5)
         return out
+
+    def _run_visible(self, c: dict[str, Any], m: dict[str, Any], uid: str, role: str | None,
+                     token: str | None = None) -> bool:
+        """Can ``uid`` (role in the club or None) see this run?"""
+        if self._blocked(uid, c["owner"]) or (m.get("by") and self._blocked(uid, m["by"])):
+            return False
+        see = m.get("see") or "club"
+        if self._admin(role) or m.get("by") == uid:
+            return True
+        if token is not None and secrets.compare_digest(str(m.get("token") or ""), str(token)):
+            return True
+        if see == "public":
+            return not self._private(c) or role is not None
+        if see == "club":
+            return role is not None
+        return role is not None and any(uid in day for day in (m.get("rsvps") or {}).values())
+
+    def _find_run(self, d: dict[str, Any], cid: Any, mid: Any, uid: str,
+                  token: str | None = None) -> tuple[dict[str, Any], dict[str, Any], str | None]:
+        c = self._get(d, cid)
+        role = c["members"].get(uid)
+        m = (c.get("meetups") or {}).get(mid) if isinstance(mid, str) else None
+        if m is None or not self._run_visible(c, m, uid, role, token):
+            raise ClubError("meetup not found", 404)
+        return c, m, role
 
     def add_meetup(self, uid: str, cid: Any, body: Any, now: datetime) -> dict[str, Any]:
         self.require(uid)
@@ -654,30 +775,48 @@ class Clubs:
             c, role = self._role(d, cid, uid)
             if not self._admin(role):
                 raise ClubError("Only the club's owner or admins can plan meetups.", 403)
+            if f["see"] == "public" and self._private(c):
+                f["see"] = "club"  # a private club's runs never go public
             ms = c.setdefault("meetups", {})
             live = {k: m for k, m in ms.items() if next_occurrence(m, now.replace(tzinfo=None)) is not None}
             if len(live) >= MAX_MEETUPS:
                 raise ClubError(f"A club can have {MAX_MEETUPS} meetups planned at once.")
             c["meetups"] = live
             mid = "m" + secrets.token_hex(5)
-            live[mid] = {"id": mid, **f, "by": uid, "created": int(self._clock()), "rsvps": {}}
+            live[mid] = {"id": mid, **f, "by": uid, "created": int(self._clock()), "rsvps": {},
+                         "token": secrets.token_urlsafe(12)}
+            if f["see"] == "public":
+                self._ensure_slug(d, c)
             return live[mid]
-        return self._meetup_view(self._update(apply), uid, now)
+        return self._meetup_view(self._update(apply), uid, now, admin=True)
 
     def update_meetup(self, uid: str, cid: Any, mid: Any, body: Any, now: datetime) -> dict[str, Any]:
+        """Returns the meetup view plus ``tell``: who's going when the time or spot changed."""
         self.require(uid)
         f = self._meetup_fields(body, partial=True)
+        local = now.replace(tzinfo=None)
 
-        def apply(d: dict[str, Any]) -> dict[str, Any]:
+        def apply(d: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
             c, role = self._role(d, cid, uid)
             m = (c.get("meetups") or {}).get(mid) if isinstance(mid, str) else None
             if m is None:
                 raise ClubError("meetup not found", 404)
             if not self._admin(role) and m["by"] != uid:
                 raise ClubError("Only the club's owner or admins can change meetups.", 403)
+            if f.get("see") == "public" and self._private(c):
+                f["see"] = "club"
+            moved = any(k in f and f[k] != m.get(k) for k in ("where", "start", "lat", "lng"))
             m.update(f)
-            return m
-        return self._meetup_view(self._update(apply), uid, now)
+            if m.get("see") == "public":
+                self._ensure_slug(d, c)
+            tell: list[str] = []
+            if moved:
+                occ = next_occurrence(m, local)
+                day = (m.get("rsvps") or {}).get(occ.date().isoformat(), {}) if occ else {}
+                tell = [u for u, s in day.items() if s in ("going", "maybe", "waitlist") and u != uid]
+            return m, tell
+        m, tell = self._update(apply)
+        return self._meetup_view(m, uid, now, admin=True) | {"tell": tell}
 
     def delete_meetup(self, uid: str, cid: Any, mid: Any) -> list[str]:
         """Returns who had said going/maybe (to tell them)."""
@@ -694,60 +833,156 @@ class Clubs:
             return sorted({u for occ in (m.get("rsvps") or {}).values() for u in occ if u != uid})
         return self._update(apply)
 
-    def rsvp(self, uid: str, cid: Any, mid: Any, status: Any, now: datetime) -> dict[str, Any]:
-        """going | maybe | none (clear), for the meetup's next occurrence."""
+    @staticmethod
+    def _going_count(m: dict[str, Any], key: str) -> int:
+        users = sum(1 for s in ((m.get("rsvps") or {}).get(key) or {}).values() if s == "going")
+        guests = sum(1 for g in ((m.get("guests") or {}).get(key) or {}).values() if g.get("status") == "going")
+        return users + guests
+
+    @staticmethod
+    def _prune(m: dict[str, Any], local: datetime) -> None:
+        """Move dates before yesterday into ``history`` (counts only) and drop their details."""
+        cut = (local.date() - timedelta(days=1)).isoformat()
+        rs, gs, wq, ck = (m.setdefault(k, {}) for k in ("rsvps", "guests", "waitq", "checkins"))
+        hist = m.setdefault("history", {})
+        for key in sorted({*rs, *gs, *wq, *ck}):
+            if key >= cut:
+                continue
+            going = sum(1 for s in (rs.get(key) or {}).values() if s == "going") + sum(
+                1 for g in (gs.get(key) or {}).values() if g.get("status") == "going")
+            hist[key] = {"going": going, "checkins": len(ck.get(key) or [])}
+            for doc in (rs, gs, wq, ck):
+                doc.pop(key, None)
+        for k in sorted(hist)[:-HISTORY_KEEP]:
+            del hist[k]
+
+    def _promote(self, m: dict[str, Any], key: str) -> str | None:
+        """Fill a freed spot from the waitlist: returns the promoted uid or ``g:<gid>``."""
+        cap = m.get("capacity")
+        q = (m.get("waitq") or {}).get(key) or []
+        while q and (not cap or self._going_count(m, key) < cap):
+            who = q.pop(0)
+            if who.startswith("g:"):
+                g = ((m.get("guests") or {}).get(key) or {}).get(who[2:])
+                if g and g.get("status") == "waitlist":
+                    g["status"] = "going"
+                    return who
+            else:
+                day = (m.get("rsvps") or {}).get(key) or {}
+                if day.get(who) == "waitlist":
+                    day[who] = "going"
+                    return who
+        return None
+
+    def rsvp(self, uid: str, cid: Any, mid: Any, status: Any, now: datetime, *,
+             accept_waiver: bool = False, token: str | None = None) -> dict[str, Any]:
+        """going | maybe | none (clear), for the meetup's next occurrence. A full run puts
+        "going" on the waitlist; a waiver must be accepted to go. Anyone signed in can RSVP to a
+        public run (members or not). Returns the view plus ``promoted`` (who moved up)."""
         self.require(uid)
         if status not in ("going", "maybe", "none", None):
             raise ClubError("RSVP going, maybe or none.")
         local = now.replace(tzinfo=None)
 
-        def apply(d: dict[str, Any]) -> dict[str, Any]:
-            c, _ = self._role(d, cid, uid)
-            m = (c.get("meetups") or {}).get(mid) if isinstance(mid, str) else None
-            occ = next_occurrence(m, local) if m else None
-            if m is None or occ is None:
+        def apply(d: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
+            c, m, role = self._find_run(d, cid, mid, uid, token)
+            if role is None and (m.get("see") or "club") != "public" and token is None:
+                raise ClubError("meetup not found", 404)
+            occ = next_occurrence(m, local)
+            if occ is None:
                 raise ClubError("meetup not found", 404)
             key = occ.date().isoformat()
-            rs = m.setdefault("rsvps", {})
-            for k in [k for k in rs if k < (local.date() - timedelta(days=1)).isoformat()]:
-                del rs[k]
-            day = rs.setdefault(key, {})
+            self._prune(m, local)
+            day = m.setdefault("rsvps", {}).setdefault(key, {})
+            q = m.setdefault("waitq", {}).setdefault(key, [])
+            was = day.get(uid)
+            promoted = None
+            if status == "going" and m.get("waiver"):
+                signed = (m.get("waivers") or {}).get(uid)
+                if not (signed and signed.get("v") == _digest(m["waiver"])):
+                    if not accept_waiver:
+                        raise ClubError("Read and accept the waiver to go.", 409)
+                    m.setdefault("waivers", {})[uid] = {"v": _digest(m["waiver"]), "at": int(self._clock())}
             if status in ("none", None):
                 day.pop(uid, None)
+                if uid in q:
+                    q.remove(uid)
+            elif status == "going":
+                if was != "going":
+                    cap = m.get("capacity")
+                    if cap and self._going_count(m, key) >= cap:
+                        day[uid] = "waitlist"
+                        if uid not in q:
+                            q.append(uid)
+                    else:
+                        day[uid] = "going"
             else:
                 day[uid] = status
-            return m
-        return self._meetup_view(self._update(apply), uid, now)
+                if uid in q:
+                    q.remove(uid)
+            if was == "going" and day.get(uid) != "going":
+                promoted = self._promote(m, key)
+            return m, promoted
+        m, promoted = self._update(apply)
+        return self._meetup_view(m, uid, now) | {"promoted": promoted}
 
-    def _meetup_view(self, m: dict[str, Any], uid: str, now: datetime) -> dict[str, Any]:
+    def _meetup_view(self, m: dict[str, Any], uid: str, now: datetime, *, admin: bool = False) -> dict[str, Any]:
         occ = next_occurrence(m, now.replace(tzinfo=None))
-        day = (m.get("rsvps") or {}).get(occ.date().isoformat(), {}) if occ else {}
-        going = [u for u, s in day.items() if s == "going" and self._is_athlete(u) and (u == uid or not self._blocked(uid, u))]
-        maybe = [u for u, s in day.items() if s == "maybe" and self._is_athlete(u) and (u == uid or not self._blocked(uid, u))]
-        return {k: m.get(k) for k in ("id", "title", "start", "repeat", "where", "pace", "level", "notes", "by")} | {
+        key = occ.date().isoformat() if occ else ""
+        day = (m.get("rsvps") or {}).get(key, {}) if occ else {}
+        seen = [u for u, s in day.items() if self._is_athlete(u) and (u == uid or not self._blocked(uid, u))]
+        going = [u for u in seen if day[u] == "going"]
+        maybe = [u for u in seen if day[u] == "maybe"]
+        guests = (m.get("guests") or {}).get(key, {}) if occ else {}
+        guests_going = sum(1 for g in guests.values() if g.get("status") == "going")
+        cap = m.get("capacity")
+        count = len([s for s in day.values() if s == "going"]) + guests_going
+        q = (m.get("waitq") or {}).get(key, []) if occ else []
+        out = {k: m.get(k) for k in ("id", "title", "start", "repeat", "where", "pace", "level", "notes", "by")} | {
             "next": occ.isoformat(timespec="minutes") if occ else None, "going": going, "maybe": len(maybe),
-            "my_rsvp": day.get(uid), "mine": m.get("by") == uid}
+            "my_rsvp": day.get(uid), "mine": m.get("by") == uid,
+            "groups": list(m.get("groups") or []), "walk": bool(m.get("walk")), "beginner": bool(m.get("beginner")),
+            "women": bool(m.get("women")), "capacity": cap, "count": count, "guests": guests_going,
+            "spots_left": max(0, cap - count) if cap else None, "waitlist": len(q),
+            "wait_pos": (q.index(uid) + 1) if uid in q else None,
+            "see": m.get("see") or "club", "waiver": m.get("waiver") or "", "paid": m.get("paid") or "",
+            "lat": m.get("lat"), "lng": m.get("lng"), "skips": sorted(m.get("skips") or []),
+            "waiver_signed": bool((m.get("waivers") or {}).get(uid)
+                                  and (m.get("waivers") or {}).get(uid, {}).get("v") == _digest(m.get("waiver") or "")),
+            "checked_in": uid in ((m.get("checkins") or {}).get(key) or []),
+        }
+        if admin:
+            out["token"] = m.get("token")
+        return out
 
     def meetups(self, uid: str, cid: str, now: datetime) -> list[dict[str, Any]]:
-        """A club's upcoming meetups, soonest first (members only)."""
+        """A club's upcoming meetups the viewer can see, soonest first."""
         if cid.startswith("r-"):
             return []
         c = (self._doc.load().get("clubs") or {}).get(cid)
-        if not c or uid not in c["members"]:
+        if not c:
             return []
-        out = [self._meetup_view(m, uid, now) for m in (c.get("meetups") or {}).values()]
+        role = c["members"].get(uid)
+        if role is None and self._private(c):
+            return []
+        out = [self._meetup_view(m, uid, now, admin=self._admin(role) or m.get("by") == uid)
+               for m in (c.get("meetups") or {}).values() if self._run_visible(c, m, uid, role)]
         out = [m for m in out if m["next"]]
         out.sort(key=lambda m: m["next"])
         return out
 
     def my_meetups(self, uid: str, now: datetime, *, days: int = 14) -> list[dict[str, Any]]:
-        """Upcoming meetups across my clubs within ``days`` (``club`` attached), soonest first."""
+        """Upcoming meetups across my clubs, plus public runs I RSVP'd to, within ``days``
+        (``club`` attached), soonest first."""
         last = now.replace(tzinfo=None) + timedelta(days=days)
         out = []
         for c in (self._doc.load().get("clubs") or {}).values():
-            if uid not in c["members"]:
-                continue
+            role = c["members"].get(uid)
             for m in (c.get("meetups") or {}).values():
+                if role is None and not any(uid in day for day in (m.get("rsvps") or {}).values()):
+                    continue
+                if not self._run_visible(c, m, uid, role):
+                    continue
                 v = self._meetup_view(m, uid, now)
                 if v["next"] and datetime.fromisoformat(v["next"]) <= last:
                     out.append({**v, "club": {"id": c["id"], "name": c["name"], "emoji": c.get("emoji") or "🐇"}})
@@ -759,6 +994,341 @@ class Clubs:
         local = now.replace(tzinfo=None)
         return [m for m in self.my_meetups(uid, now, days=2) if m["my_rsvp"] == "going"
                 and local <= datetime.fromisoformat(m["next"]) <= local + timedelta(hours=REMIND_H)]
+
+    # ---------------------------------------------------- organizer tools --
+    def _admin_run(self, d: dict[str, Any], cid: Any, mid: Any, uid: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        c, role = self._role(d, cid, uid)
+        m = (c.get("meetups") or {}).get(mid) if isinstance(mid, str) else None
+        if m is None:
+            raise ClubError("meetup not found", 404)
+        if not self._admin(role) and m.get("by") != uid:
+            raise ClubError("Only the club's owner or admins can do that.", 403)
+        return c, m
+
+    def roster(self, uid: str, cid: Any, mid: Any, now: datetime) -> dict[str, Any]:
+        """Organizer view of the next occurrence: who's going, maybe, on the waitlist (users and
+        guests with their contact email), who checked in, waivers signed."""
+        self.require(uid)
+        local = now.replace(tzinfo=None)
+        d = self._doc.load()
+        c, m = self._admin_run(d, cid, mid, uid)
+        occ = next_occurrence(m, local)
+        key = occ.date().isoformat() if occ else ""
+        day = (m.get("rsvps") or {}).get(key, {})
+        ck = set((m.get("checkins") or {}).get(key) or [])
+        waivers = m.get("waivers") or {}
+        v = _digest(m.get("waiver") or "")
+        rows = [{"id": u, "kind": "user", "status": s, "checked_in": u in ck,
+                 "waiver": bool(waivers.get(u) and waivers[u].get("v") == v), "waiver_at": (waivers.get(u) or {}).get("at")}
+                for u, s in day.items() if self._is_athlete(u)]
+        for gid, g in ((m.get("guests") or {}).get(key) or {}).items():
+            rows.append({"id": f"g:{gid}", "kind": "guest", "name": g.get("name"), "email": g.get("email"),
+                         "status": g.get("status"), "checked_in": f"g:{gid}" in ck,
+                         "waiver": bool(g.get("waiver_at")), "waiver_at": g.get("waiver_at")})
+        order = {"going": 0, "waitlist": 1, "maybe": 2}
+        rows.sort(key=lambda r: (order.get(str(r["status"]), 3), str(r.get("name") or r["id"])))
+        return {"date": key or None, "next": occ.isoformat(timespec="minutes") if occ else None,
+                "rows": rows, "going": sum(1 for r in rows if r["status"] == "going"),
+                "checked_in": len(ck), "waitlist": len((m.get("waitq") or {}).get(key) or [])}
+
+    def checkin(self, uid: str, cid: Any, mid: Any, who: Any, on: bool, now: datetime) -> dict[str, Any]:
+        self.require(uid)
+        local = now.replace(tzinfo=None)
+        if not isinstance(who, str) or len(who) > 80:
+            raise ClubError("Pick someone to check in.")
+
+        def apply(d: dict[str, Any]) -> None:
+            _, m = self._admin_run(d, cid, mid, uid)
+            occ = next_occurrence(m, local)
+            if occ is None:
+                raise ClubError("meetup not found", 404)
+            key = occ.date().isoformat()
+            known = set((m.get("rsvps") or {}).get(key, {})) | {
+                f"g:{g}" for g in ((m.get("guests") or {}).get(key) or {})}
+            if who not in known:
+                raise ClubError("They aren't on the list for this run.")
+            ck = m.setdefault("checkins", {}).setdefault(key, [])
+            if on and who not in ck:
+                ck.append(who)
+            elif not on and who in ck:
+                ck.remove(who)
+        self._update(apply)
+        return self.roster(uid, cid, mid, now)
+
+    def skip_week(self, uid: str, cid: Any, mid: Any, day: Any, skip: bool, now: datetime) -> tuple[dict[str, Any], list[str]]:
+        """Skip (or un-skip) one date of a weekly run. Returns the view and who had RSVP'd."""
+        self.require(uid)
+        try:
+            dd = date.fromisoformat(str(day))
+        except ValueError:
+            raise ClubError("Pick a week to skip.") from None
+
+        def apply(d: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+            _, m = self._admin_run(d, cid, mid, uid)
+            if m.get("repeat") != "weekly":
+                raise ClubError("Only weekly runs can skip a week. Cancel a one-off run instead.")
+            if dd.weekday() != datetime.fromisoformat(m["start"]).weekday():
+                raise ClubError("That date isn't one of this run's days.")
+            skips = set(m.get("skips") or [])
+            key = dd.isoformat()
+            tell: list[str] = []
+            if skip:
+                skips.add(key)
+                tell = [u for u, s in ((m.get("rsvps") or {}).get(key) or {}).items() if u != uid and s in ("going", "maybe", "waitlist")]
+            else:
+                skips.discard(key)
+            m["skips"] = sorted(s for s in skips if s >= (now.date() - timedelta(days=7)).isoformat())[-52:]
+            return m, tell
+        m, tell = self._update(apply)
+        return self._meetup_view(m, uid, now, admin=True), tell
+
+    def duplicate(self, uid: str, cid: Any, mid: Any, now: datetime) -> dict[str, Any]:
+        """A copy of a run a week after its next occurrence (or its start), with no RSVPs."""
+        self.require(uid)
+        d = self._doc.load()
+        _, m = self._admin_run(d, cid, mid, uid)
+        occ = next_occurrence(m, now.replace(tzinfo=None)) or datetime.fromisoformat(m["start"])
+        start = occ + timedelta(weeks=1)
+        while start < now.replace(tzinfo=None):
+            start += timedelta(weeks=1)
+        body = {k: m.get(k) for k in ("title", "repeat", "where", "pace", "level", "notes", "groups", "walk",
+                                      "beginner", "women", "capacity", "see", "waiver", "paid", "lat", "lng")}
+        body["start"] = start.isoformat(timespec="minutes")
+        return self.add_meetup(uid, cid, body, now)
+
+    def message_targets(self, uid: str, cid: Any, mid: Any, text: Any, now: datetime) -> tuple[str, list[str]]:
+        """Admins message everyone going / on the waitlist for the next run (in-app + push).
+        Returns the cleaned text and the user ids to tell (guests have no in-app inbox)."""
+        self.require(uid)
+        msg = clean(text, MESSAGE_LEN, "Message", required=True)
+        d = self._doc.load()
+        _, m = self._admin_run(d, cid, mid, uid)
+        occ = next_occurrence(m, now.replace(tzinfo=None))
+        day = (m.get("rsvps") or {}).get(occ.date().isoformat(), {}) if occ else {}
+        return msg, [u for u, s in day.items() if u != uid and s in ("going", "maybe", "waitlist") and self._is_athlete(u)]
+
+    def waiver_rows(self, uid: str, cid: Any, mid: Any) -> list[dict[str, Any]]:
+        """Everyone who accepted this run's current waiver: ``{id, kind, name?, email?, at}``."""
+        self.require(uid)
+        d = self._doc.load()
+        _, m = self._admin_run(d, cid, mid, uid)
+        v = _digest(m.get("waiver") or "")
+        rows = [{"id": u, "kind": "user", "at": w.get("at")} for u, w in (m.get("waivers") or {}).items()
+                if w.get("v") == v]
+        for key, gs in (m.get("guests") or {}).items():
+            for gid, g in gs.items():
+                if g.get("waiver_at"):
+                    rows.append({"id": f"g:{gid}", "kind": "guest", "name": g.get("name"), "email": g.get("email"),
+                                 "at": g.get("waiver_at"), "date": key})
+        rows.sort(key=lambda r: r.get("at") or 0)
+        return rows
+
+    def dashboard(self, uid: str, cid: Any, now: datetime) -> dict[str, Any]:
+        """Organizer dashboard: members, requests, upcoming runs with counts, and weekly
+        attendance (going and checked in) over the last ``HISTORY_KEEP`` run dates."""
+        self.require(uid)
+        d = self._doc.load()
+        c, role = self._role(d, cid, uid)
+        if not self._admin(role):
+            raise ClubError("Only the club's owner or admins can see the dashboard.", 403)
+        local = now.replace(tzinfo=None)
+        runs = []
+        trend: dict[str, dict[str, int]] = {}
+        for m in (c.get("meetups") or {}).values():
+            v = self._meetup_view(m, uid, now, admin=True)
+            if v["next"]:
+                runs.append({k: v[k] for k in ("id", "title", "next", "count", "capacity", "waitlist", "see")})
+            for k, h in (m.get("history") or {}).items():
+                t = trend.setdefault(k, {"going": 0, "checkins": 0})
+                t["going"] += int(h.get("going") or 0)
+                t["checkins"] += int(h.get("checkins") or 0)
+            for k, ck in (m.get("checkins") or {}).items():
+                if k < local.date().isoformat():
+                    t = trend.setdefault(k, {"going": 0, "checkins": 0})
+                    t["checkins"] = max(t["checkins"], len(ck))
+        runs.sort(key=lambda r: r["next"])
+        dates = sorted(trend)[-HISTORY_KEEP:]
+        return {"members": len(self._live(c)), "requests": len(c.get("requests") or {}),
+                "runs": runs, "attendance": [{"date": k, **trend[k]} for k in dates],
+                "link": self.public_link(c, d) if not self._private(c) else None}
+
+    def report_run(self, uid: str, cid: Any, mid: Any, reason: Any) -> None:
+        """Log a report on a run for the operator (shown nowhere else)."""
+        self.require(uid)
+        why = clean(reason, 200, "Reason") if isinstance(reason, str) else ""
+
+        def apply(d: dict[str, Any]) -> None:
+            c, m, _ = self._find_run(d, cid, mid, uid)
+            r = d.setdefault("reports", [])
+            r.append({"club": c["id"], "meetup": m["id"], "by": uid, "reason": why, "ts": int(self._clock())})
+            del r[: max(0, len(r) - 500)]
+        self._update(apply)
+
+    # ------------------------------------------------- public link page --
+    @staticmethod
+    def _slugify(name: str) -> str:
+        s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:32].strip("-")
+        return s or "club"
+
+    def _ensure_slug(self, d: dict[str, Any], c: dict[str, Any]) -> str:
+        slugs = d.setdefault("slugs", {})
+        if c.get("slug") and slugs.get(c["slug"]) == c["id"]:
+            return str(c["slug"])
+        base = self._slugify(c["name"])
+        s, n = base, 2
+        while s in slugs and slugs[s] != c["id"]:
+            s, n = f"{base}-{n}", n + 1
+        slugs[s] = c["id"]
+        c["slug"] = s
+        return s
+
+    def public_link(self, c: dict[str, Any], d: dict[str, Any] | None = None) -> str | None:
+        return f"/c/{c['slug']}" if c.get("slug") else None
+
+    def share_link(self, uid: str, cid: Any) -> str:
+        """The club's public link page path (``/c/<slug>``); admins of public clubs only."""
+        self.require(uid)
+
+        def apply(d: dict[str, Any]) -> str:
+            c, role = self._role(d, cid, uid)
+            if not self._admin(role):
+                raise ClubError("Only the club's owner or admins can share the club page.", 403)
+            if self._private(c):
+                raise ClubError("Private clubs don't have a public page.")
+            return f"/c/{self._ensure_slug(d, c)}"
+        return self._update(apply)
+
+    def by_slug(self, slug: Any) -> dict[str, Any] | None:
+        if not isinstance(slug, str) or not re.fullmatch(r"[a-z0-9-]{1,40}", slug):
+            return None
+        d = self._doc.load()
+        cid = (d.get("slugs") or {}).get(slug)
+        c = (d.get("clubs") or {}).get(cid) if cid else None
+        if c is None or self._private(c):
+            return None
+        return c
+
+    def public_page(self, slug: Any, now: datetime, *, token: str | None = None, mid: str | None = None) -> dict[str, Any] | None:
+        """What the public link page shows: the club and its public runs (or one run by its
+        private link), with counts only, never names."""
+        c = self.by_slug(slug)
+        if c is None:
+            return None
+        local = now.replace(tzinfo=None)
+        runs = []
+        for m in (c.get("meetups") or {}).values():
+            if mid is not None and m["id"] != mid:
+                continue
+            public = (m.get("see") or "club") == "public"
+            linked = token is not None and secrets.compare_digest(str(m.get("token") or ""), str(token))
+            if not (public or linked):
+                continue
+            occ = next_occurrence(m, local)
+            if occ is None:
+                continue
+            v = self._meetup_view(m, "", now)
+            runs.append({k: v[k] for k in ("id", "title", "next", "repeat", "where", "pace", "level", "notes",
+                                           "groups", "walk", "beginner", "women", "capacity", "count",
+                                           "spots_left", "waitlist", "waiver", "paid", "lat", "lng")})
+        runs.sort(key=lambda r: r["next"])
+        return {"id": c["id"], "slug": c.get("slug"), "name": c["name"], "emoji": c.get("emoji") or "🐇",
+                "sport": c.get("sport") or "running", "city": c.get("city") or "", "state": c.get("state") or "",
+                "description": c.get("description") or "", "members": len(self._live(c)), "runs": runs}
+
+    def guest_rsvp(self, slug: Any, mid: Any, name: Any, email: Any, accept_waiver: bool, now: datetime,
+                   *, token: str | None = None) -> dict[str, Any]:
+        """RSVP from the public page without an account: name + email (contact for the
+        organizers only). Returns ``{status, cancel}`` (the secret that cancels it)."""
+        nm = clean(name, GUEST_NAME_LEN, "Name", required=True)
+        em = clean(email, GUEST_EMAIL_LEN, "Email", required=True).lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", em):
+            raise ClubError("Enter a real email so the organizers can reach you.")
+        local = now.replace(tzinfo=None)
+
+        def apply(d: dict[str, Any]) -> dict[str, Any]:
+            cid = (d.get("slugs") or {}).get(slug) if isinstance(slug, str) else None
+            c = (d.get("clubs") or {}).get(cid) if cid else None
+            m = (c.get("meetups") or {}).get(mid) if c and isinstance(mid, str) else None
+            if c is None or self._private(c) or m is None:
+                raise ClubError("That run isn't open for sign-ups.", 404)
+            linked = token is not None and secrets.compare_digest(str(m.get("token") or ""), str(token))
+            if (m.get("see") or "club") != "public" and not linked:
+                raise ClubError("That run isn't open for sign-ups.", 404)
+            occ = next_occurrence(m, local)
+            if occ is None:
+                raise ClubError("That run already happened.", 404)
+            key = occ.date().isoformat()
+            self._prune(m, local)
+            gs = m.setdefault("guests", {}).setdefault(key, {})
+            if sum(len(x) for x in (m.get("guests") or {}).values()) >= MAX_GUESTS:
+                raise ClubError("This run has too many sign-ups from the web. Join rabbt to RSVP.")
+            for gid, g in gs.items():
+                if g.get("email") == em and g.get("status") in ("going", "waitlist"):
+                    return {"status": g["status"], "cancel": None, "date": key}
+            if m.get("waiver") and not accept_waiver:
+                raise ClubError("Read and accept the waiver to go.", 409)
+            gid = secrets.token_hex(4)
+            cancel = secrets.token_urlsafe(16)
+            cap = m.get("capacity")
+            status = "waitlist" if cap and self._going_count(m, key) >= cap else "going"
+            gs[gid] = {"name": nm, "email": em, "status": status, "ts": int(self._clock()),
+                       "cancel": _digest(cancel), "waiver_at": int(self._clock()) if m.get("waiver") else None}
+            if status == "waitlist":
+                m.setdefault("waitq", {}).setdefault(key, []).append(f"g:{gid}")
+            return {"status": status, "cancel": f"{gid}.{cancel}", "date": key}
+        return self._update(apply)
+
+    def guest_cancel(self, slug: Any, mid: Any, secret: Any) -> str | None:
+        """Cancel a guest RSVP by its secret; returns who moved up from the waitlist."""
+        if not isinstance(secret, str) or "." not in secret or len(secret) > 80:
+            raise ClubError("That cancel link isn't valid.", 404)
+        gid, raw = secret.split(".", 1)
+
+        def apply(d: dict[str, Any]) -> str | None:
+            cid = (d.get("slugs") or {}).get(slug) if isinstance(slug, str) else None
+            c = (d.get("clubs") or {}).get(cid) if cid else None
+            m = (c.get("meetups") or {}).get(mid) if c and isinstance(mid, str) else None
+            if m is None:
+                raise ClubError("That cancel link isn't valid.", 404)
+            for key, gs in (m.get("guests") or {}).items():
+                g = gs.get(gid)
+                if g and secrets.compare_digest(str(g.get("cancel")), _digest(raw)):
+                    was = g.get("status")
+                    del gs[gid]
+                    q = (m.get("waitq") or {}).get(key) or []
+                    if f"g:{gid}" in q:
+                        q.remove(f"g:{gid}")
+                    return self._promote(m, key) if was == "going" else None
+            raise ClubError("That cancel link isn't valid.", 404)
+        return self._update(apply)
+
+    def nearby_runs(self, uid: str, now: datetime, *, city: str, state: str, hours: int = 36) -> list[dict[str, Any]]:
+        """Runs starting in the next ``hours`` the viewer can join: their clubs' runs plus public
+        runs of public clubs in their city (then state). ``club`` attached; soonest first."""
+        local = now.replace(tzinfo=None)
+        last = local + timedelta(hours=hours)
+        city_l, state_l = city.strip().lower(), state.strip().lower()
+        out = []
+        for c in (self._doc.load().get("clubs") or {}).values():
+            role = c["members"].get(uid)
+            if role is None:
+                if self._private(c) or self._blocked(uid, c["owner"]):
+                    continue
+                ccity, cstate = (c.get("city") or "").lower(), (c.get("state") or "").lower()
+                near = (city_l and ccity == city_l) or (not city_l and state_l and cstate == state_l)
+                if not near:
+                    continue
+            for m in (c.get("meetups") or {}).values():
+                if role is None and (m.get("see") or "club") != "public":
+                    continue
+                if not self._run_visible(c, m, uid, role):
+                    continue
+                v = self._meetup_view(m, uid, now)
+                if v["next"] and local - timedelta(hours=1) <= datetime.fromisoformat(v["next"]) <= last:
+                    out.append({**v, "club": {"id": c["id"], "name": c["name"], "emoji": c.get("emoji") or "🐇",
+                                              "member": role is not None}})
+        out.sort(key=lambda m: m["next"])
+        return out
 
     # --------------------------------------------------------- challenges --
     def add_challenge(self, uid: str, cid: Any, gid: str) -> None:

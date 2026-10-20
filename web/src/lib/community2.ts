@@ -6,7 +6,7 @@ import type { SocialUser } from '@/lib/social'
 
 const P = '/api/community'
 
-export type FeaturedNext = { id: string; title: string; next: string; going: number; my_rsvp: 'going' | 'maybe' | null; where: string }
+export type FeaturedNext = { id: string; title: string; next: string; going: number; my_rsvp: 'going' | 'maybe' | 'waitlist' | null; where: string }
 export type Featured = {
   id: string; kind: 'club' | 'listing'; label: 'Featured'; tagline: string; until: string | null; online: boolean; local: boolean
   name: string; city: string; state: string; description: string; members: number | null

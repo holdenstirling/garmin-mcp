@@ -523,6 +523,96 @@ class PlanService:
                 recompute_week(w)
         return self._edit(user_id, fn)
 
+    # ------------------------------------------------------ club runs --
+    def swap_for_club_run(self, user_id: str, day: str, run: dict[str, Any]) -> dict[str, Any]:
+        """Count a club run on ``day`` as that day's run. A planned run that day becomes the
+        club run (an easy run, or the long run when it was the long run), keeping its minutes
+        unless the club run is clearly longer or shorter. With no run planned that day, the club
+        run is added and the next easy run later that week is dropped, so the week's load stays
+        about the same. The original is kept for ``undo_club_run``.
+        ``run``: ``{club_id, meetup_id, title, club, minutes?}``."""
+        try:
+            d0 = date.fromisoformat(day)
+        except ValueError:
+            raise PlanError("Pick the run's day.") from None
+        name = str(run.get('title') or 'club run')[:60]
+        label = f"{name} with {str(run.get('club') or 'your club')[:40]}"
+        ref = {"club_id": run.get("club_id"), "meetup_id": run.get("meetup_id"), "label": label}
+        est = run.get("minutes") if isinstance(run.get("minutes"), int) and 15 <= run["minutes"] <= 300 else None
+
+        def fn(plan: dict[str, Any], today: date) -> None:
+            if day < today.isoformat():
+                raise PlanError("That run already happened.")
+            w = week_for(plan, d0)
+            if w is None:
+                raise PlanError("That day is outside your plan.")
+            sessions = w["days"].get(day, [])
+            if any((s.get("club_run") or {}).get("meetup_id") == ref["meetup_id"] for s in sessions):
+                return  # already counted
+            swim_pace = plan.get("swim_pace", 125.0)
+            idx = next((i for i, s in enumerate(sessions) if s["sport"] == "run" and s.get("kind") != "race"), None)
+            if idx is not None:
+                cur = sessions[idx]
+                kind = "long" if cur.get("kind") == "long" else "easy"
+                minutes = est or int(cur.get("minutes") or 45)
+                new = make_session("run", kind, minutes, swim_pace=swim_pace, phase=w["phase"])
+                new.update({"id": cur["id"], "title": f"Club run: {name}"[:80], "title_custom": True,
+                            "edited": True, "club_run": ref, "club_orig": {k: v for k, v in cur.items() if k != "garmin"}})
+                self._orphan(plan, cur)
+                sessions[idx] = new
+            else:
+                minutes = est or 45
+                new = make_session("run", "easy", minutes, swim_pace=swim_pace, phase=w["phase"])
+                new.update({"title": f"Club run: {name}"[:80], "title_custom": True, "edited": True, "club_run": ref})
+                dropped = None
+                for dd in sorted(w["days"]):
+                    if dd <= day or dd < today.isoformat():
+                        continue
+                    for i, s in enumerate(w["days"][dd]):
+                        if s["sport"] == "run" and s.get("kind") in ("easy", "recovery") and not s.get("club_run"):
+                            dropped = (dd, i, s)
+                            break
+                    if dropped:
+                        break
+                if dropped:
+                    dd, i, s = dropped
+                    self._orphan(plan, s)
+                    rest = make_session("rest", "rest", 0)
+                    rest["detail"] = "Rest day: this week's easy run moved to your club run."
+                    rest.update({"edited": True, "club_drop": {"date": dd, "orig": {k: v for k, v in s.items() if k != "garmin"},
+                                                               "meetup_id": ref["meetup_id"]}})
+                    rest["id"] = s["id"]
+                    w["days"][dd][i] = rest
+                    w["days"][dd] = [x for x in w["days"][dd] if x["sport"] != "rest" or x is rest] or [rest]
+                    new["club_dropped"] = dd
+                w["days"][day] = [x for x in sessions if x["sport"] != "rest"] + [new]
+            recompute_week(w)
+        return self._edit(user_id, fn)
+
+    def undo_club_run(self, user_id: str, sid: str) -> dict[str, Any]:
+        """Put back what a club-run swap replaced."""
+        def fn(plan: dict[str, Any], today: date) -> None:
+            w, day, i = self._find(plan, sid)
+            s = w["days"][day][i]
+            ref = s.get("club_run")
+            if not ref:
+                raise PlanError("That session isn't a club run.")
+            if day < today.isoformat():
+                raise PlanError("Past sessions can't be changed.")
+            if s.get("club_orig"):
+                w["days"][day][i] = dict(s["club_orig"])
+            else:
+                del w["days"][day][i]
+                if not w["days"][day]:
+                    w["days"][day] = [make_session("rest", "rest", 0)]
+            for dd, ss in w["days"].items():
+                for j, x in enumerate(ss):
+                    drop = x.get("club_drop")
+                    if drop and drop.get("meetup_id") == ref.get("meetup_id"):
+                        ss[j] = dict(drop["orig"])
+            recompute_week(w)
+        return self._edit(user_id, fn)
+
     # ------------------------------------------------ preview / levers --
     LEVERS = ("available_days", "long_day", "weekly_hours", "plan_intensity")
 
@@ -1047,6 +1137,29 @@ def _fuel_hint(s: dict[str, Any], d: str, plan: dict[str, Any]) -> str | None:
         return None
 
 
+def why_changed(s: dict[str, Any], plan: dict[str, Any]) -> dict[str, str] | None:
+    """Why rabbt (or the athlete) changed this session, in one line: ``{kind, text}``.
+    Kinds: club, sick, travel, readiness (adjustments), you (edited by hand). None when it's
+    as the plan was built."""
+    if s.get("club_run"):
+        return {"kind": "club", "text": f"Counts as your run: {s['club_run'].get('label') or 'club run'}."}
+    if s.get("club_drop"):
+        return {"kind": "club", "text": "Your club run covers this week's easy run, so this is a rest day."}
+    if s.get("sick_return"):
+        return {"kind": "sick", "text": "Easing back after being sick: shorter and easy."}
+    if s.get("sick"):
+        return {"kind": "sick", "text": "Sick mode: rest up."}
+    if s.get("travel"):
+        trip = next((t for t in plan.get("trips", []) if t.get("id") == s["travel"]), None)
+        where = f" for {trip['label']}" if trip and trip.get("label") else ""
+        return {"kind": "travel", "text": f"Changed to fit your trip{where}."}
+    if s.get("adjusted"):
+        return {"kind": "readiness", "text": (str(s.get("adjust_why") or "") or "rabbt adjusted it to how your week is going.")[:200]}
+    if s.get("edited"):
+        return {"kind": "you", "text": "You changed this one."}
+    return None
+
+
 def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | None:
     """What the app shows: drops internal fields, adds per-session sync state."""
     if plan is None:
@@ -1066,7 +1179,8 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
                              "fuel": fuel(s, d, race_date=plan.get("race_date"), distance=plan.get("distance")),
-                             "fuel_hint": _fuel_hint(s, d, plan)})
+                             "fuel_hint": _fuel_hint(s, d, plan),
+                             "club_run": (s.get("club_run") or None), "why": why_changed(s, plan)})
             days.append({"date": d, "sessions": ss})
         weeks.append({k: w[k] for k in ("index", "start", "phase", "recovery", "hours", "focus")}
                      | {"days": days})
@@ -1087,4 +1201,4 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
     }
 
 
-__all__ = ["PlanService", "PlanError", "public_plan", "SYNC_WINDOWS", "CoachError"]
+__all__ = ["PlanService", "PlanError", "public_plan", "why_changed", "SYNC_WINDOWS", "CoachError"]

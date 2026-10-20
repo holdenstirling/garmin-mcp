@@ -9,7 +9,7 @@ import { saveDurably } from '@/lib/outbox'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { DraftRestored, useUnsavedGuard } from '@/components/ui/UnsavedGuard'
 import {
-  Check, ChevronRight, Copy, Flag, LogOut, MapPin, Plus, Repeat, Trash2, Trophy, UserPlus, X,
+  Check, ChevronRight, Copy, Flag, LogOut, Plus, Trash2, Trophy, UserPlus, X,
 } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { EmptyRabbit, HopIn, burst } from '@/components/anim'
@@ -25,13 +25,14 @@ import { getChallenges, targetLine, type Suggestion } from '@/lib/challenges'
 import { getPeople, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import {
-  LEVELS, SPORTS, answerClubInvite, cancelJoinRequest, decideRequest, deleteClub, deleteMeetup,
-  getClub, getClubs, inviteToClub, joinClub, joinClubByCode, joinClubChallenge, leaveClub, meetupWhen, newClubCode,
-  removeMember, rsvpMeetup, setMemberRole, startClubChallenge,
-  type ClubDetail, type ClubInput, type ClubSummary, type ClubsView, type Level, type Meetup, type Sport,
+  SPORTS, answerClubInvite, cancelJoinRequest, decideRequest, deleteClub,
+  getClub, getClubs, inviteToClub, joinClub, joinClubByCode, joinClubChallenge, leaveClub, newClubCode,
+  removeMember, setMemberRole, startClubChallenge,
+  type ClubDetail, type ClubInput, type ClubSummary, type ClubsView, type Meetup, type Sport,
 } from '@/lib/community'
 import { clubSport, linkListing, type DirListing } from '@/lib/clubdir'
 import { Choice } from './Choice'
+import { ClubDashboardCard, OrganizeSheet, RunCard, RunSheet } from './ClubRun'
 import { ClubDirectory } from './Directory'
 import { FeatureSwitch } from './Featured'
 import { CommunityFeed, PersonAvatar } from './Feed'
@@ -45,7 +46,6 @@ import { MessagesSquare, Users } from 'lucide-react'
 const LOADING = ['Rounding up the crew…', 'Finding clubs near you…', 'Lacing up…']
 const EMOJIS = ['🐇', '🏃', '🏃‍♀️', '🚴', '🏊', '⛰️', '🏔️', '🌅', '🔥', '🏁', '💪', '🌲', '☕', '🍻']
 const SPORT_LABEL = Object.fromEntries(SPORTS) as Record<Sport, string>
-const LEVEL_LABEL = Object.fromEntries(LEVELS) as Record<Level, string>
 
 function ClubIcon({ c, size = 40 }: { c: Pick<ClubSummary, 'emoji'>; size?: number }) {
   return (
@@ -251,6 +251,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
   const [view, setView] = useState<ClubView>('feed')
   const [closing, setClosing] = useState(false)
   const [sheet, setSheet] = useState<'edit' | 'invite' | 'meetup' | 'challenge' | null>(null)
+  const [organize, setOrganize] = useState<Meetup | null>(null)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -281,7 +282,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
     catch { setMsg({ text: `The code is ${code}`, ok: true }) }
   }
   const tabs: [ClubView, string][] = c?.kind === 'race' ? [['feed', 'Feed'], ['members', 'Crew']]
-    : [['feed', 'Feed'], ['meetups', 'Meetups'], ['challenges', 'Challenges'], ['members', 'Members']]
+    : [['feed', 'Feed'], ['meetups', 'Runs'], ['challenges', 'Challenges'], ['members', 'Members']]
   const seg = member ? (
     <div role="tablist" aria-label="Club" className="no-scrollbar -mx-5 mt-1 flex gap-2 overflow-x-auto px-5 py-0.5">
       {tabs.map(([v, label]) => (
@@ -315,6 +316,15 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           )}
         </Card>
       )}
+      {c && !member && (c.meetups ?? []).length > 0 && (
+        <Section title="Open club runs" description="Anyone on rabbt can RSVP to these.">
+          <div className="flex flex-col gap-3">
+            {(c.meetups ?? []).map((m) => (
+              <RunCard key={m.id} m={m} clubId={c.id} clubName={c.name} admin={false} onChanged={load} onError={(t) => setMsg({ text: t, ok: false })} />
+            ))}
+          </div>
+        </Section>
+      )}
       {msg && <p className={cn('px-1 text-small', msg.ok ? 'text-(--accent)' : 'text-(--danger)')} role="status">{msg.text}</p>}
       {c && c.kind === 'club' && (!member || view === 'members') && <FeatureSwitch clubId={c.id} />}
       {c && member && (
@@ -337,7 +347,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
                 </section>
               )}
               {c.meetups && c.meetups.length > 0 && (
-                <MeetupCard m={c.meetups[0]} clubId={c.id} admin={admin} onChanged={load} onError={(t) => setMsg({ text: t, ok: false })} />
+                <RunCard m={c.meetups[0]} clubId={c.id} clubName={c.name} admin={admin} onChanged={load} onError={(t) => setMsg({ text: t, ok: false })} onOrganize={setOrganize} />
               )}
               <CommunityFeed imperial={imperial} clubId={c.id} clubName={c.name} />
             </>
@@ -345,15 +355,16 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
           {view === 'meetups' && (
             <>
               {admin && (
-                <Button variant="primary" className="h-11 gap-1.5 text-small" onClick={() => setSheet('meetup')}>
-                  <Plus className="size-5" /> Plan a meetup
+                <Button variant="primary" className="h-12 gap-1.5 text-body" onClick={() => setSheet('meetup')}>
+                  <Plus className="size-5" /> Post a club run
                 </Button>
               )}
+              {admin && <ClubDashboardCard clubId={c.id} onRequests={() => setView('members')} />}
               {(c.meetups ?? []).length === 0 ? (
-                <EmptyRabbit size={48} mode="peek" title="No meetups planned"
-                  body={admin ? 'Plan a group run or ride: when, where and the pace.' : 'When an admin plans one, it shows up here.'} />
+                <EmptyRabbit size={48} mode="peek" title="No club runs yet"
+                  body={admin ? 'Post a group run or ride: when, where and the pace groups. Takes 30 seconds.' : 'When an organizer posts one, it shows up here.'} />
               ) : (c.meetups ?? []).map((m) => (
-                <MeetupCard key={m.id} m={m} clubId={c.id} admin={admin} onChanged={load} onError={(t) => setMsg({ text: t, ok: false })} />
+                <RunCard key={m.id} m={m} clubId={c.id} clubName={c.name} admin={admin} onChanged={load} onError={(t) => setMsg({ text: t, ok: false })} onOrganize={setOrganize} />
               ))}
             </>
           )}
@@ -483,110 +494,11 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
       )}
       {sheet === 'edit' && c && <ClubSheet initial={c} onClose={() => setSheet(null)} onSaved={() => { setSheet(null); void load() }} />}
       {sheet === 'invite' && c && <InviteSheet club={c} onClose={() => { setSheet(null); void load() }} />}
-      {sheet === 'meetup' && c && <MeetupSheet clubId={c.id} onClose={() => setSheet(null)} onSaved={() => { setSheet(null); setMsg({ text: 'Meetup planned. Members can RSVP now.', ok: true }); void load() }} />}
+      {sheet === 'meetup' && c && <RunSheet clubId={c.id} privateClub={c.visibility === 'private'} onClose={() => setSheet(null)}
+        onSaved={(m) => { setSheet(null); setMsg({ text: m.see === 'public' ? 'Club run posted. Tap Organize to copy the link.' : 'Club run posted. Members can RSVP now.', ok: true }); void load() }} />}
+      {organize && c && <OrganizeSheet clubId={c.id} run={organize} onClose={() => setOrganize(null)} onChanged={() => void load()} />}
       {sheet === 'challenge' && c && <ChallengeSheet clubId={c.id} imperial={imperial} onClose={() => setSheet(null)} onStarted={(d) => { setSheet(null); setC(d); setMsg({ text: 'Club challenge on! Everyone can join.', ok: true }) }} />}
     </Screen>
-  )
-}
-
-function MeetupCard({ m, clubId, admin, onChanged, onError }: {
-  m: Meetup; clubId: string; admin: boolean; onChanged: () => void; onError: (t: string) => void
-}) {
-  const [mt, setMt] = useState(m)
-  const [busy, setBusy] = useState(false)
-  useEffect(() => setMt(m), [m])
-  async function rsvp(status: 'going' | 'maybe', el: HTMLElement) {
-    setBusy(true)
-    try {
-      const next = mt.my_rsvp === status ? 'none' : status
-      const r = await rsvpMeetup(clubId, mt.id, next)
-      setMt(r.meetup)
-      if (next === 'going') burst(el, 'kudos')
-    } catch (e) { onError((e as Error).message) } finally { setBusy(false) }
-  }
-  async function cancel() {
-    if (!(await confirmAsk(`Cancel "${mt.title}"?`, { detail: "Anyone who said they're going gets a heads-up.", confirm: 'Cancel it', cancel: 'Keep it', danger: true }))) return
-    try { await deleteMeetup(clubId, mt.id); onChanged() } catch (e) { onError((e as Error).message) }
-  }
-  const going = mt.going.filter((u): u is SocialUser => !!u)
-  return (
-    <Card className="flex flex-col gap-2 p-3.5">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-meta font-semibold text-(--accent)">{mt.next ? meetupWhen(mt.next) : ''}
-            {mt.repeat === 'weekly' && <span className="ml-1.5 inline-flex items-center gap-0.5 font-normal text-(--text-muted)"><Repeat className="size-3.5" />weekly</span>}
-          </p>
-          <p className="text-lead font-medium text-(--text)">{mt.title}</p>
-          <p className="flex items-center gap-1 text-meta text-(--text-secondary)"><MapPin className="size-4 shrink-0" />{mt.where}</p>
-          <p className="text-meta text-(--text-muted)">{[LEVEL_LABEL[mt.level], mt.pace].filter(Boolean).join(' · ')}</p>
-          {mt.notes && <p className="mt-1 text-small text-(--text-secondary)">{mt.notes}</p>}
-        </div>
-        {(admin || mt.mine) && (
-          <Button variant="ghost" className="h-11 w-11 shrink-0 p-0" aria-label="Cancel meetup" onClick={() => void cancel()}><Trash2 className="size-5" /></Button>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="flex -space-x-1.5">{going.slice(0, 6).map((u) => <PersonAvatar key={u.id} u={u} size={24} />)}</span>
-        <span className="flex-1 text-meta text-(--text-muted)">
-          {going.length ? `${going.length} going` : 'Be the first'}{mt.maybe ? ` · ${mt.maybe} maybe` : ''}
-        </span>
-        <Button variant={mt.my_rsvp === 'maybe' ? 'primary' : 'default'} className="h-11 px-3 text-meta" disabled={busy}
-          aria-pressed={mt.my_rsvp === 'maybe'} onClick={(e) => void rsvp('maybe', e.currentTarget)}>Maybe</Button>
-        <Button variant={mt.my_rsvp === 'going' ? 'primary' : 'default'} className="h-11 gap-1 px-3 text-meta" disabled={busy}
-          aria-pressed={mt.my_rsvp === 'going'} onClick={(e) => void rsvp('going', e.currentTarget)}>
-          {mt.my_rsvp === 'going' && <Check className="size-4" />} Going
-        </Button>
-      </div>
-    </Card>
-  )
-}
-
-function MeetupSheet({ clubId, onClose, onSaved }: { clubId: string; onClose: () => void; onSaved: () => void }) {
-  const tomorrow = new Date(Date.now() + 86400000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  type M = { title: string; start: string; weekly: boolean; place: string; pace: string; level: Level; notes: string }
-  const [m, setM, draft] = useDraft<M>(`meetup.${clubId}`, () => ({ title: '', weekly: false, place: '', pace: '', level: 'all', notes: '',
-    start: `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T07:00` }), { label: 'meetup' })
-  const { title, start, weekly, place, pace, level, notes } = m
-  const setTitle = (title: string) => setM((x) => ({ ...x, title }))
-  const setStart = (start: string) => setM((x) => ({ ...x, start }))
-  const setWeekly = (weekly: boolean) => setM((x) => ({ ...x, weekly }))
-  const setPlace = (place: string) => setM((x) => ({ ...x, place }))
-  const setPace = (pace: string) => setM((x) => ({ ...x, pace }))
-  const setLevel = (level: Level) => setM((x) => ({ ...x, level }))
-  const setNotes = (notes: string) => setM((x) => ({ ...x, notes }))
-  const guard = useUnsavedGuard(draft.dirty, draft.discard)
-  const [busy, setBusy] = useState(false)
-  const [queued, setQueued] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  async function save() {
-    setBusy(true); setErr(null); setQueued(false)
-    try {
-      await saveDurably({ method: 'POST', path: `/api/community/clubs/${encodeURIComponent(clubId)}/meetups`, label: 'meetup',
-        body: { title: title.trim(), start, repeat: weekly ? 'weekly' : 'none', where: place.trim(), pace: pace.trim(), level, notes: notes.trim() } },
-      () => setQueued(true))
-      draft.clear()
-      onSaved()
-    } catch (e) { setErr((e as Error).message) } finally { setBusy(false); setQueued(false) }
-  }
-  return (
-    <Sheet title="Plan a meetup" onClose={guard.wrap(onClose)} extra={guard.dialog}>
-      {draft.restored && <DraftRestored onDiscard={draft.discard} />}
-      <Field label="What"><input className={inputCls} maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Saturday long run" /></Field>
-      <Field label="When"><input type="datetime-local" className={inputCls} value={start} onChange={(e) => setStart(e.target.value.slice(0, 16))} /></Field>
-      <Field label="Repeats">
-        <Choice label="Repeats" value={weekly ? 'weekly' : 'none'} options={[['none', 'Just once'], ['weekly', 'Every week']]} onChange={(v) => setWeekly(v === 'weekly')} />
-      </Field>
-      <Field label="Where" hint="A park, shop or public meeting spot. Never a home address.">
-        <input className={inputCls} maxLength={120} value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Wash Park boathouse" />
-      </Field>
-      <Field label="Level"><Choice label="Level" value={level} options={LEVELS} onChange={setLevel} /></Field>
-      <Field label="Pace (optional)"><input className={inputCls} maxLength={40} value={pace} onChange={(e) => setPace(e.target.value)} placeholder="9:30–10:00 /mi, no-drop" /></Field>
-      <Field label="Notes (optional)"><input className={inputCls} maxLength={200} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Coffee after at Steam" /></Field>
-      {queued && <SaveStatus state="queued" />}
-      {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
-      <Button variant="primary" className="h-11 text-body" loading={busy} disabled={!title.trim() || !place.trim() || !start} onClick={() => void save()}>Plan it</Button>
-    </Sheet>
   )
 }
 
