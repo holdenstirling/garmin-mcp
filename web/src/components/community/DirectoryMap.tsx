@@ -1,126 +1,104 @@
-// "Clubs & leagues near you" -> Map: a light, dependency-free plot of geocoded public meet
-// spots around the metro centre (SVG, no tiles, nothing leaves the app), a list of the mapped
-// groups as real buttons (the accessible way to pick one), and for the picked group its card
-// plus an opt-in OpenStreetMap street map (one iframe, loaded only on tap; CSP frame-src allows
-// www.openstreetmap.org). The List view stays the primary view.
+// "Clubs & leagues near you" -> Map: a real street map (components/local/SlippyMap, OSM tiles)
+// with a pin per group at its public meet spot, colored by activity. Tap a pin for its card;
+// after panning, "Search this area" narrows the list under the map to what's in view. The list
+// of mapped groups stays below as real buttons: the accessible way to pick one.
 import { useMemo, useState } from 'react'
-import { ExternalLink, Map as MapIcon } from 'lucide-react'
+import { ExternalLink, Search } from 'lucide-react'
 import { ACTIVITY_ICON } from '@/components/local/ActivityIcon'
+import { SlippyMap, type Bounds, type MapPin } from '@/components/local/SlippyMap'
 import { cn } from '@/lib/utils'
-import { nextLabel, osmEmbedUrl, osmLink, type DirListing } from '@/lib/clubdir'
+import { nextLabel, osmLink, type DirListing } from '@/lib/clubdir'
+import type { ActivityId } from '@/lib/activity'
 
-type Pt = { l: DirListing; x: number; y: number }
-
-const W = 320
-const H = 220
-const PAD = 22
-
-function project(listings: DirListing[], center: { lat: number; lon: number } | null | undefined): { pts: Pt[]; c: { x: number; y: number } | null } {
-  const mapped = listings.filter((l) => typeof l.lat === 'number' && typeof l.lon === 'number')
-  const all = [...mapped.map((l) => [l.lat as number, l.lon as number] as const), ...(center ? [[center.lat, center.lon] as const] : [])]
-  if (!all.length) return { pts: [], c: null }
-  const lat0 = all.reduce((a, p) => a + p[0], 0) / all.length
-  const k = Math.cos((lat0 * Math.PI) / 180)
-  const xs = all.map((p) => p[1] * k)
-  const ys = all.map((p) => -p[0])
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys)
-  const span = Math.max(maxX - minX, (maxY - minY) * ((W - 2 * PAD) / (H - 2 * PAD)), 0.01)
-  const s = (W - 2 * PAD) / span
-  const ox = (W - (maxX - minX) * s) / 2, oy = (H - (maxY - minY) * s) / 2
-  const at = (lat: number, lon: number) => ({ x: ox + (lon * k - minX) * s, y: oy + (-lat - minY) * s })
-  return {
-    pts: mapped.map((l) => ({ l, ...at(l.lat as number, l.lon as number) })),
-    c: center ? at(center.lat, center.lon) : null,
-  }
+const TONE: Record<ActivityId, string> = {
+  run: 'run', trail: 'outdoor', ride: 'ride', swim: 'swim', tri: 'water', volleyball: 'other', pickleball: 'other',
+  soccer: 'other', basketball: 'other', climbing: 'outdoor', yoga: 'strength', other: 'other',
 }
+
+const inside = (b: Bounds, lat: number, lon: number) => lat <= b.north && lat >= b.south && lon >= b.west && lon <= b.east
 
 export function DirectoryMap({ listings, center, metroLabel, renderCard }: {
   listings: DirListing[]; center?: { lat: number; lon: number } | null; metroLabel: string
   renderCard: (l: DirListing) => React.ReactNode
 }) {
-  const { pts, c } = useMemo(() => project(listings, center), [listings, center])
+  const mapped = useMemo(() => listings.filter((l) => typeof l.lat === 'number' && typeof l.lon === 'number'), [listings])
   const [sel, setSel] = useState<string | null>(null)
-  const [street, setStreet] = useState(false)
-  const picked = pts.find((p) => p.l.id === sel)?.l ?? null
-  const unmapped = listings.length - pts.length
+  const [moved, setMoved] = useState<Bounds | null>(null)
+  const [area, setArea] = useState<Bounds | null>(null)
+  const picked = mapped.find((l) => l.id === sel) ?? null
+  const unmapped = listings.length - mapped.length
+  const shown = area ? mapped.filter((l) => inside(area, l.lat as number, l.lon as number)) : mapped
 
-  function pick(id: string) { setSel(id === sel ? null : id); setStreet(false) }
+  const pins: MapPin[] = useMemo(() => mapped.map((l) => {
+    const act = (l.activity ?? 'other') as ActivityId
+    const Icon = ACTIVITY_ICON[act]
+    const tone = TONE[act] ?? 'other'
+    return {
+      id: l.id, lat: l.lat as number, lon: l.lon as number,
+      label: `${l.name}${l.meet_spot ? `, meets at ${l.meet_spot}` : ''}`,
+      icon: <Icon className="size-[18px]" strokeWidth={2.25} aria-hidden />,
+      fg: `var(--sport-${tone}-bg)`, bg: `var(--sport-${tone})`,
+    }
+  }), [mapped])
 
-  if (!pts.length) {
+  if (!mapped.length) {
     return <p className="px-1 text-meta text-(--text-muted)">No meet spots on the map yet. The list has every group.</p>
   }
   return (
-    <div className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of ${pts.length} meet spots around ${metroLabel}. Pick a group from the list below the map.`}
-        className="w-full rounded-2xl border border-(--border) bg-(--bg-inset)">
-        {[1, 2, 3].map((i) => (
-          <g key={i} stroke="var(--border)" strokeWidth={1}>
-            <line x1={(W / 4) * i} y1={0} x2={(W / 4) * i} y2={H} />
-            {i < 3 && <line x1={0} y1={(H / 3) * i} x2={W} y2={(H / 3) * i} />}
-          </g>
-        ))}
-        {c && (
-          <g aria-hidden>
-            <circle cx={c.x} cy={c.y} r={5} fill="none" stroke="var(--text-muted)" strokeWidth={1.5} />
-            <text x={c.x + 8} y={c.y + 4} fontSize={12} fill="var(--text-muted)">{metroLabel.split(',')[0]}</text>
-          </g>
+    <div className="flex flex-col gap-3">
+      <div className="relative">
+        <SlippyMap pins={pins} center={center} selected={sel} onSelect={setSel} onMoved={setMoved} />
+        {moved && (
+          <button type="button" onClick={() => { setArea(moved); setMoved(null) }}
+            className="absolute left-1/2 top-3 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-(--bg-surface) px-4 text-small font-semibold text-(--text) shadow-md">
+            <Search className="size-4" aria-hidden /> Search this area
+          </button>
         )}
-        {pts.map((p) => {
-          const on = p.l.id === sel
-          // Each pin shows its activity (a volleyball league is a volleyball, a ride a bike).
-          const Icon = ACTIVITY_ICON[p.l.activity ?? 'other']
-          const r = on ? 13 : 11
+      </div>
+      <p className="sr-only">Map of {mapped.length} meet spots around {metroLabel}. The list below has the same groups.</p>
+      {picked && (
+        <div className="flex flex-col gap-2" aria-live="polite">
+          {renderCard(picked)}
+          <a href={osmLink(picked.lat as number, picked.lon as number)} target="_blank" rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-meta text-(--text-secondary)">
+            Open in OpenStreetMap <ExternalLink className="size-4" aria-hidden />
+          </a>
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 px-1">
+        <p className="m-0 text-small text-(--text-secondary)">
+          {area ? `${shown.length} in this area` : `${mapped.length} on the map`}
+        </p>
+        {area && (
+          <button type="button" onClick={() => setArea(null)} className="min-h-11 px-2 text-small font-semibold text-(--accent)">Show all</button>
+        )}
+      </div>
+      <ul className="flex flex-col gap-2" aria-label="Groups on the map">
+        {shown.map((l) => {
+          const I = ACTIVITY_ICON[l.activity ?? 'other']
+          const when = nextLabel(l.next)
           return (
-            <g key={p.l.id} onClick={() => pick(p.l.id)} className="cursor-pointer" aria-hidden>
-              <circle cx={p.x} cy={p.y} r={20} fill="transparent" />
-              <circle cx={p.x} cy={p.y} r={r} fill={on ? 'var(--brand)' : 'var(--accent)'} stroke="var(--bg-surface)" strokeWidth={1.5} />
-              <Icon x={p.x - r * 0.6} y={p.y - r * 0.6} width={r * 1.2} height={r * 1.2} color="var(--on-fill)" strokeWidth={2.25} />
-            </g>
+            <li key={l.id}>
+              <button type="button" aria-pressed={l.id === sel} onClick={() => setSel(l.id === sel ? null : l.id)}
+                className={cn('flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left',
+                  l.id === sel ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
+                <I className="size-5 shrink-0 text-(--accent)" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body leading-snug text-(--text)">{l.name}</span>
+                  {when && <span className="block text-meta text-(--text-muted)">{when}</span>}
+                  {l.meet_spot && <span className="block text-meta text-(--text-muted)">{l.meet_spot}</span>}
+                </span>
+              </button>
+            </li>
           )
         })}
-      </svg>
-      <ul className="flex flex-col gap-1" aria-label="Groups on the map">
-        {pts.map(({ l }) => (
-          <li key={l.id}>
-            <button type="button" aria-pressed={l.id === sel} onClick={() => pick(l.id)}
-              className={cn('flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left',
-                l.id === sel ? 'border-(--accent) bg-(--accent-subtle)' : 'border-(--border) bg-(--bg-surface)')}>
-              {(() => { const I = ACTIVITY_ICON[l.activity ?? 'other']; return <I className="size-5 shrink-0 text-(--accent)" aria-hidden /> })()}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body text-(--text)">{l.name}</span>
-                <span className="block truncate text-meta text-(--text-muted)">
-                  {[nextLabel(l.next), l.meet_spot].filter(Boolean).join(' · ')}
-                </span>
-              </span>
-            </button>
-          </li>
-        ))}
       </ul>
       {unmapped > 0 && (
         <p className="px-1 text-caption text-(--text-muted)">
           {unmapped} more {unmapped === 1 ? 'group has' : 'groups have'} no mapped meet spot. They're in the list.
         </p>
       )}
-      {picked && typeof picked.lat === 'number' && typeof picked.lon === 'number' && (
-        <div className="flex flex-col gap-2" aria-live="polite">
-          {renderCard(picked)}
-          {street ? (
-            <iframe title={`Street map: ${picked.meet_spot || picked.name}`} src={osmEmbedUrl(picked.lat, picked.lon)}
-              loading="lazy" referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"
-              className="h-56 w-full rounded-2xl border border-(--border)" />
-          ) : (
-            <button type="button" onClick={() => setStreet(true)}
-              className="inline-flex min-h-11 items-center gap-1.5 self-start text-small font-medium text-(--accent)">
-              <MapIcon className="size-4" aria-hidden /> Show street map
-            </button>
-          )}
-          <a href={osmLink(picked.lat, picked.lon)} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-meta text-(--text-secondary)">
-            Open in OpenStreetMap <ExternalLink className="size-4" aria-hidden />
-          </a>
-          <p className="text-caption text-(--text-muted)">Map © OpenStreetMap contributors. Meet spots are approximate.</p>
-        </div>
-      )}
+      <p className="px-1 text-caption text-(--text-muted)">Meet spots are approximate.</p>
     </div>
   )
 }

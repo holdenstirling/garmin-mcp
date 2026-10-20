@@ -119,7 +119,7 @@ CSP = "; ".join([
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",  # React/Radix set inline style attributes
-    "img-src 'self' data: blob: https://lh3.googleusercontent.com",  # blob: composer previews
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://tile.openstreetmap.org",  # blob: composer previews; OSM tiles for the Local map
     "font-src 'self'",
     "connect-src 'self'",
     "manifest-src 'self'",
