@@ -13,6 +13,13 @@ export type IntentView = {
   options: { id: Intent; title: string; help: string }[]
 }
 
+/** The two big reasons people come (the welcome's first choice); "More reasons" shows the rest. */
+export const QUICK_STARTS: { id: 'local' | 'plan' | 'both'; title: string; help: string; intents: Intent[] }[] = [
+  { id: 'local', title: 'Find things to do near me', help: 'Clubs, group runs, leagues and events, or start your own', intents: ['events', 'community'] },
+  { id: 'plan', title: 'Get a training plan', help: 'For a race or just to get fitter, and it moves when life does', intents: ['train'] },
+  { id: 'both', title: 'Both', help: 'A plan, plus people and places to train with', intents: ['train', 'events', 'community'] },
+]
+
 /** Card copy (same as intent.INTENTS on the server). No em dashes in copy. */
 export const INTENT_OPTIONS: { id: Intent; title: string; help: string }[] = [
   { id: 'train', title: 'Train for a goal or race', help: 'A plan that adapts to real life, synced to your watch' },
@@ -103,7 +110,7 @@ export function intentSuggestions(intents: readonly Intent[], fallback: string[]
 
 // --------------------------------------------------------- "Here's your Rabbit" ---
 /** Where the welcome's primary button goes: a setup quest, or the Progress tab. */
-export type NextStep = 'garmin' | 'plan' | 'interests' | 'friend' | 'coach_status' | 'progress'
+export type NextStep = 'garmin' | 'plan' | 'interests' | 'friend' | 'coach_status' | 'progress' | 'local'
 export type WelcomePlan = { bullets: string[]; next: { step: NextStep; label: string } | null }
 
 const BULLET: Record<Intent, string> = {
@@ -125,7 +132,7 @@ export function welcomePlan(intents: readonly Intent[], ctx: { garmin: boolean; 
     case 'train': next = !ctx.hasPlan ? { step: 'plan', label: 'Build my plan' } : ctx.garmin ? null : garmin; break
     case 'consistent': next = ctx.garmin ? { step: 'progress', label: 'See my streak' } : garmin; break
     case 'community': next = { step: 'friend', label: 'Find my people' }; break
-    case 'events': next = { step: 'interests', label: "Pick what I'm into" }; break
+    case 'events': next = { step: 'local', label: "See what's near me" }; break
     case 'coach': next = { step: 'coach_status', label: 'Find a coach' }; break
     default: next = ctx.garmin ? null : garmin
   }

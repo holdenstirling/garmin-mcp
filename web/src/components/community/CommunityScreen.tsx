@@ -25,6 +25,9 @@ import { getCommunityHome, listGroups, type Featured, type FeedGroup } from '@/l
 import { FeaturedStrip } from './Featured'
 import { GroupPage, GroupSheet } from './Groups'
 import { openFindFriends } from '@/lib/friends'
+import { openNewEvent } from '@/lib/events'
+import { Button } from '@/components/ui/button'
+import { CalendarPlus, UserPlus } from 'lucide-react'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -53,6 +56,16 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Clubs, leagues and meetups near you'}
       headerExtra={section === 'clubs' ? <Segmented label="Local" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
         options={[['clubs', 'Near you'], ['people', 'People']] as const} /> : undefined}>
+      {view === 'clubs' && (
+        <div className="flex gap-2">
+          <Button variant="primary" className="h-12 flex-1 text-body" onClick={openNewEvent}>
+            <CalendarPlus className="size-5" aria-hidden /> Create an event
+          </Button>
+          <Button variant="default" className="h-12 px-4 text-body" onClick={() => openFindFriends()}>
+            <UserPlus className="size-5" aria-hidden /> Friends
+          </Button>
+        </div>
+      )}
       {view === 'clubs' && featured && featured.length > 0 && (
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
