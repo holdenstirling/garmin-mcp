@@ -195,6 +195,7 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
           {tiles.map((t) => (
             <img key={t.key} src={t.src} alt="" width={TILE} height={TILE} draggable={false} decoding="async"
               referrerPolicy="strict-origin-when-cross-origin" className="absolute max-w-none"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }}
               style={{ left: t.x, top: t.y, width: TILE, height: TILE }} />
           ))}
         </div>
@@ -213,7 +214,7 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
           )
         })}
       </div>
-      <div className="absolute right-2 top-2 flex flex-col gap-2">
+      <div className="absolute right-2 top-2 z-20 flex flex-col gap-2">
         <button type="button" aria-label="Zoom in" onClick={() => zoomBy(1)}
           className="flex size-11 items-center justify-center rounded-xl bg-(--bg-surface) text-(--text) shadow-md active:bg-(--bg-inset)">
           <Plus className="size-5" aria-hidden />
@@ -227,7 +228,7 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
           <LocateFixed className="size-5" aria-hidden />
         </button>
       </div>
-      <p className="absolute bottom-0 right-0 rounded-tl-lg bg-(--bg-surface)/90 px-2 py-0.5 text-caption text-(--text-secondary)">
+      <p className="absolute bottom-0 right-0 z-20 rounded-tl-lg bg-(--bg-surface)/90 px-2 py-0.5 text-caption text-(--text-secondary)">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" className="underline">OpenStreetMap</a> contributors
       </p>
     </div>
