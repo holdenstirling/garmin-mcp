@@ -405,3 +405,24 @@ def test_http_club_run_flow(env, tmp_path) -> None:
         for x in [*c.values(), anon]:
             await x.aclose()
     asyncio.run(go())
+
+
+def test_leaderboards_are_opt_in_scoped_and_hide_blocked(cx) -> None:
+    from garmin_mcp import challenges as chm
+    from tests.test_challenges import history
+    now = datetime(2026, 10, 14, 9, 0, tzinfo=NOON.tzinfo)
+    chal = chm.Challenges(cx.store, now=lambda u: now, activities=lambda u: (now.date(), history()),
+                          athlete=lambda u: {"favorite_sports": ["run"]}, names=lambda u: u.title(),
+                          blocked=cx.soc.blocked_between)
+    g = cx.grp.create("ann", {"name": "Crew"})
+    for u in ("cat", "dan"):
+        cx.grp.join(u, g["id"])
+    sug = chal.get("ann")["periods"]["week"]["suggestions"][0]
+    gid = chal.start_club("ann", sug["template"], "week", g["id"], max_people=500)["id"]
+    # Only people who joined are on the board (dan is a member but didn't join).
+    chal.join_club("cat", gid, g["id"])
+    names = {r["user_id"] for r in chal.club_view("dan", [gid], g["id"])[0]["leaders"]}
+    assert names == {"ann", "cat"}
+    cx.soc.block("cat", "ann")
+    assert {r["user_id"] for r in chal.club_view("cat", [gid], g["id"])[0]["leaders"]} == {"cat"}
+    assert {r["user_id"] for r in chal.club_view("ann", [gid], g["id"])[0]["leaders"]} == {"ann"}

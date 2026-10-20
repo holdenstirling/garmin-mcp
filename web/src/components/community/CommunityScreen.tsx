@@ -15,9 +15,11 @@ import {
   type CommunitySettings, type MilestoneType, type Usage,
 } from '@/lib/community'
 import { ClubsTab } from './Clubs'
+import { NearbyRuns, PostRunButton } from './LocalRuns'
 import { CommunityFeed } from './Feed'
 import { PeopleSection } from './People'
 import { BuddiesSection } from './Buddies'
+import { BuddyCheckCard } from './BuddyCheck'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { markSeen } from '@/lib/unread'
 import { Sheet } from '@/components/ui/Sheet'
@@ -43,6 +45,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
   const [group, setGroup] = useState<string | null>(null)
   const [newGroup, setNewGroup] = useState(false)
   const [groupsKey, setGroupsKey] = useState(0)
+  const [runsKey, setRunsKey] = useState(0)
   const openClub = (id: string) => { onClub(id); onView('clubs') }
   useEffect(() => {
     let live = true
@@ -57,10 +60,14 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       headerExtra={section === 'clubs' ? <Segmented label="Local" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
         options={[['clubs', 'Near you'], ['people', 'People']] as const} /> : undefined}>
       {view === 'clubs' && (
-        <Button variant="primary" className="h-12 w-full text-body" onClick={openNewEvent}>
-          <CalendarPlus className="size-5" aria-hidden /> Create an event
-        </Button>
+        <div className="flex flex-col gap-2">
+          <PostRunButton onPosted={() => setRunsKey((k) => k + 1)} />
+          <Button variant="ghost" className="h-11 w-full gap-1.5 text-body" onClick={openNewEvent}>
+            <CalendarPlus className="size-5" aria-hidden /> Create an event
+          </Button>
+        </div>
       )}
+      {view === 'clubs' && <NearbyRuns refreshKey={runsKey} />}
       {view === 'clubs' && featured && featured.length > 0 && (
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
@@ -70,6 +77,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {newGroup && <GroupSheet onClose={() => setNewGroup(false)}
         onSaved={(g) => { setNewGroup(false); setGroupsKey((k) => k + 1); setGroup(g.id) }} />}
       {group && <GroupPage id={group} imperial={imperial} onClose={() => setGroup(null)} onChanged={() => setGroupsKey((k) => k + 1)} />}
+      {view === 'people' && <BuddyCheckCard />}
       {view === 'people' && <BuddiesSection imperial={imperial} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
       {view === 'people' && <BlocksEntry compact />}

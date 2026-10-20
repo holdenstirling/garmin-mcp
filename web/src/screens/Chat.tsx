@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ASK_EVENT } from '@/lib/askrabbt'
 import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
 import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
@@ -105,6 +106,7 @@ import { Tour } from '@/components/onboarding/Tour'
 import { SEARCH_OPEN_EVENT, type SearchPick } from '@/lib/search'
 import { cn } from '@/lib/utils'
 import { HomeStart } from '@/components/home/HomeStart'
+import { NearTonight } from '@/components/home/NearTonight'
 import { NEW_EVENT_EVENT } from '@/lib/events'
 import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
 import { CircleQuestionMark } from 'lucide-react'
@@ -383,6 +385,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setTab('rabbit')
     setHomeView('chat')
   }
+  // "Ask why" buttons deep in a screen (lib/askrabbt) prefill the chat the same way.
+  const tellRef = useRef(tellRabbit)
+  tellRef.current = tellRabbit
+  useEffect(() => {
+    const on = (e: Event) => tellRef.current(String((e as CustomEvent<string>).detail ?? ''))
+    window.addEventListener(ASK_EVENT, on)
+    return () => window.removeEventListener(ASK_EVENT, on)
+  }, [])
   const builtPlan = goal?.plan_source === 'builder'
   const showScreen = (sc: PlanScreen) => pushPage({ k: 'screen', s: sc })
   const startSetup = () => showScreen('setup')
@@ -1178,6 +1188,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 planLine={upnext?.session ? `Today: ${upnext.session.title}${upnext.session.minutes ? `, ${upnext.session.minutes} min` : ''}` : null}
                 onLocal={() => openCommunity('clubs')} onNewEvent={newEvent} onPlan={openPlan} onSetup={startSetup} />
             )}
+            {athlete && <NearTonight hasPlan={builtPlan} refreshKey={feedTick} onOpenClub={(c) => openCommunity('clubs', c)}
+              onPlanChanged={() => { loadToday(); loadWeek() }} />}
 
             {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
             <div className="flex flex-col gap-3 empty:hidden">

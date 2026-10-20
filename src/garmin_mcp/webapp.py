@@ -3448,7 +3448,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
     # live progress, XP via progress bonus keys "challenge:<id>", friend invites need an
     # active follow edge (social.py). Athletes only; coach accounts get 403 from _api.
     from . import challenges as _chal
-    chal = (_chal.for_agent(chat.agent, follows=(soc.follows if soc is not None else None), names=_soc_name)
+    chal = (_chal.for_agent(chat.agent, follows=(soc.follows if soc is not None else None), names=_soc_name,
+                             blocked=(soc.blocked_between if soc is not None else None))
             if chat is not None and store is not None else None)
 
     def _challenge_bonus(uid: str, acts: list[dict[str, Any]], today: date) -> dict[str, int]:

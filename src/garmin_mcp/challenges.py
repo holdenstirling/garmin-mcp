@@ -37,7 +37,9 @@ keep ``challenge:<id>``; +75 weekly, +150 monthly). A completed challenge can't 
 Friends: a joined challenge can be shared with athletes the owner follows (active edge).
 The global ``challenge_groups`` doc keys a group by the owner's challenge id; invitees see
 it in their challenges card and can join the same template/target. Only participants see
-the leaderboard (progress % and first names, nothing else). Each participant's % is stored on
+the leaderboard (progress % and first names, nothing else). Boards are opt-in (you're on one
+only by joining that challenge) and scoped to friends or one club; blocked people never appear
+on each other's boards. Each participant's % is stored on
 the group on their own refresh (``progress``), so a leaderboard never reads friends' Garmin.
 
 Storage: per user ``challenges`` doc ``{"joined": [...], "history": [...]}`` (history: last
@@ -421,8 +423,10 @@ class Challenges:
                  events: Callable[[str], list[dict[str, Any]]] = lambda uid: [],
                  follows: Callable[[str, str], bool] | None = None,
                  names: Callable[[str], str] = lambda uid: "Friend",
+                 blocked: Callable[[str, str], bool] = lambda a, b: False,
                  clock: Callable[[], float] = time.time) -> None:
         self._s = store
+        self._blocked = blocked
         self._now = now
         self._acts = activities
         self._athlete = athlete
@@ -600,6 +604,8 @@ class Challenges:
         rows = []
         stored = g.get("progress") or {}
         for p in g["participants"][:MAX_PARTICIPANTS]:
+            if p != uid and self._blocked(uid, p):
+                continue  # blocked either way: never on each other's boards
             # Friends' % comes from what they stored on their own refresh: reading another
             # athlete's Garmin here would spend their rate limit (and take seconds).
             if p == uid:
@@ -847,7 +853,7 @@ class Challenges:
             stored = g.get("progress") or {}
             board = sorted(({"user_id": p, "name": self._names(p),
                              "pct": stored.get(p) if isinstance(stored.get(p), int) else None, "me": p == uid}
-                            for p in g.get("participants", [])),
+                            for p in g.get("participants", []) if p == uid or not self._blocked(uid, p)),
                            key=lambda r: -(r["pct"] if r["pct"] is not None else -1))[:5]
             out.append({"id": gid, "name": g["name"], "period": g["period"], "period_end": g["period_end"],
                         "metric": g["metric"], "sport": g.get("sport"), "target": g["target"],
@@ -899,13 +905,15 @@ def _prev(period: str, start: date) -> date:
 
 
 def for_agent(agent: "Agent", *, follows: Callable[[str, str], bool] | None = None,
-              names: Callable[[str], str] | None = None) -> Challenges:
+              names: Callable[[str], str] | None = None,
+              blocked: Callable[[str, str], bool] | None = None) -> Challenges:
     """A ``Challenges`` wired to the agent's store, clock, cached activities, plan, check-ins
     and events."""
     return Challenges(agent._store, now=agent._now, activities=lambda uid: agent.stats.activities(uid),
                       athlete=agent.coach.athlete, plan=agent.plans.get,
                       checkins=lambda uid: agent.checkins.list(uid, 10), events=agent.events.list,
-                      follows=follows, names=names or (lambda uid: "Friend"), clock=agent._clock)
+                      follows=follows, names=names or (lambda uid: "Friend"),
+                      blocked=blocked or (lambda a, b: False), clock=agent._clock)
 
 
 __all__ = ["Challenges", "ChallengeError", "TEMPLATES", "XP", "MAX_JOINED", "period_bounds", "local_today",

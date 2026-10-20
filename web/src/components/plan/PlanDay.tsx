@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { RabbitNote } from '@/components/ui/brand'
 import { RabbitNap } from '@/components/anim'
 import { openEvent } from '@/lib/events'
+import { askRabbt } from '@/lib/askrabbt'
 import { cn } from '@/lib/utils'
 import { openActivity } from '@/lib/activitynav'
 import { fmtDist, fmtDuration } from '@/lib/format'
@@ -177,6 +178,18 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
           <CalendarDays className="size-4 shrink-0 text-(--accent)" aria-hidden />
           <span>From your events: <span className="font-medium text-(--accent) underline-offset-2 hover:underline">open the event</span></span>
         </button>
+      )}
+      {s.why && !(c?.adjusted && s.why.kind === 'readiness') && (
+        <div className="mx-4 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="flex min-w-0 flex-1 basis-56 items-start gap-1.5 text-small leading-snug text-(--text-secondary)">
+            <RabbitLogo size={14} current className="mt-0.5 shrink-0" />
+            <span><span className="font-semibold text-(--text)">Why this changed:</span> {s.why.text}</span>
+          </p>
+          <button type="button" onClick={() => askRabbt(`Why did ${s.title} on ${fmtDay(date)} change? `)}
+            className="inline-flex min-h-11 items-center gap-1 text-small font-semibold text-(--accent)">
+            <MessageCircle className="size-4" aria-hidden /> Ask why
+          </button>
+        </div>
       )}
       {c?.adjusted && (
         <p className="mx-4 mt-3 flex items-start gap-1.5 text-small leading-snug text-(--accent)">
