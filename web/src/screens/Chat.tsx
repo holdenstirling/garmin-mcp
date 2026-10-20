@@ -107,7 +107,7 @@ import { cn } from '@/lib/utils'
 import { HomeStart } from '@/components/home/HomeStart'
 import { NEW_EVENT_EVENT } from '@/lib/events'
 import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
-import { CircleHelp } from 'lucide-react'
+import { CircleQuestionMark } from 'lucide-react'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
@@ -1248,7 +1248,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             </Section>
             <button type="button" onClick={openHowItWorks}
               className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
-              <CircleHelp className="size-5" aria-hidden /> New here? How rabbt works
+              <CircleQuestionMark className="size-5" aria-hidden /> New here? How rabbt works
             </button>
           </div>
         </div>
