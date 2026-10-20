@@ -11,7 +11,7 @@ const RULES: [RegExp, string][] = [
   [/dates/i, '🌴'],
   [/fig bar|granola bar/i, '🍫'],
   [/applesauce/i, '🍎'],
-  [/rice cake/i, '🍘'],
+  [/rice cake/i, '🍚'],
   [/pb&j|peanut butter/i, '🥜'],
   [/bagel/i, '🥯'],
   [/oats/i, '🥣'],
