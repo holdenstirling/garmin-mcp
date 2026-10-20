@@ -29,7 +29,7 @@ export function BuddyCheckCard() {
   const backBy = s.active ? new Date(s.active.back_by * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null
   return (
     <Section title="Check-in buddy" description="Running alone? A friend hears when you head out and when you're back. No location is shared.">
-      <Card className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4 shadow-[var(--shadow-sm)]">
         {!s.buddy_user ? (
           <>
             <p className="text-small text-(--text-secondary)">Pick a friend who follows you back. They get a notification for each tap, and one if you're late.</p>
@@ -55,7 +55,7 @@ export function BuddyCheckCard() {
           </>
         )}
         {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
-      </Card>
+      </div>
       {pick && <PickBuddy current={s.buddy} onClose={() => setPick(false)} onPick={(id) => { setPick(false); void run(() => setBuddy(id)) }} />}
     </Section>
   )

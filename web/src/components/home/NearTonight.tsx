@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { MapPin, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
-import { Card } from '@/components/plan/ui'
 import { burst } from '@/components/anim'
 import { getNearbyRuns, meetupWhen, rsvpMeetup, runTags, type Meetup } from '@/lib/community'
 import { countClubRun } from '@/lib/plan'
@@ -45,7 +44,7 @@ export function NearTonight({ hasPlan, refreshKey = 0, onOpenClub, onPlanChanged
     <Section title="Near you tonight" description={hasPlan ? 'A club run today that could be your run.' : 'Club runs today you can join.'}>
       {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
       {runs.map((m) => (
-        <Card key={m.id} className="flex flex-col gap-2 p-4">
+        <div key={m.id} className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) p-4 shadow-[var(--shadow-sm)]">
           <button type="button" className="flex flex-col items-start gap-0.5 text-left" onClick={() => m.club && onOpenClub(m.club.id)}>
             <span className="text-meta font-semibold text-(--accent)">{m.next ? meetupWhen(m.next) : ''}
               {m.repeat === 'weekly' && <span className="ml-1.5 inline-flex items-center gap-0.5 font-normal text-(--text-muted)"><Repeat className="size-3.5" aria-hidden />weekly</span>}
@@ -64,7 +63,7 @@ export function NearTonight({ hasPlan, refreshKey = 0, onOpenClub, onPlanChanged
               {hasPlan ? "Swap today's run for this" : "I'm going"}
             </Button>
           )}
-        </Card>
+        </div>
       ))}
     </Section>
   )

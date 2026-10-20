@@ -213,7 +213,7 @@ def test_swap_replaces_a_planned_run_and_undoes(env) -> None:
     p = agent.plans.swap_for_club_run("friend", day, {"club_id": "gabc", "meetup_id": "m1", "title": "Social 5k",
                                                       "club": "Wash Park"})
     s = next(x for x in p["weeks"][1]["days"][day] if x.get("club_run"))
-    assert s["id"] == before["id"] and s["title"] == "Club run: Wash Park: Social 5k"
+    assert s["id"] == before["id"] and s["title"] == "Club run: Social 5k" and s["club_run"]["label"] == "Social 5k with Wash Park"
     assert s["kind"] in ("easy", "long") and s["minutes"] == before["minutes"]
     assert why_changed(s, p)["kind"] == "club"
     pub = public_plan(p, today)

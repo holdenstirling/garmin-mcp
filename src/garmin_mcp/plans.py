@@ -535,7 +535,8 @@ class PlanService:
             d0 = date.fromisoformat(day)
         except ValueError:
             raise PlanError("Pick the run's day.") from None
-        label = f"{str(run.get('club') or 'Club')[:40]}: {str(run.get('title') or 'club run')[:60]}"
+        name = str(run.get('title') or 'club run')[:60]
+        label = f"{name} with {str(run.get('club') or 'your club')[:40]}"
         ref = {"club_id": run.get("club_id"), "meetup_id": run.get("meetup_id"), "label": label}
         est = run.get("minutes") if isinstance(run.get("minutes"), int) and 15 <= run["minutes"] <= 300 else None
 
@@ -555,14 +556,14 @@ class PlanService:
                 kind = "long" if cur.get("kind") == "long" else "easy"
                 minutes = est or int(cur.get("minutes") or 45)
                 new = make_session("run", kind, minutes, swim_pace=swim_pace, phase=w["phase"])
-                new.update({"id": cur["id"], "title": f"Club run: {label}"[:80], "title_custom": True,
+                new.update({"id": cur["id"], "title": f"Club run: {name}"[:80], "title_custom": True,
                             "edited": True, "club_run": ref, "club_orig": {k: v for k, v in cur.items() if k != "garmin"}})
                 self._orphan(plan, cur)
                 sessions[idx] = new
             else:
                 minutes = est or 45
                 new = make_session("run", "easy", minutes, swim_pace=swim_pace, phase=w["phase"])
-                new.update({"title": f"Club run: {label}"[:80], "title_custom": True, "edited": True, "club_run": ref})
+                new.update({"title": f"Club run: {name}"[:80], "title_custom": True, "edited": True, "club_run": ref})
                 dropped = None
                 for dd in sorted(w["days"]):
                     if dd <= day or dd < today.isoformat():

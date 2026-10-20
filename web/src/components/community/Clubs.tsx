@@ -282,7 +282,7 @@ function ClubPage({ id, imperial, onClose }: { id: string; imperial: boolean; on
     catch { setMsg({ text: `The code is ${code}`, ok: true }) }
   }
   const tabs: [ClubView, string][] = c?.kind === 'race' ? [['feed', 'Feed'], ['members', 'Crew']]
-    : [['feed', 'Feed'], ['meetups', 'Meetups'], ['challenges', 'Challenges'], ['members', 'Members']]
+    : [['feed', 'Feed'], ['meetups', 'Runs'], ['challenges', 'Challenges'], ['members', 'Members']]
   const seg = member ? (
     <div role="tablist" aria-label="Club" className="no-scrollbar -mx-5 mt-1 flex gap-2 overflow-x-auto px-5 py-0.5">
       {tabs.map(([v, label]) => (

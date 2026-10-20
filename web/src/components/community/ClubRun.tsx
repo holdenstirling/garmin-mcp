@@ -28,6 +28,11 @@ import {
 import { Choice } from './Choice'
 import { PersonAvatar } from './Feed'
 
+/** A card surface without the row dividers Card adds (a run card is one block, not rows). */
+function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('rounded-xl border border-(--border) bg-(--bg-surface) shadow-[var(--shadow-sm)]', className)}>{children}</div>
+}
+
 const LEVEL_LABEL = Object.fromEntries(LEVELS) as Record<Level, string>
 const SEE_LABEL = Object.fromEntries(RUN_SEE) as Record<RunSee, string>
 
@@ -101,7 +106,7 @@ export function RunCard({ m, clubId, clubName, admin, onChanged, onError, onOrga
   const count_ = mt.count ?? going.length
   const day = mt.next ? new Date(mt.next).toLocaleDateString([], { weekday: 'long' }) : 'that day'
   return (
-    <Card className="flex flex-col gap-3 p-4">
+    <Panel className="flex flex-col gap-3 p-4">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-meta font-semibold text-(--accent)">{mt.next ? meetupWhen(mt.next) : ''}
@@ -188,7 +193,7 @@ export function RunCard({ m, clubId, clubName, admin, onChanged, onError, onOrga
           <p className="text-meta text-(--text-muted)">The organizers keep a record that you accepted it, with the date.</p>
         </Sheet>
       )}
-    </Card>
+    </Panel>
   )
 }
 
@@ -461,7 +466,7 @@ export function ClubDashboardCard({ clubId, onRequests }: { clubId: string; onRe
   return (
     <section className="flex flex-col gap-3" aria-label="Organizer dashboard">
       <h3 className="section-title text-title-sm">Organizer dashboard</h3>
-      <Card className="flex flex-col gap-4 p-4">
+      <Panel className="flex flex-col gap-4 p-4">
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Members" value={d.members} />
           <Stat label="Waiting to join" value={d.requests} onClick={d.requests ? onRequests : undefined} />
@@ -481,7 +486,7 @@ export function ClubDashboardCard({ clubId, onRequests }: { clubId: string; onRe
             <p className="text-caption text-(--text-muted)">Last {d.attendance.length} run dates</p>
           </div>
         ) : <p className="text-small text-(--text-muted)">Attendance shows here after your first run.</p>}
-      </Card>
+      </Panel>
     </section>
   )
 }
