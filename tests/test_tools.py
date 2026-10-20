@@ -12,23 +12,23 @@ from tests.conftest import make_service
 
 def test_execute_read_and_cache(provider, registry) -> None:
     svc = make_service(provider, registry)
-    out = svc.execute("andrew", "get_hrv_data", {"cdate": "2026-09-29"})
+    out = svc.execute("holden", "get_hrv_data", {"cdate": "2026-09-29"})
     assert out["result"]["hrvSummary"]["lastNightAvg"] == 62
-    svc.execute("andrew", "get_hrv_data", {"cdate": "2026-09-29"})
-    assert provider.sessions["andrew"].upstream_calls == 1  # second call cached
+    svc.execute("holden", "get_hrv_data", {"cdate": "2026-09-29"})
+    assert provider.sessions["holden"].upstream_calls == 1  # second call cached
 
 
 def test_execute_write_blocked_by_default(provider, registry) -> None:
     svc = make_service(provider, registry)
     with pytest.raises(GarminError, match="writes are disabled"):
-        svc.execute("andrew", "delete_activity", {"activity_id": "1"})
+        svc.execute("holden", "delete_activity", {"activity_id": "1"})
     assert ("delete_activity", {"activity_id": "1"}) not in provider.garmin.calls
-    assert provider.sessions["andrew"].upstream_calls == 0
+    assert provider.sessions["holden"].upstream_calls == 0
 
 
 def test_execute_write_allowed_when_enabled(provider, registry) -> None:
     svc = make_service(provider, registry, allow_writes=True)
-    svc.execute("andrew", "add_weigh_in", {"weight": 70.5})
+    svc.execute("holden", "add_weigh_in", {"weight": 70.5})
     assert ("add_weigh_in", {"weight": 70.5}) in provider.garmin.calls
 
 
@@ -36,8 +36,8 @@ def test_execute_blocked_methods_never_reach_client(provider, registry) -> None:
     svc = make_service(provider, registry, allow_writes=True)
     for name in ("login", "connectapi", "__init__", "get_sneaky"):
         with pytest.raises(GarminError):
-            svc.execute("andrew", name, {})
-    assert provider.sessions["andrew"].upstream_calls == 0
+            svc.execute("holden", name, {})
+    assert provider.sessions["holden"].upstream_calls == 0
 
 
 def test_unknown_user_gets_relogin_message(provider, registry) -> None:
@@ -48,21 +48,21 @@ def test_unknown_user_gets_relogin_message(provider, registry) -> None:
 
 def test_bulky_fields_dropped_unless_full(provider, registry) -> None:
     svc = make_service(provider, registry, max_bytes=10_000_000)
-    out = svc.execute("andrew", "get_activity_details", {"activity_id": "5"})
+    out = svc.execute("holden", "get_activity_details", {"activity_id": "5"})
     assert "_omitted" in out["result"]["geoPolylineDTO"]
     assert "_omitted" in out["result"]["activityDetailMetrics"]
     assert "geoPolylineDTO" in out["omitted_fields"]
-    full = svc.execute("andrew", "get_activity_details", {"activity_id": "5"}, full=True)
+    full = svc.execute("holden", "get_activity_details", {"activity_id": "5"}, full=True)
     assert len(full["result"]["activityDetailMetrics"]) == 3000
 
 
 def test_hrv_readings_dropped(provider, registry) -> None:
-    out = make_service(provider, registry).execute("andrew", "get_hrv_data", {"cdate": "2026-09-29"})
+    out = make_service(provider, registry).execute("holden", "get_hrv_data", {"cdate": "2026-09-29"})
     assert "_omitted" in out["result"]["hrvReadings"]
 
 
 def test_recent_activities_compact(provider, registry) -> None:
-    out = make_service(provider, registry).recent_activities("andrew", days=7)
+    out = make_service(provider, registry).recent_activities("holden", days=7)
     assert out["count"] == 2
     swim, run = out["activities"]
     assert swim["pool_length"] == "25.0 meter" and swim["strokes"] == 1100
@@ -72,10 +72,10 @@ def test_recent_activities_compact(provider, registry) -> None:
 
 
 def test_recent_activities_sport_filter(provider, registry) -> None:
-    make_service(provider, registry).recent_activities("andrew", days=3, sport="bike")
+    make_service(provider, registry).recent_activities("holden", days=3, sport="bike")
     assert provider.garmin.calls[-1][1]["activitytype"] == "cycling"
     with pytest.raises(GarminError, match="Unknown sport"):
-        make_service(provider, registry).recent_activities("andrew", sport="curling")
+        make_service(provider, registry).recent_activities("holden", sport="curling")
 
 
 # ------------------------------------------------------------- truncation --

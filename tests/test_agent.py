@@ -63,7 +63,7 @@ def registry() -> Registry:
 @pytest.fixture
 def env(tmp_path, fernet_key, registry):
     tokens = EncryptedFileTokenStore(tmp_path / "tokens", fernet_key)
-    tokens.save("friend", '{"fake": true}')  # friend has connected Garmin; andrew hasn't
+    tokens.save("friend", '{"fake": true}')  # friend has connected Garmin; holden hasn't
     store = AppStore(tmp_path / "app", fernet_key)
     service = GarminService(FakeGarminProvider(tokens, delay=0), registry, allow_writes=False,
                             cache=TTLCache(300), limiter=RateLimiter(100), max_response_bytes=60_000)
@@ -146,7 +146,7 @@ def test_unconnected_user_gets_reconnect_message(env) -> None:
         (["Please connect Garmin."], [], "end_turn"),
     ])
     events, emit = collect()
-    go(agent, "andrew", "hi", emit)
+    go(agent, "holden", "hi", emit)
     err = next(e for e in events if e["type"] == "tool-call-error")
     assert "Reconnect Garmin in rabbt" in err["error"]
     assert "garmin-mcp-login" not in err["error"]  # no server-operator instructions for app users
@@ -210,16 +210,16 @@ def test_users_are_isolated(env) -> None:
     agent, backend = env.agent([
         (["friend reply"], [], "end_turn"),
         ([], [tool_block("recent_activities", {})], "tool_use"),
-        (["andrew reply"], [], "end_turn"),
+        (["holden reply"], [], "end_turn"),
     ])
     go(agent, "friend", "friend secret question", lambda e: None)
     events, emit = collect()
-    go(agent, "andrew", "hello", emit)
-    andrew_ctx = json.dumps(backend.calls[1])
-    assert "friend secret question" not in andrew_ctx and "friend reply" not in andrew_ctx
-    # andrew has no Garmin tokens: friend's connection is never used for his calls
+    go(agent, "holden", "hello", emit)
+    holden_ctx = json.dumps(backend.calls[1])
+    assert "friend secret question" not in holden_ctx and "friend reply" not in holden_ctx
+    # holden has no Garmin tokens: friend's connection is never used for his calls
     assert any(e["type"] == "tool-call-error" for e in events)
-    assert [t["user"] for t in agent.history("andrew", tid(agent, "andrew"))] == ["hello"]
+    assert [t["user"] for t in agent.history("holden", tid(agent, "holden"))] == ["hello"]
     assert [t["user"] for t in agent.history("friend", tid(agent, "friend"))] == ["friend secret question"]
 
 
@@ -263,7 +263,7 @@ def test_runner_detaches_and_reattaches(env) -> None:
         turn = runner.start("friend", "hello", thread_id=tid(agent, "friend"))
         with pytest.raises(TurnBusy):
             runner.start("friend", "again", thread_id=tid(agent, "friend"))
-        runner.start("andrew", "independent", thread_id=tid(agent, "andrew"))
+        runner.start("holden", "independent", thread_id=tid(agent, "holden"))
 
         # client reads nothing and goes away (phone backgrounded)
         backend.gate.set()
@@ -275,7 +275,7 @@ def test_runner_detaches_and_reattaches(env) -> None:
         seen = [e async for e in runner.events(turn, 1) if e is not None]
         assert seen[0] == {"type": "text-delta", "text": "part two"}
         assert seen[-1]["type"] == "result"
-        assert runner.get("andrew", turn.id) is None  # bound to its user
+        assert runner.get("holden", turn.id) is None  # bound to its user
     asyncio.run(go())
 
 

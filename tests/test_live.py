@@ -76,7 +76,7 @@ def test_sync_baseline_throttle_and_new_activity(env) -> None:
 def test_sync_errors_are_friendly(env) -> None:
     fetch = Fetch()
     s = LiveSync(env.store, fetch, connected=lambda u: u == "friend", on_new=lambda u: None, clock=lambda: 0.0)
-    assert "error" in s.check("andrew") and fetch.calls == 0  # not connected: no Garmin call
+    assert "error" in s.check("holden") and fetch.calls == 0  # not connected: no Garmin call
     fetch.error = ReauthRequired("expired")
     out = s.check("friend")
     assert out["changed"] is False and "Reconnect" in out["error"]

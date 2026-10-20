@@ -89,7 +89,7 @@ def test_rate_limit_per_minute_and_day(svc) -> None:
     batch = {"events": [ev("app_open", clock)] * usage.MAX_BATCH}
     counted = [s.record("friend", batch) for _ in range(4)]
     assert counted == [50, 50, 20, 0]  # PER_MINUTE = 120
-    assert s.record("andrew", batch) == 50  # per person
+    assert s.record("holden", batch) == 50  # per person
     clock.t += 61
     assert s.record("friend", {"events": [ev("app_open", clock)] * 50}) == 50
     lim = usage.RateLimit(clock)
@@ -106,7 +106,7 @@ def test_daily_counts_and_unique_users(svc, tmp_path) -> None:
     s, clock = svc
     s.record("friend", {"events": [ev("card_tap", clock, card="upnext"), ev("card_tap", clock, card="upnext"),
                                    ev("tab_view", clock, tab="plan")]})
-    s.record("andrew", {"events": [ev("card_tap", clock, card="upnext"), ev("card_tap", clock, card="ring")]})
+    s.record("holden", {"events": [ev("card_tap", clock, card="upnext"), ev("card_tap", clock, card="ring")]})
     s.record("friend", {"events": [ev("app_open", clock)]})
     sm = s.summary()
     assert sm["now"] == {"date": "2026-03-02", "dau": 2, "wau": 2, "mau": 2}
@@ -117,7 +117,7 @@ def test_daily_counts_and_unique_users(svc, tmp_path) -> None:
     # nothing per event, no user ids in the global doc
     raw = s._store.global_doc("usage").load()
     text = str(raw)
-    assert "friend" not in text and "andrew" not in text
+    assert "friend" not in text and "holden" not in text
     assert set(raw) == {"salt", "seen", "days"}
     assert s._store.user_doc("friend", "usage").load() == {"first": "2026-03-02", "last": "2026-03-02"}
 
@@ -132,17 +132,17 @@ def test_covered_days() -> None:
 def test_rolling_actives_and_retention(svc) -> None:
     s, clock = svc
     a = lambda uid: s.record(uid, {"events": [ev("app_open", clock)]})  # noqa: E731
-    a("friend"); a("andrew")                       # day 0: both new
+    a("friend"); a("holden")                       # day 0: both new
     clock.days(1); a("friend")                     # day 1: friend back (d1)
-    clock.days(6); a("andrew")                     # day 7: andrew back (d7)
+    clock.days(6); a("holden")                     # day 7: holden back (d7)
     clock.days(1); a("carol")                      # day 8: carol new
     clock.days(2)                                  # day 10: nobody
     sm = s.summary()
     by = {r["date"]: r for r in sm["series"]}
     assert by["2026-03-02"]["dau"] == 2 and by["2026-03-03"]["dau"] == 1
-    # WAU on day 7 (Mar 9) = andrew (today) + friend (day 1): 2; day 8 (Mar 10) = andrew, carol (friend's day 1 aged out)
+    # WAU on day 7 (Mar 9) = holden (today) + friend (day 1): 2; day 8 (Mar 10) = holden, carol (friend's day 1 aged out)
     assert by["2026-03-09"]["wau"] == 2 and by["2026-03-10"]["wau"] == 2
-    assert by["2026-03-08"]["wau"] == 2  # friend (Mar 3) + andrew (Mar 2)
+    assert by["2026-03-08"]["wau"] == 2  # friend (Mar 3) + holden (Mar 2)
     assert by["2026-03-12"]["dau"] == 0 and by["2026-03-12"]["wau"] == 2 and by["2026-03-12"]["mau"] == 3
     r = sm["retention"]
     assert r["d1"] == {"cohort": 3, "returned": 1, "pct": 33}  # Mar 2 (2 new, 1 back) + carol (Mar 10, complete)
@@ -165,7 +165,7 @@ def test_salt_rotates_daily_and_old_hashes_go(svc) -> None:
     assert len(d2["seen"]) == len(d1["seen"])
     # old counters are pruned after KEEP_DAYS
     clock.days(usage.KEEP_DAYS + 5)
-    s.record("andrew", {"events": [ev("app_open", clock)]})
+    s.record("holden", {"events": [ev("app_open", clock)]})
     assert "2026-03-02" not in s._store.global_doc("usage").load()["days"]
 
 
@@ -190,7 +190,7 @@ def _app(env, tmp_path, user: str):  # noqa: F811
 
 
 def test_api_owner_only_coach_403_and_opt_outs(env, tmp_path) -> None:  # noqa: F811
-    owner, other = _app(env, tmp_path, "friend"), _app(env, tmp_path, "andrew")
+    owner, other = _app(env, tmp_path, "friend"), _app(env, tmp_path, "holden")
     coach = _app(env, tmp_path, coach_user_id("coach@example.com"))
     now = int(datetime.now(UTC).timestamp() * 1000)
     body = {"events": [{"name": "card_tap", "props": {"card": "upnext"}, "ts": now},
@@ -219,10 +219,10 @@ def test_api_owner_only_coach_403_and_opt_outs(env, tmp_path) -> None:  # noqa: 
             assert (await c.post("/app/api/usage", headers=H, json=body)).status_code == 403
             assert (await c.get("/app/api/usage/summary")).status_code == 403
             # "Don't count my usage": nothing counted, own dates forgotten
-            assert env.store.user_doc("andrew", "usage").load()
+            assert env.store.user_doc("holden", "usage").load()
             r = await n.put("/app/api/settings", headers=H, json={"usage_off": True})
             assert r.json()["usage_off"] is True
-            assert env.store.user_doc("andrew", "usage").load() == {}
+            assert env.store.user_doc("holden", "usage").load() == {}
             assert (await n.post("/app/api/usage", headers=H, json=body)).json() == {"counted": 0}
             assert (await o.get("/app/api/usage/summary")).json()["cards"][0]["taps"] == 1
     asyncio.run(go())

@@ -38,8 +38,8 @@ class _Garmin:
 def _session(tmp_path: Path, key: str) -> tuple[UnofficialSession, _Garmin, EncryptedFileTokenStore]:
     store = EncryptedFileTokenStore(tmp_path, key)
     g = _Garmin()
-    store.save("andrew", g.client.blob)
-    s = UnofficialSession("andrew", g, store, g.client.blob, sleep=lambda _: None)
+    store.save("holden", g.client.blob)
+    s = UnofficialSession("holden", g, store, g.client.blob, sleep=lambda _: None)
     return s, g, store
 
 
@@ -98,7 +98,7 @@ def test_auth_error_maps_to_relogin(tmp_path, fernet_key) -> None:
     def fn(g: Any) -> str:
         raise GarminConnectAuthenticationError("Authentication failed: API Error 401")
 
-    with pytest.raises(ReauthRequired, match="garmin-mcp-login --user andrew"):
+    with pytest.raises(ReauthRequired, match="garmin-mcp-login --user holden"):
         s.call(fn, {}, retry=True)
 
 
@@ -111,8 +111,8 @@ def test_refreshed_tokens_written_back_encrypted(tmp_path, fernet_key) -> None:
         return "ok"
 
     s.call(fn, {}, retry=True)
-    assert store.load("andrew") == new
-    assert b"di_refresh_token" not in (tmp_path / "andrew.fernet").read_bytes()
+    assert store.load("holden") == new
+    assert b"di_refresh_token" not in (tmp_path / "holden.fernet").read_bytes()
 
 
 def test_error_messages_do_not_leak_payload(tmp_path, fernet_key) -> None:
@@ -165,18 +165,18 @@ def test_cloudflare_block_reported_distinctly(tmp_path, fernet_key) -> None:
 
 def test_provider_without_tokens_asks_for_login(tmp_path, fernet_key) -> None:
     p = UnofficialProvider(EncryptedFileTokenStore(tmp_path, fernet_key))
-    with pytest.raises(ReauthRequired, match="garmin-mcp-login --user andrew"):
-        p.get_client("andrew")
+    with pytest.raises(ReauthRequired, match="garmin-mcp-login --user holden"):
+        p.get_client("holden")
 
 
 def test_external_relogin_not_clobbered(tmp_path, fernet_key) -> None:
     s, g, store = _session(tmp_path, fernet_key)
     relogin = '{"di_token": "fresh", "di_refresh_token": "fresh-r", "di_client_id": "c"}'
-    store.save("andrew", relogin)  # garmin-mcp-login ran while server was up
+    store.save("holden", relogin)  # garmin-mcp-login ran while server was up
 
     def fn(garmin: Any) -> str:
         garmin.client.blob = '{"di_token": "stale-refresh", "di_refresh_token": "x", "di_client_id": "c"}'
         return "ok"
 
     s.call(fn, {}, retry=True)
-    assert store.load("andrew") == relogin
+    assert store.load("holden") == relogin

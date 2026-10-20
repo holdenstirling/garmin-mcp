@@ -119,7 +119,7 @@ def test_workout_feedback_can_be_turned_off(env) -> None:
 
 
 def test_unconnected_users_are_skipped(env) -> None:
-    p = env.make(users=("friend", "andrew"))  # andrew has no Garmin tokens
+    p = env.make(users=("friend", "holden"))  # holden has no Garmin tokens
     p.tick()
     simulate_activity()
     p.tick()
@@ -240,11 +240,11 @@ def test_agent_delivery_runs_turn_and_pushes(env) -> None:
 
 def test_fast_poll_window_uses_each_users_time_zone(env, monkeypatch) -> None:
     from garmin_mcp.proactive import Proactive as P
-    p = env.make(users=("friend", "andrew"))
-    env.tokens.save("andrew", '{"fake": true}')
+    p = env.make(users=("friend", "holden"))
+    env.tokens.save("holden", '{"fake": true}')
     p._schedule = Schedule.parse("UTC", "5-9", 5)
     _profile(env, "friend", brief_enabled=False, timezone="America/Denver")
-    _profile(env, "andrew", brief_enabled=False, timezone="UTC")
+    _profile(env, "holden", brief_enabled=False, timezone="UTC")
     polled: list[str] = []
     monkeypatch.setattr(P, "poll", lambda self, u: polled.append(u) or {})
     env.clock.t = datetime(2026, 10, 12, 13, 5, tzinfo=UTC)  # 07:05 in Denver, 13:05 UTC

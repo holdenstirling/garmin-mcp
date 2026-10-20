@@ -113,7 +113,7 @@ def test_garmin_recovery_from_service() -> None:
     rec = garmin_recovery(Svc(), "friend", today)
     assert rec and rec["source"] == "garmin" and len(rec["days"]) == 3
     assert rec["latest"]["date"] == "2026-10-14" and rec["latest"]["readiness"] == 80
-    assert garmin_recovery(Svc(), "andrew", today) is None  # Garmin not connected
+    assert garmin_recovery(Svc(), "holden", today) is None  # Garmin not connected
 
 
 # ------------------------------------------------------------ selection ----
