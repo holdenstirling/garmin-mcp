@@ -40,3 +40,37 @@ jobs:
           fixed=$(comm -13 h.txt b.txt | head -c 8000 | enc)
           [ -n "$fixed" ] && echo "::notice title=pytest-fixed::$fixed" || true
           grep -q "error" head.txt && grep -E "^E |Error" head.txt | head -40 | enc > e.txt && echo "::warning title=pytest-errors::$(cat e.txt | head -c 20000)" || true
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: oven-sh/setup-bun@v2
+      - name: Build web
+        run: cd web && bun install --frozen-lockfile >/dev/null && ./node_modules/.bin/vite build >/dev/null
+      - name: Servers
+        run: |
+          uv sync -q
+          nohup uv run python .github/newbie-review/serve.py 8040 fresh /tmp/d1 > s1.log 2>&1 &
+          nohup uv run python .github/newbie-review/serve.py 8041 fresh2 /tmp/d2 > s2.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS localhost:8040/healthz >/dev/null 2>&1 && curl -fsS localhost:8041/healthz >/dev/null 2>&1 && break; sleep 1; done
+      - name: Walkthrough and audit
+        run: |
+          uv run --with playwright==1.55.0 python -m playwright install --with-deps chromium >/dev/null 2>&1
+          uv run --with playwright==1.55.0 python .github/newbie-review/walk.py || echo "::warning title=walk::walk.py failed"
+          tail -n 30 s1.log > shots/server.log || true
+      - name: Publish shots
+        run: |
+          src=$(git rev-parse --short HEAD)
+          cp -r shots "$RUNNER_TEMP/shots"
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git checkout -q --orphan review-newbie-shots && git rm -rfq . && git clean -fdxq
+          cp -r "$RUNNER_TEMP/shots/." . && git add -A && git commit -qm "newbie shots from $src" && git push -qf origin review-newbie-shots
+          echo "::notice title=shots::$(ls *.png | wc -l) shots from $src"

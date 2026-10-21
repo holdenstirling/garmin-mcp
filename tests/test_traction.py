@@ -164,8 +164,8 @@ def test_api_traction_heard_pulse(env, tmp_path) -> None:  # noqa: F811
             # DNT: nothing reaches traction either
             await n.post("/app/api/usage", headers={**H, "DNT": "1"}, json=body)
             assert env.store.user_doc("holden", "traction").load() == {}
-            n.cookies.set("rb_ref", "club:mile-high", domain="localhost", path="/app")
-            assert (await n.post("/app/api/usage", headers=H, json=body)).json()["counted"] == 2
+            r = await n.post("/app/api/usage", headers={**H, "cookie": "rb_ref=club:mile-high"}, json=body)
+            assert r.json()["counted"] == 2
             assert set(env.store.user_doc("holden", "traction").load()["firsts"]) == {"area_set", "rsvp"}
             assert (await n.post("/app/api/heard", headers=H, json={"source": "nope"})).status_code == 400
             assert (await n.post("/app/api/heard", headers=H, json={"source": "club"})).json() == {"ok": True}

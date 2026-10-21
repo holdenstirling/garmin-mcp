@@ -15,7 +15,7 @@ import type { ConnApp, ConnectRequest } from '@/lib/connections'
 import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
-import { getProgress, markProgressSeen, nextQuest, type Progress, type QuestId } from '@/lib/progress'
+import { getProgress, markProgressSeen, type Progress, type QuestId } from '@/lib/progress'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
@@ -1025,7 +1025,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const coachThread = coachId ? byId[coachId] : undefined
 
   // Rabbit's one status slot, most important first.
-  const quest = progress ? nextQuest(progress) : null
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
     : !me.garmin.connected && firstVisitHidden() && !calm ? { kind: 'garmin' }
@@ -1037,7 +1036,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (banner.kind === 'error') void refreshThreads(threadsError?.select)
     else if (banner.kind === 'garmin') setConnect({ app: 'garmin' })
     else if (banner.kind === 'plan') startSetup()
-    else if (banner.kind === 'quest' && quest) doQuest(quest.id)
     else if (banner.kind === 'recap') openRecap(recapPillWeek ?? undefined)
   }
   // Typing on a phone: the keyboard needs the room, so the banner, Today and the tab bar step aside.
