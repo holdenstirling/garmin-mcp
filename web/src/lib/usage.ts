@@ -19,6 +19,10 @@ export type UsageEvent =
   | ['cheer']
   | ['rsvp', { kind: 'meetup' | 'group' | 'race' }]
   | ['push_open', { kind: 'coach' | 'recap' | 'community' | 'workout' | 'brief' | 'other' }]
+  | ['milestone', { what: Milestone }]
+
+/** A person's firsts (server: traction.py counts each once per person). */
+export type Milestone = 'area_set' | 'rsvp' | 'run_posted' | 'plan_built' | 'post' | 'follow' | 'watch_connected'
 
 export const CARD_IDS = ['upnext', 'ring', 'race_grade', 'reward', 'actions'] as const
 export type CardId = typeof CARD_IDS[number]
