@@ -810,13 +810,15 @@ class Community:
 
     def route_shown(self, viewer: str, author: str, route: Any) -> list[list[float]] | None:
         """The line ``viewer`` may see on ``author``'s workout: the owner if their own maps are
-        on; anyone else only when the owner shares maps and it doesn't start in their hidden area."""
+        on; anyone else unless the owner turned map sharing off ("Keep maps private"), and never
+        when it starts in their hidden area. Only workouts they chose to share are posts at all,
+        and every line has its start and finish trimmed (``routes_trim_m``, 400 m by default)."""
         if not isinstance(route, dict):
             return None
         s = self._settings_of(self._mine(author).load())
         if viewer == author:
             return _rt.public(route) if s["routes_own"] else None
-        if s["routes_share"] is not True or _rt.near_home(route, s["routes_home"]):
+        if s["routes_share"] is False or _rt.near_home(route, s["routes_home"]):
             return None
         return _rt.public(route)
 

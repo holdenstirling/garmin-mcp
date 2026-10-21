@@ -47,12 +47,12 @@ export function MapShareAsk({ className, onDone }: {
         </span>
         <div className="min-w-0">
           <h3 id="map-share-ask" className="m-0 text-body font-semibold leading-snug text-(--text)">
-            {state === 'on' ? 'Your routes are on the map' : state === 'off' ? 'Maps stay private' : 'Show your routes on the Feed map too?'}
+            {state === 'on' ? 'Your routes are on the map' : state === 'off' ? 'Maps stay private' : 'Your routes show on the Feed map'}
           </h3>
           <p className="m-0 mt-0.5 text-small leading-snug text-(--text-secondary)">
             {state === 'on' ? 'Friends see the line of each run you share. Change it any time in Community settings.'
               : state === 'off' ? 'Friends still see sport, time and distance. Turn maps on any time in Community settings.'
-                : 'Friends see the line of your run. The start and finish are trimmed, so where you live stays private.'}
+                : 'Friends see the line of each workout you share. The start and finish are trimmed, so where you live stays private.'}
           </p>
         </div>
       </div>
@@ -60,7 +60,7 @@ export function MapShareAsk({ className, onDone }: {
         <div className="flex gap-2">
           <button type="button" disabled={state === 'busy'} onClick={() => void answer(true)}
             className="min-h-11 flex-1 rounded-full bg-(--accent) px-4 text-small font-semibold text-(--on-fill) active:opacity-80 disabled:opacity-60">
-            Yes, show routes
+            Sounds good
           </button>
           <button type="button" disabled={state === 'busy'} onClick={() => void answer(false)}
             className="min-h-11 flex-1 rounded-full border border-(--border) px-4 text-small font-medium text-(--text) active:bg-(--bg-inset) disabled:opacity-60">

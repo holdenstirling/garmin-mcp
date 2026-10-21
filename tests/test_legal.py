@@ -201,7 +201,7 @@ def test_coach_accounts_can_reach_privacy_routes() -> None:
 
 
 def test_health_data_policy_breach_and_data_promise() -> None:
-    assert legal.VERSION == "2026-10-19"
+    assert legal.VERSION == "2026-10-21"
     hd = legal.health_data()
     for phrase in ("consumer health data", "My Health My Data", "Nevada", "Connecticut", "never sell",
                    "Withdraw consent", "Appeal", "attorney general", "45 days", "Google Cloud", "Anthropic",

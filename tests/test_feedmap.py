@@ -97,16 +97,18 @@ def _with_route(fx, trim=200):
     return cm.auto_share_workouts("ann", _acts(NOON.date()), NOON.date())
 
 
-def test_route_on_post_owner_sees_friends_only_after_yes(fx) -> None:
+def test_route_on_shared_post_shows_unless_kept_private(fx) -> None:
     cm = fx.cm
     pid = _with_route(fx)[-1]
     mine = cm.get("ann", pid)["workout"]
     assert isinstance(mine["route"], list) and len(mine["route"]) >= 2
     assert "start_cell" not in str(cm.get("ann", pid))  # never leaves the server, not even to the owner
-    assert "route" not in cm.get("bob", pid)["workout"]  # not shared until Ann says yes
+    assert cm.settings("ann")["routes_share"] is None
+    assert cm.get("bob", pid)["workout"]["route"] == mine["route"]  # shared workouts show their map by default
+    cm.put_settings("ann", {"routes_share": False})  # "Keep maps private"
+    assert "route" not in cm.get("bob", pid)["workout"]
     assert cm.get("bob", pid)["workout"]["map_private"] is True  # the Feed map says "keeps their map private"
     assert "map_private" not in cm.get("ann", pid)["workout"]
-    assert cm.settings("ann")["routes_share"] is None
     cm.put_settings("ann", {"routes_share": True})
     assert cm.get("bob", pid)["workout"]["route"] == mine["route"]
     assert "map_private" not in cm.get("bob", pid)["workout"]

@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from html import escape
 
-VERSION = "2026-10-19"          # consent re-prompts when this changes
-UPDATED = "October 19, 2026"
+VERSION = "2026-10-21"          # consent re-prompts when this changes
+UPDATED = "October 21, 2026"
 OPERATOR = "Holden Ottolini"
 DEFAULT_CONTACT = "holdenstirling@gmail.com"
 GOVERNING = "Colorado, USA"
@@ -93,7 +93,7 @@ PRIVACY = """
 <li><b>Health-related entries</b>: workout feedback (effort, how it felt), niggles and pain notes, and fueling logs. rabbt treats these, and your heart rate, sleep and recovery data, as sensitive health information.</li>
 <li><b>Social content</b>: posts, comments, cheers, direct messages, clubs, groups and events, your training-buddy profile (if you turn it on) and links you share.</li>
 <li><b>Finding friends</b>: your @handle, and a phone number if you choose to add one (it isn't verified, is never shown to anyone and is only used so people who have it can find you). When you check your contacts, the emails and phone numbers you pick are compared with people on rabbt and then thrown away: rabbt doesn't store or log them, and never contacts anyone in them. In Me &rarr; Privacy &amp; legal &rarr; How friends find you, you choose whether people can find you by name, email or phone.</li>
-<li><b>Location</b>: the home city or zip you give and, only if you tap "Use my location", a position rounded to about 1 km. Exact locations and routes are never stored or shared.</li>
+<li><b>Location</b>: the home city or zip you give and, only if you tap "Use my location", a position rounded to about 1 km. <b>Routes</b>: when you share a workout with friends, rabbt keeps its GPS line on that post so friends can see it on the Feed map. The first and last 400 m are cut off (you can choose 200 m or 800 m), routes that start near a spot you hide are only shown to you, and "Keep maps private" in Community settings hides your lines from everyone else. Routes are never sold, used for ads or sent to the AI coach.</li>
 <li><b>Notifications</b>: if you allow them, your browser's push subscription for each device.</li>
 <li><b>Usage counts</b> (below) and basic server logs needed to run and secure the app.</li>
 </ul>
@@ -213,7 +213,7 @@ SECURITY = """
 <li><b>Hashed links and sessions.</b> Sign-in sessions, share links and calendar links are stored only as one-way hashes, and you can turn any link off.</li>
 <li><b>Least access.</b> Connected apps are read-only unless you ask rabbt to write (like sending a workout to your watch). The automatic deploy system can update the app but can't read secrets.</li>
 <li><b>Backups.</b> Encrypted copies protect against a server failure: server snapshots for 14 days, and off-server copies for 30 days (daily) and 12 months (monthly). Backups hold only encrypted data.</li>
-<li><b>Private by default.</b> Exact locations and routes aren't stored, heart rate isn't shared unless you choose, and Oura and WHOOP data never goes to the AI coach.</li>
+<li><b>Private by default.</b> Nothing is shared until you say yes, routes on shared workouts are trimmed so your home never shows, heart rate isn't shared unless you choose, and Oura and WHOOP data never goes to the AI coach.</li>
 <li><b>Your controls.</b> Download your data or delete your account in Me &rarr; Privacy &amp; legal, and disconnect apps in Me &rarr; Connected apps.</li>
 </ul>
 <h2>If there's a breach</h2>
@@ -250,7 +250,7 @@ HEALTH_DATA = """
 <li>Niggles, pain and injury notes, and the dates you turn on sick mode.</li>
 <li>Fueling notes and food preferences you choose to give.</li>
 <li>Body details you give, like age, height and weight.</li>
-<li>Your home city, used to suggest local clubs and weather. We never store exact locations or routes.</li>
+<li>Your home city, used to suggest local clubs and weather. Routes are kept only on workouts you share, trimmed at the start and finish.</li>
 </ul>
 
 <h2>Where it comes from</h2>
