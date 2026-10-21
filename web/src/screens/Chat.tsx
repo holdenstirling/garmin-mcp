@@ -993,7 +993,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
   }
   const intents = intentsOf(me) // lib/intent.ts: what they came for leads Rabbit home
-  const suggestions = isCoach ? intentSuggestions(intents, COACH_SUGGESTIONS) : TOPIC_SUGGESTIONS
+  const suggestions = isCoach ? intentSuggestions(intents, calm ? TOPIC_SUGGESTIONS : COACH_SUGGESTIONS) : TOPIC_SUGGESTIONS
   // A moment's action chip, routed to the screens that already exist.
   const momentAction = (a: MomentAction) => {
     if (a.id === 'checkin') setVoice({ activityId: a.activity_id, title: a.title })

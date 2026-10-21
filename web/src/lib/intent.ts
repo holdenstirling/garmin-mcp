@@ -80,12 +80,12 @@ const PROMPTS: Record<Intent, string[]> = {
   explore: ['What can rabbt do for me?'],
 }
 const SUGGEST: Record<Intent, string[]> = {
-  train: ['How did my training go this week?', 'Am I recovered enough for a hard workout today?'],
+  train: ['Build me a plan for a 10K.', 'What should I eat before a long run?'],
   consistent: ['Give me a quick workout I can do today.', 'Help me keep my streak alive this week.'],
-  community: ['Find a group run this weekend.', 'How do I find a running club near me?'],
-  events: ['Find me a fun race in the next two months.', 'What group activities are near me this weekend?'],
+  community: ['Find me a run club this week.', 'Find a group run this weekend.'],
+  events: ['Find me a run club this week.', 'Find me a fun race in the next two months.'],
   coach: ['What should I ask a coach before hiring them?', 'Do I need a coach for my goal?'],
-  explore: ['What can you help me with?', 'Suggest a goal for me.'],
+  explore: ['Find me a run club this week.', 'Build me a plan for a 10K.'],
 }
 const promptCache = new Map<string, string[]>()
 /** The composer's rotating placeholders, leaning toward what they came for (stable per answer). */

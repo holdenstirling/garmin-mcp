@@ -36,11 +36,11 @@ function Bar({ label, value, max, suffix }: { label: string; value: number; max:
   const pct = max > 0 ? Math.max(2, Math.round((100 * value) / max)) : 0
   return (
     <div className="flex items-center gap-2 text-small">
-      <span className="w-28 shrink-0 truncate text-(--text-secondary)">{label}</span>
+      <span className="w-32 shrink-0 truncate text-(--text-secondary) min-[400px]:w-40" title={label}>{label}</span>
       <span className="relative h-3 flex-1 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden="true">
         <span className="absolute inset-y-0 left-0 rounded-full bg-(--accent)" style={{ width: `${value ? pct : 0}%` }} />
       </span>
-      <span className="w-14 shrink-0 text-right font-mono text-meta tabular-nums text-(--text)">{value}{suffix ?? ''}</span>
+      <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-right font-mono text-meta tabular-nums text-(--text)">{value}{suffix ?? ''}</span>
     </div>
   )
 }
@@ -123,7 +123,7 @@ function TractionSections({ t }: { t: Traction }) {
             <thead><tr className="text-meta text-(--text-muted)"><th className="py-1 font-medium">Week of</th><th className="font-medium">New clubs</th><th className="font-medium">Runs posted</th><th className="font-medium">Runs held</th><th className="font-medium">RSVPs/run</th><th className="font-medium">Checked in</th></tr></thead>
             <tbody className="font-mono tabular-nums">
               {o.weeks.map((w) => (
-                <tr key={w.week} className="border-t border-(--border)"><td className="py-1 font-sans">{w.from.slice(5)}</td><td>{w.clubs_created}</td><td>{w.runs_posted}</td><td>{w.runs_held}</td><td>{w.rsvps_per_run ?? '–'}</td><td>{w.checkin_pct == null ? '–' : `${w.checkin_pct}%`}</td></tr>
+                <tr key={w.week} className="border-t border-(--border)"><td className="whitespace-nowrap py-1 pr-2 font-sans">{new Date(`${w.from}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })}</td><td>{w.clubs_created}</td><td>{w.runs_posted}</td><td>{w.runs_held}</td><td>{w.rsvps_per_run ?? '–'}</td><td>{w.checkin_pct == null ? '–' : `${w.checkin_pct}%`}</td></tr>
               ))}
             </tbody>
           </table>
