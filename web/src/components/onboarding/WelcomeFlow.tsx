@@ -2,7 +2,9 @@
 // question per screen (full: hello -> what brings you -> where do you run -> how did you hear ->
 // you're set), a lighter sheet once for people who were set up before this existed (lite: pick
 // -> area -> set), and Settings -> "How you use Rabbit" (edit: pick -> set). The area step is
-// skipped when an area is already saved. No Garmin here: "Connect a watch" comes later. Saves athlete.intents (tap order =
+// skipped when an area is already saved. Then "Share your workouts with friends?" (the opt-in
+// consent, community.py share_workouts; skipped once answered; Not now leaves it unanswered) with
+// the map follow-up (MapShareAsk) after a yes. No Garmin here: "Connect a watch" comes later. Saves athlete.intents (tap order =
 // priority) and welcomed_at; skipping also counts as seen. lib/intent.ts has the copy and logic.
 //
 // Tagline options (no em dashes in copy):
@@ -16,10 +18,11 @@
 // owner's order, and the sub-line maps them to coach / crew / calendar.
 import { useEffect, useRef, useState } from 'react'
 import { useDialog } from '@/hooks/useDialog'
-import { CalendarDays, Check, ChevronDown, ChevronRight, LocateFixed, MapPin, Sparkle, Compass, Flame, Target, UserRound, Users, X, type LucideIcon } from 'lucide-react'
+import { CalendarDays, Check, Share2, ChevronDown, ChevronRight, LocateFixed, MapPin, Sparkle, Compass, Flame, Target, UserRound, Users, X, type LucideIcon } from 'lucide-react'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { HopIn, RabbitNap, burst, type RabbitPose } from '@/components/anim'
 import { Button } from '@/components/ui/button'
+import { MapShareAsk } from '@/components/community/MapShareAsk'
 import { inputCls } from '@/components/plan/ui'
 import { announceArea, areaLabel } from '@/components/local/AreaBar'
 import type { Me } from '@/lib/api'
@@ -31,6 +34,7 @@ import {
   type Intent, type NextStep, QUICK_STARTS,
 } from '@/lib/intent'
 import { TAGLINE } from '@/lib/legal'
+import { getCommunitySettings, putCommunitySettings, SHARE_CONSENT_LINE } from '@/lib/community'
 
 const ICON: Record<Intent, LucideIcon> = {
   train: Target, community: Users, events: CalendarDays, consistent: Flame, coach: UserRound, explore: Compass,
@@ -38,7 +42,7 @@ const ICON: Record<Intent, LucideIcon> = {
 const SAVING = ['Tuning rabbt to you…', 'Sorting your setup…', 'Stretching first…']
 
 type Mode = 'full' | 'lite' | 'edit'
-type Step = 'hello' | 'pick' | 'area' | 'heard' | 'yours'
+type Step = 'hello' | 'pick' | 'area' | 'heard' | 'share' | 'yours'
 
 /** What rabbt says back after "What brings you here?" (shown on the next question). */
 function reaction(intents: Intent[]): string {
@@ -69,12 +73,19 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   const [areaBusy, setAreaBusy] = useState<'type' | 'locate' | null>(null)
   const [areaErr, setAreaErr] = useState<string | null>(null)
   const [heard, setHeard] = useState<HeardSource | null>(null)
+  const [askShare, setAskShare] = useState(false)  // sharing never answered: ask in this flow
+  const [share, setShare] = useState<'ask' | 'busy' | 'yes'>('ask')
+  const [shareErr, setShareErr] = useState<string | null>(null)
   const cta = useRef<HTMLButtonElement>(null)
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (mode === 'edit') return
     getLocation().then((l) => { setLoc(l); if (l.saved) setHadArea(true) }, () => {})
+    getCommunitySettings().then((r) => {
+      const s = r.settings
+      setAskShare((s.sharing_source ?? (s.share_workouts == null ? 'unanswered' : 'yes')) === 'unanswered' && !s.share_prompted)
+    }, () => {})  // not an athlete yet / offline: no share step
   }, [mode])
 
   const steps: Step[] = [
@@ -82,6 +93,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     'pick',
     ...(mode !== 'edit' && !hadArea ? ['area' as const] : []),
     ...(mode === 'full' ? ['heard' as const] : []),
+    ...(mode !== 'edit' && (askShare || step === 'share') ? ['share' as const] : []),
     'yours',
   ]
   const after = (s: Step): Step => steps[Math.min(steps.indexOf(s) + 1, steps.length - 1)]
@@ -121,6 +133,15 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     void saveHeard(src).catch(() => {}) // optional and best effort
     window.setTimeout(() => setStep(after('heard')), 280) // a beat to see the tick
   }
+  async function answerShare(yes: boolean) {
+    setShare('busy'); setShareErr(null)
+    try {
+      // "Not now" isn't a no: sharing stays unanswered, so the Home card can ask again later.
+      await putCommunitySettings(yes ? { share_workouts: true, share_prompted: true } : { share_prompted: true })
+      if (yes) setShare('yes')
+      else { setShare('ask'); setStep(after('share')) }
+    } catch (e) { setShareErr((e as Error).message || "Couldn't save just now."); setShare('ask') }
+  }
   // The last screen lands with a small carrot burst from the main button.
   useEffect(() => {
     if (step !== 'yours') return
@@ -135,7 +156,8 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   const canType = /^\d{5}$/.test(typed) || /,\s*[a-z]{2,}/i.test(typed)
 
   const pose: RabbitPose = step === 'hello' ? 'wave' : step === 'pick' ? 'think'
-    : step === 'area' ? (where ? 'cheer' : 'peek') : step === 'heard' ? (heard ? 'cheer' : 'wave') : 'cheer'
+    : step === 'area' ? (where ? 'cheer' : 'peek') : step === 'heard' ? (heard ? 'cheer' : 'wave')
+      : step === 'share' ? (share === 'yes' ? 'cheer' : 'wave') : 'cheer'
   const art = (
     <span className="flex justify-center pt-5" key={`${step}-${pose}`}>
       <RabbitNap size={step === 'hello' ? 88 : 60} mode={pose} />
@@ -251,7 +273,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   ) : step === 'heard' ? (
     <div className="flex flex-1 flex-col gap-4 px-5 pb-2">
       {art}
-      {ask('Last one! How did you hear about rabbt?', 'Totally optional. It helps us find more runners like you.')}
+      {ask(steps.includes('share') ? 'How did you hear about rabbt?' : 'Last one! How did you hear about rabbt?', 'Totally optional. It helps us find more runners like you.')}
       <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2" role="group" aria-label="How did you hear about rabbt">
         {HEARD_OPTIONS.map((o, i) => (
           <HopIn key={o.id} index={i}>
@@ -264,6 +286,34 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           </HopIn>
         ))}
       </div>
+    </div>
+  ) : step === 'share' ? (
+    <div className="flex flex-1 flex-col gap-4 px-5 pb-2">
+      {art}
+      {share === 'yes'
+        ? ask('Your crew will see you move!', 'Your last few days are on the Feed now, and new workouts follow after each sync.', 'Sharing is on.')
+        : ask('Share your workouts with friends?', SHARE_CONSENT_LINE, 'Last one!')}
+      {share === 'yes' ? (
+        <HopIn index={1}><MapShareAsk /></HopIn>
+      ) : (
+        <div className="flex flex-col gap-2.5" role="group" aria-label="Share your workouts with friends">
+          <HopIn index={1}>
+            <button type="button" disabled={share === 'busy'} onClick={() => void answerShare(true)}
+              className="flex min-h-[76px] w-full items-center gap-3.5 rounded-2xl border border-(--accent)/40 bg-(--accent-subtle) px-4 py-3.5 text-left active:scale-[0.98] disabled:opacity-60">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)">
+                <Share2 className="size-6" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lead font-semibold text-(--text)">Yes, share</span>
+                <span className="mt-0.5 block text-small leading-snug text-(--text-muted)">Friends cheer your runs on the Feed. Turn it off any time.</span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+            </button>
+          </HopIn>
+          <p className="m-0 px-1 text-center text-small text-(--text-muted)">Only people who follow you. Never your heart rate, never sold.</p>
+        </div>
+      )}
+      {shareErr && <p className="px-1 text-center text-small text-(--danger)" role="alert">{shareErr}</p>}
     </div>
   ) : (
     <div className="flex flex-1 flex-col gap-4 px-5">
@@ -300,6 +350,11 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
           Next <ChevronRight className="ml-1 size-5" />
         </Button>
       )}
+      {step === 'share' && share === 'yes' && (
+        <Button variant="primary" className="h-12 w-full text-lead" onClick={() => setStep(after('share'))}>
+          Next <ChevronRight className="ml-1 size-5" />
+        </Button>
+      )}
       {step === 'yours' && (
         <Button ref={cta} variant="primary" className="h-12 w-full text-lead"
           onClick={() => onFinish({ saved: true, intents: picks, next: plan.next?.step ?? null })}>
@@ -309,7 +364,10 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       {step === 'area' && !where ? (
         <button type="button" className="min-h-11 text-body text-(--text-muted) underline-offset-2 active:underline"
           onClick={() => setStep(after('area'))}>Not now</button>
-      ) : step === 'heard' ? (
+      ) : step === 'share' ? (share === 'yes' ? null : (
+        <button type="button" className="min-h-11 text-body text-(--text-muted) underline-offset-2 active:underline"
+          disabled={share === 'busy'} onClick={() => void answerShare(false)}>Not now</button>
+      )) : step === 'heard' ? (
         <button type="button" className="min-h-11 text-body text-(--text-muted) underline-offset-2 active:underline"
           disabled={heard !== null} onClick={() => setStep(after('heard'))}>Skip</button>
       ) : step === 'yours' ? (plan.next ? (

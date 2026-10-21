@@ -3,7 +3,8 @@
 // yet. Yes posts the last few days once (community.py backfill), then each new workout.
 import { useEffect, useState } from 'react'
 import { Check, Share2 } from 'lucide-react'
-import { getCommunitySettings, putCommunitySettings } from '@/lib/community'
+import { MapShareAsk } from '@/components/community/MapShareAsk'
+import { getCommunitySettings, putCommunitySettings, SHARE_CONSENT_LINE } from '@/lib/community'
 import { cn } from '@/lib/utils'
 
 export function ShareChoice({ className }: { className?: string }) {
@@ -21,7 +22,8 @@ export function ShareChoice({ className }: { className?: string }) {
   async function answer(v: boolean) {
     setState('busy'); setErr(null)
     try {
-      await putCommunitySettings({ share_workouts: v, share_prompted: true })
+      // "Not now" isn't a no: it leaves sharing unanswered so a later ask (Home card) still can.
+      await putCommunitySettings(v ? { share_workouts: true, share_prompted: true } : { share_prompted: true })
       setState(v ? 'on' : 'off')
     } catch (e) { setErr((e as Error).message); setState('ask') }
   }
@@ -38,8 +40,8 @@ export function ShareChoice({ className }: { className?: string }) {
           </h3>
           <p className="text-meta leading-snug text-(--text-secondary)">
             {state === 'on' ? 'Your last few days are on the Feed now. New ones post after each sync.'
-              : state === 'off' ? 'You can turn this on any time in Me.'
-                : 'People who follow you see sport, time and distance on the Feed. Never heart rate or where.'}
+              : state === 'off' ? 'No problem. Share any time from Home or Community settings.'
+                : SHARE_CONSENT_LINE}
           </p>
         </div>
       </div>
@@ -56,6 +58,7 @@ export function ShareChoice({ className }: { className?: string }) {
         </div>
       )}
       {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
+      {state === 'on' && <MapShareAsk className="mt-1 border-0 bg-(--bg-inset) p-3" />}
     </section>
   )
 }

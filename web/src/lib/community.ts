@@ -138,6 +138,8 @@ export type CommunitySettings = {
   routes_home?: { radius_m: number } | null
 }
 /** Effective "Share my workouts with friends" (community.py `sharing_consent`): only after a yes. */
+/** The one line every "share my workouts" ask uses (the opt-in consent: what friends see). */
+export const SHARE_CONSENT_LINE = 'People who follow you see sport, time and distance on the Feed. Never heart rate, other health data or where you are.'
 export const sharingWorkouts = (s: CommunitySettings) => s.sharing_effective ?? s.share_workouts === true
 export const TRIM_CHOICES = [200, 400, 800] as const
 export const HOME_RADIUS_CHOICES = [200, 400, 800, 1600] as const

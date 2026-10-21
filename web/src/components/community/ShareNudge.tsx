@@ -5,7 +5,8 @@
 import { useEffect, useState } from 'react'
 import { Share2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getCommunitySettings, putCommunitySettings } from '@/lib/community'
+import { MapShareAsk } from '@/components/community/MapShareAsk'
+import { getCommunitySettings, putCommunitySettings, SHARE_CONSENT_LINE } from '@/lib/community'
 
 const KEY = 'rabbt:share-nudge-dismissed'
 const QUIET_MS = 14 * 86_400_000
@@ -52,9 +53,12 @@ export function ShareNudge({ onShared, home = false }: { onShared?: () => void; 
   }
   if (done) {
     return (
-      <p role="status" className="m-0 rounded-xl border border-(--border) bg-(--accent-subtle) px-3.5 py-3 text-small font-medium text-(--text)">
-        You're sharing. Your next workout shows up for friends after it syncs.
-      </p>
+      <div className="flex flex-col gap-2">
+        <p role="status" className="m-0 rounded-xl border border-(--border) bg-(--accent-subtle) px-3.5 py-3 text-small font-medium text-(--text)">
+          You're sharing. Your last few days are on the Feed, and new workouts follow after each sync.
+        </p>
+        <MapShareAsk />
+      </div>
     )
   }
   return (
@@ -64,7 +68,7 @@ export function ShareNudge({ onShared, home = false }: { onShared?: () => void; 
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <p className="m-0 text-body font-semibold leading-snug text-(--text)">{line}</p>
-        <p className="m-0 text-small leading-snug text-(--text-secondary)">Sport, time and distance after each sync. Never heart rate or other health data.</p>
+        <p className="m-0 text-small leading-snug text-(--text-secondary)">{SHARE_CONSENT_LINE}</p>
         <div className="flex gap-2">
           <Button variant="primary" className="h-11 px-4 text-body" loading={busy} onClick={() => void share()}>Share</Button>
           <Button variant="ghost" className="h-11 px-3 text-body" disabled={busy} onClick={later}>Not now</Button>
