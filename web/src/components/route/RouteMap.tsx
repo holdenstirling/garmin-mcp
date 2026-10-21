@@ -18,7 +18,7 @@ function fit(line: RouteLine, w: number, h: number, pad: number): number {
   return 3
 }
 
-export function RouteMini({ line, height = 132, className, label = 'Route map' }: {
+export function RouteMini({ line, height = 168, className, label = 'Route map' }: {
   line: RouteLine; height?: number; className?: string; label?: string
 }) {
   const box = useRef<HTMLDivElement>(null)
