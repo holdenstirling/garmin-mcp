@@ -217,3 +217,21 @@ export const listPublicEvents = (q = '', activity = '') =>
   getJSON<{ events: PublicEvent[]; area: string }>(`/api/events/public?${new URLSearchParams({ ...(q ? { q } : {}), ...(activity ? { activity } : {}) })}`)
 export const setPublicGoing = (key: string, going: boolean) =>
   sendJSON<{ key: string; going: number; my_going: boolean }>('POST', '/api/events/public/going', { key, going })
+
+/** Kinds that are meetups for other people (Near me) and days for my own calendar (Plan). */
+export const MEETUP_KINDS: EventKind[] = ['group_activity', 'challenge', 'other']
+export const CALENDAR_KINDS: EventKind[] = ['race', 'trip', 'milestone', 'other']
+
+// "Post a run" from elsewhere (Today's start card): Near me opens and its post-a-run flow
+// starts (LocalRuns PostRunButton). The flag covers Near me not being mounted yet.
+export const POST_RUN_EVENT = 'rabbit:post-run'
+let postRunPending = false
+export function requestPostRun() {
+  postRunPending = true
+  try { window.dispatchEvent(new Event(POST_RUN_EVENT)) } catch { /* old browsers */ }
+}
+export function takePostRunRequest(): boolean {
+  const was = postRunPending
+  postRunPending = false
+  return was
+}

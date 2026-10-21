@@ -15,10 +15,10 @@ Priority, first match wins:
    day / race week, a suggested adjustment, a rough check-in, done for today (with
    tomorrow), nothing planned on a plan day.
 3. **Rest** (``rest``): the plan (or recovery) says rest; tomorrow's session as a preview.
-4. **Build your plan** (``build_plan``): a goal but no plan.
+4. **Get a plan** (``build_plan``): a goal but no plan.
 5. **Group run** (``group_run``): no plan and no goal: a club meetup they RSVP'd (going or
    maybe) or a run/trail/tri group from the clubs directory, tonight or tomorrow.
-6. **Set a goal** (``set_goal``).
+6. **Get a plan** (``set_goal``).
 
 Oura readiness only reaches this through the Today card's signals (display only).
 """
@@ -140,19 +140,19 @@ def choose(*, card: dict[str, Any] | None, has_plan: bool, goal: dict[str, Any] 
     # 4. A goal, no plan.
     if goal:
         title = str(goal.get("title") or "your goal")
-        return out("build_plan", "plan", "Build your plan",
+        return out("build_plan", "plan", "Get a plan",
                    f"Turn {title} into sessions from today to the day, ready to send to your watch.",
-                   ("build_plan", "Build your plan"))
+                   ("build_plan", "Get a plan"))
     # 5. No plan, no goal: a group run tonight or tomorrow.
     if group:
         bits = [group["when"]] + ([group["where"]] if group.get("where") else [])
         return out("group_run", "go", group["name"], " · ".join(bits), ("group", "Find a group run tonight"),
                    group=group)
     if card and tone == "done":
-        return out("today", "done", str(card["headline"]), str(card.get("detail") or ""), ("set_goal", "Set a goal"))
+        return out("today", "done", str(card["headline"]), str(card.get("detail") or ""), ("set_goal", "Get a plan"))
     # 6. Nothing yet.
-    return out("set_goal", "plan", "Set a goal", "A race, a distance or just showing up 3x a week. "
-               "rabbt builds the plan around it.", ("set_goal", "Set a goal"))
+    return out("set_goal", "plan", "Get a plan", "A race, a distance or just showing up 3x a week. "
+               "rabbt builds the plan around it.", ("set_goal", "Get a plan"))
 
 
 # ------------------------------------------------------------ first visit --

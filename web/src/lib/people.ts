@@ -2,6 +2,7 @@
 // inbox, Home's "Friends today", "Who else is doing this?" and club group chats. Plus the
 // app-wide "open X" events that Chat.tsx listens for, so any screen can open any other.
 import { getJSON, sendJSON } from '@/lib/api'
+import { milestone } from '@/lib/traction'
 import { NEW_DM_EVENT, type DMShare } from '@/lib/dm'
 
 export type PersonRef = { id: string; name: string; photo?: number | null; picture?: string }
@@ -44,6 +45,7 @@ const enc = encodeURIComponent
 export const getProfile = (uid: string) => getJSON<Profile>(`/api/people/${enc(uid)}`)
 export const followPerson = (uid: string, on: boolean) =>
   sendJSON<Profile | { ok: true; gone: true }>(on ? 'POST' : 'DELETE', `/api/people/${enc(uid)}/follow`, {})
+    .then((r) => { if (on) milestone('follow'); return r })
 export const blockPerson = (uid: string) => sendJSON<{ ok: true }>('POST', `/api/people/${enc(uid)}/block`, {})
 export const reportPerson = (uid: string, reason: string) => sendJSON<{ ok: true }>('POST', `/api/people/${enc(uid)}/report`, { reason })
 export const getNotifications = () => getJSON<{ items: Notif[]; unread: number }>('/api/notifications')

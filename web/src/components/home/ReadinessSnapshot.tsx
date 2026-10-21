@@ -21,7 +21,7 @@ function Cell({ icon: Icon, value, label }: { icon: typeof Moon; value: string; 
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 rounded-lg bg-(--bg-inset) px-2 py-3 text-center">
       <Icon className="size-5 text-(--text-muted)" aria-hidden />
-      <span className="text-title-sm font-semibold leading-none tabular-nums text-(--text)">{value}</span>
+      <span className={cn('font-semibold leading-none tabular-nums text-(--text)', value.length > 5 ? 'text-body-lg' : 'text-title-sm')}>{value}</span>
       <span className="text-meta leading-snug text-(--text-muted)">{label}</span>
     </div>
   )
@@ -56,7 +56,7 @@ export function ReadinessSnapshot({ refreshKey, onOpen, onConnect }: {
         className="flex min-h-14 w-full items-center gap-3.5 rounded-xl border border-dashed border-(--border-strong) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">
         <HeartPulse className="size-6 shrink-0 text-(--accent)" aria-hidden />
         <span className="min-w-0 flex-1 text-body leading-snug text-(--text-secondary)">
-          Connect Garmin or Oura to see sleep, HRV and how ready you are today.
+          Connect a watch (Garmin, Apple Watch or Oura) to see sleep and how ready you are today.
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
@@ -70,9 +70,13 @@ export function ReadinessSnapshot({ refreshKey, onOpen, onConnect }: {
   const hrvPct = latest?.hrv != null && hrvBase ? Math.round(((latest.hrv - hrvBase) / hrvBase) * 100) : null
   const cells: { icon: typeof Moon; value: string; label: string }[] = []
   if (latest?.sleep_hours != null) cells.push({ icon: Moon, value: fmtH(latest.sleep_hours), label: 'sleep' })
-  if (latest?.hrv != null) cells.push({ icon: HeartPulse, value: `${latest.hrv}`, label: hrvPct == null ? 'HRV ms' : `HRV ${hrvPct >= 0 ? '+' : ''}${hrvPct}%` })
+  // Plain words first, the number underneath (form and HRV mean little to most people).
+  if (latest?.hrv != null) cells.push({ icon: HeartPulse,
+    value: hrvPct == null ? `${latest.hrv}` : hrvPct >= 5 ? 'Recovered' : hrvPct <= -10 ? 'Below usual' : 'Normal',
+    label: hrvPct == null ? 'HRV ms' : `HRV ${hrvPct >= 0 ? '+' : ''}${hrvPct}%` })
   if (latest?.readiness != null) cells.push({ icon: Gauge, value: `${latest.readiness}`, label: data.source === 'Oura' ? 'Oura readiness' : 'readiness' })
-  if (data.tsb != null) cells.push({ icon: Zap, value: `${data.tsb > 0 ? '+' : ''}${data.tsb}`, label: 'form' })
+  if (data.tsb != null) cells.push({ icon: Zap, value: data.tsb >= 5 ? 'Fresh' : data.tsb <= -30 ? 'Very tired' : data.tsb <= -10 ? 'Tired' : 'Steady',
+    label: `form ${data.tsb > 0 ? '+' : ''}${data.tsb}` })
   const label = `Readiness: ${CALL[call].label}. ${why} ${cells.map((c) => `${c.label} ${c.value}`).join(', ')}. Open Progress`
   return (
     <button type="button" onClick={onOpen} aria-label={label}

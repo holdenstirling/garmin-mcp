@@ -30,6 +30,9 @@ import {
 import { ACTIVITIES, ACTIVITY_LABEL, distanceLabel, radiusLabel, type ActivityId } from '@/lib/activity'
 import { ActivityTile } from '@/components/local/ActivityIcon'
 import { AreaBar, useAreaChanged } from '@/components/local/AreaBar'
+import { AreaInline } from '@/components/local/AreaInline'
+import { requestPostRun } from '@/lib/events'
+import { nativeShare } from '@/lib/sharelinks'
 import { Sheet } from '@/components/ui/Sheet'
 import { FeatureSheet, useIsOwner } from './Featured'
 import { PartnerRow, PartnerSheet, PartnersNearYou, SponsoredCard } from './Partners'
@@ -292,14 +295,21 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
       onGoing={(g) => setGoing(l.id, g)} onFeature={owner ? () => setFeaturing(l) : undefined} />
   )
   const bar = <AreaBar imperial={imperial} />
+  async function inviteOrganizer() {
+    const url = `${window.location.origin}/app/`
+    const text = 'Post your club runs on rabbt so people near you can find them and RSVP:'
+    const r = await nativeShare('Your club on rabbt', text, url)
+    if (r !== 'unsupported') return
+    try { await navigator.clipboard.writeText(`${text} ${url}`); setMsg('Link copied. Send it to your organizer.') }
+    catch { setMsg(url) }
+  }
 
   if (error && !data) return <div className="flex flex-col gap-2">{bar}<ErrorState compact message={error} onRetry={() => void load()} /></div>
   if (!data) return <div className="flex flex-col gap-2">{bar}<RabbitLoader className="py-6" label="Loading clubs and leagues" cycle={CRAWLING} /></div>
   if (data.status === 'needs_location' || !data.metro) {
     return (
       <section aria-label="Clubs, leagues and meetups near you" className="flex flex-col gap-2">
-        {bar}
-        <p className="px-1 text-small text-(--text-secondary)">Set your area above (your location or a zip) to see run clubs, leagues and meetups near you.</p>
+        <AreaInline />
       </section>
     )
   }
@@ -386,8 +396,11 @@ export function ClubDirectory({ onStartGroup, imperial = true }: { onStartGroup:
             action="Clear filters" onAction={() => { setActivity(null); setWeekday(null); setWhen(null) }} />
         ) : (
           <>
-            <EmptyState compact title={data.status === 'unavailable' ? "The directory isn't available right now" : `No clubs listed for ${metro.label} yet`}
-              body="Know a club, track night or league? Search for it above, or tap Suggest one below and rabbt checks it." />
+            <EmptyState compact mode="peek"
+              title={data.status === 'unavailable' ? "The directory isn't available right now" : `Nothing listed yet near ${data.area?.label || metro.label}`}
+              body="Be the first: post a run and people nearby can join. Or invite the organizer of your club."
+              action="Post the first run" onAction={requestPostRun}
+              secondary="Invite your club organizer" onSecondary={() => void inviteOrganizer()} />
             <SponsoredCard placement="directory_empty" />
           </>
         )

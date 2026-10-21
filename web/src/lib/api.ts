@@ -45,6 +45,8 @@ export async function putSettings(patch: Partial<Omit<CoachSettings, 'data_sourc
 }
 
 export type Me = {
+  /** first week + the one Getting started checklist (null for coaches); lib/newcomer */
+  newcomer?: import('@/lib/newcomer').Newcomer | null
   user_id: string
   role: 'athlete' | 'coach'
   /** may create invite links (owner, or members when MEMBERS_CAN_INVITE) */

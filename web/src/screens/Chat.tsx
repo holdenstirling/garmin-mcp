@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { ASK_EVENT } from '@/lib/askrabbt'
 import { smooth } from '@/lib/scrollMotion'
 import { requestPlanFix } from '@/lib/plancal'
-import { Bell, ChevronLeft, ChevronRight, FileText, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, FileText, History, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
@@ -15,13 +15,12 @@ import type { ConnApp, ConnectRequest } from '@/lib/connections'
 import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
-import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
+import { getProgress, markProgressSeen, type Progress, type QuestId } from '@/lib/progress'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard, UpNextSkeleton } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
-import { NextDays } from '@/components/home/NextDays'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { Section, SeeAll } from '@/components/ui/section'
 import { ReadinessSnapshot } from '@/components/home/ReadinessSnapshot'
@@ -41,7 +40,11 @@ import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
-import { GetStartedCard } from '@/components/home/GetStartedCard'
+import { GettingStarted } from '@/components/home/GettingStarted'
+import { OneTip } from '@/components/home/OneTip'
+import { PulseCard } from '@/components/home/PulseCard'
+import { STEP_DONE_EVENT, setNewcomer, useNewcomer } from '@/lib/newcomer'
+import { milestone } from '@/lib/traction'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
@@ -110,13 +113,15 @@ import { NearTonight } from '@/components/home/NearTonight'
 import { NEW_EVENT_EVENT } from '@/lib/events'
 import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
 import { CircleQuestionMark } from 'lucide-react'
+import { CALENDAR_KINDS, requestPostRun } from '@/lib/events'
+import { NewEventSheet } from '@/screens/lazyScreens'
 
 const COACH_SUGGESTIONS = [
   'How did my training go this week?',
   'Am I recovered enough for a hard workout today?',
   "How's my sleep been lately?",
 ]
-const TOPIC_SUGGESTIONS = ['Help me plan next week.', 'Can I move my long ride to Sunday?', 'What should I eat before a long run?']
+const TOPIC_SUGGESTIONS = ['Find me a run club this week.', 'Build me a plan for a 10K.', 'What should I eat before a long run?']
 
 type Row =
   | { kind: 'message'; item: ChatMessage; showLabel: boolean }
@@ -248,6 +253,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
+  // First week (lib/newcomer): a calmer app until the first real thing is done, or 7 days.
+  const newcomer = useNewcomer()
+  const calm = newcomer?.first_week === true
+  const checklistOn = !!newcomer && !newcomer.checklist_hidden
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
   // feed resizes (keyboard opening/closing) we can keep the newest messages in view.
@@ -273,9 +282,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [schedView, setSchedView] = useState<ScheduleView>(() => { try { return sessionStorage.getItem('rabbit.tab') === 'races' ? 'events' : 'plan' } catch { return 'plan' } })
   // Schedule "+ Add": the add sheet, and requests handed to the plan / events pages.
   const [addOpen, setAddOpen] = useState(false)
+  const [calendarAdd, setCalendarAdd] = useState(false) // Plan + Add -> Add to my calendar (race, trip, big day)
   const [addWorkout, setAddWorkout] = useState<{ date: string; n: number } | null>(null)
   const [eventReq, setEventReq] = useState<EventRequest | null>(null)
-  const [communityView, setCommunityView] = useState<CommunityView>('feed')
+  // Friends: Updates | People (find friends and buddies). Near me is runs, clubs and meetups only.
+  const [friendsView, setFriendsView] = useState<'feed' | 'people'>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   const [shareAsk, setShareAsk] = useState(false)  // Home: the share-workouts question is showing
@@ -415,14 +426,24 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
   const openCommunity = (v: CommunityView = 'feed', club?: string) => {
     // Feed is its own tab; clubs and people share the Local tab (id 'clubs').
-    if (v === 'feed') { goTab('feed'); return }
-    setCommunityView(v); setCommunityClub(club ?? null); goTab('clubs')
+    if (v === 'feed' || v === 'people') { setFriendsView(v); goTab('feed'); return }
+    setCommunityClub(club ?? null); goTab('clubs')
   }
   // Nothing open over the tabs: progress, Today and live sync refresh.
   const overlayFree = !pages.some((p) => p.k === 'screen') && !sheet && !connect
   const homeInView = tab === 'rabbit' && overlayFree
   // Gamification: level, streak, this week and setup quests (status banner, Me, Progress).
   const [progress, setProgress] = useState<Progress | null>(null)
+  // First session or first week: no full-screen level-up / badge moment, one quiet toast instead.
+  const quietWins = calm || newcomer?.days === 0
+  useEffect(() => {
+    if (!progress || !quietWins || (!progress.level_up && !progress.new_badges.length)) return
+    const n = progress.new_badges.length
+    const parts = [n ? `${n} new badge${n > 1 ? 's' : ''}` : '', progress.level_up ? `level ${progress.level} (${progress.name})` : '']
+    showToast(`Nice! You earned ${parts.filter(Boolean).join(' and ')}. See them in Progress.`)
+    void markProgressSeen().catch(() => {})
+    setProgress((p) => p && { ...p, level_up: false, new_badges: [] })
+  }, [progress?.xp, quietWins]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!overlayFree) return
     let live = true
@@ -975,7 +996,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     }
   }
   const intents = intentsOf(me) // lib/intent.ts: what they came for leads Rabbit home
-  const suggestions = isCoach ? intentSuggestions(intents, COACH_SUGGESTIONS) : TOPIC_SUGGESTIONS
+  const suggestions = isCoach ? intentSuggestions(intents, calm ? TOPIC_SUGGESTIONS : COACH_SUGGESTIONS) : TOPIC_SUGGESTIONS
   // A moment's action chip, routed to the screens that already exist.
   const momentAction = (a: MomentAction) => {
     if (a.id === 'checkin') setVoice({ activityId: a.activity_id, title: a.title })
@@ -1007,12 +1028,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const coachThread = coachId ? byId[coachId] : undefined
 
   // Rabbit's one status slot, most important first.
-  const quest = progress ? nextQuest(progress) : null
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
-    : !me.garmin.connected && firstVisitHidden() ? { kind: 'garmin' }
+    : !me.garmin.connected && firstVisitHidden() && !calm ? { kind: 'garmin' }
     : isCoach && wantsPlan(intents) && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
-    : isCoach && quest && progress ? { kind: 'quest', title: quest.short ?? quest.title, done: progress.setup.done, total: progress.setup.total }
     : isCoach && recapReady ? { kind: 'recap' }
     : null
   const tapBanner = () => {
@@ -1020,7 +1039,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (banner.kind === 'error') void refreshThreads(threadsError?.select)
     else if (banner.kind === 'garmin') setConnect({ app: 'garmin' })
     else if (banner.kind === 'plan') startSetup()
-    else if (banner.kind === 'quest' && quest) doQuest(quest.id)
     else if (banner.kind === 'recap') openRecap(recapPillWeek ?? undefined)
   }
   // Typing on a phone: the keyboard needs the room, so the banner, Today and the tab bar step aside.
@@ -1041,8 +1059,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )}
     {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
     <button type="button" className={HEADER_ICON} data-tour="chat"
-      aria-label={dmCount > 0 ? `Chats, ${dmCount} unread message${dmCount === 1 ? '' : 's'}` : 'Chats with rabbt and friends'}
-      onClick={() => { setChatsView(dmCount > 0 ? 'people' : 'rabbit'); open('threads') }}>
+      aria-label={dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages'}
+      onClick={() => { setChatsView('people'); open('threads') }}>
       <MessagesSquare className="size-6" aria-hidden />
       {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
     </button>
@@ -1168,7 +1186,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       return (
         <Fragment key="next">
           {athlete && <SharePrompt onShown={setShareAsk} />}
-          {!shareAsk && (
+          {!shareAsk && !checklistOn && (
             <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
               onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
           )}
@@ -1189,17 +1207,24 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {athlete && (
               <HomeStart hasPlan={builtPlan}
                 planLine={upnext?.session ? `Today: ${upnext.session.title}${upnext.session.minutes ? `, ${upnext.session.minutes} min` : ''}` : null}
-                onLocal={() => openCommunity('clubs')} onNewEvent={newEvent} onPlan={openPlan} onSetup={startSetup} />
+                onLocal={() => openCommunity('clubs')} onNewEvent={() => { openCommunity('clubs'); requestPostRun() }} onPlan={openPlan} onSetup={startSetup} />
             )}
             {athlete && <NearTonight hasPlan={builtPlan} refreshKey={feedTick} onOpenClub={(c) => openCommunity('clubs', c)}
               onPlanChanged={() => { loadToday(); loadWeek() }} />}
+
+            {/* 1c. The one Getting started checklist: area, one thing near you, a plan. */}
+            {athlete && <GettingStarted onJob={() => openCommunity('clubs')} onPlan={startSetup}
+              onWatch={() => pushPage({ k: 'connections' })} onFriends={() => openCommunity('people')} watch={me.garmin.connected || me.oura.connected} />}
+            {athlete && <PulseCard />}
+            {athlete && <OneTip id="today" text="Ask rabbt why any workout is on your plan, or what to try near you. The Ask bar is at the bottom." />}
 
             {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
             <div className="flex flex-col gap-3 empty:hidden">
               {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
               {athlete && builtPlan && <SickBanner />}
               {!upnext && !upnextTried && me.garmin.connected && <UpNextSkeleton />}
-              {upnext && (
+              {/* No plan and no goal: the "Get a plan" start card above already says it. */}
+              {upnext && upnext.kind !== 'set_goal' && (
                 <UpNextCard key={upnext.today?.date ?? upnext.kind} up={upnext} week={null} insight={topInsight} onOpenInsight={openProgress}
                   onStart={(id) => setWorkout({ sessionId: id })} onToday={todayAction} onPlan={openPlan} onSetup={startSetup}
                   onClubs={(c) => openCommunity('clubs', c)} onAsk={tellRabbit} onSynced={() => { loadToday(); loadWeek() }}
@@ -1210,33 +1235,32 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {/* 3. One nudge (the most important thing to fix or answer), never a pile. */}
             <div className="flex flex-col gap-3 empty:hidden">{nudge(top)}</div>
 
-            {stripFirst(intents) && (
+            {!calm && stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
                 onOpen={(tg) => tg === 'progress' ? goTab('progress') : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
             )}
 
-            {/* 4. This week: every day at a glance, then the next 3 days with the weather. */}
+            {/* 4. This week: every day at a glance (the old "Next 3 days" repeated it, so it's gone). */}
             {goal && (
               <Section title="This week">
                 <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
                   refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay}
                   onOpenWeek={() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, 'week') } catch { /* storage off */ } openPlan() }} />
-                {athlete && <NextDays refreshKey={feedTick} />}
               </Section>
             )}
 
-            {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today. */}
-            {athlete && (
+            {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today (after a watch). */}
+            {athlete && !(calm && !me.garmin.connected && !me.oura.connected) && (
               <Section title="How you're doing" action={<SeeAll label="Details" ariaLabel="Open Progress" onClick={openProgress} />}>
                 <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
               </Section>
             )}
 
             {/* 6. Friends: who trained today, who races soon, their latest posts. */}
-            {athlete && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
+            {athlete && !calm && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
 
             {/* 7. Coming up: the goal race (grade, countdown, fitness trend) and its checklist. */}
-            {athlete && (
+            {athlete && !calm && (
               <Section title="Coming up" hideWhenEmpty>
                 {goal && <FitnessCountdown refreshKey={feedTick} onOpen={(id) => showPage({ k: 'fit', id })} />}
                 <RaceChecklistCard refreshKey={feedTick} />
@@ -1244,23 +1268,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
 
             {/* 8. Everything else, most useful first: one-tap actions, the other nudges, setup. */}
-            <Section title="More for you" hideWhenEmpty>
+            {!calm && <Section title="More for you" hideWhenEmpty>
               {athlete && (
                 <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
                   skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
               )}
               {rest.map((k) => nudge(k))}
-              {athlete && (me.garmin.connected || firstVisitHidden()) && (
-                <GetStartedCard garmin={me.garmin.connected} hasGoal={!!goal} progress={progress} onStep={(st) => {
-                  if (st === 'garmin') setConnect({ app: 'garmin' })
-                  else if (st === 'plan') startSetup()
-                  else if (st === 'race') openRaces()
-                  else if (st === 'friends') openCommunity('people')
-                  else if (st === 'club') openCommunity('clubs')
-                  else doQuest('notify')
-                }} />
-              )}
-            </Section>
+            </Section>}
             <button type="button" onClick={openHowItWorks}
               className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
               <CircleQuestionMark className="size-5" aria-hidden /> New here? How rabbt works
@@ -1286,16 +1300,33 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
       else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: smooth() })
-      else feed.current?.scrollTo({ top: feed.current.scrollHeight, behavior: smooth() })
+      else setHomeView('home') // Today again from rabbt's chat: back to Today
       return
     }
-    if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
+    if (t === 'clubs' && t !== tab) setCommunityClub(null) // Near me opens on its list
     setTab(t)
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
   const shell = useRef<HTMLDivElement>(null)
   useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !pages.length && !typing && !inChat && !pending, onSwipe: setTab })
   useEffect(() => { setUsageOff(me.settings.usage_off === true); trackAppOpen() }, [me.settings.usage_off])
+  // First RSVP / run posted / plan / area: a small cheer (the checklist ticks too).
+  useEffect(() => {
+    const on = (e: Event) => {
+      const step = (e as CustomEvent<'area' | 'job' | 'plan'>).detail
+      showToast(step === 'job' ? "You're in! Your first run near you." : step === 'plan' ? 'Your plan is ready. Nice!' : 'Area set. Near me is filling in.')
+      celebrate(null, 'quest')
+    }
+    window.addEventListener(STEP_DONE_EVENT, on)
+    return () => window.removeEventListener(STEP_DONE_EVENT, on)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Newcomers: the checklist and first-week mode read this; firsts already true on load count once.
+  useEffect(() => {
+    setNewcomer(me.newcomer)
+    if (me.newcomer?.steps.area) milestone('area_set')
+    if (me.newcomer?.steps.plan) milestone('plan_built')
+    if (me.garmin.connected || me.oura.connected || me.whoop?.connected) milestone('watch_connected')
+  }, [me.newcomer, me.garmin.connected, me.oura.connected, me.whoop?.connected])
   useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
@@ -1303,6 +1334,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     feed: friendsDot && 'new from friends',
   }
   const openMeRow = (r: MeRow) => {
+    if (r === 'nearme') { closePages(); openCommunity('clubs'); return }
+    if (r === 'plan') { closePages(); startSetup(); return }
     if (r === 'friends') openCommunity('people')
     else if (r === 'settings') open('settings')
     else if (r === 'connections' || r === 'access' || r === 'usage' || r === 'partners' || r === 'legal') pushPage({ k: r })
@@ -1316,7 +1349,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Schedule" top={scheduleTop} action={meButton}>
+        <TabScreen key="planner" title="Plan" top={scheduleTop} action={meButton}
+          lead={<OneTip id="plan" text="Tap a day to see the workout. Tap Base or Build to change that part of your plan." />}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             addRequest={addWorkout} onAddHandled={() => setAddWorkout(null)} onOpenEvent={openEvent}
             onRebuild={startSetup}
@@ -1330,8 +1364,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="start" title="Schedule" top={scheduleTop} action={meButton}>
-        <Screen title="Schedule" subtitle={goal ? goal.title : 'No plan yet'}>
+      <TabScreen key="start" title="Plan" top={scheduleTop} action={meButton}>
+        <Screen title="Plan" subtitle={goal ? goal.title : 'No plan yet'}>
           {goal && <RaceSwitcher title={goal.title} date={goal.date}
             sub={goal.plan ? `Your plan file${week?.index ? ` · wk ${week.index}${week.weeks ? `/${week.weeks}` : ''}` : ''}` : 'No plan for this race yet'}
             onSwitched={() => { void refreshThreads(); loadWeek(); onChange() }} onAddRace={openRaces} onBuild={startSetup} />}
@@ -1352,7 +1386,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             <Group label="Your plan">
               <SettingsRow icon={<Icon><FileText /></Icon>} title="Your plan file" subtitle={planLine(week, goal)}
                 onClick={() => open('plan')} />
-              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Build my plan in rabbt"
+              <SettingsRow icon={<Icon><RabbitLogo current /></Icon>} title="Get a plan in rabbt"
                 subtitle="Editable sessions you can send to your Garmin" onClick={startSetup} />
             </Group>
           ) : (
@@ -1361,7 +1395,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                  <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
                   <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-(--accent)" />
@@ -1372,16 +1406,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               </Group>
             </>
           )}
-          <BlocksEntry />
+          {(goal || builtPlan) && <BlocksEntry />}
         </Screen>
       </TabScreen>
     )
   }
 
   function progressTab() {
-    const seg = <Segmented label="Progress" value={progressView} onChange={setProgressView}
+    // First week: no recaps yet (nothing to recap); Overview only.
+    const seg = calm ? undefined : <Segmented label="Progress" value={progressView} onChange={setProgressView}
       options={[['overview', 'Overview'], ['recap', 'Weekly recap']] as const} />
-    if (progressView === 'recap') {
+    if (progressView === 'recap' && !calm) {
       return (
         <TabScreen key="recap" title="Progress" top={seg} action={meButton}>
           <RecapSheet week={recapWeek} onClose={() => setProgressView('overview')} onAsk={tellRabbit} />
@@ -1389,9 +1424,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={<MonthRecapEntry onOpen={setMonthCard} />}>
+      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={calm ? undefined : <MonthRecapEntry onOpen={setMonthCard} />}>
         <StatsScreen onOpenPlan={builtPlan ? openPlan : undefined}
-          onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
     )
@@ -1401,8 +1435,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const scheduleTop = (
     <div className="mx-auto flex w-full max-w-xl items-center gap-2">
       <div className="min-w-0 flex-1">
-        <Segmented label="Schedule" value={schedView} onChange={setSchedView}
-          options={[['plan', 'Plan'], ['events', 'Events'], ['discover', 'Discover']] as const} />
+        {/* Calendar and Find a race wait until there's a goal or plan (they're in + Add meanwhile). */}
+        {(goal || builtPlan || schedView !== 'plan') && (
+          <Segmented label="Plan" value={schedView} onChange={setSchedView}
+            options={[['plan', 'Training'], ['events', 'Calendar'], ['discover', 'Find a race']] as const} />
+        )}
       </div>
       <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body max-[359px]:w-11 max-[359px]:px-0" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
@@ -1413,13 +1450,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function scheduleTab() {
     if (schedView === 'plan') return planTab()
     return schedView === 'events' ? (
-      <TabScreen key="events" title="Schedule" top={scheduleTop} action={meButton}>
+      <TabScreen key="events" title="Plan" top={scheduleTop} action={meButton}>
         <EventsScreen hasBuiltPlan={builtPlan} imperial={imperial} request={eventReq} onRequestHandled={() => setEventReq(null)} onDiscover={openDiscover}
           onChanged={() => { onChange(); void refreshThreads(); loadWeek() }}
           onOpenPlan={() => setSchedView('plan')} onBuildPlan={startSetup} />
       </TabScreen>
     ) : (
-      <TabScreen key="discover" title="Schedule" top={scheduleTop} action={meButton}>
+      <TabScreen key="discover" title="Plan" top={scheduleTop} action={meButton}>
         <ExploreScreen imperial={imperial} onAsk={tellRabbit} onChanged={onChange} />
       </TabScreen>
     )
@@ -1495,10 +1532,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       <div ref={screen} className="relative flex min-h-0 flex-1 flex-col bg-background">
       {renderHeader(!pending && isCoach)}
-      {atLog && !typing && (
-        <div className="shrink-0 px-5 pb-2 pt-1">
-          <Segmented label="rabbt" value={homeView} onChange={setHomeView}
-            options={[['home', 'Home'], ['chat', logNew > 0 && !readingLog ? `Chat · ${logNew} new` : 'Chat']] as const} />
+      {atLog && !typing && homeView === 'chat' && (
+        <div className="shrink-0 px-5 pb-1 pt-1">
+          {/* One way to rabbt: the Ask bar on Today opens this chat; Back returns to Today. */}
+          {homeView === 'chat' && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" className="-ml-2 h-11 gap-1 px-2 text-body" onClick={() => setHomeView('home')}>
+                <ChevronLeft className="size-5" aria-hidden /> Today
+              </Button>
+              <span className="flex-1" />
+              <Button variant="ghost" className="h-11 gap-1.5 px-3 text-body" onClick={() => { setChatsView('rabbit'); open('threads') }}>
+                <History className="size-5" aria-hidden /> Past chats
+              </Button>
+            </div>
+          )}
         </div>
       )}
       {showHome ? renderHome() : (
@@ -1560,7 +1607,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               className="flex items-center gap-3 rounded-xl border border-(--accent) bg-(--accent-subtle) px-4 py-3.5 text-left shadow-sm active:opacity-80">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-lead font-semibold text-(--accent)">Build my plan</span>
+                <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
                 <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--accent)" />
@@ -1645,14 +1692,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {addOpen && (
         <AddSheet hasPlan={builtPlan} onClose={() => setAddOpen(false)}
           onWorkout={() => { setSchedView('plan'); setAddWorkout((r) => ({ date: localToday(), n: (r?.n ?? 0) + 1 })); goTab('plan') }}
-          onEvent={newEvent}
+          onEvent={() => setCalendarAdd(true)}
           onTravel={openTravel} onSick={openSick}
           onBuildPlan={startSetup} onImportPlan={() => { closePages(); setAddPlan(true) }} />
+      )}
+      {calendarAdd && (
+        <NewEventSheet only={CALENDAR_KINDS} title="Add to my calendar" imperial={imperial} onClose={() => setCalendarAdd(false)}
+          onSaved={() => { onChange(); loadWeek(); setEventReq((r) => ({ n: (r?.n ?? 0) + 1 })) }} onOpenPlan={openPlan} onBuildPlan={startSetup} />
       )}
       {visited.has('feed') && (
         <div className={tabCls('feed')} data-tab-hidden={tab !== 'feed' || undefined}>
           <TabScreen key="feed" action={meButton}>
-            <CommunityScreen section="feed" imperial={imperial} view="feed" onView={(v) => { if (v !== 'clubs') openCommunity(v) }} onChanged={onChange}
+            <CommunityScreen section="feed" imperial={imperial} view={friendsView} onView={(v) => openCommunity(v)} onChanged={onChange}
               club={null} onClub={(id) => { if (id) openCommunity('clubs', id) }} />
           </TabScreen>
         </div>
@@ -1660,8 +1711,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {visited.has('clubs') && (
         <div className={tabCls('clubs')} data-tab-hidden={tab !== 'clubs' || undefined}>
           <TabScreen key="clubs" action={meButton}>
-            <CommunityScreen section="clubs" imperial={imperial} view={communityView === 'feed' ? 'clubs' : communityView}
-              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub} />
+            <CommunityScreen section="clubs" imperial={imperial} view="clubs"
+              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub}
+              onOpenPlan={openPlan} onBuildPlan={startSetup} />
           </TabScreen>
         </div>
       )}
@@ -1757,7 +1809,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onClose={() => setReaction(null)} onOpenSession={(id) => { setReaction(null); setWorkout({ sessionId: id }) }}
           onCheckIn={(c) => { setReaction(null); setVoice(c) }} />
       )}
-      {progress && overlayFree && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
+      {progress && overlayFree && !quietWins && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
       {sheet === 'settings' && (
         <BottomSheet title="Settings" closing={closing} onClose={close} onDismissed={dismissNow}>
           <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()}

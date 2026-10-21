@@ -28,6 +28,7 @@ import { KIND_GLOSSARY, ZONE_GLOSSARY } from '@/lib/glossary'
 import { fmtTime, getCalendar, openPlanDay, requestPlanFix, type CalSession, type CalView, type DistSport } from '@/lib/plancal'
 import { checkinChips, createCheckin, type Checkin } from '@/lib/checkins'
 import { cn } from '@/lib/utils'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { openActivity } from '@/lib/activitynav'
 import {
   CHECKLIST, fmtTemp, getWorkoutFeedback, getWorkoutToday, readChecklist, writeChecklist,
@@ -537,7 +538,9 @@ function TargetChips({ targets, label }: { targets: Target[]; label?: string }) 
     <div className="flex flex-col gap-1.5">
       {label && <span className="px-1 text-meta font-semibold text-(--text-secondary)">{label}</span>}
       <div className="flex flex-wrap gap-2">
-        {targets.map((t) => <BigChip key={t.kind + t.label} t={t} />)}
+        {targets.map((t) => t.kind === 'rpe' ? (
+          <span key={t.kind + t.label} className="inline-flex items-center"><BigChip t={t} /><InfoTip term="rpe" /></span>
+        ) : <BigChip key={t.kind + t.label} t={t} />)}
       </div>
     </div>
   )

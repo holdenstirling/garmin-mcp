@@ -37,12 +37,15 @@ export function kindDefaults(kind: EventKind, isFirst: boolean): EventFields {
 }
 
 /** Big chips with icons: the first thing the event form asks. */
-export function KindPicker({ value, onChange }: { value: EventKind | null; onChange: (k: EventKind) => void }) {
+export function KindPicker({ value, onChange, only }: { value: EventKind | null; onChange: (k: EventKind) => void
+  /** limit the choices (Near me: meetups for others; Plan: days for my own calendar) */
+  only?: EventKind[] }) {
+  const kinds = only ? EVENT_KINDS.filter(([k]) => only.includes(k)) : EVENT_KINDS
   return (
     <Card>
-      <Field label="What is it?" hint={value ? KIND_HINT[value] : 'Races, group workouts, trips and big life days all shape your plan.'}>
+      <Field label="What is it?" hint={value ? KIND_HINT[value] : only ? undefined : 'Races, group workouts, trips and big life days all shape your plan.'}>
         <div className="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2 sm:grid-cols-3" role="radiogroup" aria-label="Kind of event">
-          {EVENT_KINDS.map(([k, label]) => {
+          {kinds.map(([k, label]) => {
             const Icon = KIND_ICON[k]
             const on = value === k
             return (
@@ -334,7 +337,7 @@ export function EventVisibility({ value, onChange }: { value: EventFields; onCha
       <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Who can see it">
         <OptionCard selected={!pub} title="Just me" description="Private: on your calendar and in your plan only."
           onClick={() => onChange({ visibility: 'private' })} />
-        <OptionCard selected={pub} title="Public" description="People near you find it in Local and can say they're going. Your notes stay private."
+        <OptionCard selected={pub} title="Public" description="People near you find it in Near me and can say they're going. Your notes stay private."
           onClick={() => onChange({ visibility: 'public' })} />
       </div>
     </section>

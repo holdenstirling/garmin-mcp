@@ -230,11 +230,11 @@ function ClubSheet({ initial, prefill, home, onClose, onSaved }: {
       <section aria-label="Who can find and join it" className="flex flex-col gap-2">
         <h3 className="section-title section-title--sm m-0 px-1">Who can find and join it</h3>
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'open'} title="Public · anyone can join"
-          description="Shows up in Local and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
+          description="Shows up in Near me and search for people nearby." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'open' }))} />
         <OptionCard selected={f.visibility !== 'private' && f.privacy === 'approval'} title="Public · ask to join"
           description="People nearby find it and ask; you or an admin say yes." onClick={() => setF((x) => ({ ...x, visibility: 'public', privacy: 'approval' }))} />
         <OptionCard selected={f.visibility === 'private'} title="Private · invite only"
-          description="Hidden from Local and search. People join with an invite or the club code." onClick={() => setF((x) => ({ ...x, visibility: 'private', privacy: 'open' }))} />
+          description="Hidden from Near me and search. People join with an invite or the club code." onClick={() => setF((x) => ({ ...x, visibility: 'private', privacy: 'open' }))} />
       </section>
       {queued && <SaveStatus state="queued" />}
       {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}

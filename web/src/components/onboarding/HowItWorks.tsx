@@ -11,10 +11,10 @@ const EVENT = 'rabbit:how-it-works'
 export const openHowItWorks = () => window.dispatchEvent(new Event(EVENT))
 
 const CARDS: { icon: LucideIcon; title: string; body: string; where: string }[] = [
-  { icon: MapPin, title: 'Find things to do near you', body: 'Clubs, group runs, leagues and events around you, on a list or a map. Join one, or create your own event and invite people.', where: 'Local tab' },
-  { icon: CalendarDays, title: 'Get a plan that fits your life', body: 'Tell rabbt your race or just your goal. Your plan adjusts when you travel, get sick or have a busy week.', where: 'Schedule tab' },
-  { icon: Newspaper, title: 'Share with your people', body: 'Your workouts can post to friends automatically. Cheer, comment and tag people with @.', where: 'Feed tab' },
-  { icon: MessageCircle, title: 'Ask rabbt anything', body: 'Why is this workout here? What should I eat before my long run? Ask from Home or any workout.', where: 'Home, Chat' },
+  { icon: MapPin, title: 'Find things to do near you', body: 'Clubs, group runs, leagues and events around you, on a list or a map. Join one, or post a run for others to join.', where: 'Near me tab' },
+  { icon: CalendarDays, title: 'Get a plan that fits your life', body: 'Tell rabbt your race or just your goal. Your plan adjusts when you travel, get sick or have a busy week.', where: 'Plan tab' },
+  { icon: Newspaper, title: 'Share with your people', body: 'Your workouts can post to friends automatically. Cheer, comment and tag people with @.', where: 'Friends tab' },
+  { icon: MessageCircle, title: 'Ask rabbt anything', body: 'Why is this workout here? What should I eat before my long run? Ask from the bar on Today or from any workout.', where: 'Today, Ask rabbt' },
   { icon: ShieldCheck, title: 'Your data stays yours', body: 'We never sell your data or use it for ads. Download or delete it any time.', where: 'Me, Privacy & legal' },
 ]
 

@@ -59,7 +59,7 @@ export function EventPlanCard({ event, onBuildPlan, onOpenPlan }: {
         )}
         {link.action === 'build_plan' && onBuildPlan && (
           <Button variant="primary" className="h-11 gap-1.5 px-3 text-small" onClick={onBuildPlan}>
-            Build my plan
+            Get a plan
           </Button>
         )}
       </div>

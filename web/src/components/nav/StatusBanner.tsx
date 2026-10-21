@@ -23,7 +23,7 @@ function text(b: Banner): string {
   switch (b.kind) {
     case 'error': return "Couldn't load your chats. Tap to retry."
     case 'garmin': return 'Connect Garmin so rabbt can see your training'
-    case 'plan': return b.goal ? `Build your plan for ${b.goal}` : 'Build your training plan'
+    case 'plan': return b.goal ? `Get a plan for ${b.goal}` : 'Get a training plan'
     case 'quest': return `Next: ${b.title}`
     case 'recap': return 'Your week in review is ready'
   }

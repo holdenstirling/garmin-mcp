@@ -402,7 +402,7 @@ function RaceSheet({ onClose, onSwitched, onAddRace, onBuild }: {
             {r.active && <Check className="size-5 shrink-0 text-(--accent)" aria-label="Active" />}
           </div>
           {r.active ? (!r.has_plan && (
-            <Button variant="primary" className="h-11 text-body" onClick={onBuild}>Build a plan for this race</Button>
+            <Button variant="primary" className="h-11 text-body" onClick={onBuild}>Get a plan for this race</Button>
           )) : (
             <div className="flex flex-wrap gap-2">
               <Button variant="primary" className="h-11 flex-1 text-small" loading={busy === r.id} disabled={!!busy} onClick={() => void train(r)}>

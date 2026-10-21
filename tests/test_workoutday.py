@@ -59,7 +59,7 @@ def test_targets_in_athlete_units() -> None:
     assert mi.endswith("/mi") and mi.startswith("8:")
     assert targets("bike", 2, ATHLETE)[0]["label"] == "140–188 W"
     assert targets("swim", 4, km) == [{"kind": "pace", "label": "1:38–1:42 /100m"}]
-    assert targets("run", 2, {}) == [{"kind": "rpe", "label": "RPE 3-4 · conversational"}]
+    assert targets("run", 2, {}) == [{"kind": "rpe", "label": "Easy, you can chat · effort 3-4 of 10"}]
 
 
 def test_session_view_sections_purpose_fuel_and_garmin() -> None:

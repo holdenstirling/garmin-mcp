@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import { Chip, Field, inputCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
+import { milestone } from '@/lib/traction'
 import { radiusLabel } from '@/lib/activity'
 import {
   forgetLocation, getLocation, saveZipLocation, setAreaRadius, shareDeviceLocation, type LocationState,
@@ -18,7 +19,9 @@ import {
 export const AREA_CHANGED_EVENT = 'rabbit:area-changed'
 const RADII = [2, 5, 10, 25, 50]
 
-function announce(s: LocationState) {
+/** Tell every screen showing results that the area changed (and count the first one). */
+export function announceArea(s: LocationState) {
+  if (s.saved) milestone('area_set')
   try { window.dispatchEvent(new CustomEvent<LocationState>(AREA_CHANGED_EVENT, { detail: s })) } catch { /* old browsers */ }
 }
 
@@ -69,7 +72,7 @@ export function AreaBar({ imperial, what = 'clubs, leagues and meetups', classNa
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
       {open && <AreaSheet state={s} imperial={imperial} what={what} onClose={() => setOpen(false)}
-        onChanged={(n) => { setS(n); announce(n) }} />}
+        onChanged={(n) => { setS(n); announceArea(n) }} />}
     </>
   )
 }

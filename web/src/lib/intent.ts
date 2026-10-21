@@ -13,7 +13,7 @@ export type IntentView = {
   options: { id: Intent; title: string; help: string }[]
 }
 
-/** The two big reasons people come (the welcome's first choice); "More reasons" shows the rest. */
+/** The two big reasons people come (the welcome's first choice); "Something else" shows the rest. */
 export const QUICK_STARTS: { id: 'local' | 'plan' | 'both'; title: string; help: string; intents: Intent[] }[] = [
   { id: 'local', title: 'Find things to do near me', help: 'Clubs, group runs, leagues and events, or start your own', intents: ['events', 'community'] },
   { id: 'plan', title: 'Get a training plan', help: 'For a race or just to get fitter, and it moves when life does', intents: ['train'] },
@@ -80,12 +80,12 @@ const PROMPTS: Record<Intent, string[]> = {
   explore: ['What can rabbt do for me?'],
 }
 const SUGGEST: Record<Intent, string[]> = {
-  train: ['How did my training go this week?', 'Am I recovered enough for a hard workout today?'],
+  train: ['Build me a plan for a 10K.', 'What should I eat before a long run?'],
   consistent: ['Give me a quick workout I can do today.', 'Help me keep my streak alive this week.'],
-  community: ['Find a group run this weekend.', 'How do I find a running club near me?'],
-  events: ['Find me a fun race in the next two months.', 'What group activities are near me this weekend?'],
+  community: ['Find me a run club this week.', 'Find a group run this weekend.'],
+  events: ['Find me a run club this week.', 'Find me a fun race in the next two months.'],
   coach: ['What should I ask a coach before hiring them?', 'Do I need a coach for my goal?'],
-  explore: ['What can you help me with?', 'Suggest a goal for me.'],
+  explore: ['Find me a run club this week.', 'Build me a plan for a 10K.'],
 }
 const promptCache = new Map<string, string[]>()
 /** The composer's rotating placeholders, leaning toward what they came for (stable per answer). */
@@ -114,29 +114,30 @@ export type NextStep = 'garmin' | 'plan' | 'interests' | 'friend' | 'coach_statu
 export type WelcomePlan = { bullets: string[]; next: { step: NextStep; label: string } | null }
 
 const BULLET: Record<Intent, string> = {
-  train: 'A plan built around your week and your goal, sent to your Garmin',
+  train: 'A plan built around your week and your goal, and it moves when life does',
   consistent: 'A daily streak and weekly challenges sized to you',
-  community: "Your friends' workouts and kudos, right on your home screen",
-  events: 'Races, group runs and meetups near you, picked for you',
+  community: 'Friends, clubs and cheers for the runs that matter',
+  events: 'Group runs, clubs and meetups near you, or post your own',
   coach: 'Coaches who fit your goals, or invite the one you already have',
-  explore: 'Ask rabbt anything about training, recovery or what to try next',
+  explore: 'Ask rabbt anything about running, recovery or what to try next',
 }
 
+/** "You're all set": what rabbt has ready, and where the main button goes. No Garmin first:
+ *  connecting a watch comes later, after the first real thing (a run near you or a plan). */
 export function welcomePlan(intents: readonly Intent[], ctx: { garmin: boolean; hasPlan: boolean }): WelcomePlan {
   const list: Intent[] = intents.length ? [...intents] : ['explore']
-  const bullets = list.map((i) => BULLET[i])
-  if (!ctx.garmin) bullets.unshift('Connect Garmin so every workout counts automatically')
-  const garmin = { step: 'garmin' as const, label: 'Connect Garmin' }
+  const bullets = list.map((i) => BULLET[i]).slice(0, 3)
+  if (!ctx.garmin) bullets.push('Later, connect Garmin, Apple Watch or Oura so workouts count on their own')
   let next: WelcomePlan['next'] = null
   switch (list[0]) {
-    case 'train': next = !ctx.hasPlan ? { step: 'plan', label: 'Build my plan' } : ctx.garmin ? null : garmin; break
-    case 'consistent': next = ctx.garmin ? { step: 'progress', label: 'See my streak' } : garmin; break
-    case 'community': next = { step: 'friend', label: 'Find my people' }; break
+    case 'train': next = !ctx.hasPlan ? { step: 'plan', label: 'Get a plan' } : null; break
+    case 'consistent': next = { step: 'progress', label: 'See my progress' }; break
+    case 'community': next = { step: 'local', label: "See what's near me" }; break
     case 'events': next = { step: 'local', label: "See what's near me" }; break
     case 'coach': next = { step: 'coach_status', label: 'Find a coach' }; break
-    default: next = ctx.garmin ? null : garmin
+    default: next = { step: 'local', label: "See what's near me" }
   }
-  return { bullets: bullets.slice(0, 4), next }
+  return { bullets, next }
 }
 
 // ------------------------------------------------------- community strip ---

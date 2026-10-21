@@ -61,6 +61,8 @@ export const getLocation = () => getJSON<LocationState>('/api/location')
 export const saveDeviceLocation = (lat: number, lon: number) =>
   sendJSON<LocationState>('POST', '/api/location', { lat, lon })
 export const saveZipLocation = (zip: string) => sendJSON<LocationState>('POST', '/api/location', { zip })
+/** "80204" or "Denver, CO" (a city needs its state). */
+export const savePlaceLocation = (place: string) => sendJSON<LocationState>('POST', '/api/location', { place: place.trim() })
 export const setUseForLocal = (on: boolean) => sendJSON<LocationState>('POST', '/api/location/prefs', { use_for_local: on })
 export const setAreaRadius = (mi: number) => sendJSON<LocationState>('POST', '/api/location/prefs', { radius_mi: mi })
 export const forgetLocation = () => sendJSON<LocationState>('DELETE', '/api/location')

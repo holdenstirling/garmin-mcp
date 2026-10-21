@@ -56,6 +56,8 @@ EVENTS: dict[str, dict[str, frozenset[str]]] = {
     "cheer": {},
     "rsvp": {"kind": RSVPS},
     "push_open": {"kind": PUSHES},
+    # traction.py: a person's firsts (counted once per person there)
+    "milestone": {"what": frozenset({"area_set", "rsvp", "run_posted", "plan_built", "post", "follow", "watch_connected"})},
 }
 
 MAX_BATCH = 50          # events per request (more are ignored)

@@ -8,6 +8,7 @@ import { Section } from '@/components/ui/section'
 import { Card, Chip, ChipRow } from '@/components/plan/ui'
 import { getClubs, getNearbyRuns, type ClubSummary, type Meetup } from '@/lib/community'
 import { OrganizeSheet, RunCard, RunSheet } from './ClubRun'
+import { POST_RUN_EVENT, takePostRunRequest } from '@/lib/events'
 
 type Filter = 'beginner' | 'walk' | 'women' | 'groups'
 const FILTERS: [Filter, string][] = [['beginner', 'No one left behind'], ['walk', 'Walkers welcome'], ['women', 'Women only'], ['groups', 'Pace groups']]
@@ -27,10 +28,16 @@ export function PostRunButton({ onPosted }: { onPosted?: () => void }) {
       if (mine.length === 1) setClub(mine[0]); else setPick(true)
     } catch (e) { setErr((e as Error).message) }
   }
+  useEffect(() => {
+    const go = () => { if (takePostRunRequest()) void start() }
+    go()
+    window.addEventListener(POST_RUN_EVENT, go)
+    return () => window.removeEventListener(POST_RUN_EVENT, go)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <Button variant="primary" className="h-12 w-full gap-1.5 text-body" onClick={() => void start()}>
-        <Plus className="size-5" aria-hidden /> Post a club run
+        <Plus className="size-5" aria-hidden /> Post a run
       </Button>
       {err && <p className="text-meta text-(--danger)" role="alert">{err}</p>}
       {done && <p className="text-meta text-(--accent)" role="status">{done}</p>}

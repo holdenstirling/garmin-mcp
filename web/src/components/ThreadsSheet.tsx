@@ -37,10 +37,14 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       bodyClassName="min-h-0 flex-1 gap-0 p-0 pb-[max(12px,env(safe-area-inset-bottom))]"
       header={
         <div className="min-w-0">
-          <h2 className="modal-title truncate">{onView ? 'Chats' : 'Chats with rabbt'}</h2>
-          <button type="button" className="hit-44 max-w-full text-left text-small leading-snug text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
-            {goal ? `Training for ${goal.title}` : 'Set what you’re training for'}
-          </button>
+          <h2 className="modal-title truncate">{people ? 'Messages' : 'Chats with rabbt'}</h2>
+          {people ? (
+            <p className="m-0 text-small leading-snug text-muted-foreground">Friends, club mates and your rabbt chats</p>
+          ) : (
+            <button type="button" className="hit-44 max-w-full text-left text-small leading-snug text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
+              {goal ? `Training for ${goal.title}` : 'Set what you’re training for'}
+            </button>
+          )}
         </div>
       }
       actions={
@@ -51,8 +55,8 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       }
       below={onView && (
         <div className="px-5 pb-2">
-          <Segmented label="Chats" value={view} onChange={onView}
-            options={[['rabbit', 'rabbt'], ['people', dmUnread > 0 ? `People · ${dmUnread}` : 'People']] as const} />
+          <Segmented label="Messages" value={view} onChange={onView}
+            options={[['people', dmUnread > 0 ? `Friends · ${dmUnread}` : 'Friends'], ['rabbit', 'rabbt chats']] as const} />
         </div>
       )}
       extra={deleteTarget && (

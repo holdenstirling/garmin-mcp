@@ -207,7 +207,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
       {items == null ? (error ? null : <FeedSkeleton />) : (
         <>
-          {main && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
+          {main && following > 0 && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
             <FeedHint onInvite={items.length > 0 ? onInvite : undefined} onShared={() => void load()} />
           )}
           {main && (filter === 'all' || filter === 'friends') && items.some((p) => !p.mine && p.kind === 'workout') && (
@@ -215,11 +215,11 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           )}
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
-              title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Your crew starts here' : 'Nothing shared yet'}
+              title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Find your people' : 'Nothing shared yet'}
               body={clubId ? 'Share the first news with the club: a meetup recap, a race, a welcome.'
                 : group ? "Members' workouts and posts show up here. Share the plan for Saturday, a photo from the run, a cheer. Only the group sees it."
-                : filter === 'clubs' ? 'Posts from clubs you join show up here. Find one in Local.'
-                : following === 0 ? "Follow friends to see their workouts here as soon as they sync. Then make a group for your crew."
+                : filter === 'clubs' ? 'Posts from clubs you join show up here. Find one in Near me.'
+                : following === 0 ? "Follow friends to see their runs here and cheer them on. Not on rabbt yet? Invite them by text from Find friends."
                 : 'Workouts your friends share show up here as soon as they sync. First races, new PRs, comebacks: share yours too.'}
               action={group ? (
                 <Button variant="primary" className="mt-1 h-11 gap-1.5 px-4 text-small" onClick={() => setComposer('blank')}>

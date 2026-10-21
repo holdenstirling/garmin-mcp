@@ -89,7 +89,7 @@ export function FriendsLatest({ refreshKey, imperial, onOpenFeed, onShown }: {
   const kudosBtn = 'hit-44 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-small font-medium transition-colors'
   return (
     <Section title={trained.length || racing.length ? 'Friends today' : "Friends' latest"}
-      action={<SeeAll label="Feed" ariaLabel="Open the feed" onClick={onOpenFeed} />}>
+      action={<SeeAll label="See all" ariaLabel="Open Friends" onClick={onOpenFeed} />}>
       <Card>
         <ul className="flex flex-col divide-y divide-(--border)">
           {trained.map((t, i) => {

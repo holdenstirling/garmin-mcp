@@ -851,6 +851,13 @@ class Clubs:
             going = sum(1 for s in (rs.get(key) or {}).values() if s == "going") + sum(
                 1 for g in (gs.get(key) or {}).values() if g.get("status") == "going")
             hist[key] = {"going": going, "checkins": len(ck.get(key) or [])}
+            # who keeps coming back (traction.py "repeat attendees"): run counts per person, ids
+            # this doc already holds; capped
+            regs = m.setdefault("regulars", {})
+            for who in [u for u, s in (rs.get(key) or {}).items() if s == "going"] + [
+                    f"g:{g}" for g, v in (gs.get(key) or {}).items() if v.get("status") == "going"]:
+                if who in regs or len(regs) < 500:
+                    regs[who] = int(regs.get(who, 0)) + 1
             for doc in (rs, gs, wq, ck):
                 doc.pop(key, None)
         for k in sorted(hist)[:-HISTORY_KEEP]:
@@ -1122,6 +1129,14 @@ class Clubs:
                                  "at": g.get("waiver_at"), "date": key})
         rows.sort(key=lambda r: r.get("at") or 0)
         return rows
+
+    def forget_regular(self, uid: str) -> None:
+        """Account deletion: drop the person from every run's repeat-attendee counts."""
+        def apply(d: dict[str, Any]) -> None:
+            for c in (d.get("clubs") or {}).values():
+                for m in (c.get("meetups") or {}).values():
+                    (m.get("regulars") or {}).pop(uid, None)
+        self._doc.update(apply)
 
     def dashboard(self, uid: str, cid: Any, now: datetime) -> dict[str, Any]:
         """Organizer dashboard: members, requests, upcoming runs with counts, and weekly

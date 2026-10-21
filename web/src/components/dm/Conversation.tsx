@@ -228,7 +228,7 @@ export function ConversationScreen({ id, imperial, onClose }: { id: string; impe
             onClick={async () => { await convAction(id, 'leave').catch(() => null); dmChanged(); setMenu(false); onClose() }}>
             <LogOut className="size-5" aria-hidden /> {group ? 'Leave the group' : 'Delete this chat'}
           </Button>
-          <p className="px-1 text-meta text-(--text-muted)">To stop someone messaging you, block them from their profile in Local › People.</p>
+          <p className="px-1 text-meta text-(--text-muted)">To stop someone messaging you, block them from their profile in Near me › People.</p>
         </Sheet>
       )}
       {reporting && (
