@@ -15,6 +15,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Tests
-        run: uv run -q pytest -q -p no:cacheprovider 2>&1 | tail -60
-      - name: Fail on test failure
-        run: uv run -q pytest -q -x --no-header -p no:cacheprovider >/dev/null 2>&1
+        run: |
+          set +e
+          uv run -q pytest -q -rf -p no:cacheprovider > out.txt 2>&1; rc=$?
+          tail -1 out.txt | sed 's/^/::warning::SUMMARY /'
+          grep -E "^FAILED" out.txt | head -10 | sed 's/^/::error::/'
+          grep -E "^E  " out.txt | head -10 | cut -c1-300 | sed 's/^/::warning::/'
+          exit $rc
