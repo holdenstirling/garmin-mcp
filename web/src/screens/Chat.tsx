@@ -40,6 +40,7 @@ import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
+import { ShareNudge } from '@/components/community/ShareNudge'
 import { GettingStarted } from '@/components/home/GettingStarted'
 import { OneTip } from '@/components/home/OneTip'
 import { PulseCard } from '@/components/home/PulseCard'
@@ -1261,6 +1262,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
 
             {/* 6. Friends: who trained today, who races soon, their latest posts. */}
+            {/* The share ask, where people actually look: friends follow you but can't see your workouts. */}
+            {athlete && <ShareNudge home onShared={() => setFeedTick((n) => n + 1)} />}
+
             {athlete && !calm && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
 
             {/* 7. Coming up: the goal race (grade, countdown, fitness trend) and its checklist. */}

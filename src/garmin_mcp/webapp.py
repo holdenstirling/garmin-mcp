@@ -3719,6 +3719,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         _ag.moments.share_scan = _cm_share_scan
         def _cm_tick(uid: str) -> None:
             cm.meetup_reminders(uid)
+            try:
+                cm.ask_to_share(uid)  # once: friends follow you, share your workouts? (quiet hours respected)
+            except Exception as e:
+                log_event(logger, logging.INFO, "share_ask_failed", user_id=uid, error=type(e).__name__)
         _ag.moments.on_tick = _cm_tick
         # Workouts synced before sharing took effect still reach the Feed; silent (no push), so it
         # runs in quiet hours too (a friend's evening run shouldn't wait for 7am).

@@ -570,7 +570,50 @@ class Community:
         self.require(uid)
         s = self._settings_of(self._mine(uid).load())
         return {**s, "routes_home": _home_public(s["routes_home"]), "last_shared_at": self.last_shared_at(uid),
-                "sharing_effective": self.sharing_consent(uid, s), "sharing_source": self.sharing_source(uid, s)}
+                "sharing_effective": self.sharing_consent(uid, s), "sharing_source": self.sharing_source(uid, s),
+                "followers": self._follower_names(uid)}
+
+    def _follower_names(self, uid: str) -> dict[str, Any]:
+        """Who'd see my shared workouts: a count and up to 2 first names, for the share ask."""
+        try:
+            ids = [f for f in self.social.follower_ids(uid) if f != uid and not self.social.blocked_between(uid, f)]
+        except Exception:
+            return {"count": 0, "names": []}
+        names: list[str] = []
+        for f in ids[:2]:
+            try:
+                names.append(str(self._name(f)).split(" ")[0])
+            except Exception:
+                pass
+        return {"count": len(ids), "names": names}
+
+    def ask_to_share(self, uid: str) -> bool:
+        """Once per person: if they never answered "share my workouts" and friends follow
+        them, one push asking (it opens the Feed's Share card). Asking isn't sharing: nothing
+        leaves until they tap Share. Returns True when the push went out."""
+        if self.push is None or uid.startswith("coach_") or not self.social.is_athlete(uid):
+            return False
+        s = self._settings_of(self._mine(uid).load())
+        if s["share_workouts"] is not None or self.sharing_consent(uid, s):
+            return False
+        fol = self._follower_names(uid)
+        if not fol["count"]:
+            return False
+
+        def claim(d: dict[str, Any]) -> bool:
+            if d.get("share_asked"):
+                return False
+            d["share_asked"] = self._now(uid).date().isoformat()
+            return True
+        if not self._mine(uid).update(claim):
+            return False
+        who = (fol["names"][0] if fol["count"] == 1 and fol["names"]
+               else f"{fol['names'][0]} and {fol['count'] - 1} other{'s' if fol['count'] > 2 else ''}"
+               if fol["names"] else f"{fol['count']} friends")
+        self._notify(uid, "share-ask", f"{who} want{'s' if fol['count'] == 1 else ''} to see your workouts",
+                     "Share them on the rabbt Feed? Sport, time and distance only. Tap to choose.")
+        log_event(logger, logging.INFO, "share_asked", user_id=uid, followers=fol["count"])
+        return True
 
     def last_shared_at(self, uid: str) -> int | None:
         """When my newest workout post went out (auto or by hand), for "Sharing: On · last shared"."""

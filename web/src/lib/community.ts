@@ -127,6 +127,8 @@ export type CommunitySettings = {
   sharing_effective?: boolean
   /** why: yes (said yes here), earlier (friends settings, before this setting), off (said no), unanswered */
   sharing_source?: 'yes' | 'earlier' | 'off' | 'unanswered'
+  /** who'd see my shared workouts (count, up to 2 first names), for the share ask */
+  followers?: { count: number; names: string[] }
   /** route maps: show my own (default on); share with friends (null = not answered = off) */
   routes_own?: boolean
   routes_share?: boolean | null

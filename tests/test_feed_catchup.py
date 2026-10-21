@@ -117,3 +117,17 @@ def test_deleted_workout_post_is_never_reposted(fx) -> None:
     after = cm.feed("bob")["items"]
     assert gone["workout"]["activity_id"] not in [i["workout"]["activity_id"] for i in after]
     assert any(w["status"] == "they deleted the post" for w in cm.diagnose("ann")["workouts"])
+
+
+def test_ask_to_share_once_when_followed(fx) -> None:
+    """Ann never answered and Bob follows her: one push asks; asking shares nothing."""
+    fx.clock.at = NOON
+    cm = fx.cm
+    assert cm.settings("ann")["followers"]["count"] == 1
+    assert cm.ask_to_share("ann") is True
+    assert any(to == "ann" and "Bob wants to see your workouts" in t for to, t, _ in fx.pushes)
+    assert cm.ask_to_share("ann") is False  # only ever once
+    assert cm.settings("ann")["sharing_effective"] is False
+    assert cm.ask_to_share("bob") is False  # nobody follows Bob
+    cm.put_settings("cat", {"share_workouts": False})
+    assert cm.ask_to_share("cat") is False  # a no is never re-asked
