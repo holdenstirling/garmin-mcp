@@ -339,6 +339,7 @@ def test_backfill_retries_when_workouts_unavailable(fx) -> None:
     def boom(uid: str):
         raise RuntimeError("garmin down")
     cm.workouts_of = boom
+    cm.spawn = lambda fn: None  # no background Feed catch-up here: this tests backfill on its own
     cm.put_settings("ann", {"share_workouts": True})
     assert cm.feed("bob")["items"] == []
     cm.workouts_of = lambda uid: (_acts(today), [])
