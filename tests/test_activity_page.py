@@ -58,7 +58,8 @@ def test_activity_route(env, tmp_path) -> None:
                                        "date": (today + timedelta(weeks=12)).isoformat()})
     agent.plans.build("friend")
     _, acts = agent.stats.activities("friend")
-    aid = acts[0]["activity_id"]
+    # the synthetic week rotates by weekday: pick one with a distance (not an indoor ride)
+    aid = next((a for a in acts if a.get("distance_km") or a.get("distance")), acts[0])["activity_id"]
     athlete_app, coach_app, _ = _apps(env, tmp_path, agent)
     h = {"origin": BASE}
 
