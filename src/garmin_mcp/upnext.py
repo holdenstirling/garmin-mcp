@@ -178,8 +178,8 @@ def first_visit(*, garmin: bool, inviter: str | None) -> dict[str, Any]:
     return {"show": not garmin, "garmin": garmin, "inviter": inviter,
             "title": f"Welcome! You and {inviter} are connected" if inviter else "Welcome to rabbt",
             "items": [dict(i) for i in FIRST_VISIT_ITEMS] if not garmin else [],
-            "primary": {"kind": "connect_garmin", "label": "Connect Garmin",
-                        "detail": "Your workouts, streak and plan sync on their own"}}
+            "primary": {"kind": "connect_garmin", "label": "Connect your watch",
+                        "detail": "Garmin, Apple Watch or Oura. Your workouts and streak fill in on their own"}}
 
 
 Group = Callable[[str, datetime], "dict[str, Any] | None"]

@@ -2,7 +2,9 @@
 // Health has no web API, so the connect popup is a guide instead of a sign-in:
 //   intro   what Rabbit gets and never gets, "Set it up"
 //   steps   1. copy your Rabbit link and import key (shown this once), 2. build the Shortcut,
-//           3. run it automatically, 4. run it once: "Check for workouts" waits for the first import
+//           3. run it automatically, 4. run it once. Each step has "I did this" (a tick, kept on
+//           this device) and a progress bar; while the steps are open rabbt listens for the
+//           first import and jumps to "done" by itself ("Check for workouts" checks right away)
 //   done    "You're all set" once a first import arrived
 //   manage  last import, the steps again, a new key, turn off (optionally deleting imported workouts)
 // Same look as the other connect popups (ConnectSheet: tiles, Bullets, StateChip).
@@ -62,13 +64,33 @@ function CopyField({ label, value, secret, onToast }: { label: string; value: st
   )
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+const STEPS_KEY = 'rabbit.apple.steps'
+function loadTicks(): number[] {
+  try { const v = JSON.parse(window.localStorage.getItem(STEPS_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'number') : [] } catch { return [] }
+}
+function saveTicks(v: number[]): void {
+  try { window.localStorage.setItem(STEPS_KEY, JSON.stringify(v)) } catch { /* this visit only */ }
+}
+
+function Step({ n, title, done, onToggle, children }: {
+  n: number; title: string; done?: boolean; onToggle?: () => void; children: React.ReactNode
+}) {
   return (
-    <section className="flex gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-3.5" aria-label={`Step ${n}: ${title}`}>
-      <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-(--accent) font-mono text-small font-semibold text-(--on-fill)">{n}</span>
+    <section className={cn('flex gap-3 rounded-xl border bg-(--bg-surface) p-3.5 transition-colors', done ? 'border-(--accent)/40' : 'border-(--border)')}
+      aria-label={`Step ${n}: ${title}${done ? ', done' : ''}`}>
+      <span aria-hidden className={cn('flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-small font-semibold',
+        done ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--accent) text-(--on-fill)')}>
+        {done ? <Check className="size-4" /> : n}
+      </span>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <h3 className="text-body font-semibold leading-snug text-(--text)">{title}</h3>
-        {children}
+        <h3 className={cn('text-body font-semibold leading-snug', done ? 'text-(--text-secondary)' : 'text-(--text)')}>{title}</h3>
+        {!done && children}
+        {onToggle && (
+          <button type="button" onClick={onToggle} aria-pressed={!!done}
+            className="flex min-h-11 items-center gap-1.5 self-start text-small font-semibold text-(--accent)">
+            {done ? 'Show this step again' : <><Check className="size-4" aria-hidden />I did this</>}
+          </button>
+        )}
       </div>
     </section>
   )
@@ -106,6 +128,11 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
   const [checking, setChecking] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [remove, setRemove] = useState(false)
+  const [ticks, setTicks] = useState<number[]>(loadTicks)
+  const tick = (n: number) => setTicks((cur) => {
+    const next = cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n]
+    saveTicks(next); return next
+  })
   const live = useRef(true)
   useEffect(() => () => { live.current = false }, [])
 
@@ -125,6 +152,23 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
   useEffect(() => { void load() }, [load])
 
   const changed = () => { onChanged(); connectionsChanged() }
+
+  // While the steps are open, listen for the Shortcut's first run and say so the moment it lands.
+  const startImport = useRef<number | null | undefined>(undefined)
+  useEffect(() => {
+    if (view !== 'steps') { startImport.current = undefined; return }
+    if (startImport.current === undefined) startImport.current = h?.last_import ?? null
+    const id = window.setInterval(() => {
+      void getAppleHealth().then((v) => {
+        if (!live.current) return
+        setH(v)
+        if (v.last_import && v.last_import !== startImport.current) {
+          saveTicks([1, 2, 3, 4]); setTicks([1, 2, 3, 4]); setView('done'); changed()
+        }
+      }, () => {})
+    }, 8000)
+    return () => window.clearInterval(id)
+  }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function makeKey(thenSteps: boolean) {
     setBusy(true); setErr(null)
@@ -230,10 +274,18 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
     const endpoint = h?.endpoint ?? ''
     body = (
       <>
-        <p className="text-body leading-snug text-(--text-secondary)">
-          Do these on your iPhone, in the <b className="text-(--text)">Shortcuts</b> app. You only do this once.
-        </p>
-        <Step n={1} title="Copy your rabbt link and import key">
+        <div className="flex flex-col gap-2">
+          <p className="text-body leading-snug text-(--text-secondary)">
+            Do these on your iPhone, in the <b className="text-(--text)">Shortcuts</b> app. You only do this once, about 5 minutes.
+          </p>
+          <div className="flex items-center gap-2.5" aria-label={`${ticks.length} of 4 steps done`}>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-(--bg-inset)" aria-hidden>
+              <div className="h-full rounded-full bg-(--accent) transition-[width] duration-300" style={{ width: `${(Math.min(ticks.length, 4) / 4) * 100}%` }} />
+            </div>
+            <span className="text-meta font-semibold tabular-nums text-(--text-secondary)" aria-hidden>{Math.min(ticks.length, 4)} of 4</span>
+          </div>
+        </div>
+        <Step n={1} title="Copy your rabbt link and import key" done={ticks.includes(1)} onToggle={() => tick(1)}>
           <CopyField label="rabbt link" value={endpoint} onToast={onToast} />
           {key ? (
             <>
@@ -252,7 +304,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             </div>
           )}
         </Step>
-        <Step n={2} title="Build the Shortcut">
+        <Step n={2} title="Build the Shortcut" done={ticks.includes(2)} onToggle={() => tick(2)}>
           <Ol items={[
             <>Open Shortcuts, tap <b className="text-(--text)">+</b> and name it <b className="text-(--text)">Send workouts to rabbt</b>.</>,
             <>Add <Act>Find Health Samples</Act>. Set the type to <b className="text-(--text)">Workouts</b>, add the filter <b className="text-(--text)">Start Date is in the last 7 days</b>, sort by Start Date, latest first, limit 50.</>,
@@ -267,7 +319,7 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
             Only these five details are sent. Heart rate and calories aren’t, and rabbt would throw them away anyway.
           </p>
         </Step>
-        <Step n={3} title="Make it run on its own">
+        <Step n={3} title="Make it run on its own" done={ticks.includes(3)} onToggle={() => tick(3)}>
           <Ol items={[
             <>In Shortcuts, open <b className="text-(--text)">Automation</b> and tap <b className="text-(--text)">+</b>.</>,
             <>Choose <Act>Apple Watch Workout</Act>, then <b className="text-(--text)">Ends</b> for any workout. Don’t see it? Use <Act>Time of Day</Act>, every evening.</>,
@@ -284,7 +336,10 @@ export function ConnectAppleHealth({ onClose, onChanged, onToast }: {
           <Button variant="primary" className="w-full" loading={checking} onClick={() => void check()}>
             <RefreshCw className="mr-1.5 size-4" aria-hidden />Check for workouts
           </Button>
-          {checking && <p role="status" className="text-center text-small text-(--text-secondary)">Waiting for your Shortcut…</p>}
+          <p role="status" className="flex items-center justify-center gap-2 text-center text-small text-(--text-secondary)">
+            <span className="conn-dots flex items-center gap-1" aria-hidden><span /><span /><span /></span>
+            {checking ? 'Checking now…' : 'Listening for your Shortcut. This page updates by itself.'}
+          </p>
         </Step>
         <button type="button" className="min-h-11 text-small text-(--text-muted)" onClick={() => { void load(); setView('manage') }}>
           I’ll finish later

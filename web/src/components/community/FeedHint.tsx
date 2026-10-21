@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Info, Share2, UserPlus, Watch } from 'lucide-react'
 import { getCommunitySettings, putCommunitySettings, sharingWorkouts } from '@/lib/community'
-import { getConnections, requestConnect } from '@/lib/connections'
+import { getConnections, requestWatchPicker } from '@/lib/connections'
 
 type Why = 'no_watch' | 'private' | 'friends'
 
@@ -17,7 +17,7 @@ export function FeedHint({ onInvite, onShared }: { onInvite?: () => void; onShar
     let live = true
     Promise.all([getConnections().catch(() => null), getCommunitySettings().catch(() => null)]).then(([c, s]) => {
       if (!live) return
-      const watch = !!c?.apps.some((a) => (a.id === 'garmin' || a.id === 'oura') && a.connected)
+      const watch = !!c?.apps.some((a) => (a.id === 'garmin' || a.id === 'oura' || a.id === 'apple' || a.id === 'whoop') && a.connected)
       setWhy(c && !watch ? 'no_watch' : s && !sharingWorkouts(s.settings) ? 'private' : 'friends')
     })
     return () => { live = false }
@@ -32,7 +32,7 @@ export function FeedHint({ onInvite, onShared }: { onInvite?: () => void; onShar
     } catch { /* the row in Me still works */ } finally { setBusy(false) }
   }
 
-  const line = why === 'no_watch' ? 'Connect your watch so your workouts can show up here, and friends see them after each sync.'
+  const line = why === 'no_watch' ? 'Connect your watch (Garmin, Apple Watch or Oura) so your workouts show up here and friends see them.'
     : why === 'private' ? 'Your workouts are private, so friends don’t see them here.'
       : 'Friends’ workouts show here once they follow you back and turn on sharing. New ones post after their next sync.'
   const Icon = why === 'no_watch' ? Watch : why === 'private' ? Share2 : Info
@@ -43,7 +43,7 @@ export function FeedHint({ onInvite, onShared }: { onInvite?: () => void; onShar
         <p className="text-small leading-snug text-(--text-secondary)">{line}</p>
         <div className="flex flex-wrap gap-x-4">
           {why === 'no_watch' && (
-            <button type="button" onClick={() => requestConnect('garmin')} className="min-h-11 text-small font-semibold text-(--accent)">
+            <button type="button" onClick={requestWatchPicker} className="min-h-11 text-small font-semibold text-(--accent)">
               Connect your watch
             </button>
           )}

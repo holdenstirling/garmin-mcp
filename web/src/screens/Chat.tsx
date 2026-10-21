@@ -7,11 +7,11 @@ import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
-import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, RaceChecklistScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
+import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, WatchPicker, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, RaceChecklistScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
-import type { ConnApp, ConnectRequest } from '@/lib/connections'
+import { WATCH_PICK_EVENT, hasWatch, type ConnApp, type ConnectRequest } from '@/lib/connections'
 import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
@@ -232,6 +232,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const closePages = () => setPages([])
   // The one connect popup (components/connect/ConnectSheet): any screen via requestConnect(app).
   const [connect, setConnect] = useState<ConnectRequest | null>(null)
+  // "Which watch do you wear?" (components/connect/WatchPicker): generic Connect your watch buttons.
+  const [pickWatch, setPickWatch] = useState(false)
   const [addPlan, setAddPlan] = useState(false)
   // A plan file -> full Rabbit workouts (lib/planconvert): read, review, apply.
   const [converting, setConverting] = useState(false)
@@ -460,8 +462,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   useEffect(() => {
     // GarminEmpty, setup quests, any screen: that app's connect popup (lib/connections).
     const onConnect = (e: Event) => setConnect({ app: ((e as CustomEvent<ConnApp | undefined>).detail) ?? 'garmin' })
+    const onPick = () => setPickWatch(true)
     window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
-    return () => window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect)
+    window.addEventListener(WATCH_PICK_EVENT, onPick)
+    return () => { window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect); window.removeEventListener(WATCH_PICK_EVENT, onPick) }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Shared training blocks (lib/blocks openBlock): Plan, Community, a moment -> the block page.
@@ -1030,14 +1034,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Rabbit's one status slot, most important first.
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
-    : !me.garmin.connected && firstVisitHidden() && !calm ? { kind: 'garmin' }
+    : !hasWatch(me) && firstVisitHidden() && !calm ? { kind: 'garmin' }
     : isCoach && wantsPlan(intents) && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
     : isCoach && recapReady ? { kind: 'recap' }
     : null
   const tapBanner = () => {
     if (!banner) return
     if (banner.kind === 'error') void refreshThreads(threadsError?.select)
-    else if (banner.kind === 'garmin') setConnect({ app: 'garmin' })
+    else if (banner.kind === 'garmin') setPickWatch(true)
     else if (banner.kind === 'plan') startSetup()
     else if (banner.kind === 'recap') openRecap(recapPillWeek ?? undefined)
   }
@@ -1187,7 +1191,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <Fragment key="next">
           {athlete && <SharePrompt onShown={setShareAsk} />}
           {!shareAsk && !checklistOn && (
-            <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
+            <FirstVisitCard connected={hasWatch(me)} onConnect={() => setPickWatch(true)}
               onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
           )}
         </Fragment>
@@ -1214,7 +1218,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
             {/* 1c. The one Getting started checklist: area, one thing near you, a plan. */}
             {athlete && <GettingStarted onJob={() => openCommunity('clubs')} onPlan={startSetup}
-              onWatch={() => pushPage({ k: 'connections' })} onFriends={() => openCommunity('people')} watch={me.garmin.connected || me.oura.connected} />}
+              onWatch={() => setPickWatch(true)} onFriends={() => openCommunity('people')} watch={hasWatch(me)} />}
             {athlete && <PulseCard />}
             {athlete && <OneTip id="today" text="Ask rabbt why any workout is on your plan, or what to try near you. The Ask bar is at the bottom." />}
 
@@ -1250,9 +1254,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
 
             {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today (after a watch). */}
-            {athlete && !(calm && !me.garmin.connected && !me.oura.connected) && (
+            {athlete && !(calm && !hasWatch(me)) && (
               <Section title="How you're doing" action={<SeeAll label="Details" ariaLabel="Open Progress" onClick={openProgress} />}>
-                <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
+                <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setPickWatch(true)} />
               </Section>
             )}
 
@@ -1325,8 +1329,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     setNewcomer(me.newcomer)
     if (me.newcomer?.steps.area) milestone('area_set')
     if (me.newcomer?.steps.plan) milestone('plan_built')
-    if (me.garmin.connected || me.oura.connected || me.whoop?.connected) milestone('watch_connected')
-  }, [me.newcomer, me.garmin.connected, me.oura.connected, me.whoop?.connected])
+    if (hasWatch(me)) milestone('watch_connected')
+  }, [me.newcomer, me.garmin.connected, me.oura.connected, me.whoop?.connected, me.apple?.connected]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
@@ -1816,6 +1820,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             onOpenConnections={() => pushPage({ k: 'connections' })} />
         </BottomSheet>
       )}
+      {pickWatch && <WatchPicker onClose={() => setPickWatch(false)} />}
       {connect && (
         <ConnectSheet key={`${connect.app}:${connect.result ?? ''}`} me={me} req={connect} onClose={closeConnect}
           onChanged={onChange} onToast={showToast} />
