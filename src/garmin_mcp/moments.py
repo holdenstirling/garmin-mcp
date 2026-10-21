@@ -267,6 +267,7 @@ class Moments:
         self.on_milestone: Callable[[str, dict[str, Any]], list[dict[str, Any]] | None] | None = None
         # Called after new workouts were handled (personal bests, race finished).
         self.after_workouts: Callable[[str], None] | None = None
+        self.every_tick: Callable[[str], None] | None = None  # runs every tick, quiet hours too
         # Set by webapp: share new workouts with friends (community auto-share) without a
         # moment, for the background check when workout feedback is off; ``wants_share(uid)``
         # says whether that person shares at all (skips the Garmin read when not).
@@ -530,6 +531,11 @@ class Moments:
         if uid.startswith("coach_"):
             return
         self.flush(uid)
+        if self.every_tick is not None:  # silent work that must not wait for morning (no push)
+            try:
+                self.every_tick(uid)
+            except Exception as e:
+                log_event(logger, logging.WARNING, "moment_every_tick_failed", user_id=uid, error=type(e).__name__)
         local = self._now(uid)
         if self.quiet(local):
             return

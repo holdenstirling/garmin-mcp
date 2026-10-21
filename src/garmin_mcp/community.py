@@ -749,6 +749,7 @@ class Community:
             return []
         try:
             if not self.sharing_consent(uid):
+                log_event(logger, logging.INFO, "feed_catch_up", user_id=uid, posted=0, sharing=False)
                 return []
             acts, ext = self.workouts_of(uid)
             today = self._now(uid).date()
@@ -760,8 +761,8 @@ class Community:
             with self._caught_lock:
                 self._caught.pop(uid, None)
             return []
-        if out:
-            log_event(logger, logging.INFO, "feed_catch_up", user_id=uid, posted=len(out))
+        log_event(logger, logging.INFO, "feed_catch_up", user_id=uid, posted=len(out),
+                  workouts=len(acts) + len(ext))
         return out
 
     def catch_up_soon(self, uids: list[str]) -> None:

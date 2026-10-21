@@ -3717,8 +3717,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         _ag.moments.share_scan = _cm_share_scan
         def _cm_tick(uid: str) -> None:
             cm.meetup_reminders(uid)
-            cm.catch_up(uid)  # workouts synced before sharing took effect still reach the Feed
         _ag.moments.on_tick = _cm_tick
+        # Workouts synced before sharing took effect still reach the Feed; silent (no push), so it
+        # runs in quiet hours too (a friend's evening run shouldn't wait for 7am).
+        _ag.moments.every_tick = lambda uid: cm.catch_up(uid)
         _ag._store.on_user_write(lambda uid, name: _cm_scan(uid, workouts=False)
                                  if name == "events" and soc.is_athlete(uid) else None)
         community_routes = _cmw.make_routes(
