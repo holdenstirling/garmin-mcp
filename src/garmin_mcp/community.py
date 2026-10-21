@@ -996,6 +996,8 @@ class Community:
                 w["route"] = line
             elif mine and isinstance(out["workout"].get("route"), dict):
                 w["route_hidden"] = True  # mine, maps off: the card can say so
+            elif isinstance(out["workout"].get("route"), dict):
+                w["map_private"] = True  # a friend's map they keep to themselves: the Feed map says so
             out["workout"] = w
         out["text"], out["mentions"] = self._shown_mentions(viewer, post)
         photos = post.get("photos") or ([post["photo"]] if post.get("photo") else [])

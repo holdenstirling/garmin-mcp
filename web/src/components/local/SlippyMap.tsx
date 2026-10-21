@@ -52,8 +52,13 @@ export function fitZoom(pts: { lat: number; lon: number }[], w: number, h: numbe
   return MIN_Z
 }
 
-export function SlippyMap({ pins, center, selected, onSelect, onMoved, className, height = 340, path, locate: canLocate = true, label }: {
+/** One of several lines drawn at once (the Feed map): its own color, bolder when selected. */
+export type MapPath = { id: string; line: [number, number][]; color: string }
+
+export function SlippyMap({ pins, center, selected, onSelect, onMoved, className, height = 340, path, paths, locate: canLocate = true, label }: {
   pins: MapPin[]
+  /** several lines at once, each in its own color (``selected`` matches an id to bring one forward) */
+  paths?: MapPath[]
   /** a line to draw over the map ([lat, lon] points, e.g. a workout's route); the view fits it */
   path?: [number, number][] | null
   /** the "Show where I am" button (off for a route map) */
@@ -89,9 +94,11 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
 
   // Start: fit the pins, else the person's area.
   const pathPts = useMemo(() => (path ?? []).map(([lat, lon]) => ({ lat, lon })), [path])
+  const manyPts = useMemo(() => (paths ?? []).flatMap((x) => x.line.map(([lat, lon]) => ({ lat, lon }))), [paths])
   const fitKey = pins.map((p) => p.id).join(',') + (path?.length ? `|${path.length}:${path[0]?.join()}` : '')
+    + (paths?.length ? `|${paths.map((x) => x.id).join(',')}` : '')
   useEffect(() => {
-    const fit = [...pins, ...pathPts]
+    const fit = [...pins, ...pathPts, ...manyPts]
     const pts = fit.length ? fit : center ? [center] : []
     if (!pts.length) return
     const lat = (Math.max(...pts.map((p) => p.lat)) + Math.min(...pts.map((p) => p.lat))) / 2
@@ -213,6 +220,20 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
               fill="none" stroke="var(--route-casing, white)" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
             <polyline points={pathPts.map((p) => { const q = place(p.lat, p.lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}` }).join(' ')}
               fill="none" stroke="var(--route, var(--accent))" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+        )}
+        {pinch === 1 && view && paths && paths.length > 0 && (
+          <svg className="pointer-events-none absolute inset-0" width={size.w} height={size.h} aria-hidden>
+            {[...paths].sort((a, b) => Number(a.id === selected) - Number(b.id === selected)).map((x) => {
+              const pts = x.line.map(([lat, lon]) => { const q = place(lat, lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}` }).join(' ')
+              const on = x.id === selected, dim = selected != null && !on
+              return (
+                <g key={x.id} opacity={dim ? 0.45 : 1}>
+                  <polyline points={pts} fill="none" stroke="var(--route-casing, white)" strokeWidth={on ? 9 : 6} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
+                  <polyline points={pts} fill="none" stroke={x.color} strokeWidth={on ? 5.5 : 3.5} strokeLinejoin="round" strokeLinecap="round" />
+                </g>
+              )
+            })}
           </svg>
         )}
         {pinch === 1 && pins.map((p) => {

@@ -104,9 +104,12 @@ def test_route_on_post_owner_sees_friends_only_after_yes(fx) -> None:
     assert isinstance(mine["route"], list) and len(mine["route"]) >= 2
     assert "start_cell" not in str(cm.get("ann", pid))  # never leaves the server, not even to the owner
     assert "route" not in cm.get("bob", pid)["workout"]  # not shared until Ann says yes
+    assert cm.get("bob", pid)["workout"]["map_private"] is True  # the Feed map says "keeps their map private"
+    assert "map_private" not in cm.get("ann", pid)["workout"]
     assert cm.settings("ann")["routes_share"] is None
     cm.put_settings("ann", {"routes_share": True})
     assert cm.get("bob", pid)["workout"]["route"] == mine["route"]
+    assert "map_private" not in cm.get("bob", pid)["workout"]
     cm.put_settings("ann", {"routes_own": False})  # Ann hides maps for herself; friends unaffected
     assert "route" not in cm.get("ann", pid)["workout"] and cm.get("ann", pid)["workout"]["route_hidden"]
     assert "route" in cm.get("bob", pid)["workout"]
