@@ -83,7 +83,7 @@ export function ProgressHero({ p, headline, planTime, onOpenPlan, onOpenSetup }:
       <div className="flex items-center gap-4">
         <LevelBadge level={p.level} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-title-md leading-tight text-(--brand)">{p.name}</p>
+          <p className="flex items-center gap-0.5 font-display text-title-md leading-tight text-(--brand)">{p.name}<InfoTip term="level" /></p>
           <p className="text-small text-(--text-secondary)">Level {p.level} · <CountUp value={p.xp} storeKey="xp" /> XP</p>
           <XpBar p={p} className="mt-3" rabbit />
           <p className="mt-1.5 text-meta text-(--text-secondary)">
@@ -254,7 +254,7 @@ export function Celebration({ p, onDone }: { p: Progress; onDone: () => void }) 
             <span className="flex items-center gap-1 text-(--accent)" aria-hidden="true"><PartyPopper className="size-5" /><Star className="size-6" /><PartyPopper className="size-5 -scale-x-100" /></span>
             <LevelBadge level={p.level} size="lg" />
             <p className="font-display text-title-lg leading-tight text-(--brand)">Level {p.level}!</p>
-            <p className="text-body text-(--text-secondary)">You're a {p.name}. Every workout counts toward the next one.</p>
+            <p className="text-body text-(--text-secondary)">You're a {p.name} now{p.level < 5 ? ' (a baby rabbit)' : ''}. Every workout counts toward the next level.</p>
           </>
         ) : (
           <p className="font-display text-title-md leading-tight text-(--brand)">New badge{p.new_badges.length > 1 ? 's' : ''}!</p>

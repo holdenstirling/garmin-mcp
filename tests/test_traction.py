@@ -193,3 +193,24 @@ def test_club_page_sets_ref_cookie_only_for_valid_slug() -> None:
     import re
     assert re.fullmatch(r"club:[a-z0-9-]{1,60}", "club:mile-high-run-club")
     assert not re.fullmatch(r"club:[a-z0-9-]{1,60}", "club:<script>")
+
+
+def test_api_newcomer_checklist_tips_and_first_week(env, tmp_path) -> None:  # noqa: F811
+    me = _app(env, tmp_path, "holden")
+
+    async def go() -> None:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=me), base_url=BASE) as n:
+            nc = (await n.get("/app/api/me")).json()["newcomer"]
+            assert nc["steps"] == {"area": False, "job": False, "plan": False}
+            assert nc["since"] and nc["tips"] == [] and nc["show_all"] is False
+            if nc["since"] != "existing":
+                assert nc["first_week"] is True and nc["days"] == 0
+            assert (await n.post("/app/api/newcomer", headers=H, json={"tip": "bogus"})).status_code == 400
+            assert (await n.post("/app/api/newcomer", headers=H, json={"done": "plan"})).status_code == 400
+            r = (await n.post("/app/api/newcomer", headers=H, json={"tip": "near_me"})).json()
+            r = (await n.post("/app/api/newcomer", headers=H, json={"tip": "near_me", "done": "job"})).json()
+            assert r["tips"] == ["near_me"] and r["steps"]["job"] is True
+            r = (await n.post("/app/api/newcomer", headers=H, json={"show_all": True})).json()
+            assert r["show_all"] is True and r["first_week"] is False
+            assert (await n.get("/app/api/me")).json()["newcomer"]["since"] == nc["since"]  # stamped once
+    asyncio.run(go())

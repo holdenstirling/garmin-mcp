@@ -5,11 +5,12 @@ import { Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { requestConnectGarmin } from '@/lib/upnext'
+import { requestConnect } from '@/lib/connections'
 
 const COPY: Record<'progress' | 'workout' | 'today', { title: string; body: string }> = {
   progress: {
-    title: 'Your progress lives here',
-    body: 'Connect Garmin and your workouts, streak, fitness and personal bests fill in on their own. Nothing to log by hand.',
+    title: 'Your progress starts with your first workout',
+    body: 'Connect a watch or ring and your workouts, streak and personal bests fill in on their own.',
   },
   workout: {
     title: 'Send workouts to your watch',
@@ -48,8 +49,18 @@ export function GarminEmpty({ what, compact, onConnect, className }: {
       </span>
       <h2 className="font-display text-title leading-tight text-(--brand)">{c.title}</h2>
       <p className="max-w-sm text-small leading-snug text-(--text-secondary)">{c.body}</p>
-      <Button variant="primary" className="h-11 w-full max-w-xs text-body" onClick={connect}>Connect Garmin</Button>
-      <p className="text-caption text-(--text-muted)">Takes about a minute with your Garmin Connect sign-in.</p>
+      {what === 'progress' && !onConnect ? (
+        <div className="flex w-full max-w-xs flex-col gap-2" role="group" aria-label="Connect a watch">
+          <Button variant="primary" className="h-11 w-full text-body" onClick={connect}>Connect Garmin</Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="default" className="h-11 text-body" onClick={() => requestConnect('apple')}>Apple Watch</Button>
+            <Button variant="default" className="h-11 text-body" onClick={() => requestConnect('oura')}>Oura</Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="primary" className="h-11 w-full max-w-xs text-body" onClick={connect}>Connect Garmin</Button>
+      )}
+      <p className="text-caption text-(--text-muted)">Takes about a minute. Change it any time in Me, Connected apps.</p>
     </section>
   )
 }

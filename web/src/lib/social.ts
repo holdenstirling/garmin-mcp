@@ -2,6 +2,7 @@
 import { getJSON, postJSON, sendJSON } from '@/lib/api'
 import { fmtClimb, fmtDuration } from '@/lib/format'
 import { counted } from '@/lib/usage'
+import { milestone } from '@/lib/traction'
 import { famDist, noDistance, sportFamily } from '@/lib/sportstats'
 
 export type SocialUser = { id: string; name: string; photo: number | null; picture: string; handle?: string }
@@ -35,6 +36,7 @@ export const getFriend = (id: string) => getJSON<FriendCard>(`/api/social/people
 /** ``value`` is an email (has "@") or an invite code. */
 export const follow = (value: string) =>
   postJSON<{ ok: boolean; message: string }>('/api/social/follow', value.includes('@') ? { email: value } : { code: value })
+    .then((r) => { milestone('follow'); return r })
 export const acceptRequest = (edge: string) => postJSON<{ ok: boolean }>(`/api/social/requests/${edge}/accept`)
 export const declineRequest = (edge: string) => postJSON<{ ok: boolean }>(`/api/social/requests/${edge}/decline`)
 export const unfollow = (edge: string) => sendJSON<{ ok: boolean }>('DELETE', `/api/social/following/${edge}`)

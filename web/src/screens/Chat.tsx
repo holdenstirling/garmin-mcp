@@ -15,7 +15,7 @@ import type { ConnApp, ConnectRequest } from '@/lib/connections'
 import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
-import { getProgress, nextQuest, type Progress, type QuestId } from '@/lib/progress'
+import { getProgress, markProgressSeen, nextQuest, type Progress, type QuestId } from '@/lib/progress'
 import { athleteChat, getCoaches } from '@/lib/coach'
 import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
@@ -41,7 +41,10 @@ import { OPEN_PLACE_EVENT, TAB_SHOWN_EVENT, type Place } from '@/lib/nav'
 import { RaceWeekCard } from '@/components/raceweek/RaceWeekCard'
 import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
-import { GetStartedCard } from '@/components/home/GetStartedCard'
+import { GettingStarted } from '@/components/home/GettingStarted'
+import { OneTip } from '@/components/home/OneTip'
+import { setNewcomer, useNewcomer } from '@/lib/newcomer'
+import { milestone } from '@/lib/traction'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
 import { CONNECT_GARMIN_EVENT, getUpNext, type UpNext } from '@/lib/upnext'
@@ -250,6 +253,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [voice, setVoice] = useState<{ sessionId?: string; activityId?: number; title?: string } | null>(null)
   const [feedTick, setFeedTick] = useState(0) // bump: re-read the log (new moments from sync/progress)
   const showToast = (msg: string) => setToast((t) => ({ msg, n: (t?.n ?? 0) + 1 }))
+  // First week (lib/newcomer): a calmer app until the first real thing is done, or 7 days.
+  const newcomer = useNewcomer()
+  const calm = newcomer?.first_week === true
+  const checklistOn = !!newcomer && !newcomer.checklist_hidden
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
   // feed resizes (keyboard opening/closing) we can keep the newest messages in view.
@@ -278,7 +285,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [calendarAdd, setCalendarAdd] = useState(false) // Plan + Add -> Add to my calendar (race, trip, big day)
   const [addWorkout, setAddWorkout] = useState<{ date: string; n: number } | null>(null)
   const [eventReq, setEventReq] = useState<EventRequest | null>(null)
-  const [communityView, setCommunityView] = useState<CommunityView>('feed')
+  // Friends: Updates | People (find friends and buddies). Near me is runs, clubs and meetups only.
+  const [friendsView, setFriendsView] = useState<'feed' | 'people'>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   const [shareAsk, setShareAsk] = useState(false)  // Home: the share-workouts question is showing
@@ -418,14 +426,24 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
   const openCommunity = (v: CommunityView = 'feed', club?: string) => {
     // Feed is its own tab; clubs and people share the Local tab (id 'clubs').
-    if (v === 'feed') { goTab('feed'); return }
-    setCommunityView(v); setCommunityClub(club ?? null); goTab('clubs')
+    if (v === 'feed' || v === 'people') { setFriendsView(v); goTab('feed'); return }
+    setCommunityClub(club ?? null); goTab('clubs')
   }
   // Nothing open over the tabs: progress, Today and live sync refresh.
   const overlayFree = !pages.some((p) => p.k === 'screen') && !sheet && !connect
   const homeInView = tab === 'rabbit' && overlayFree
   // Gamification: level, streak, this week and setup quests (status banner, Me, Progress).
   const [progress, setProgress] = useState<Progress | null>(null)
+  // First session or first week: no full-screen level-up / badge moment, one quiet toast instead.
+  const quietWins = calm || newcomer?.days === 0
+  useEffect(() => {
+    if (!progress || !quietWins || (!progress.level_up && !progress.new_badges.length)) return
+    const n = progress.new_badges.length
+    const parts = [n ? `${n} new badge${n > 1 ? 's' : ''}` : '', progress.level_up ? `level ${progress.level} (${progress.name})` : '']
+    showToast(`Nice! You earned ${parts.filter(Boolean).join(' and ')}. See them in Progress.`)
+    void markProgressSeen().catch(() => {})
+    setProgress((p) => p && { ...p, level_up: false, new_badges: [] })
+  }, [progress?.xp, quietWins]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!overlayFree) return
     let live = true
@@ -1010,9 +1028,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const quest = progress ? nextQuest(progress) : null
   const recapReady = !!recapPillWeek && recapDismissed !== recapPillWeek
   const banner: Banner | null = threadsError ? { kind: 'error' }
-    : !me.garmin.connected && firstVisitHidden() ? { kind: 'garmin' }
+    : !me.garmin.connected && firstVisitHidden() && !calm ? { kind: 'garmin' }
     : isCoach && wantsPlan(intents) && (!goal ? items.length > 0 : !goal.plan) ? { kind: 'plan', goal: goal?.title ?? null }
-    : isCoach && quest && progress ? { kind: 'quest', title: quest.short ?? quest.title, done: progress.setup.done, total: progress.setup.total }
     : isCoach && recapReady ? { kind: 'recap' }
     : null
   const tapBanner = () => {
@@ -1168,7 +1185,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       return (
         <Fragment key="next">
           {athlete && <SharePrompt onShown={setShareAsk} />}
-          {!shareAsk && (
+          {!shareAsk && !checklistOn && (
             <FirstVisitCard connected={me.garmin.connected} onConnect={() => setConnect({ app: 'garmin' })}
               onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} />
           )}
@@ -1194,6 +1211,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {athlete && <NearTonight hasPlan={builtPlan} refreshKey={feedTick} onOpenClub={(c) => openCommunity('clubs', c)}
               onPlanChanged={() => { loadToday(); loadWeek() }} />}
 
+            {/* 1c. The one Getting started checklist: area, one thing near you, a plan. */}
+            {athlete && <GettingStarted onJob={() => openCommunity('clubs')} onPlan={startSetup}
+              onWatch={() => pushPage({ k: 'connections' })} onFriends={() => openCommunity('people')} watch={me.garmin.connected || me.oura.connected} />}
+            {athlete && <OneTip id="today" text="Ask rabbt why any workout is on your plan, or what to try near you. The Ask bar is at the bottom." />}
+
             {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
             <div className="flex flex-col gap-3 empty:hidden">
               {athlete && <RaceWeekCard refreshKey={feedTick} onOpen={(id) => showPage({ k: 'raceweek', id })} />}
@@ -1211,7 +1233,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {/* 3. One nudge (the most important thing to fix or answer), never a pile. */}
             <div className="flex flex-col gap-3 empty:hidden">{nudge(top)}</div>
 
-            {stripFirst(intents) && (
+            {!calm && stripFirst(intents) && (
               <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
                 onOpen={(tg) => tg === 'progress' ? goTab('progress') : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
             )}
@@ -1226,18 +1248,18 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               </Section>
             )}
 
-            {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today. */}
-            {athlete && (
+            {/* 5. How you're doing: sleep, HRV, readiness, form and one call for today (after a watch). */}
+            {athlete && !(calm && !me.garmin.connected && !me.oura.connected) && (
               <Section title="How you're doing" action={<SeeAll label="Details" ariaLabel="Open Progress" onClick={openProgress} />}>
                 <ReadinessSnapshot refreshKey={feedTick} onOpen={openProgress} onConnect={() => setConnect({ app: 'garmin' })} />
               </Section>
             )}
 
             {/* 6. Friends: who trained today, who races soon, their latest posts. */}
-            {athlete && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
+            {athlete && !calm && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
 
             {/* 7. Coming up: the goal race (grade, countdown, fitness trend) and its checklist. */}
-            {athlete && (
+            {athlete && !calm && (
               <Section title="Coming up" hideWhenEmpty>
                 {goal && <FitnessCountdown refreshKey={feedTick} onOpen={(id) => showPage({ k: 'fit', id })} />}
                 <RaceChecklistCard refreshKey={feedTick} />
@@ -1245,23 +1267,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             )}
 
             {/* 8. Everything else, most useful first: one-tap actions, the other nudges, setup. */}
-            <Section title="More for you" hideWhenEmpty>
+            {!calm && <Section title="More for you" hideWhenEmpty>
               {athlete && (
                 <QuickActions refreshKey={feedTick} imperial={imperial} onToast={showToast}
                   skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
               )}
               {rest.map((k) => nudge(k))}
-              {athlete && (me.garmin.connected || firstVisitHidden()) && (
-                <GetStartedCard garmin={me.garmin.connected} hasGoal={!!goal} progress={progress} onStep={(st) => {
-                  if (st === 'garmin') setConnect({ app: 'garmin' })
-                  else if (st === 'plan') startSetup()
-                  else if (st === 'race') openRaces()
-                  else if (st === 'friends') openCommunity('people')
-                  else if (st === 'club') openCommunity('clubs')
-                  else doQuest('notify')
-                }} />
-              )}
-            </Section>
+            </Section>}
             <button type="button" onClick={openHowItWorks}
               className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
               <CircleQuestionMark className="size-5" aria-hidden /> New here? How rabbt works
@@ -1290,13 +1302,20 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       else setHomeView('home') // Today again from rabbt's chat: back to Today
       return
     }
-    if (t === 'clubs' && t !== tab) { setCommunityView('clubs'); setCommunityClub(null) } // Clubs opens on its list
+    if (t === 'clubs' && t !== tab) setCommunityClub(null) // Near me opens on its list
     setTab(t)
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
   const shell = useRef<HTMLDivElement>(null)
   useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !pages.length && !typing && !inChat && !pending, onSwipe: setTab })
   useEffect(() => { setUsageOff(me.settings.usage_off === true); trackAppOpen() }, [me.settings.usage_off])
+  // Newcomers: the checklist and first-week mode read this; firsts already true on load count once.
+  useEffect(() => {
+    setNewcomer(me.newcomer)
+    if (me.newcomer?.steps.area) milestone('area_set')
+    if (me.newcomer?.steps.plan) milestone('plan_built')
+    if (me.garmin.connected || me.oura.connected || me.whoop?.connected) milestone('watch_connected')
+  }, [me.newcomer, me.garmin.connected, me.oura.connected, me.whoop?.connected])
   useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
@@ -1304,6 +1323,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     feed: friendsDot && 'new from friends',
   }
   const openMeRow = (r: MeRow) => {
+    if (r === 'nearme') { closePages(); openCommunity('clubs'); return }
+    if (r === 'plan') { closePages(); startSetup(); return }
     if (r === 'friends') openCommunity('people')
     else if (r === 'settings') open('settings')
     else if (r === 'connections' || r === 'access' || r === 'usage' || r === 'partners' || r === 'legal') pushPage({ k: r })
@@ -1317,7 +1338,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   function planTab() {
     if (builtPlan) {
       return (
-        <TabScreen key="planner" title="Plan" top={scheduleTop} action={meButton}>
+        <TabScreen key="planner" title="Plan" top={scheduleTop} action={meButton}
+          lead={<OneTip id="plan" text="Tap a day to see the workout. Tap Base or Build to change that part of your plan." />}>
           <PlanEditor me={me} goalTitle={goal?.title ?? 'Your race'}
             addRequest={addWorkout} onAddHandled={() => setAddWorkout(null)} onOpenEvent={openEvent}
             onRebuild={startSetup}
@@ -1380,9 +1402,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   }
 
   function progressTab() {
-    const seg = <Segmented label="Progress" value={progressView} onChange={setProgressView}
+    // First week: no recaps yet (nothing to recap); Overview only.
+    const seg = calm ? undefined : <Segmented label="Progress" value={progressView} onChange={setProgressView}
       options={[['overview', 'Overview'], ['recap', 'Weekly recap']] as const} />
-    if (progressView === 'recap') {
+    if (progressView === 'recap' && !calm) {
       return (
         <TabScreen key="recap" title="Progress" top={seg} action={meButton}>
           <RecapSheet week={recapWeek} onClose={() => setProgressView('overview')} onAsk={tellRabbit} />
@@ -1390,9 +1413,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )
     }
     return (
-      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={<MonthRecapEntry onOpen={setMonthCard} />}>
+      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={calm ? undefined : <MonthRecapEntry onOpen={setMonthCard} />}>
         <StatsScreen onOpenPlan={builtPlan ? openPlan : undefined}
-          onOpenSetup={() => showScreen('quests')}
           onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       </TabScreen>
     )
@@ -1402,8 +1424,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const scheduleTop = (
     <div className="mx-auto flex w-full max-w-xl items-center gap-2">
       <div className="min-w-0 flex-1">
-        <Segmented label="Plan" value={schedView} onChange={setSchedView}
-          options={[['plan', 'Training'], ['events', 'Calendar'], ['discover', 'Find a race']] as const} />
+        {/* Calendar and Find a race wait until there's a goal or plan (they're in + Add meanwhile). */}
+        {(goal || builtPlan || schedView !== 'plan') && (
+          <Segmented label="Plan" value={schedView} onChange={setSchedView}
+            options={[['plan', 'Training'], ['events', 'Calendar'], ['discover', 'Find a race']] as const} />
+        )}
       </div>
       <Button variant="primary" className="h-11 shrink-0 gap-1.5 px-4 text-body max-[359px]:w-11 max-[359px]:px-0" aria-haspopup="dialog"
         aria-label="Add a workout, event or plan" data-tour="add" onClick={() => setAddOpen(true)}>
@@ -1667,7 +1692,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {visited.has('feed') && (
         <div className={tabCls('feed')} data-tab-hidden={tab !== 'feed' || undefined}>
           <TabScreen key="feed" action={meButton}>
-            <CommunityScreen section="feed" imperial={imperial} view="feed" onView={(v) => { if (v !== 'clubs') openCommunity(v) }} onChanged={onChange}
+            <CommunityScreen section="feed" imperial={imperial} view={friendsView} onView={(v) => openCommunity(v)} onChanged={onChange}
               club={null} onClub={(id) => { if (id) openCommunity('clubs', id) }} />
           </TabScreen>
         </div>
@@ -1675,7 +1700,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       {visited.has('clubs') && (
         <div className={tabCls('clubs')} data-tab-hidden={tab !== 'clubs' || undefined}>
           <TabScreen key="clubs" action={meButton}>
-            <CommunityScreen section="clubs" imperial={imperial} view={communityView === 'feed' ? 'clubs' : communityView}
+            <CommunityScreen section="clubs" imperial={imperial} view="clubs"
               onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub}
               onOpenPlan={openPlan} onBuildPlan={startSetup} />
           </TabScreen>
@@ -1773,7 +1798,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
           onClose={() => setReaction(null)} onOpenSession={(id) => { setReaction(null); setWorkout({ sessionId: id }) }}
           onCheckIn={(c) => { setReaction(null); setVoice(c) }} />
       )}
-      {progress && overlayFree && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
+      {progress && overlayFree && !quietWins && <Celebration key={progress.xp} p={progress} onDone={() => setProgress((p) => p && { ...p, level_up: false, new_badges: [] })} />}
       {sheet === 'settings' && (
         <BottomSheet title="Settings" closing={closing} onClose={close} onDismissed={dismissNow}>
           <SettingsPanels me={me} onChange={onChange} onDevDone={() => void reload()}

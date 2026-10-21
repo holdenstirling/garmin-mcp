@@ -1,4 +1,4 @@
-// Two tabs share this screen (section): Feed, and Clubs ("Clubs | People"). The feed is calm on purpose: what people choose
+// Two tabs share this screen (section): Friends ("Updates | People"), and Near me (runs, clubs, meetups). The feed is calm on purpose: what people choose
 // to share (life events, races, PRs) and milestones as drafts until you tap Share, never
 // every workout. Clubs: local run clubs and crews with meetups and challenges. Featured clubs
 // (owner-promoted) lead Feed and Clubs; feed groups open as their own page.
@@ -31,6 +31,7 @@ import { NewEventSheet } from '@/components/events/EventsScreen'
 import { MEETUP_KINDS } from '@/lib/events'
 import { Button } from '@/components/ui/button'
 import { CalendarPlus } from 'lucide-react'
+import { OneTip } from '@/components/home/OneTip'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -60,9 +61,11 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
     <Screen title={section === 'feed' ? 'Friends' : 'Near me'}
-      subtitle={section === 'feed' ? 'What your friends and groups are up to' : 'Clubs, leagues and meetups near you'}
-      headerExtra={section === 'clubs' ? <Segmented label="Near me" value={view === 'people' ? 'people' : 'clubs'} onChange={onView}
-        options={[['clubs', 'Near you'], ['people', 'People']] as const} /> : undefined}>
+      subtitle={section === 'feed' ? (view === 'people' ? 'Find friends and running buddies' : 'What your friends and groups are up to') : 'Runs, clubs and meetups near you'}
+      headerExtra={section === 'feed' ? <Segmented label="Friends" value={view === 'people' ? 'people' : 'feed'} onChange={onView}
+        options={[['feed', 'Updates'], ['people', 'People']] as const} /> : undefined}>
+      {view === 'clubs' && <OneTip id="near_me" text="Tap a club or a pin to see when they meet. Tap Going and rabbt reminds you the night before." />}
+      {view === 'feed' && <OneTip id="friends" text="Your workouts post here after each sync, for friends only. Turn sharing off in Me, under Sharing." />}
       {view === 'clubs' && (
         <div className="flex flex-col gap-2">
           <PostRunButton onPosted={() => setRunsKey((k) => k + 1)} />

@@ -17,7 +17,7 @@ import re
 import secrets
 import threading
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from collections.abc import AsyncIterator, Awaitable, Callable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pathlib import Path
@@ -285,6 +285,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             "athlete": chat.agent.coach.athlete(user_id) if chat else {},
             "goal": chat.agent.coach.active_goal(user_id) if chat else None,
             "welcome": _welcome(user_id, connected),  # intent.py: "full" | "lite" | None
+            "newcomer": _newcomer(user_id, connected),
             "chat": {"available": chat is not None,
                      "active_turn": active.id if active else None,
                      "active_thread": (active.thread_id or None) if active else None},
@@ -302,6 +303,69 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 "subscriptions": push.count(user_id) if push else 0,
             },
         })
+
+    # ------------------------------------------------ newcomer (first week) --
+    # The one Getting started checklist (area, a run near you, a plan), first-week mode (a
+    # calmer app until the first real thing is done, or 7 days), "Show everything", and the
+    # one-time tips. Stored on the person's own profile: dates and tip ids only.
+    TIP_IDS = frozenset({"near_me", "plan", "friends", "today", "levels"})
+
+    def _newcomer(uid: str, connected: bool) -> dict[str, Any] | None:
+        if store is None or chat is None or _is_coach_account(uid):
+            return None
+        p = store.user_doc(uid, "profile").load()
+        since = p.get("since")
+        if not since:
+            a = chat.agent.coach.athlete(uid)
+            existing = bool(a.get("welcomed_at")) or intent_mod.is_existing(
+                a, garmin_connected=connected, has_goal=chat.agent.coach.active_goal(uid) is not None)
+            since = "existing" if existing else datetime.now(UTC).date().isoformat()
+            store.user_doc(uid, "profile").update(lambda d: d.setdefault("since", since))
+        goal = chat.agent.coach.active_goal(uid) or {}
+        a = chat.agent.coach.athlete(uid)
+        area = _geo.load_saved(store, uid) is not None or bool((a.get("interests") or {}).get("home_zip"))
+        steps = {"area": area, "job": bool(p.get("newcomer_job")), "plan": bool(goal.get("plan") or goal.get("plan_source"))}
+        try:
+            days = (datetime.now(UTC).date() - date.fromisoformat(since)).days if since != "existing" else None
+        except ValueError:
+            days = None
+        done = steps["area"] and (steps["job"] or steps["plan"])
+        return {"since": since, "days": days, "steps": steps,
+                "first_week": days is not None and days < 7 and not done and p.get("show_all") is not True,
+                "show_all": p.get("show_all") is True, "checklist_hidden": p.get("checklist_hidden") is True,
+                "tips": [t for t in (p.get("tips_seen") or []) if t in TIP_IDS]}
+
+    async def newcomer_post(request: Request, user_id: str) -> Response:
+        """{done: "job"} (RSVP'd to or posted a run), {tip: id} (seen), {show_all: bool},
+        {checklist_hidden: bool}."""
+        body = await read_json(request)
+        if store is None or not isinstance(body, dict) or not body or set(body) - {"done", "tip", "show_all", "checklist_hidden"}:
+            raise ValueError("body")
+        if "done" in body and body["done"] != "job":
+            raise ValueError("done")
+        if "tip" in body and body["tip"] not in TIP_IDS:
+            raise ValueError("tip")
+        for k in ("show_all", "checklist_hidden"):
+            if k in body and not isinstance(body[k], bool):
+                raise ValueError(k)
+
+        def apply(p: dict[str, Any]) -> None:
+            if body.get("done") == "job":
+                p.setdefault("newcomer_job", datetime.now(UTC).date().isoformat())
+            if "tip" in body:
+                seen = [t for t in (p.get("tips_seen") or []) if t in TIP_IDS]
+                if body["tip"] not in seen:
+                    seen.append(body["tip"])
+                p["tips_seen"] = seen
+            for k in ("show_all", "checklist_hidden"):
+                if k in body:
+                    p[k] = body[k]
+        store.user_doc(user_id, "profile").update(apply)
+        try:
+            connected = token_store.load(user_id) is not None
+        except TokenStoreError:
+            connected = False
+        return JSONResponse(_newcomer(user_id, connected))
 
     async def push_subscribe(request: Request, user_id: str) -> Response:
         if push is None:
@@ -492,6 +556,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         store.user_doc(user_id, "profile").update(apply)
         if upd.get("usage_off") is True:
             store.user_doc(user_id, "usage").delete()  # usage.py: forget your first/last dates too
+            store.user_doc(user_id, "traction").delete()  # traction.py: and your firsts
         return JSONResponse(_settings_view(user_id))
 
     async def dev_action(request: Request, user_id: str) -> Response:
@@ -5486,6 +5551,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         *legal_routes,
         *reward_routes,
         Route("/app/api/me", _api(me, mutating=False), methods=["GET"]),
+        Route("/app/api/newcomer", _api(newcomer_post, mutating=True), methods=["POST"]),
         Route("/app/api/push/subscribe", _api(push_subscribe, mutating=True), methods=["POST"]),
         Route("/app/api/push/unsubscribe", _api(push_unsubscribe, mutating=True),
               methods=["POST"]),

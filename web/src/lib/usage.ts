@@ -7,6 +7,7 @@
 // Control) or the person turned on "Don't count my usage" (settings.usage_off, mirrored here
 // per device by setUsageOff so it holds before /me loads). Failures are silent.
 import { haptic } from '@/lib/haptics'
+import { markJob } from '@/lib/newcomer'
 
 export type UsageEvent =
   | ['app_open']
@@ -109,7 +110,7 @@ function pushKind(url: string): 'coach' | 'recap' | 'community' | 'workout' | 'b
 
 /** Count `ev` and give a success haptic once `p` resolves (failures count nothing). */
 export function counted<T>(p: Promise<T>, ...ev: UsageEvent): Promise<T> {
-  return p.then((r) => { track(...ev); haptic(); return r })
+  return p.then((r) => { if (ev[0] === 'rsvp') markJob(); track(...ev); haptic(); return r })
 }
 
 // Read at load, before the app tidies the address bar (sw.js adds from=push to a notification's link).

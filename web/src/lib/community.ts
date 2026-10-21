@@ -4,6 +4,7 @@ import { AuthError, getJSON, postJSON, sendJSON } from '@/lib/api'
 import type { Metric } from '@/lib/challenges'
 import type { SocialUser } from '@/lib/social'
 import { counted } from '@/lib/usage'
+import { milestone } from '@/lib/traction'
 
 export type Category = 'race' | 'pb' | 'milestone' | 'life' | 'comeback' | 'gratitude' | 'other'
 export type ReactionKind = 'party' | 'strong' | 'heart' | 'rabbit'
@@ -258,7 +259,8 @@ export const setMemberRole = (id: string, uid: string, role: 'admin' | 'member')
   sendJSON<{ club: ClubDetail }>('PUT', `${cp(id)}/members/${encodeURIComponent(uid)}`, { role })
 export const removeMember = (id: string, uid: string) =>
   sendJSON<{ club: ClubDetail }>('DELETE', `${cp(id)}/members/${encodeURIComponent(uid)}`)
-export const addMeetup = (id: string, b: MeetupInput) => postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups`, b)
+export const addMeetup = (id: string, b: MeetupInput) =>
+  postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups`, b).then((r) => { milestone('run_posted'); return r })
 export const deleteMeetup = (id: string, mid: string) => sendJSON<{ ok: boolean }>('DELETE', `${cp(id)}/meetups/${encodeURIComponent(mid)}`)
 export const rsvpMeetup = (id: string, mid: string, status: 'going' | 'maybe' | 'none', acceptWaiver = false) =>
   status === 'none' ? postJSON<{ meetup: Meetup }>(`${cp(id)}/meetups/${encodeURIComponent(mid)}/rsvp`, { status })
@@ -359,3 +361,4 @@ export function ago(ts: number): string {
 }
 export const followSuggested = (userId: string) =>
   postJSON<{ ok: boolean; status: 'active' | 'pending'; message: string }>(`${P}/people/${encodeURIComponent(userId)}/follow`)
+    .then((r) => { milestone('follow'); return r })

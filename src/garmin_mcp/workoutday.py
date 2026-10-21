@@ -56,8 +56,9 @@ DUR_TOL = 0.10
 HR_ZONES = {1: (0.68, 0.81), 2: (0.81, 0.89), 3: (0.90, 0.93), 4: (0.94, 1.00), 5: (1.00, 1.06)}
 # Swim: seconds per 100 m added to CSS (slow end, fast end).
 SWIM_ZONES = {1: (20, 12), 2: (12, 6), 3: (6, 2), 4: (2, -2), 5: (-2, -6)}
-RPE = {1: "RPE 2-3 · very easy", 2: "RPE 3-4 · conversational", 3: "RPE 5-6 · comfortably hard",
-       4: "RPE 7-8 · hard", 5: "RPE 9 · very hard"}
+# Plain words first, the effort number (RPE, 1-10) after it; the app's (i) explains it.
+RPE = {1: "Very easy · effort 2-3 of 10", 2: "Easy, you can chat · effort 3-4 of 10",
+       3: "Comfortably hard · effort 5-6 of 10", 4: "Hard · effort 7-8 of 10", 5: "Very hard · effort 9 of 10"}
 STEP_LABEL = {"warmup": "Warm-up", "cooldown": "Cool-down", "work": "Hard", "steady": "Steady",
               "recover": "Easy"}
 STEADY_KINDS = {"easy", "long", "endurance", "recovery", "tempo", "shakeout", "racepace"}

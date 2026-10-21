@@ -3,6 +3,7 @@
 // the server and thrown away; People you may know; my @handle, phone and who can find me.
 // openFindFriends() opens the screen from anywhere (screens/Chat listens).
 import { getJSON, sendJSON } from '@/lib/api'
+import { milestone } from '@/lib/traction'
 import type { SocialUser } from '@/lib/social'
 
 export type FindUser = SocialUser & { handle?: string }
@@ -17,6 +18,7 @@ export const searchPeople = (q: string) => getJSON<{ people: FindRow[] }>(`${P}/
 export const getSuggestedPeople = () => getJSON<{ people: FindRow[] }>(`${P}/suggested`)
 export const dismissSuggestion = (uid: string) => sendJSON<{ ok: boolean }>('POST', `${P}/suggested/${encodeURIComponent(uid)}/dismiss`, {})
 export const followPerson = (uid: string) => sendJSON<{ ok: boolean; status: FindStatus; message: string }>('POST', `${P}/follow`, { user_id: uid })
+  .then((r) => { milestone('follow'); return r })
 export const getFindMe = () => getJSON<FindMe>(`${P}/me`)
 export const putFindMe = (patch: Partial<{ handle: string; phone: string | null; find: Partial<FindMe['find']> }>) =>
   sendJSON<FindMe>('PUT', `${P}/me`, patch)

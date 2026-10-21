@@ -3,10 +3,15 @@
 // Firsts ride the usage queue (lib/usage), so Do Not Track and "Don't count my usage" hold.
 import { getJSON, postJSON } from '@/lib/api'
 import { track, type Milestone } from '@/lib/usage'
+import { markArea, markJob, markPlan } from '@/lib/newcomer'
 
 const sent = new Set<Milestone>()
 /** Report a first (the server counts it once per person; this skips repeats per page load). */
 export function milestone(what: Milestone): void {
+  // the Getting started checklist ticks even when usage counting is off
+  if (what === 'rsvp' || what === 'run_posted') markJob()
+  else if (what === 'area_set') markArea()
+  else if (what === 'plan_built') markPlan()
   if (sent.has(what)) return
   sent.add(what)
   track('milestone', { what })

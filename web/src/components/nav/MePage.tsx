@@ -7,7 +7,9 @@ import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
-import { Group, Icon, LargeGroups, Row } from '@/components/settings/Grouped'
+import { Group, Icon, LargeGroups, Row, Switch } from '@/components/settings/Grouped'
+import { GettingStarted } from '@/components/home/GettingStarted'
+import { setShowAll, useNewcomer } from '@/lib/newcomer'
 import { LevelBadge } from '@/components/progress/Progress'
 import { photoUrl } from '@/lib/photo'
 import { openBody } from '@/lib/body'
@@ -20,7 +22,7 @@ import { openHowItWorks } from '@/components/onboarding/HowItWorks'
 import { CircleQuestionMark } from 'lucide-react'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
-  | 'connections' | 'access' | 'usage' | 'partners' | 'legal'
+  | 'connections' | 'access' | 'usage' | 'partners' | 'legal' | 'nearme' | 'plan'
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
@@ -35,6 +37,9 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
   const name = me.profile.name || me.user_id
   const countdown = goalCountdown(goal)
   const coachStatus = me.athlete.coach_status ?? null
+  // First week: the advanced rows wait (nothing removed); "Show everything" brings them now.
+  const n = useNewcomer()
+  const full = !n?.first_week
   return (
     <Screen title="Me" subtitle="Your profile, coaching, connected apps and settings." onClose={onClose}>
       <LargeGroups.Provider value>
@@ -52,30 +57,32 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
           {progress && (
             <span className="mt-2 flex items-center gap-2">
               <LevelBadge level={progress.level} size="sm" />
-              <span className="text-small font-medium text-(--text-secondary)">{progress.name}</span>
+              <span className="text-small font-medium text-(--text-secondary)">Level {progress.level} · {progress.name}{progress.level < 5 ? ' (a baby rabbit)' : ''}</span>
             </span>
           )}
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
 
-      <Group label="Your account">
-        <Row icon={<Icon><CircleQuestionMark /></Icon>} title="How rabbt works" subtitle="A quick tour of what you can do" onClick={openHowItWorks} />
+      {me.role === 'athlete' && <GettingStarted onJob={() => onOpen('nearme')} onPlan={() => onOpen('plan')}
+        onWatch={() => onOpen('connections')} onFriends={() => openFindFriends()} watch={me.garmin.connected || me.oura.connected} />}
+
+      <Group label="Account">
+        <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
         {me.role === 'athlete' && (
           <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         )}
-        <Row icon={<Icon><ShieldCheck /></Icon>} title="Privacy & legal" subtitle="Privacy policy, terms, download or delete your data"
-          onClick={() => onOpen('legal')} />
+        <Row icon={<Icon><Users /></Icon>} title="Find friends" subtitle="Search, contacts, invite by text, QR code" onClick={() => openFindFriends()} />
+        <Row icon={<Icon><CircleQuestionMark /></Icon>} title="How rabbt works" subtitle="A quick tour of what you can do" onClick={openHowItWorks} />
       </Group>
 
-      <Group label="You">
-        <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />
-        <Row icon={<Icon><RabbitLogo current /></Icon>} title="What rabbt knows" subtitle="Your goal, notes and plan files" onClick={() => onOpen('memory')} />
-        <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
-        <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; rabbt eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
-        <Row icon={<Icon><Users /></Icon>} title="Find friends" subtitle="Search, contacts, invite by text, QR code" onClick={() => openFindFriends()} />
-        {me.role === 'athlete' && <ShareWorkoutsRow />}
-      </Group>
+      {full && (
+        <Group label="Training">
+          <Row icon={<Icon><RabbitLogo current /></Icon>} title="What rabbt knows" subtitle="Your goal, notes and plan files rabbt uses" onClick={() => onOpen('memory')} />
+          <Row icon={<Icon><Wrench /></Icon>} title="Gear garage" subtitle="Shoes, bikes and the rest" onClick={() => onOpen('gear')} />
+          <Row icon={<Icon><Bandage /></Icon>} title="Body & niggles" subtitle="Log aches; rabbt eases the plan and suggests prehab" onClick={() => openBody({ view: 'niggles' })} />
+        </Group>
+      )}
 
       {coachStatus === 'looking' && me.coaches === 0 && (
         <Group>
@@ -84,6 +91,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         </Group>
       )}
 
+      {(full || me.coaches > 0 || me.coaching > 0) && (
       <Group label="Coaching">
         {me.coaches > 0 && (
           <Row icon={<Icon><Mail /></Icon>} title="Coach messages" subtitle="Chat with your coach"
@@ -106,19 +114,37 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
             subtitle={`${me.coaching} athlete${me.coaching === 1 ? '' : 's'}`} onClick={() => onOpen('athletes')} />
         )}
       </Group>
+      )}
 
+      <Group label="Apps">
+        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Connect a watch: Garmin, Apple Watch, Oura, and more"
+          onClick={() => onOpen('connections')} />
+        <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Notifications, units, account"
+          onClick={() => onOpen('settings')} />
+      </Group>
       <AppearanceGroup />
 
-      <Group label="Apps and settings">
-        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Garmin, Oura, Apple Watch, WHOOP, Calendar"
-          onClick={() => onOpen('connections')} />
-        <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Notifications, privacy, account"
-          onClick={() => onOpen('settings')} />
-        <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title={me.can_invite ? 'Sign-in and invites' : 'Sign-in'}
-          subtitle={me.can_invite ? 'Passkeys, invite links, members' : 'Passkeys on your devices'} onClick={() => onOpen('access')} />
-        {me.owner && <Row icon={<Icon tone="muted"><ChartColumn /></Icon>} title="Usage" subtitle="Anonymous counts, last 30 days" onClick={() => onOpen('usage')} />}
-        {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
+      <Group label="Privacy">
+        {me.role === 'athlete' && <ShareWorkoutsRow />}
+        <Row icon={<Icon><ShieldCheck /></Icon>} title="Privacy & legal" subtitle="Privacy policy, terms, download or delete your data"
+          onClick={() => onOpen('legal')} />
+        <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title="Sign-in" subtitle="Passkeys on your devices" onClick={() => onOpen('access')} />
       </Group>
+
+      {me.role === 'athlete' && n && (n.first_week || n.show_all) && (
+        <Group footer="New here, rabbt keeps things simple for your first week. Turn this on to see every screen and setting now.">
+          <Row title="Show everything" trailing={<Switch label="Show everything" checked={n.show_all} onChange={(v) => void setShowAll(v)} />} />
+        </Group>
+      )}
+
+      {(me.owner || me.can_invite) && (
+        <Group label="Owner">
+          {me.can_invite && <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title="Invites and members" subtitle="Invite links, members, passkeys"
+            onClick={() => onOpen('access')} />}
+          {me.owner && <Row icon={<Icon tone="muted"><ChartColumn /></Icon>} title="Usage and traction" subtitle="Counts only: growth, activation, retention, clubs" onClick={() => onOpen('usage')} />}
+          {me.owner && <Row icon={<Icon tone="muted"><Handshake /></Icon>} title="Partners" subtitle="Clubs promoted near their cities" onClick={() => onOpen('partners')} />}
+        </Group>
+      )}
 
       <nav aria-label="Policies" className="flex flex-wrap items-center justify-center gap-x-2 pb-2 text-body text-(--text-secondary)">
         {([['privacy', 'Privacy'], ['terms', 'Terms'], ['security', 'Data & security']] as const).map(([slug, label], i) => (
