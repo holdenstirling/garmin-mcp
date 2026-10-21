@@ -24,7 +24,7 @@ from typing import Any
 
 MAX_POINTS = 150
 TRIM_CHOICES = (200, 400, 800)
-DEFAULT_TRIM_M = 200
+DEFAULT_TRIM_M = 400  # start and finish cut off, so a home address never shows
 HOME_RADIUS_CHOICES = (200, 400, 800, 1600)
 OUTDOOR = {"run", "walk", "hike", "ride"}
 _R = 6371000.0

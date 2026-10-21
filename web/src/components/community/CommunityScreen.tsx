@@ -148,8 +148,8 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
                 <Row title="Show my route maps" subtitle="On your workouts, for you"
                   trailing={<Switch label="Show my route maps" checked={s.routes_own !== false}
                     onChange={(v) => void put({ routes_own: v }, { ...s, routes_own: v })} />} />
-                <Row title="Share my maps with friends" subtitle={s.routes_share === true ? 'Friends see the line on your shared workouts' : 'Off: only you see your maps'}
-                  trailing={<Switch label="Share my maps with friends" checked={s.routes_share === true}
+                <Row title="Share my maps with friends" subtitle={s.routes_share !== false ? 'Friends see the line on your shared workouts, start and finish trimmed' : 'Off: only you see your maps'}
+                  trailing={<Switch label="Share my maps with friends" checked={s.routes_share !== false}
                     onChange={(v) => void put({ routes_share: v }, { ...s, routes_share: v })} />} />
                 <div className="px-3 py-2.5">
                   <Choice label="Cut off the start and finish" value={String(s.routes_trim_m ?? 200)}

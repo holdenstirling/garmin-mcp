@@ -26,18 +26,18 @@ export function RouteControls({ postId }: { postId: string | null }) {
     try { setS((await putCommunitySettings(patch as Partial<CommunitySettings>)).settings); setPicking(false) }
     catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
-  const trim = s.routes_trim_m ?? 200
+  const trim = s.routes_trim_m ?? 400
   return (
     <div className="flex flex-col gap-2">
       {s.routes_share == null && (
         <div role="note" className="flex flex-col gap-2 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-          <p className="m-0 text-body font-semibold text-(--text)">Show this map to friends?</p>
+          <p className="m-0 text-body font-semibold text-(--text)">Friends can see this map</p>
           <p className="m-0 text-small leading-snug text-(--text-secondary)">
-            Right now only you see your maps. If you share them, friends see the line with the first and last {dist(trim)} cut off.
+            When you share a workout, friends see its line with the first and last {dist(trim)} cut off, so where you live stays private.
           </p>
           <div className="flex gap-2">
-            <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} onClick={() => void put({ routes_share: true })}>Share my maps</Button>
-            <Button variant="ghost" className="h-11 px-3 text-body" disabled={busy} onClick={() => void put({ routes_share: false })}>Keep private</Button>
+            <Button variant="primary" className="h-11 flex-1 text-body" loading={busy} onClick={() => void put({ routes_share: true })}>Got it</Button>
+            <Button variant="ghost" className="h-11 px-3 text-body" disabled={busy} onClick={() => void put({ routes_share: false })}>Keep maps private</Button>
           </div>
         </div>
       )}
