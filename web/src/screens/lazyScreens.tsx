@@ -136,6 +136,7 @@ export const SettingsPanels = split(() => import('@/components/SettingsPanels').
 // Me -> Connected apps (hub page) and the one connect popup per app
 export const ConnectionsScreen = split(() => import('@/components/connect/ConnectionsScreen').then((m) => m.ConnectionsScreen))
 export const ConnectSheet = split(() => import('@/components/connect/ConnectSheet').then((m) => m.ConnectSheet))
+export const WatchPicker = split(() => import('@/components/connect/WatchPicker').then((m) => m.WatchPicker))
 export const AccessScreen = split(() => import('@/components/settings/AccessScreen').then((m) => m.AccessScreen))
 export const MePage = split(() => import('@/components/nav/MePage').then((m) => m.MePage))
 export const RewardSheet = split(() => import('@/components/reward/RewardSheet').then((m) => m.RewardSheet))

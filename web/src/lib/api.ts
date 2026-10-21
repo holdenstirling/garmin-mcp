@@ -60,6 +60,8 @@ export type Me = {
   oura: { available: boolean; connected: boolean }
   /** older servers leave this out */
   whoop?: { available: boolean; connected: boolean }
+  /** Apple Watch via the iPhone Shortcut (applehealth.py); older servers leave this out */
+  apple?: { available: boolean; connected: boolean }
   profile: { name: string; picture: string }
   /** version of the uploaded profile photo (null: none; use the Google picture) */
   photo?: number | null

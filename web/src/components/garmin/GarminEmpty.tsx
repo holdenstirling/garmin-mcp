@@ -1,11 +1,12 @@
-// Friendly empty state for screens that need Garmin data (Progress, workout day, ...) when
-// Garmin isn't connected yet: what you'll see once it is, and one "Connect Garmin" button.
-// The button asks the app to open Connect Garmin (lib/upnext.ts requestConnectGarmin).
+// Friendly empty state for screens that need watch data (Progress, workout day, ...) when
+// nothing is connected yet: what you'll see once it is, and one button. Sending a workout to the
+// watch needs Garmin ("Connect Garmin"); everything else opens "Which watch do you wear?"
+// (lib/connections requestWatchPicker), so Apple Watch and Oura people aren't sent to Garmin.
 import { Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { requestConnectGarmin } from '@/lib/upnext'
-import { requestConnect } from '@/lib/connections'
+import { requestWatchPicker } from '@/lib/connections'
 
 const COPY: Record<'progress' | 'workout' | 'today', { title: string; body: string }> = {
   progress: {
@@ -17,8 +18,8 @@ const COPY: Record<'progress' | 'workout' | 'today', { title: string; body: stri
     body: 'Connect Garmin to put this workout on your watch and see how it went afterwards.',
   },
   today: {
-    title: 'rabbt reads your training from Garmin',
-    body: "Connect it and today's advice uses your real workouts, form and recovery.",
+    title: 'rabbt reads your training from your watch',
+    body: "Connect Garmin, Apple Watch or Oura and today's advice uses your real workouts.",
   },
 }
 
@@ -31,13 +32,15 @@ export function GarminEmpty({ what, compact, onConnect, className }: {
   className?: string
 }) {
   const c = COPY[what]
-  const connect = onConnect ?? requestConnectGarmin
+  const garminOnly = what === 'workout'  // only Garmin can receive a structured workout
+  const connect = onConnect ?? (garminOnly ? requestConnectGarmin : requestWatchPicker)
+  const label = garminOnly ? 'Connect Garmin' : 'Connect your watch'
   if (compact) {
     return (
       <div className={cn('flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3 py-2.5', className)}>
         <Watch className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
         <p className="min-w-0 flex-1 text-meta leading-snug text-(--text-secondary)">{c.body}</p>
-        <Button variant="primary" className="hit-44 h-9 shrink-0 px-3 text-meta" onClick={connect}>Connect Garmin</Button>
+        <Button variant="primary" className="hit-44 h-9 shrink-0 px-3 text-meta" onClick={connect}>{label}</Button>
       </div>
     )
   }
@@ -49,17 +52,7 @@ export function GarminEmpty({ what, compact, onConnect, className }: {
       </span>
       <h2 className="font-display text-title leading-tight text-(--brand)">{c.title}</h2>
       <p className="max-w-sm text-small leading-snug text-(--text-secondary)">{c.body}</p>
-      {what === 'progress' && !onConnect ? (
-        <div className="flex w-full max-w-xs flex-col gap-2" role="group" aria-label="Connect a watch">
-          <Button variant="primary" className="h-11 w-full text-body" onClick={connect}>Connect Garmin</Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="default" className="h-11 text-body" onClick={() => requestConnect('apple')}>Apple Watch</Button>
-            <Button variant="default" className="h-11 text-body" onClick={() => requestConnect('oura')}>Oura</Button>
-          </div>
-        </div>
-      ) : (
-        <Button variant="primary" className="h-11 w-full max-w-xs text-body" onClick={connect}>Connect Garmin</Button>
-      )}
+      <Button variant="primary" className="h-11 w-full max-w-xs text-body" onClick={connect}>{label}</Button>
       <p className="text-caption text-(--text-muted)">Takes about a minute. Change it any time in Me, Connected apps.</p>
     </section>
   )

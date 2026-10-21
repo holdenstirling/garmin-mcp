@@ -1,7 +1,7 @@
-// First visit without Garmin (server: /app/api/firstvisit): invited friends arrive with no
+// First visit without a watch (server: /app/api/firstvisit): invited friends arrive with no
 // watch connected. A short "What you can do now" card on Rabbit home with four things that
-// work right away and "Connect Garmin" as the one primary action. Hidden once Garmin is
-// connected; "Not now" hides it on this device.
+// work right away and "Connect your watch" (the watch picker) as the one primary action.
+// Hidden once any watch or ring is connected; "Not now" hides it on this device.
 import { useEffect, useState } from 'react'
 import { CalendarDays, MapPin, Newspaper, UserPlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { getFirstVisit, type FirstVisit, type FirstVisitItem } from '@/lib/upnex
 const HIDE = 'rabbit.firstvisit.hidden'
 const ICON: Record<FirstVisitItem['id'], typeof MapPin> = { clubs: MapPin, events: CalendarDays, feed: Newspaper, friends: UserPlus }
 
-/** "Not now" was tapped on this device (the home status banner then offers Connect Garmin). */
+/** "Not now" was tapped on this device (the home status banner then offers Connect your watch). */
 export function firstVisitHidden(): boolean {
   try { return window.localStorage.getItem(HIDE) === '1' } catch { return false }
 }

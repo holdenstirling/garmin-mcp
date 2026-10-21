@@ -276,6 +276,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                          "connected": bool(auth.calendar and auth.calendar.connected(user_id))},
             "whoop": {"available": auth.whoop is not None,
                       "connected": bool(auth.whoop and auth.whoop.connected(user_id))},
+            "apple": {"available": _ah_keys is not None,
+                      "connected": _ah_keys is not None and _ah_keys.status(user_id) is not None},
             "coach_unread": coach_chat.unread(user_id, "athlete")
             if coach_chat is not None and not user_id.startswith("coach_") else 0,
             "profile": auth.profile(user_id),
@@ -4375,7 +4377,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
     async def firstvisit_get(request: Request, user_id: str) -> Response:
         inviter = auth.access.inviter_of(user_id)
-        connected = _garmin_connected(user_id)
+        # Any watch or ring counts: an Apple Watch or Oura person isn't asked for Garmin.
+        connected = (_garmin_connected(user_id) or bool(auth.oura and auth.oura.connected(user_id))
+                     or bool(auth.whoop and auth.whoop.connected(user_id))
+                     or (_ah_keys is not None and _ah_keys.status(user_id) is not None))
         name = _soc_name(inviter) if inviter and soc is not None and soc.follows(user_id, inviter) else None
         return JSONResponse(_upnext.first_visit(garmin=connected, inviter=name))
 

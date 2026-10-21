@@ -91,7 +91,7 @@ export function GettingStarted({ onJob, onPlan, onWatch, onFriends, watch, class
       )}
       {all && (
         <div className="flex flex-wrap gap-2">
-          {!watch && <Extra onClick={onWatch}>Connect a watch</Extra>}
+          {!watch && <Extra onClick={onWatch}>Connect your watch</Extra>}
           <Extra onClick={onFriends}>Find friends</Extra>
         </div>
       )}

@@ -43,6 +43,17 @@ export function requestConnect(app: ConnApp = 'garmin'): void {
   window.dispatchEvent(new CustomEvent<ConnApp>(CONNECT_EVENT, { detail: app }))
 }
 
+/** "Which watch do you wear?" (components/connect/WatchPicker): the one place generic
+ *  "Connect your watch" buttons go, so Apple Watch and Oura people aren't sent to Garmin. */
+export const WATCH_PICK_EVENT = 'rabbit:pick-watch'
+export function requestWatchPicker(): void {
+  window.dispatchEvent(new CustomEvent(WATCH_PICK_EVENT))
+}
+/** Any watch or ring that brings workouts in (Garmin, Apple Watch, Oura, WHOOP). */
+export function hasWatch(me: { garmin: { connected: boolean }; oura?: { connected: boolean }; apple?: { connected: boolean }; whoop?: { connected: boolean } }): boolean {
+  return !!(me.garmin.connected || me.oura?.connected || me.apple?.connected || me.whoop?.connected)
+}
+
 // Something connected, synced or disconnected: the hub (if open) re-reads.
 export const CONNECTIONS_CHANGED = 'rabbit:connections-changed'
 export function connectionsChanged(): void {

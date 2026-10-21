@@ -15,10 +15,11 @@ import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thi
 
 // "Garmin, Oura · 1 more to connect" for the Connected apps row.
 function connectedLine(me: Me): string {
-  const on = [me.garmin.connected && 'Garmin', me.oura.connected && 'Oura', me.whoop?.connected && 'WHOOP', me.calendar.connected && 'Google Calendar']
-    .filter(Boolean) as string[]
-  const avail = 1 + (me.oura.available ? 1 : 0) + (me.calendar.available ? 1 : 0)
-  if (!on.length) return 'Connect Garmin, Oura or Google Calendar'
+  const on = [me.garmin.connected && 'Garmin', me.apple?.connected && 'Apple Watch', me.oura.connected && 'Oura',
+    me.whoop?.connected && 'WHOOP', me.calendar.connected && 'Google Calendar'].filter(Boolean) as string[]
+  const avail = 1 + (me.apple?.available ? 1 : 0) + (me.oura.available ? 1 : 0) + (me.calendar.available ? 1 : 0)
+    + (me.whoop?.available ? 1 : 0)
+  if (!on.length) return 'Connect Garmin, Apple Watch, Oura or Google Calendar'
   const left = avail - on.length
   return `${on.join(', ')}${left > 0 ? ` · ${left} more to connect` : ''}`
 }

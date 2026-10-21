@@ -1,5 +1,5 @@
 // "Get started" on the Rabbit home for an athlete's first week: six steps that make the app
-// worth opening (connect Garmin, a plan, your race, follow 3 friends, join a club, turn on
+// worth opening (connect a watch, a plan, your race, follow 3 friends, join a club, turn on
 // notifications), each ticked from what's already true and one tap from where it's done.
 // Hides itself once every step is done, after the first week, or on "Hide" (this device).
 import { useEffect, useState } from 'react'
@@ -42,7 +42,7 @@ export function GetStartedCard({ garmin, hasGoal, progress, onStep }: {
   const q = (id: string) => !!progress.quests.find((x) => x.id === id)?.done
   const notifOn = q('notify') || (typeof Notification !== 'undefined' && Notification.permission === 'granted')
   const steps: { id: StartStep; label: string; sub: string; icon: typeof Watch; done: boolean }[] = [
-    { id: 'garmin', label: 'Connect Garmin', sub: 'Your workouts, sleep and recovery', icon: Watch, done: garmin },
+    { id: 'garmin', label: 'Connect your watch', sub: 'Garmin, Apple Watch or Oura', icon: Watch, done: garmin },
     { id: 'plan', label: 'Build or upload a plan', sub: 'rabbt builds one, or bring yours', icon: CalendarDays, done: q('plan') },
     { id: 'race', label: 'Add your race', sub: 'The plan builds toward it', icon: Flag, done: hasGoal || q('goal') },
     { id: 'friends', label: 'Follow 3 friends', sub: following > 0 ? `${Math.min(following, 3)} of 3` : 'See their workouts, cheer them on', icon: UserPlus, done: following >= 3 },
