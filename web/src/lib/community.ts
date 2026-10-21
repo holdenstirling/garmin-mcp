@@ -220,7 +220,7 @@ export const getCommunityFeed = (cursor?: string | null, club?: string, scope: '
   if (group) q.set('group', group)
   if (scope !== 'all') q.set('scope', scope)
   const s = q.toString()
-  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null }>(`${P}/feed${s ? `?${s}` : ''}`)
+  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null; extras?: FeedExtras | null }>(`${P}/feed${s ? `?${s}` : ''}`)
 }
 export const getPost = (id: string) => getJSON<{ post: Post }>(pp(id))
 export const createPost = (b: PostInput) => counted(postJSON<{ post: Post }>(`${P}/posts`, b), 'share', { what: 'post' })
@@ -385,3 +385,17 @@ export function ago(ts: number): string {
 export const followSuggested = (userId: string) =>
   postJSON<{ ok: boolean; status: 'active' | 'pending'; message: string }>(`${P}/people/${encodeURIComponent(userId)}/follow`)
     .then((r) => { milestone('follow'); return r })
+
+// Feed extras (server: feedlife.py): no health data from anyone who didn't share it.
+export type LifePerson = { id: string; name: string }
+export type LifeUpcoming =
+  | { kind: 'meetup'; when: string; title: string; where: string; club: { id: string; name: string; emoji: string }
+      meetup_id: string; count: number; my_rsvp: 'going' | 'maybe' | null; people: LifePerson[] }
+  | { kind: 'race'; when: string; title: string; distance: string | null; people: LifePerson[] }
+export type LifeJoined = { kind: 'joined'; club: { id: string; name: string; emoji: string }; ts: number; count: number; people: LifePerson[] }
+export type LifeShout =
+  | { kind: 'most'; person: LifePerson; workouts: number }
+  | { kind: 'longest'; person: LifePerson; minutes: number; title: string }
+  | { kind: 'farthest'; person: LifePerson; km: number; title: string }
+export type LifeRecap = { kind: 'recap'; week: string; km: number; workouts: number; people: number; shoutouts: LifeShout[] }
+export type FeedExtras = { recap: LifeRecap | null; upcoming: LifeUpcoming[]; joined: LifeJoined[] }

@@ -99,7 +99,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
                 photo_resp: Callable[[str], Awaitable[Response]],
                 photo_cache: Callable[[Any], Any], read_json: Callable[[Request], Awaitable[Any]],
                 user_for: Callable[[Request], str | None], host_ok: Callable[[Request], bool],
-                origin: str) -> list[BaseRoute]:
+                origin: str, extras: Callable[[str], dict[str, Any]] | None = None) -> list[BaseRoute]:
     """``home(uid)``: ``{city, state}`` from the athlete's location (never coordinates);
     ``local_groups(city, state, today)``: Explore's cached web-scout groups (no new search);
     ``chal``: ``challenges.Challenges`` or None."""
@@ -156,7 +156,14 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         out = await run(lambda: cm.feed(user_id, cursor, club=club, scope=scope, group=group))
         drafts = await run(lambda: len(cm.drafts(user_id))) if cursor is None else None
         pinned = out.get("pinned")
+        life = None  # feedlife.py: club runs, races, new members, the Monday recap (first page, main feed)
+        if extras is not None and cursor is None and club is None and group is None and scope in ("all", "friends"):
+            try:
+                life = await run(lambda: extras(user_id))
+            except Exception:
+                life = None
         return JSONResponse({"items": [deco(p) for p in out["items"]], "next": out["next"], "drafts": drafts,
+                             "extras": life,
                              "following": len(cm.social.following_ids(user_id)),
                              "pinned": deco(pinned) if pinned else None})
 
