@@ -1,0 +1,7 @@
+{"ts": "2026-10-21T00:23:53.497405+00:00", "level": "WARNING", "logger": "garmin_mcp.server", "msg": "rabbit_fake_garmin_enabled", "event": "rabbit_fake_garmin_enabled"}
+{"ts": "2026-10-21T00:23:53.738575+00:00", "level": "ERROR", "logger": "garmin_mcp.server", "msg": "push_disabled", "event": "push_disabled", "error": "RuntimeError"}
+{"ts": "2026-10-21T00:23:53.738658+00:00", "level": "WARNING", "logger": "garmin_mcp.server", "msg": "rabbit_fake_garmin_enabled", "event": "rabbit_fake_garmin_enabled"}
+{"ts": "2026-10-21T00:24:28.305752+00:00", "level": "WARNING", "logger": "garmin_mcp.clubdir", "msg": "clubdir_discover_failed", "event": "clubdir_discover_failed", "metro": "denver-co", "error": "AuthenticationError"}
+{"ts": "2026-10-21T00:24:28.373854+00:00", "level": "WARNING", "logger": "garmin_mcp.clubdir", "msg": "clubdir_discover_failed", "event": "clubdir_discover_failed", "metro": "denver-co", "error": "AuthenticationError"}
+{"ts": "2026-10-21T00:24:28.445144+00:00", "level": "WARNING", "logger": "garmin_mcp.clubdir", "msg": "clubdir_discover_failed", "event": "clubdir_discover_failed", "metro": "denver-co", "error": "AuthenticationError"}
+{"ts": "2026-10-21T00:24:28.509475+00:00", "level": "WARNING", "logger": "garmin_mcp.clubdir", "msg": "clubdir_discover_failed", "event": "clubdir_discover_failed", "metro": "denver-co", "error": "AuthenticationError"}
