@@ -38,9 +38,13 @@ export function ThreadsSheet({ goal, threads, activeId, onSelect, onNew, onDelet
       header={
         <div className="min-w-0">
           <h2 className="modal-title truncate">{people ? 'Messages' : 'Chats with rabbt'}</h2>
-          <button type="button" className="hit-44 max-w-full text-left text-small leading-snug text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
-            {goal ? `Training for ${goal.title}` : 'Set what you’re training for'}
-          </button>
+          {people ? (
+            <p className="m-0 text-small leading-snug text-muted-foreground">Friends, club mates and your rabbt chats</p>
+          ) : (
+            <button type="button" className="hit-44 max-w-full text-left text-small leading-snug text-muted-foreground underline-offset-2 hover:underline" onClick={onEditGoal}>
+              {goal ? `Training for ${goal.title}` : 'Set what you’re training for'}
+            </button>
+          )}
         </div>
       }
       actions={

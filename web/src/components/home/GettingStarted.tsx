@@ -74,12 +74,9 @@ export function GettingStarted({ onJob, onPlan, onWatch, onFriends, watch, class
                       {s.title}{ok && <span className="sr-only">, done</span>}
                     </span>
                     {!ok && <span className="block text-small leading-snug text-(--text-secondary)">{s.line}</span>}
+                    {isNext && <span className="mt-1 flex items-center gap-0.5 text-small font-semibold text-(--accent)">{s.action}<ChevronRight className="size-4" aria-hidden /></span>}
                   </span>
-                  {!ok && (
-                    <span className={cn('flex shrink-0 items-center gap-0.5 text-small font-semibold', isNext ? 'text-(--accent)' : 'text-(--text-muted)')}>
-                      {s.action}<ChevronRight className="size-4" aria-hidden />
-                    </span>
-                  )}
+                  {!ok && !isNext && <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />}
                 </button>
                 {s.id === 'area' && areaOpen && !ok && <AreaInline className="mt-1" title="Where do you run?" line="Type a city and state, or a zip." />}
               </li>

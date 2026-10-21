@@ -43,7 +43,7 @@ import { FriendsLatest } from '@/components/home/FriendsLatest'
 import { GettingStarted } from '@/components/home/GettingStarted'
 import { OneTip } from '@/components/home/OneTip'
 import { PulseCard } from '@/components/home/PulseCard'
-import { setNewcomer, useNewcomer } from '@/lib/newcomer'
+import { STEP_DONE_EVENT, setNewcomer, useNewcomer } from '@/lib/newcomer'
 import { milestone } from '@/lib/traction'
 import { startBadgeSync } from '@/lib/unread'
 import { FirstVisitCard, firstVisitHidden } from '@/components/home/FirstVisitCard'
@@ -1307,6 +1307,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const shell = useRef<HTMLDivElement>(null)
   useTabSwipe(shell, { tabs: TAB_IDS, current: tab, enabled: overlayFree && !pages.length && !typing && !inChat && !pending, onSwipe: setTab })
   useEffect(() => { setUsageOff(me.settings.usage_off === true); trackAppOpen() }, [me.settings.usage_off])
+  // First RSVP / run posted / plan / area: a small cheer (the checklist ticks too).
+  useEffect(() => {
+    const on = (e: Event) => {
+      const step = (e as CustomEvent<'area' | 'job' | 'plan'>).detail
+      showToast(step === 'job' ? "You're in! Your first run near you." : step === 'plan' ? 'Your plan is ready. Nice!' : 'Area set. Near me is filling in.')
+      celebrate(null, 'quest')
+    }
+    window.addEventListener(STEP_DONE_EVENT, on)
+    return () => window.removeEventListener(STEP_DONE_EVENT, on)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Newcomers: the checklist and first-week mode read this; firsts already true on load count once.
   useEffect(() => {
     setNewcomer(me.newcomer)

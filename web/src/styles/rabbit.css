@@ -247,8 +247,10 @@ html.kb-open .chat-suggestions { display: none; }
   gap: 3px; min-height: 60px; min-width: 44px; padding: 6px 0 4px; color: var(--text-secondary); font-weight: 600;
   /* Labels grow with larger text only up to 15px, like iOS tab bars, so five still fit side by side. */
   font-size: min(var(--text-caption), 15px); line-height: 1.2;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease; white-space: nowrap;
 }
+/* Narrow phones: "Near me" and "Progress" need a little less type so labels keep a gap. */
+@media (max-width: 359px) { .tab-bar__item { font-size: min(var(--text-caption), 11.5px); letter-spacing: -0.01em; } }
 /* The icon sits in a pill that fills in for the current tab, so where you are is obvious at a glance. */
 .tab-bar__icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 32px;
   border-radius: 999px; transition: background-color 0.18s ease; }

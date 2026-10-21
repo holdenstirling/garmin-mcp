@@ -137,7 +137,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   const pose: RabbitPose = step === 'hello' ? 'wave' : step === 'pick' ? 'think'
     : step === 'area' ? (where ? 'cheer' : 'peek') : step === 'heard' ? (heard ? 'cheer' : 'wave') : 'cheer'
   const art = (
-    <span className="flex justify-center" key={`${step}-${pose}`}>
+    <span className="flex justify-center pt-5" key={`${step}-${pose}`}>
       <RabbitNap size={step === 'hello' ? 88 : 60} mode={pose} />
     </span>
   )
