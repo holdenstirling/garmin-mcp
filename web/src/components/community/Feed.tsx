@@ -7,7 +7,7 @@
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Ban, CalendarDays, Check, ChevronDown, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
+import { Ban, CalendarDays, List, Map as MapIcon, Check, ChevronDown, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/Perso
 import { openActivity } from '@/lib/activitynav'
 import { RouteMini } from '@/components/route/RouteMap'
 import { ShareNudge } from '@/components/community/ShareNudge'
+import { FeedMap } from '@/components/community/FeedMap'
 import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
@@ -86,7 +87,22 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   const [error, setError] = useState<string | null>(null)
   const [more, setMore] = useState(false)
   const [composer, setComposer] = useState<Template | 'blank' | null>(null)
+  // List or Map (the main feed); remembered on this device
+  const [mode, setModeState] = useState<'list' | 'map'>(() => {
+    try { return localStorage.getItem('rabbt.feed.view') === 'map' ? 'map' : 'list' } catch { return 'list' }
+  })
+  const setMode = (m: 'list' | 'map') => { setModeState(m); try { localStorage.setItem('rabbt.feed.view', m) } catch { /* fine */ } }
+  const [mapDetails, setMapDetails] = useState<Post | null>(null)
   const main = !clubId && !groupId
+  const showMap = main && mode === 'map'
+  /** Same as a feed card: my workout or a friend's Garmin workout opens its page; others a sheet. */
+  const openWorkout = (p: Post) => {
+    const w = p.workout
+    if (!w) return
+    if (p.mine && w.activity_id != null) openActivity(w.activity_id)
+    else if (/^\d+$/.test(String(w.activity_id ?? '')) && (w.source ?? 'garmin') === 'garmin') openActivity(w.activity_id, p.author)
+    else setMapDetails(p)
+  }
   const scope = filter === 'friends' || filter === 'clubs' ? filter : 'all'
   const group = groupId ?? (filter.startsWith('g:') ? filter.slice(2) : undefined)
 
@@ -176,6 +192,17 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           )}
         </nav>
       )}
+      {main && (
+        <div role="radiogroup" aria-label="Feed view" className="grid grid-cols-2 gap-1 rounded-xl bg-(--bg-inset) p-1">
+          {([['list', 'List', List], ['map', 'Map', MapIcon]] as const).map(([v, label, Icon]) => (
+            <button key={v} type="button" role="radio" aria-checked={mode === v} onClick={() => setMode(v)}
+              className={cn('inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body font-semibold transition-colors',
+                mode === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary) active:bg-(--border)')}>
+              <Icon className="size-5" aria-hidden /> {label}
+            </button>
+          ))}
+        </div>
+      )}
       {main && openGroup && onOpenGroup && (
         <button type="button" onClick={() => onOpenGroup(openGroup.id)}
           className="flex min-h-14 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
@@ -187,7 +214,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           <span className="shrink-0 text-body font-semibold text-(--accent)">Members</span>
         </button>
       )}
-      {pinned && (
+      {pinned && !showMap && (
         <section aria-label="Your workout, just synced" className="flex flex-col gap-3">
           <div className="flex items-start gap-2 px-1">
             <Pin className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
@@ -205,7 +232,14 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
         </section>
       )}
       {error && <ErrorState compact message={error} onRetry={() => void load()} />}
-      {items == null ? (error ? null : <FeedSkeleton />) : (
+      {items == null ? (error ? null : <FeedSkeleton />) : showMap ? (
+        <>
+          <FeedMap items={pinned ? [pinned, ...items] : items} imperial={imperial} onOpen={openWorkout} />
+          {next && (
+            <Button variant="default" className="h-12 text-body" loading={more} onClick={() => void loadMore()}>Load older workouts</Button>
+          )}
+        </>
+      ) : (
         <>
           {main && following > 0 && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
             <FeedHint onInvite={items.length > 0 ? onInvite : undefined} onShared={() => void load()} />
@@ -249,6 +283,10 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
             <Button variant="default" className="h-12 text-body" loading={more} onClick={() => void loadMore()}>Show older posts</Button>
           )}
         </>
+      )}
+      {mapDetails?.workout && (
+        <FriendWorkoutSheet w={mapDetails.workout} who={mapDetails.user?.name ?? 'They'} imperial={imperial} onClose={() => setMapDetails(null)}
+          onMessage={mapDetails.user ? () => { const u = mapDetails.user!; setMapDetails(null); messagePeople([u.id]) } : undefined} />
       )}
       {composer && (
         <Composer clubId={clubId} clubName={clubName} groupId={groupId ?? openGroup?.id} groupName={groupName ?? openGroup?.name}

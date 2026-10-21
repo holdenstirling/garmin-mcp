@@ -64,6 +64,8 @@ export type PostWorkout = {
   route?: [number, number][]
   /** mine only: there is a map but I turned "Show my route maps" off */
   route_hidden?: boolean
+  /** a friend's workout that has a map they keep private ("Share my maps with friends" off) */
+  map_private?: boolean
   /** the one rate that fits the family: s/km (runs, walks, hikes), km/h (rides), s/100 m (swims),
    *  s/500 m (rows, paddles) */
   pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number; pace_s_500m?: number
