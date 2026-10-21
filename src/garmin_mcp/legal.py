@@ -122,7 +122,7 @@ PRIVACY = """
 </ul>
 
 <h2>Cookies and storage</h2>
-<p>rabbt uses one essential sign-in cookie (HTTP-only and secure, kept up to 90 days or until you sign out) and your browser's local storage for things like theme, units, drafts and dismissed tips. There are no advertising or third-party tracking cookies, so there's nothing to opt out of.</p>
+<p>rabbt uses one essential sign-in cookie (HTTP-only and secure, kept up to 90 days or until you sign out), a first-party cookie kept for 7 days that remembers which club page or invite link brought you (only the club's short name or the word "invite", used to count how people find rabbt), and your browser's local storage for things like theme, units, drafts and dismissed tips. There are no advertising or third-party tracking cookies, so there's nothing to opt out of.</p>
 
 <h2>How long it's kept</h2>
 <ul>
