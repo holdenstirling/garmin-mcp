@@ -1,0 +1,20 @@
+# Temporary: run the full test suite for fix-feedsync (removed before merge).
+name: tmp-feedsync
+on:
+  push:
+    branches: [fix-feedsync]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Tests
+        run: uv run -q pytest -q -p no:cacheprovider 2>&1 | tail -60
+      - name: Fail on test failure
+        run: uv run -q pytest -q -x --no-header -p no:cacheprovider >/dev/null 2>&1

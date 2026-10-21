@@ -112,7 +112,7 @@ RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
                   "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source",
-                  "family", "kind", "pace_s_500m", "vertical_m", "sets", "reps", "legs", "route")
+                  "family", "kind", "pace_s_500m", "vertical_m", "sets", "reps", "legs", "route", "late")
 LEG_FIELDS = ("family", "km", "minutes", "pace_s_km", "speed_kmh", "pace_s_100m", "pace_s_500m")
 # Where a workout came from ("via Garmin" on its card). Garmin ids are ints; other sources use
 # "<source>:<id>" (workout ingestion adds ``source`` to each activity).
@@ -145,6 +145,7 @@ AUTO_DAYS = 2             # auto-share workouts from today and the 2 days before
 AUTO_PER_SYNC = 3
 BACKFILL_DAYS = 2         # turning sharing on posts today and the 2 days before, once
 BACKFILL_MAX = 5
+CATCHUP_S = 15 * 60       # catch-up check per person at most this often (tick and Feed loads)
 MAX_UNREAD_POSTS = 200
 EVENT_FIELDS = ("id", "name", "date", "type", "distance")
 _PID = re.compile(r"^p[0-9a-f]{16}$")
@@ -329,6 +330,23 @@ def pb_text(best: dict[str, Any], imperial: bool) -> str:
     return f"New personal best: {what} this year, {val}."
 
 
+def feed_ts(p: dict[str, Any]) -> int:
+    """Where a post sorts in the Feed: when it was made, except that a workout auto-posted on
+    a later day than it was done (a catch-up or a late sync, marked ``late``) sorts by its own
+    day, never above workouts done after it."""
+    created = int(p.get("created") or 0)
+    w = p.get("workout") or {}
+    day = w.get("date")
+    if w.get("late") and isinstance(day, str):
+        try:
+            # end of that day plus 12 h, so a same-day post anywhere from UTC-12 keeps its time
+            end = int(datetime.fromisoformat(day + "T23:59:59+00:00").timestamp()) + 12 * 3600
+        except ValueError:
+            return created
+        return min(created, end)
+    return created
+
+
 def workout_card(acts: list[dict[str, Any]], aid: int | str, today: date) -> dict[str, Any] | None:
     """A compact, shareable workout: sport, its family (``sportfamily``: which numbers make
     sense), title, date, distance, time, climb and a highlight line, plus the one rate that
@@ -478,6 +496,11 @@ class Community:
         self.push_link: Callable[[str, str, str, str], None] | None = None
         self._pushed: dict[tuple[str, str], float] = {}
         self._reminded: dict[str, float] = {}
+        # catch_up(): when each person was last checked (in memory; a restart re-checks once).
+        self._caught: dict[str, float] = {}
+        self._caught_lock = threading.Lock()
+        # Runs a background job (a thread by default; tests make it run inline).
+        self.spawn: Callable[[Callable[[], Any]], Any] = lambda fn: threading.Thread(target=fn, daemon=True).start()
 
     # ------------------------------------------------------------ docs --
     def _posts(self, uid: str):
@@ -702,6 +725,62 @@ class Community:
             d.pop("backfill_due", None)
         self._mine(uid).update(done)
         return out
+
+    def _catch_due(self, uid: str, force: bool) -> bool:
+        now = time.monotonic()
+        with self._caught_lock:
+            last = self._caught.get(uid)
+            if not force and last is not None and now - last < CATCHUP_S:
+                return False
+            self._caught[uid] = now
+            if len(self._caught) > 5000:
+                for k in sorted(self._caught, key=self._caught.__getitem__)[:1000]:
+                    self._caught.pop(k, None)
+            return True
+
+    def catch_up(self, uid: str, *, force: bool = False) -> list[str]:
+        """Post any workout from the last ``BACKFILL_DAYS`` days that should be on the Feed and
+        isn't: the regular auto-share only runs when a sync finds something *new*, so a workout
+        synced before sharing took effect (a yes given later, or the earlier friends-settings
+        consent) would otherwise never post. Same rules, cards and once-per-workout keys as
+        auto-sharing, so it is safe to call often; checked at most every ``CATCHUP_S`` per person."""
+        if (self.workouts_of is None or uid.startswith("coach_") or not self.social.is_athlete(uid)
+                or not self._catch_due(uid, force)):
+            return []
+        try:
+            if not self.sharing_consent(uid):
+                return []
+            acts, ext = self.workouts_of(uid)
+            today = self._now(uid).date()
+            out = self.auto_share_workouts(uid, acts, today, days=BACKFILL_DAYS, cap=BACKFILL_MAX)
+            out += self.auto_share_external(uid, ext, today, days=BACKFILL_DAYS,
+                                            cap=max(0, BACKFILL_MAX - len(out)))
+        except Exception as e:  # best effort: the next tick tries again
+            log_event(logger, logging.INFO, "feed_catch_up_failed", user_id=uid, error=type(e).__name__)
+            with self._caught_lock:
+                self._caught.pop(uid, None)
+            return []
+        if out:
+            log_event(logger, logging.INFO, "feed_catch_up", user_id=uid, posted=len(out))
+        return out
+
+    def catch_up_soon(self, uids: list[str]) -> None:
+        """In the background, ``catch_up`` the people whose check is due (a Feed load asks this
+        for the people in it, so a friend's missed workout shows on the next refresh)."""
+        with self._caught_lock:
+            now = time.monotonic()
+            due = [u for u in dict.fromkeys(uids)
+                   if not (self._caught.get(u) is not None and now - self._caught[u] < CATCHUP_S)]
+        if not due or self.workouts_of is None:
+            return
+
+        def run() -> None:
+            for u in due:
+                self.catch_up(u)
+        try:
+            self.spawn(run)
+        except Exception:
+            pass
 
     # ----------------------------------------------------------- access --
     @staticmethod
@@ -1055,6 +1134,8 @@ class Community:
                     owners += self.groups.member_ids(gid, viewer)
                 owners += [a for a, _ in (self._g.load().get("public") or {}).values()]
         main = club is None and group is None and scope in ("all", "friends")
+        if after is None:  # make sure friends' recent workouts have their posts (next refresh)
+            self.catch_up_soon([viewer, *self.social.following_ids(viewer, limit=FEED_FOLLOWEES)])
         pinned: dict[str, Any] | None = None
         hidden = self._hidden(viewer)
         posts: list[dict[str, Any]] = []
@@ -1071,21 +1152,22 @@ class Community:
                     continue
                 if scope == "clubs" and club is None and group is None and not aud.startswith("club:"):
                     continue
-                if after is not None and (p["created"], p["id"]) >= after:
+                if after is not None and (feed_ts(p), p["id"]) >= after:
                     continue
                 if self.can_see(viewer, p):
                     posts.append(p)
-        posts.sort(key=lambda p: (p["created"], p["id"]), reverse=True)
+        posts.sort(key=lambda p: (feed_ts(p), p["id"]), reverse=True)
         if main and after is None:
             now = self._clock()
             pin = next((p for p in posts if p["author"] == viewer and (p.get("workout") or {}).get("auto")
+                        and not (p.get("workout") or {}).get("late")
                         and 0 <= now - p["created"] <= PIN_S), None)
             if pin is not None:
                 posts = [p for p in posts if p["id"] != pin["id"]]
                 pinned = {**self.view(viewer, pin), "pinned_until": int(pin["created"]) + PIN_S,
                           "prompt": "Add a photo or caption" if not pin.get("text") and not pin.get("photos") else None}
         page = posts[:limit]
-        nxt = f"{page[-1]['created']}.{page[-1]['id']}" if len(posts) > limit else None
+        nxt = f"{feed_ts(page[-1])}.{page[-1]['id']}" if len(posts) > limit else None
         return {"items": [self.view(viewer, p) for p in page], "next": nxt, "pinned": pinned}
 
     def latest(self, viewer: str, limit: int = LATEST_N) -> list[dict[str, Any]]:
@@ -1402,6 +1484,8 @@ class Community:
                 continue
             card["title"] = _sf.title(card["family"], card.get("kind"))
             card["auto"] = True
+            if r["date"] < today:
+                card["late"] = True
             if isinstance(r["id"], int):  # Garmin: lap splits (where they mean something) and the reward headline
                 card.update(self._extras(uid, r["id"], splits=_sf.splits_ok(card["family"])))
                 self.route_card(uid, r["id"], card)
@@ -1453,6 +1537,8 @@ class Community:
                     "title": _sf.title(fam, raw), "date": day,
                     "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
                     "climb_m": None, "highlight": "", "auto": True, **_sf.pace_fields(fam, km, mins)}
+            if d0 < today:
+                card["late"] = True
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])

@@ -3715,7 +3715,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 _cm_scan(uid, workouts=True)
         _ag.moments.wants_share = _cm_wants_share
         _ag.moments.share_scan = _cm_share_scan
-        _ag.moments.on_tick = cm.meetup_reminders
+        def _cm_tick(uid: str) -> None:
+            cm.meetup_reminders(uid)
+            cm.catch_up(uid)  # workouts synced before sharing took effect still reach the Feed
+        _ag.moments.on_tick = _cm_tick
         _ag._store.on_user_write(lambda uid, name: _cm_scan(uid, workouts=False)
                                  if name == "events" and soc.is_athlete(uid) else None)
         community_routes = _cmw.make_routes(
