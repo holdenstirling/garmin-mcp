@@ -31,6 +31,8 @@ with its guards (``plan_api``: session, Host, Origin + JSON on mutating calls, c
     GET    /app/api/community/people/suggested
     POST   /app/api/community/people/{uid}/follow    only someone in Suggested
     GET    /app/api/community/people/{uid}/photo     related (follow edge, shared club, public poster)
+    GET    /app/api/community/people/{uid}/ask-share {can_ask, reason?, next_at?}
+    POST   /app/api/community/people/{uid}/ask-share ask someone I follow to share workouts (weekly)
     GET    /app/api/community/meetups                my upcoming meetups (14 days)
     GET    /app/api/community/clubs?q=               mine (+ race groups), invites, discover near me,
                                                       local groups from Explore's web scout (cached)
@@ -157,6 +159,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         drafts = await run(lambda: len(cm.drafts(user_id))) if cursor is None else None
         pinned = out.get("pinned")
         return JSONResponse({"items": [deco(p) for p in out["items"]], "next": out["next"], "drafts": drafts,
+                             "waiting": [{**w, "user": person(w["id"])} for w in out.get("waiting") or []],
                              "following": len(cm.social.following_ids(user_id)),
                              "pinned": deco(pinned) if pinned else None})
 
@@ -358,6 +361,14 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
                  f"{first_name(user_id)} {verb} your training on rabbt.")
         msg = f"You're following {first_name(pid)}." if res["status"] == "active" else f"Request sent to {first_name(pid)}."
         return JSONResponse({"ok": True, "status": res["status"], "message": msg})
+
+    async def ask_share_get(request: Request, user_id: str) -> Response:
+        pid = str(request.path_params["person_id"])[:80]
+        return JSONResponse(await run(lambda: cm.ask_status(user_id, pid)))
+
+    async def ask_share_post(request: Request, user_id: str) -> Response:
+        pid = str(request.path_params["person_id"])[:80]
+        return JSONResponse(await run(lambda: cm.ask_friend(user_id, pid)))
 
     async def people_photo(request: Request, user_id: str) -> Response:
         pid = str(request.path_params["person_id"])[:80]
@@ -671,6 +682,8 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
         Route(f"{P}/settings", wrap(settings_route, mutating=True), methods=["PUT"]),
         Route(f"{P}/people/suggested", wrap(suggested, mutating=False), methods=["GET"]),
         Route(f"{P}/people/{{person_id}}/follow", wrap(people_follow, mutating=True), methods=["POST"]),
+        Route(f"{P}/people/{{person_id}}/ask-share", wrap(ask_share_get, mutating=False), methods=["GET"]),
+        Route(f"{P}/people/{{person_id}}/ask-share", wrap(ask_share_post, mutating=True), methods=["POST"]),
         Route(f"{P}/people/{{person_id}}/photo", photo_cache(wrap(people_photo, mutating=False)), methods=["GET"]),
         Route(f"{P}/meetups", wrap(meetups_mine, mutating=False), methods=["GET"]),
         Route(f"{P}/clubs", wrap(clubs_list, mutating=False), methods=["GET"]),

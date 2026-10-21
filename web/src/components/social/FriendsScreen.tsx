@@ -26,6 +26,8 @@ import {
 } from '@/lib/social'
 import { openFindFriends } from '@/lib/friends'
 import { SportTile } from '@/components/ui/SportTile'
+import { AskShareButton } from '@/components/community/WaitingRow'
+import { getAskShare, type AskStatus } from '@/lib/community'
 
 const LOADING = ['Finding your crew…', 'Lacing up…', 'Checking who trained today…']
 const SEEN_EVENT = 'rabbit:social-seen'
@@ -408,6 +410,8 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
   const [raceInvite, setRaceInvite] = useState(false)
   const drag = useSheetDrag(onClose)
   useEffect(() => { getFriend(id).then(setCard, (e) => setError((e as Error).message)) }, [id])
+  const [ask, setAsk] = useState<AskStatus | null>(null)  // their workouts aren't shared with me: ask them
+  useEffect(() => { getAskShare(id).then(setAsk, () => setAsk(null)) }, [id])
   const u = card?.user
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -449,6 +453,7 @@ export function FriendCard({ id, imperial, onClose }: { id: string; imperial: bo
               <div className="flex flex-col gap-2">
                 <h3 className="section-title section-title--sm m-0">Recent workouts</h3>
                 {card.recent.length === 0 && <p className="text-small text-(--text-muted)">Nothing shared in the last two weeks.</p>}
+                {ask && <AskShareButton key={String(ask.can_ask)} id={u.id} name={u.name} status={ask} />}
                 {card.recent.map((it) => (
                   <FeedCard key={it.id} it={it} imperial={imperial} compact
                     onUpdate={(p) => setCard((c) => c && { ...c, recent: c.recent.map((x) => (x.id === it.id ? { ...x, ...p } : x)) })} />
