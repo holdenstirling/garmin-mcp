@@ -150,6 +150,11 @@ class Social:
     def settings(self, uid: str) -> dict[str, bool]:
         return self._settings_of(self._doc.load(), uid)
 
+    def settings_many(self, uids: list[str]) -> dict[str, dict[str, bool]]:
+        """``settings`` for several people from one read (Feed paths that loop over followees)."""
+        d = self._doc.load()
+        return {u: self._settings_of(d, u) for u in dict.fromkeys(uids)}
+
     def explicit_workouts(self, uid: str) -> bool | None:
         """The "workouts" share as the person saved it in these settings (None = never saved,
         only the default). A saved yes counts as their earlier consent to share workouts."""
@@ -393,6 +398,13 @@ class Social:
         """Either one blocked the other."""
         users = self._doc.load().get("users") or {}
         return b in ((users.get(a) or {}).get("blocked") or []) or a in ((users.get(b) or {}).get("blocked") or [])
+
+    def blocked_ids(self, uid: str) -> set[str]:
+        """Everyone ``uid`` blocked or who blocked ``uid`` (``blocked_between`` for many, one read)."""
+        users = self._doc.load().get("users") or {}
+        out = set((users.get(uid) or {}).get("blocked") or [])
+        out.update(o for o, u in users.items() if uid in ((u or {}).get("blocked") or []))
+        return out
 
     def ever_followed(self, uid: str) -> bool:
         return bool(((self._doc.load().get("users") or {}).get(uid) or {}).get("ever_followed"))

@@ -3722,7 +3722,12 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                              store=store, clock=time.time)
 
         def _cm_tick(uid: str) -> None:
-            cm.meetup_reminders(uid)
+            # Each piece on its own: a raise here would also skip every hook chained after this
+            # one (_bc_tick and the rest call the previous hook first, unguarded).
+            try:
+                cm.meetup_reminders(uid)
+            except Exception as e:
+                log_event(logger, logging.INFO, "meetup_reminders_failed", user_id=uid, error=type(e).__name__)
             try:
                 _life.warm(uid)  # Monday: last week's crew recap, ready before they open the Feed
             except Exception as e:
@@ -3762,7 +3767,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                         except Exception as e:
                             row["posted_now"] = f"failed: {type(e).__name__}"
                     try:
-                        row.update(cm.diagnose(uid))
+                        row.update(cm.diagnose(uid, own=uid == user_id))
                     except Exception as e:
                         row["error"] = f"diagnose failed: {type(e).__name__}"
                     if soc_feed is not None:

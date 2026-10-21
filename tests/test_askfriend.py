@@ -45,3 +45,40 @@ def test_feed_waiting_row(fx) -> None:
     cm.put_settings("ann", {"share_workouts": True})
     assert cm.feed("bob")["waiting"] == []
     assert "waiting" not in cm.feed("bob", scope="clubs")
+
+
+def test_waiting_row_rechecks_cached_people(fx) -> None:
+    cm = fx.cm  # the followee scan is cached per viewer; blocks and unfollows still apply at once
+    assert [x["id"] for x in cm.waiting("bob")] == ["ann"]
+    cm.put_settings("ann", {"share_workouts": False})  # a no: never in the row
+    assert cm.waiting("bob") == []
+    cm._mine("ann").update(lambda d: d["settings"].pop("share_workouts"))  # undecided again
+    assert [x["id"] for x in cm.waiting("bob")] == ["ann"]
+    fx.soc.block("ann", "bob")
+    assert cm.waiting("bob") == []
+
+
+def test_share_ask_runs_once_without_rereading(fx) -> None:
+    from tests.test_community import _follow
+    fx.clock.at = NOON
+    cm = fx.cm
+    _follow(fx.soc, "cat", "bob")  # someone follows Bob, who never answered
+    assert cm.ask_to_share("bob") is True
+    assert any(to == "bob" and "want" in t for to, t, _ in fx.pushes)
+
+    def boom(uid):
+        raise AssertionError("asked already: no follower lookup or write each minute")
+    cm._follower_names = boom  # type: ignore[method-assign]
+    assert cm.ask_to_share("bob") is False
+
+
+def test_feed_doctor_lists_no_workouts_for_someone_not_sharing(fx) -> None:
+    from tests.test_friends_share import _acts
+    acts = _acts(NOON.date())
+    cm = fx.cm
+    cm.workouts_of = lambda uid: (acts, [])
+    d = cm.diagnose("ann")
+    assert d["sharing"] == "unanswered" and d["workouts"] == []  # no dates or sources without consent
+    assert cm.diagnose("ann", own=True)["workouts"]  # the owner looking at their own
+    cm.put_settings("ann", {"share_workouts": True})
+    assert cm.diagnose("ann")["workouts"]

@@ -140,7 +140,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       await putCommunitySettings(yes ? { share_workouts: true, share_prompted: true } : { share_prompted: true })
       if (yes) setShare('yes')
       else { setShare('ask'); setStep(after('share')) }
-    } catch (e) { setShareErr((e as Error).message || "Couldn't save just now."); setShare('ask') }
+    } catch (e) {
+      setShare('ask')
+      // "Not now" saves nothing that matters (sharing stays unanswered either way): move on.
+      if (yes) setShareErr((e as Error).message || "Couldn't save just now.")
+      else setStep(after('share'))
+    }
   }
   // The last screen lands with a small carrot burst from the main button.
   useEffect(() => {

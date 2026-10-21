@@ -89,6 +89,7 @@ PREVIEW_COMMENTS = 2
 PUSH_EVERY_S = 3600
 ASK_EVERY_S = 7 * 86400    # "Ask to see their workouts": once a week per friend
 WAITING_MAX = 6            # the Feed's "haven't shared yet" row
+WAITING_TTL_S = 300        # who might be in that row, re-scanned at most this often per viewer
 MAX_MENTION_ITEMS = 50   # newest @mentions kept per person for the bell
 MAX_LIKE_ITEMS = 50      # newest liked-comment bell items kept per person
 LIKES_PER_DAY = 500
@@ -501,6 +502,12 @@ class Community:
         # catch_up(): when each person was last checked (in memory; a restart re-checks once).
         self._caught: dict[str, float] = {}
         self._caught_lock = threading.Lock()
+        # Auto-share keys claimed but not posted yet (the Garmin splits and route fetches sit
+        # between the two): the catch-up must not release those as orphans and post twice.
+        self._inflight: set[tuple[str, str]] = set()
+        # waiting(): per viewer, (monotonic time, ids that looked undecided), so a Feed load
+        # doesn't read every followee's settings each time; entries are re-checked on read.
+        self._waiting_ids: dict[str, tuple[float, list[str]]] = {}
         # Runs a background job (a thread by default; tests make it run inline).
         self.spawn: Callable[[Callable[[], Any]], Any] = lambda fn: threading.Thread(target=fn, daemon=True).start()
 
@@ -639,10 +646,25 @@ class Community:
         return {"asked": True, "next_at": int(now + ASK_EVERY_S)}
 
     def waiting(self, viewer: str) -> list[dict[str, Any]]:
-        """People I follow who never answered "share my workouts" (the Feed's waiting row)."""
+        """People I follow who never answered "share my workouts" (the Feed's waiting row).
+        The full scan of followees runs at most every ``WAITING_TTL_S`` per viewer (it reads
+        each one's settings); the ids it found are re-checked on every read (still followed,
+        not blocked, still undecided), so a yes, a no, a block or an unfollow shows at once."""
+        now = time.monotonic()
+        with self._lock:
+            hit = self._waiting_ids.get(viewer)
+        following = self.social.following_ids(viewer, limit=FEED_FOLLOWEES)
+        if hit is not None and now - hit[0] < WAITING_TTL_S:
+            live = set(following)
+            ids = [f for f in hit[1] if f in live]
+            scanned = False
+        else:
+            ids, scanned = following, True
         out: list[dict[str, Any]] = []
-        for f in self.social.following_ids(viewer, limit=FEED_FOLLOWEES):
-            if f == viewer or not self.social.is_athlete(f) or self.social.blocked_between(viewer, f):
+        found: list[str] = []
+        blocked = self.social.blocked_ids(viewer)  # following_ids already keeps athletes only
+        for f in ids:
+            if f == viewer or f in blocked:
                 continue
             try:
                 d = self._mine(f).load()
@@ -652,10 +674,16 @@ class Community:
                 last = (d.get("asked_by") or {}).get(viewer)
                 recent = isinstance(last, int | float) and self._clock() - last < ASK_EVERY_S
                 out.append({"id": f, "name": str(self._name(f)), "asked_recently": bool(recent)})
+                found.append(f)
             except Exception:
                 continue
             if len(out) >= WAITING_MAX:
                 break
+        if scanned:
+            with self._lock:
+                self._waiting_ids[viewer] = (now, found)
+                if len(self._waiting_ids) > 5000:
+                    self._waiting_ids.pop(next(iter(self._waiting_ids)))
         return out
 
     def ask_to_share(self, uid: str) -> bool:
@@ -664,7 +692,10 @@ class Community:
         leaves until they tap Share. Returns True when the push went out."""
         if self.push is None or uid.startswith("coach_") or not self.social.is_athlete(uid):
             return False
-        s = self._settings_of(self._mine(uid).load())
+        d = self._mine(uid).load()
+        if d.get("share_asked"):  # asked once already: runs every minute, so no more reads or writes
+            return False
+        s = self._settings_of(d)
         if s["share_workouts"] is not None or self.sharing_consent(uid, s):
             return False
         fol = self._follower_names(uid)
@@ -680,7 +711,7 @@ class Community:
             return False
         who = (fol["names"][0] if fol["count"] == 1 and fol["names"]
                else f"{fol['names'][0]} and {fol['count'] - 1} other{'s' if fol['count'] > 2 else ''}"
-               if fol["names"] else f"{fol['count']} friends")
+               if fol["names"] else "A friend" if fol["count"] == 1 else f"{fol['count']} friends")
         self._notify(uid, "share-ask", f"{who} want{'s' if fol['count'] == 1 else ''} to see your workouts",
                      "Share them on the rabbt Feed? Sport, time and distance only. Tap to choose.")
         log_event(logger, logging.INFO, "share_asked", user_id=uid, followers=fol["count"])
@@ -901,26 +932,38 @@ class Community:
         the two, or an older bug) would otherwise be stuck off the Feed forever. Drop those
         claims so the normal share runs again. Never for a post the person deleted."""
         have, loose = self._share_keys(uid)
-        stuck = [c["key"] for c in cands if c["key"] not in have and (c["loose"] is None or c["loose"] not in loose)]
+        d0 = self._mine(uid).load()
+        keys0, gone0 = d0.get("keys") or {}, d0.get("removed") or {}
+        with self._lock:
+            busy = {k for u, k in self._inflight if u == uid}
+        stuck = [c["key"] for c in cands if c["key"] not in have and (c["loose"] is None or c["loose"] not in loose)
+                 and c["key"] in keys0 and c["key"] not in gone0 and c["key"] not in busy]
         if not stuck:
-            return 0
+            return 0  # nothing claimed and missing: no write
 
         def apply(d: dict[str, Any]) -> int:
             keys, gone = d.get("keys") or {}, d.get("removed") or {}
+            with self._lock:  # claimed since the check above and being posted right now: leave it
+                busy_now = {k for u, k in self._inflight if u == uid}
             n = 0
             for k in stuck:
-                if k in keys and k not in gone:
+                if k in keys and k not in gone and k not in busy_now:
                     del keys[k]
                     n += 1
             return n
         return int(self._mine(uid).update(apply) or 0)
 
-    def diagnose(self, uid: str) -> dict[str, Any]:
-        """Why each of ``uid``'s recent workouts is or isn't on the Feed (owner tool)."""
+    def diagnose(self, uid: str, *, own: bool = False) -> dict[str, Any]:
+        """Why each of ``uid``'s recent workouts is or isn't on the Feed (owner tool). Someone
+        who hasn't agreed to share gets no workout list (not even dates or sources): only
+        their sharing state, unless it's the owner looking at their own (``own``)."""
         s = self._settings_of(self._mine(uid).load())
         info: dict[str, Any] = {"athlete": self.social.is_athlete(uid), "sharing": self.sharing_source(uid, s),
                                 "share_since": s.get("share_since"), "audience": s.get("share_audience") or "friends",
                                 "workouts": []}
+        if not own and info["sharing"] not in ("yes", "earlier"):
+            info["note"] = "not sharing workouts: nothing listed"
+            return info
         if self.workouts_of is None:
             info["error"] = "workouts_of not wired"
             return info
@@ -1714,23 +1757,35 @@ class Community:
                 if len(keys) > MAX_KEYS:
                     for k in sorted(keys, key=lambda k: keys[k])[: len(keys) - MAX_KEYS]:
                         del keys[k]
+                self._flight(uid, key, True)
                 return True
             if not self._mine(uid).update(claim):
                 continue
-            card = workout_card(acts, r["id"], today)
-            if card is None:
-                continue
-            card["title"] = _sf.title(card["family"], card.get("kind"))
-            card["auto"] = True
-            if r["date"] < today:
-                card["late"] = True
-            if isinstance(r["id"], int):  # Garmin: lap splits (where they mean something) and the reward headline
-                card.update(self._extras(uid, r["id"], splits=_sf.splits_ok(card["family"])))
-                self.route_card(uid, r["id"], card)
-            post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
-                               workout=card, limited=False)
-            out.append(post["id"])
+            try:
+                card = workout_card(acts, r["id"], today)
+                if card is None:
+                    continue
+                card["title"] = _sf.title(card["family"], card.get("kind"))
+                card["auto"] = True
+                if r["date"] < today:
+                    card["late"] = True
+                if isinstance(r["id"], int):  # Garmin: lap splits (where they mean something) and the reward headline
+                    card.update(self._extras(uid, r["id"], splits=_sf.splits_ok(card["family"])))
+                    self.route_card(uid, r["id"], card)
+                post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
+                                   workout=card, limited=False)
+                out.append(post["id"])
+            finally:
+                self._flight(uid, key, False)
         return out
+
+    def _flight(self, uid: str, key: str, on: bool) -> None:
+        """Mark an auto-share key as claimed-and-being-posted (or done)."""
+        with self._lock:
+            if on:
+                self._inflight.add((uid, key))
+            else:
+                self._inflight.discard((uid, key))
 
     def auto_share_external(self, uid: str, workouts: list[dict[str, Any]], today: date, *,
                             days: int = AUTO_DAYS, cap: int = AUTO_PER_SYNC) -> list[str]:
@@ -1761,27 +1816,36 @@ class Community:
                 if self._seen(d, key, today, None):
                     return False
                 d.setdefault("keys", {})[key] = today.isoformat()
+                self._flight(uid, key, True)
                 return True
             if not self._mine(uid).update(claim):
                 continue
-            sport = str(w.get("sport") or "other")
-            km = w.get("km") if isinstance(w.get("km"), int | float) else None
-            mins = w.get("minutes") if isinstance(w.get("minutes"), int | float) else None
-            raw = str(w.get("kind") or w.get("type") or w.get("name") or "")
-            fam = _sf.family(sport, raw)
-            if fam in _sf.NO_DISTANCE:
-                km = None
-            card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport, "family": fam,
-                    "title": _sf.title(fam, raw), "date": day,
-                    "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
-                    "climb_m": None, "highlight": "", "auto": True, "share_key": w["key"],
-                    **_sf.pace_fields(fam, km, mins)}
-            if d0 < today:
-                card["late"] = True
-            post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
-                               workout=card, limited=False)
-            out.append(post["id"])
+            try:
+                out.append(self._post_external(uid, w, day, d0, today, s))
+            finally:
+                self._flight(uid, key, False)
         return out
+
+    def _post_external(self, uid: str, w: dict[str, Any], day: str, d0: date, today: date,
+                       s: dict[str, Any]) -> str:
+        """The post for one claimed other-source workout (``auto_share_external``)."""
+        sport = str(w.get("sport") or "other")
+        km = w.get("km") if isinstance(w.get("km"), int | float) else None
+        mins = w.get("minutes") if isinstance(w.get("minutes"), int | float) else None
+        raw = str(w.get("kind") or w.get("type") or w.get("name") or "")
+        fam = _sf.family(sport, raw)
+        if fam in _sf.NO_DISTANCE:
+            km = None
+        card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport, "family": fam,
+                "title": _sf.title(fam, raw), "date": day,
+                "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
+                "climb_m": None, "highlight": "", "auto": True, "share_key": w["key"],
+                **_sf.pace_fields(fam, km, mins)}
+        if d0 < today:
+            card["late"] = True
+        post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
+                           workout=card, limited=False)
+        return str(post["id"])
 
     def _share_audience(self, uid: str, s: dict[str, Any]) -> str:
         """The chosen auto-share audience; groups I've since left drop out, and when none are

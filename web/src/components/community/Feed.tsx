@@ -8,7 +8,6 @@ import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Ban, CalendarDays, List, Map as MapIcon, Check, ChevronDown, ChevronRight, Ellipsis, EyeOff, Flag, Globe, ImagePlus, Lock, MapPin, MessageCircle, Pencil, Pin, Plus, Reply, Send, SlidersHorizontal, SquarePen, Trash2, UserPlus, Users, UsersRound, X } from 'lucide-react'
-import { Avatar } from '@/components/Avatar'
 import { EmptyRabbit, HopIn, PullToRefresh, burst } from '@/components/anim'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/ErrorState'
@@ -21,20 +20,21 @@ import { FAMILY_NAME, famDist, legLine, sportFamily, splitsOk, statsFor } from '
 import { SportTile } from '@/components/ui/SportTile'
 import { listGroups, type FeedGroup } from '@/lib/community2'
 import { Sheet } from '@/components/ui/Sheet'
-import { blockUser, type SocialUser } from '@/lib/social'
+import { blockUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
 import { openActivity } from '@/lib/activitynav'
 import { RouteMini } from '@/components/route/RouteMap'
 import { ShareNudge } from '@/components/community/ShareNudge'
 import { WaitingRow } from '@/components/community/WaitingRow'
+import { PersonAvatar } from '@/components/community/PersonAvatar'
 import { FeedExtras } from '@/components/community/FeedExtras'
 import type { FeedExtras as FeedExtrasData } from '@/lib/community'
 import { FeedMap } from '@/components/community/FeedMap'
 import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
-  ago, audienceLabel, communityPhotoUrl, deleteComment, deletePost, dismissDraft, editComment, likeComment,
+  ago, audienceLabel, deleteComment, deletePost, dismissDraft, editComment, likeComment,
   getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
   reportPost, shareDraft, unreact, updatePost, 
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
@@ -60,9 +60,7 @@ import { MentionText } from './MentionText'
 import { displayText, tokensIn } from '@/lib/mentions'
 
 
-export function PersonAvatar({ u, size = 36 }: { u: SocialUser | null; size?: number }) {
-  return <Avatar name={u?.name ?? '?'} picture={u?.picture ?? ''} photo={u ? communityPhotoUrl(u) : null} size={size} />
-}
+export { PersonAvatar }  // its own module now; other screens still import it from here
 
 type Template = (typeof TEMPLATES)[number]
 

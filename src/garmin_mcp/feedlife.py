@@ -37,6 +37,7 @@ RACE_DAYS = 30
 JOINED_DAYS = 7
 JOINED_MAX = 3
 RECAP_SHOW_DAYS = 3  # Monday, Tuesday, Wednesday
+RECAP_FRESH_S = 3600  # a cached card older than this is rebuilt on the next Feed read
 DOC = "feedlife"
 
 
@@ -79,15 +80,23 @@ class FeedLife:
                             "people": [self._person(u) for u in going[:3]]})
         except Exception as e:  # clubs unavailable: the rest still shows
             log_event(logger, logging.INFO, "feedlife_meetups_failed", error=type(e).__name__)
-        today = now.date()
+        out += self._shared_races(viewer, now.date())
+        out.sort(key=lambda x: str(x["when"]))
+        return out[:UPCOMING_MAX]
+
+    def _shared_races(self, viewer: str, today: date) -> list[dict[str, Any]]:
+        """Races friends I follow chose to share (social setting ``races``), next ``RACE_DAYS``
+        days. Blocks and the setting come from one read of the social doc, not one per
+        followee (this runs on every Feed load); events are read only for those who share."""
         last = (today + timedelta(days=RACE_DAYS)).isoformat()
         races: dict[tuple[str, str], dict[str, Any]] = {}
-        for f in self.social.following_ids(viewer):
-            if self.social.blocked_between(viewer, f):
+        following = self.social.following_ids(viewer)
+        blocked = self.social.blocked_ids(viewer)
+        sets = self.social.settings_many([f for f in following if f not in blocked])
+        for f, st in sets.items():
+            if not st.get("races"):
                 continue
             try:
-                if not self.social.settings(f).get("races"):
-                    continue
                 evs = self._events(f)
             except Exception:
                 continue
@@ -100,9 +109,7 @@ class FeedLife:
                 r = races.setdefault(k, {"kind": "race", "when": dd, "title": name,
                                          "distance": e.get("distance"), "people": []})
                 r["people"].append(self._person(f))
-        out += list(races.values())
-        out.sort(key=lambda x: str(x["when"]))
-        return out[:UPCOMING_MAX]
+        return list(races.values())
 
     # ------------------------------------------------------------ joined --
     def joined(self, viewer: str) -> list[dict[str, Any]]:
@@ -123,8 +130,9 @@ class FeedLife:
         by: dict[str, dict[str, Any]] = {}
         longest: tuple[float, str, str] | None = None
         farthest: tuple[float, str, str] | None = None
+        blocked = self.social.blocked_ids(viewer)
         for o in dict.fromkeys(owners):
-            if o != viewer and self.social.blocked_between(viewer, o):
+            if o != viewer and o in blocked:
                 continue
             for p in (self.cm._posts(o).load().get("posts") or {}).values():
                 w = p.get("workout") or {}
@@ -160,16 +168,24 @@ class FeedLife:
     def _doc(self, uid: str) -> Any:
         return self._s.user_doc(uid, DOC)
 
-    def recap(self, viewer: str, *, build: bool = True) -> dict[str, Any] | None:
-        """This week's card (about last week), shown Monday to Wednesday; cached per week."""
+    def recap(self, viewer: str, *, build: bool = True, fresh: bool = True) -> dict[str, Any] | None:
+        """This week's card (about last week), shown Monday to Wednesday; cached per week and
+        rebuilt when older than ``RECAP_FRESH_S`` (``fresh``), so a post deleted, sharing turned
+        off or an unfollow since Monday drops out of it. Shout-outs never show a blocked person."""
         today = self._now(viewer).date()
         if today.weekday() >= RECAP_SHOW_DAYS:
             return None
         last_monday = week_of(today) - timedelta(days=7)
         key = last_monday.isoformat()
         hit = self._doc(viewer).load().get("recap")
-        if isinstance(hit, dict) and hit.get("week") == key:
-            return hit.get("card")
+        if isinstance(hit, dict) and hit.get("week") == key and (
+                not fresh or self._clock() - float(hit.get("at") or 0) < RECAP_FRESH_S):
+            card = hit.get("card")
+            # Someone blocked since it was built: never show them, rebuild without them.
+            if not (isinstance(card, dict) and any(
+                    self.social.blocked_between(viewer, str((sh.get("person") or {}).get("id")))
+                    for sh in card.get("shoutouts") or [])):
+                return card
         if not build:
             return None
         try:
@@ -179,7 +195,7 @@ class FeedLife:
             return None
 
         def save(d: dict[str, Any]) -> None:
-            d["recap"] = {"week": key, "card": card}
+            d["recap"] = {"week": key, "card": card, "at": int(self._clock())}
         self._doc(viewer).update(save)
         return card
 
@@ -188,7 +204,7 @@ class FeedLife:
         if uid.startswith("coach_") or not self.social.is_athlete(uid):
             return
         if self._now(uid).date().weekday() == 0:
-            self.recap(uid)
+            self.recap(uid, fresh=False)  # once per week from here; Feed reads keep it fresh
 
     # -------------------------------------------------------------- all --
     def extras(self, viewer: str) -> dict[str, Any]:

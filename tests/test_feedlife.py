@@ -84,3 +84,37 @@ def test_friends_races_only_when_they_share_races(fx) -> None:
         assert life.extras("cat")["upcoming"][0]["title"] == "Turkey Trot"
     finally:
         EVENTS.clear()
+
+
+def test_recap_drops_blocked_and_refreshes(fx) -> None:
+    from garmin_mcp.feedlife import RECAP_FRESH_S
+    life = _life(fx)
+    last_mon = week_of(NOON.date()) - timedelta(days=7)
+    _workout(fx, "ann", last_mon + timedelta(days=1), km=10, minutes=50)
+    _workout(fx, "ann", last_mon + timedelta(days=2), km=12, minutes=60)
+    r = life.recap("bob")
+    assert r is not None and r["workouts"] == 2 and r["shoutouts"]
+    # Ann deletes a post: gone from the card once the cache is an hour old.
+    pid = next(p["id"] for p in fx.cm._posts("ann").load()["posts"].values())
+    fx.cm.delete("ann", pid)
+    assert life.recap("bob")["workouts"] == 2
+    fx.clock.t += RECAP_FRESH_S + 1
+    assert life.recap("bob")["workouts"] == 1
+    fx.soc.block("ann", "bob")  # the cached card names Ann: rebuilt without her right away
+    assert life.recap("bob") is None
+
+
+def test_races_follow_the_setting_and_blocks_at_once(fx) -> None:
+    life = _life(fx)
+    EVENTS["ann"] = [{"name": "Turkey Trot", "date": (NOON.date() + timedelta(days=14)).isoformat(),
+                      "distance": "10k", "kind": "race"}]
+    try:
+        fx.soc.put_settings("ann", {"races": True})
+        assert [u for u in life.upcoming("bob") if u["kind"] == "race"]
+        fx.soc.put_settings("ann", {"races": False})
+        assert [u for u in life.upcoming("bob") if u["kind"] == "race"] == []
+        fx.soc.put_settings("ann", {"races": True})
+        fx.soc.block("ann", "bob")
+        assert [u for u in life.upcoming("bob") if u["kind"] == "race"] == []
+    finally:
+        EVENTS.clear()

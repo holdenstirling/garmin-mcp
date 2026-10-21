@@ -131,3 +131,31 @@ def test_ask_to_share_once_when_followed(fx) -> None:
     assert cm.ask_to_share("bob") is False  # nobody follows Bob
     cm.put_settings("cat", {"share_workouts": False})
     assert cm.ask_to_share("cat") is False  # a no is never re-asked
+
+
+def test_catch_up_never_releases_a_workout_being_posted(fx) -> None:
+    acts = _acts(NOON.date())
+    cm = _ready(fx, acts)
+    today = NOON.date()
+    cands = cm._candidates("ann", acts, [], today)
+    key = next(c["key"] for c in cands if c["date"] == today.isoformat())
+
+    def claim(d):
+        d.setdefault("keys", {})[key] = today.isoformat()
+    cm._mine("ann").update(claim)
+    cm._flight("ann", key, True)  # a sync claimed it and is fetching splits and the route
+    assert cm._release_orphans("ann", cands) == 0
+    assert key in cm._mine("ann").load()["keys"]
+    cm._flight("ann", key, False)  # that sync died before posting: now it's an orphan
+    assert cm._release_orphans("ann", cands) == 1
+
+
+def test_release_orphans_writes_nothing_when_nothing_is_stuck(fx) -> None:
+    acts = _acts(NOON.date())
+    cm = _ready(fx, acts)
+    cm.put_settings("ann", {"share_workouts": True})
+    writes = []
+    fx.store.on_user_write(lambda u, name: writes.append((u, name)))
+    cands = cm._candidates("ann", acts, [], NOON.date())
+    assert cm._release_orphans("ann", cands) == 0
+    assert ("ann", "community") not in writes

@@ -1263,7 +1263,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
             {/* 6. Friends: who trained today, who races soon, their latest posts. */}
             {/* The share ask, where people actually look: friends follow you but can't see your workouts. */}
-            {athlete && <ShareNudge home onShared={() => setFeedTick((n) => n + 1)} />}
+            {/* Not while the first-visit share question (SharePrompt) is up: one ask at a time. */}
+            {athlete && !shareAsk && <ShareNudge home onShared={() => setFeedTick((n) => n + 1)} />}
 
             {athlete && !calm && <FriendsLatest refreshKey={feedTick} imperial={imperial} onOpenFeed={() => openCommunity('feed')} onShown={setFriendsLatest} />}
 

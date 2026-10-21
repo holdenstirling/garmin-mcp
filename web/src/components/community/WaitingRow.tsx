@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { Check, Hand } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PersonAvatar } from '@/components/community/Feed'
+import { PersonAvatar } from '@/components/community/PersonAvatar'
 import { askShare, type Waiting } from '@/lib/community'
 
 /** "Jesse hasn't" / "Jesse and Axel haven't" / "Jesse, Axel and 2 others haven't" */
@@ -18,16 +18,19 @@ export function waitingLine(names: string[]): string {
 export function WaitingRow({ people }: { people: Waiting[] }) {
   const [asked, setAsked] = useState<Record<string, boolean>>(() => Object.fromEntries(people.map((p) => [p.id, p.asked_recently])))
   const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
   if (!people.length) return null
   const open = people.filter((p) => !asked[p.id])
 
   async function ask(ids: string[]) {
     setBusy(ids.length > 1 ? 'all' : ids[0])
+    let failed = 0
     for (const id of ids) {
-      try { await askShare(id) } catch { /* one failing never blocks the rest */ }
-      setAsked((a) => ({ ...a, [id]: true }))
+      // Only a reply from the server marks them "Asked"; a network error leaves the button.
+      try { await askShare(id); setAsked((a) => ({ ...a, [id]: true })) } catch { failed += 1 }
     }
     setBusy(null)
+    setErr(failed ? "Couldn't send just now. Try again in a bit." : null)
   }
 
   return (
@@ -59,6 +62,7 @@ export function WaitingRow({ people }: { people: Waiting[] }) {
           </li>
         ))}
       </ul>
+      {err && <p role="alert" className="m-0 text-small text-(--danger)">{err}</p>}
       {open.length > 1 && (
         <Button variant="primary" className="h-11 w-full text-body" loading={busy === 'all'} disabled={busy !== null}
           onClick={() => void ask(open.map((p) => p.id))}>
