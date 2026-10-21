@@ -220,7 +220,7 @@ export const getCommunityFeed = (cursor?: string | null, club?: string, scope: '
   if (group) q.set('group', group)
   if (scope !== 'all') q.set('scope', scope)
   const s = q.toString()
-  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null }>(`${P}/feed${s ? `?${s}` : ''}`)
+  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null; waiting?: Waiting[] }>(`${P}/feed${s ? `?${s}` : ''}`)
 }
 export const getPost = (id: string) => getJSON<{ post: Post }>(pp(id))
 export const createPost = (b: PostInput) => counted(postJSON<{ post: Post }>(`${P}/posts`, b), 'share', { what: 'post' })
@@ -385,3 +385,12 @@ export function ago(ts: number): string {
 export const followSuggested = (userId: string) =>
   postJSON<{ ok: boolean; status: 'active' | 'pending'; message: string }>(`${P}/people/${encodeURIComponent(userId)}/follow`)
     .then((r) => { milestone('follow'); return r })
+
+/** Someone I follow who hasn't answered "share my workouts" (the Feed's waiting row). */
+export type Waiting = { id: string; name: string; asked_recently: boolean; user?: SocialUser | null }
+export type AskStatus = { can_ask: boolean; reason?: 'self' | 'not_following' | 'said_no' | 'shares' | 'asked_recently'; asked_recently?: boolean; next_at?: number }
+/** Can I ask this friend to share their workouts? */
+export const getAskShare = (uid: string) => getJSON<AskStatus>(`${P}/people/${encodeURIComponent(uid)}/ask-share`)
+/** Ask them (one push from me by name, at most weekly). Asking shares nothing. */
+export const askShare = (uid: string) =>
+  sendJSON<{ asked: boolean; reason?: AskStatus['reason']; next_at?: number }>('POST', `${P}/people/${encodeURIComponent(uid)}/ask-share`, {})

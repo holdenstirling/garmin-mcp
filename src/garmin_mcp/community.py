@@ -87,6 +87,8 @@ MAX_REPORTS = 500
 FEED_FOLLOWEES = 500
 PREVIEW_COMMENTS = 2
 PUSH_EVERY_S = 3600
+ASK_EVERY_S = 7 * 86400    # "Ask to see their workouts": once a week per friend
+WAITING_MAX = 6            # the Feed's "haven't shared yet" row
 MAX_MENTION_ITEMS = 50   # newest @mentions kept per person for the bell
 MAX_LIKE_ITEMS = 50      # newest liked-comment bell items kept per person
 LIKES_PER_DAY = 500
@@ -586,6 +588,75 @@ class Community:
             except Exception:
                 pass
         return {"count": len(ids), "names": names}
+
+    def ask_status(self, viewer: str, friend: str) -> dict[str, Any]:
+        """Can ``viewer`` ask ``friend`` to share workouts? ``reason`` when not: not_following,
+        shares (already), said_no, self. ``next_at``: when a recent ask allows another."""
+        if viewer == friend:
+            return {"can_ask": False, "reason": "self"}
+        if (not self.social.is_athlete(friend) or self.social.blocked_between(viewer, friend)
+                or not self.social.follows(viewer, friend)):
+            return {"can_ask": False, "reason": "not_following"}
+        s = self._settings_of(self._mine(friend).load())
+        if s["share_workouts"] is False:
+            return {"can_ask": False, "reason": "said_no"}
+        if self.sharing_consent(friend, s):
+            return {"can_ask": False, "reason": "shares"}
+        last = ((self._mine(friend).load().get("asked_by") or {}).get(viewer))
+        if isinstance(last, int | float) and self._clock() - last < ASK_EVERY_S:
+            return {"can_ask": False, "reason": "asked_recently", "asked_recently": True,
+                    "next_at": int(last + ASK_EVERY_S)}
+        return {"can_ask": True}
+
+    def ask_friend(self, viewer: str, friend: str) -> dict[str, Any]:
+        """``viewer`` asks ``friend`` (someone they follow who never answered) to share their
+        workouts: one push from them by name, at most once a week per pair. Asking shares
+        nothing; the friend still decides on the Share card."""
+        self.require(viewer)
+        st = self.ask_status(viewer, friend)
+        if not st["can_ask"]:
+            if st.get("reason") in ("not_following", "self"):
+                raise CommunityError("person not found", 404)
+            return {"asked": False, **{k: v for k, v in st.items() if k != "can_ask"}}
+        now = self._clock()
+
+        def claim(d: dict[str, Any]) -> bool:
+            by = d.setdefault("asked_by", {})
+            last = by.get(viewer)
+            if isinstance(last, int | float) and now - last < ASK_EVERY_S:
+                return False
+            by[viewer] = now
+            if len(by) > 200:
+                for k in sorted(by, key=lambda k: by[k])[: len(by) - 200]:
+                    del by[k]
+            return True
+        if not self._mine(friend).update(claim):
+            return {"asked": False, "reason": "asked_recently", "asked_recently": True}
+        first = str(self._name(viewer)).split(" ")[0] or "A friend"
+        self._notify(friend, f"ask-share:{viewer}", f"{first} wants to see your workouts",
+                     "Share them on the rabbt Feed? Sport, time and distance only. Tap to choose.")
+        log_event(logger, logging.INFO, "share_asked_by_friend", user_id=friend)
+        return {"asked": True, "next_at": int(now + ASK_EVERY_S)}
+
+    def waiting(self, viewer: str) -> list[dict[str, Any]]:
+        """People I follow who never answered "share my workouts" (the Feed's waiting row)."""
+        out: list[dict[str, Any]] = []
+        for f in self.social.following_ids(viewer, limit=FEED_FOLLOWEES):
+            if f == viewer or not self.social.is_athlete(f) or self.social.blocked_between(viewer, f):
+                continue
+            try:
+                d = self._mine(f).load()
+                s = self._settings_of(d)
+                if s["share_workouts"] is not None or self.sharing_consent(f, s):
+                    continue
+                last = (d.get("asked_by") or {}).get(viewer)
+                recent = isinstance(last, int | float) and self._clock() - last < ASK_EVERY_S
+                out.append({"id": f, "name": str(self._name(f)), "asked_recently": bool(recent)})
+            except Exception:
+                continue
+            if len(out) >= WAITING_MAX:
+                break
+        return out
 
     def ask_to_share(self, uid: str) -> bool:
         """Once per person: if they never answered "share my workouts" and friends follow
@@ -1329,7 +1400,13 @@ class Community:
                           "prompt": "Add a photo or caption" if not pin.get("text") and not pin.get("photos") else None}
         page = posts[:limit]
         nxt = f"{feed_ts(page[-1])}.{page[-1]['id']}" if len(posts) > limit else None
-        return {"items": [self.view(viewer, p) for p in page], "next": nxt, "pinned": pinned}
+        out: dict[str, Any] = {"items": [self.view(viewer, p) for p in page], "next": nxt, "pinned": pinned}
+        if main and after is None:
+            try:
+                out["waiting"] = self.waiting(viewer)
+            except Exception:
+                out["waiting"] = []
+        return out
 
     def latest(self, viewer: str, limit: int = LATEST_N) -> list[dict[str, Any]]:
         """Friends' latest: the newest posts (workouts first-class) from people I follow in the

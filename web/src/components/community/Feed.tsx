@@ -27,6 +27,7 @@ import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/Perso
 import { openActivity } from '@/lib/activitynav'
 import { RouteMini } from '@/components/route/RouteMap'
 import { ShareNudge } from '@/components/community/ShareNudge'
+import { WaitingRow } from '@/components/community/WaitingRow'
 import { FeedMap } from '@/components/community/FeedMap'
 import { messagePeople } from '@/lib/dm'
 import {
@@ -35,7 +36,7 @@ import {
   getClubs, getCommunityFeed, getDrafts, getMyMeetups, getPost, hidePost, meetupWhen, postPhotoUrls, react,
   reportPost, shareDraft, unreact, updatePost, 
   type Audience, type Category, type ClubSummary, type Draft, type Meetup, type Post, type PostComment,
-  type ReactionKind,
+  type ReactionKind, type Waiting,
 } from '@/lib/community'
 import { FeedSkeleton } from '@/components/ui/Skeleton'
 import { readDraft, useDraft } from '@/lib/drafts'
@@ -83,6 +84,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   const [filter, setFilter] = useState<Filter>('all')
   const [groups, setGroups] = useState<FeedGroup[]>([])
   const [pinned, setPinned] = useState<Post | null>(null)
+  const [waiting, setWaiting] = useState<Waiting[]>([])  // friends who haven't shared yet (WaitingRow)
   const [caption, setCaption] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [more, setMore] = useState(false)
@@ -117,7 +119,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   const load = useCallback(() => {
     if (main) getMyMeetups().then((r) => setMeetups(r.meetups.filter((m) => m.my_rsvp === 'going').slice(0, 4)), () => { /* a bonus */ })
     return getCommunityFeed(null, clubId, scope, group).then((r) => {
-      setItems(r.items); setNext(r.next); setFollowing(r.following); setPinned(r.pinned ?? null); setError(null)
+      setItems(r.items); setNext(r.next); setFollowing(r.following); setPinned(r.pinned ?? null); setWaiting(r.waiting ?? []); setError(null)
       if (main && r.drafts) return getDrafts().then((d) => setDrafts(d.drafts))
       if (main) setDrafts([])
     }, (e) => setError((e as Error).message))
@@ -247,6 +249,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           {main && (filter === 'all' || filter === 'friends') && items.some((p) => !p.mine && p.kind === 'workout') && (
             <ShareNudge onShared={() => void load()} />
           )}
+          {main && (filter === 'all' || filter === 'friends') && waiting.length > 0 && <WaitingRow key={waiting.map((w) => w.id).join()} people={waiting} />}
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
               title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Find your people' : 'Nothing shared yet'}
