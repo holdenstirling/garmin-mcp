@@ -235,8 +235,9 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
               placeholder="Denver, CO or 80204" value={place} enterKeyHint="go"
               onChange={(e) => { setPlace(e.target.value.slice(0, 60)); setAreaErr(null) }} />
             <Button type="submit" variant="primary" className="h-12 w-full text-lead" disabled={!canType} loading={areaBusy === 'type'}>
-              {canType || !typed ? "That's me" : 'Add the state, like Denver, CO'}
+              That's me
             </Button>
+            {typed && !canType && <p className="m-0 -mt-1 text-center text-small text-(--text-secondary)">Add the state too, like Denver, CO</p>}
             <Button type="button" variant="default" className="h-12 w-full gap-2 text-body" loading={areaBusy === 'locate'}
               onClick={() => void setArea('locate')}>
               <LocateFixed className="size-5 text-(--accent)" aria-hidden /> Use my location

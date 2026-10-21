@@ -85,9 +85,9 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {newGroup && <GroupSheet onClose={() => setNewGroup(false)}
         onSaved={(g) => { setNewGroup(false); setGroupsKey((k) => k + 1); setGroup(g.id) }} />}
       {group && <GroupPage id={group} imperial={imperial} onClose={() => setGroup(null)} onChanged={() => setGroupsKey((k) => k + 1)} />}
-      {view === 'people' && <BuddyCheckCard />}
-      {view === 'people' && <BuddiesSection imperial={imperial} />}
       {view === 'people' && <PeopleSection imperial={imperial} onChanged={onChanged} />}
+      {view === 'people' && <BuddiesSection imperial={imperial} />}
+      {view === 'people' && <BuddyCheckCard />}
       {view === 'people' && <BlocksEntry compact />}
       {settings && <SharingSheet onClose={() => setSettings(false)} />}
     {newMeetup && (

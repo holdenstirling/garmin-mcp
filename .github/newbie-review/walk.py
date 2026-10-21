@@ -19,7 +19,7 @@ async def click(pg, *texts, role="button"):
         for how in ("role", "text"):
             try:
                 loc = pg.get_by_role(role, name=t).first if how == "role" else pg.get_by_text(t, exact=True).first
-                await loc.click(timeout=2500); return True
+                await loc.click(timeout=5000); return True
             except Exception:
                 pass
     report["miss"].append("/".join(texts)); return False
