@@ -166,10 +166,10 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // opened from a page is pushed (back arrow to the previous one + X), a top-level destination
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
-type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string } | { k: 'checklist'; id: string }
+type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string; of?: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'legal'; doc?: LegalSlug } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
   | { k: 'person'; id: string } | { k: 'friends'; section?: 'me'; add?: string; q?: string } | { k: 'post'; id: string; comment?: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'friends' ? `friends:${p.add ?? ''}` : p.k === 'post' ? `post:${p.id}:${p.comment ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}${p.of ? `:${p.of}` : ''}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'friends' ? `friends:${p.add ?? ''}` : p.k === 'post' ? `post:${p.id}:${p.comment ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
 type ProgressView = 'overview' | 'recap'
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
@@ -514,9 +514,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     // workout's page. From a planned workout's page it stacks on top (Back returns there).
     const onActivity = (e: Event) => {
       const id = (e as CustomEvent<OpenActivity>).detail?.id
+      const of = (e as CustomEvent<OpenActivity>).detail?.of
       if (!id) return
       dropSheet(); setRevealed(false)
-      setPages((st) => st[st.length - 1]?.k === 'workout' ? [...st, { k: 'activity', id }] : [{ k: 'activity', id }])
+      // a friend's workout stacks on whatever opened it (their profile, a post): Back returns there
+      const pg: Page = of ? { k: 'activity', id, of } : { k: 'activity', id }
+      setPages((st) => st[st.length - 1]?.k === 'workout' || (of && st.length) ? [...st, pg] : [pg])
     }
     window.addEventListener(OPEN_ACTIVITY_EVENT, onActivity)
     return () => window.removeEventListener(OPEN_ACTIVITY_EVENT, onActivity)
@@ -1482,7 +1485,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       case 'person':
         return <PersonScreen key={pg.id} uid={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} />
       case 'activity':
-        return <ActivityScreen id={pg.id} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
+        return <ActivityScreen id={pg.id} of={pg.of} imperial={imperial} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
       case 'workout':
         return (
           <WorkoutDayScreen sessionId={pg.sessionId} imperial={imperial}

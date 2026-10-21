@@ -31,8 +31,8 @@ export type MapPin = {
 
 export type Bounds = { north: number; south: number; east: number; west: number }
 
-const worldX = (lon: number, z: number) => ((lon + 180) / 360) * TILE * 2 ** z
-const worldY = (lat: number, z: number) => {
+export const worldX = (lon: number, z: number) => ((lon + 180) / 360) * TILE * 2 ** z
+export const worldY = (lat: number, z: number) => {
   const s = Math.sin((Math.max(-85, Math.min(85, lat)) * Math.PI) / 180)
   return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z
 }
@@ -43,7 +43,7 @@ const latAt = (y: number, z: number) => {
 }
 
 /** The highest whole zoom that fits every point (with padding) in w x h. */
-function fitZoom(pts: { lat: number; lon: number }[], w: number, h: number): number {
+export function fitZoom(pts: { lat: number; lon: number }[], w: number, h: number): number {
   if (pts.length < 2) return 13
   for (let z = 15; z >= MIN_Z; z--) {
     const xs = pts.map((p) => worldX(p.lon, z)), ys = pts.map((p) => worldY(p.lat, z))
@@ -52,8 +52,14 @@ function fitZoom(pts: { lat: number; lon: number }[], w: number, h: number): num
   return MIN_Z
 }
 
-export function SlippyMap({ pins, center, selected, onSelect, onMoved, className, height = 340 }: {
+export function SlippyMap({ pins, center, selected, onSelect, onMoved, className, height = 340, path, locate: canLocate = true, label }: {
   pins: MapPin[]
+  /** a line to draw over the map ([lat, lon] points, e.g. a workout's route); the view fits it */
+  path?: [number, number][] | null
+  /** the "Show where I am" button (off for a route map) */
+  locate?: boolean
+  /** the map's accessible name */
+  label?: string
   /** the area to start on when there are no pins */
   center?: { lat: number; lon: number } | null
   selected?: string | null
@@ -82,13 +88,15 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
   }, [height])
 
   // Start: fit the pins, else the person's area.
-  const fitKey = pins.map((p) => p.id).join(',')
+  const pathPts = useMemo(() => (path ?? []).map(([lat, lon]) => ({ lat, lon })), [path])
+  const fitKey = pins.map((p) => p.id).join(',') + (path?.length ? `|${path.length}:${path[0]?.join()}` : '')
   useEffect(() => {
-    const pts = pins.length ? pins : center ? [center] : []
+    const fit = [...pins, ...pathPts]
+    const pts = fit.length ? fit : center ? [center] : []
     if (!pts.length) return
     const lat = (Math.max(...pts.map((p) => p.lat)) + Math.min(...pts.map((p) => p.lat))) / 2
     const lon = (Math.max(...pts.map((p) => p.lon)) + Math.min(...pts.map((p) => p.lon))) / 2
-    setView({ lat, lon, z: pins.length ? fitZoom(pins, size.w, size.h) : 12 })
+    setView({ lat, lon, z: fit.length ? fitZoom(fit, size.w, size.h) : 12 })
     // only when the set of pins changes, not on every resize
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey, center?.lat, center?.lon])
@@ -187,7 +195,7 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
 
   return (
     <div className={cn('relative overflow-hidden rounded-2xl border border-(--border) bg-(--bg-inset)', className)} style={{ height }}>
-      <div ref={box} className="slippy absolute inset-0 touch-none select-none"
+      <div ref={box} className="slippy absolute inset-0 touch-none select-none" role={label ? 'img' : undefined} aria-label={label}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}
         onClick={(e) => { if (!(e.target as HTMLElement).closest('button')) onSelect(null) }}>
         <div className="slippy__tiles absolute inset-0" aria-hidden
@@ -199,6 +207,14 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
               style={{ left: t.x, top: t.y, width: TILE, height: TILE }} />
           ))}
         </div>
+        {pinch === 1 && view && pathPts.length > 1 && (
+          <svg className="pointer-events-none absolute inset-0" width={size.w} height={size.h} aria-hidden>
+            <polyline points={pathPts.map((p) => { const q = place(p.lat, p.lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}` }).join(' ')}
+              fill="none" stroke="var(--route-casing, white)" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
+            <polyline points={pathPts.map((p) => { const q = place(p.lat, p.lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}` }).join(' ')}
+              fill="none" stroke="var(--route, var(--accent))" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+        )}
         {pinch === 1 && pins.map((p) => {
           const { x, y } = place(p.lat, p.lon)
           if (x < -24 || y < -24 || x > size.w + 24 || y > size.h + 24) return null
@@ -223,10 +239,12 @@ export function SlippyMap({ pins, center, selected, onSelect, onMoved, className
           className="flex size-11 items-center justify-center rounded-xl bg-(--bg-surface) text-(--text) shadow-md active:bg-(--bg-inset)">
           <Minus className="size-5" aria-hidden />
         </button>
-        <button type="button" aria-label="Show where I am" onClick={locate}
-          className="flex size-11 items-center justify-center rounded-xl bg-(--bg-surface) text-(--text) shadow-md active:bg-(--bg-inset)">
-          <LocateFixed className="size-5" aria-hidden />
-        </button>
+        {canLocate && (
+          <button type="button" aria-label="Show where I am" onClick={locate}
+            className="flex size-11 items-center justify-center rounded-xl bg-(--bg-surface) text-(--text) shadow-md active:bg-(--bg-inset)">
+            <LocateFixed className="size-5" aria-hidden />
+          </button>
+        )}
       </div>
       <p className="absolute bottom-0 right-0 z-20 rounded-tl-lg bg-(--bg-surface)/90 px-2 py-0.5 text-caption text-(--text-secondary)">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" className="underline">OpenStreetMap</a> contributors

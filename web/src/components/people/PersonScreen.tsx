@@ -105,6 +105,10 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
               <p className="rounded-xl border border-dashed border-(--border-strong) px-3.5 py-3 text-small text-(--text-muted)">
                 Follow {p.person.name} to see their workouts (as much as they share).
               </p>
+            ) : p.workouts_private ? (
+              <p className="rounded-xl border border-dashed border-(--border-strong) px-3.5 py-3 text-small text-(--text-muted)">
+                {p.person.name} keeps their workouts private for now. They show up here once {p.person.name.split(' ')[0]} turns on sharing.
+              </p>
             ) : p.workouts.length === 0 ? (
               <p className="px-1 text-small text-(--text-muted)">Nothing shared in the last few weeks.</p>
             ) : (
@@ -125,8 +129,8 @@ export function PersonScreen({ uid, imperial, onClose }: { uid: string; imperial
                   )
                   return (
                     <li key={w.id}>
-                      {p.me ? (
-                        <button type="button" onClick={() => openActivity(w.id)} className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">{inner}</button>
+                      {p.me || p.following ? (
+                        <button type="button" onClick={() => openActivity(w.id, p.me ? null : uid)} className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left active:bg-(--bg-inset)">{inner}</button>
                       ) : <div className="flex min-h-14 items-center gap-3 px-4 py-3">{inner}</div>}
                     </li>
                   )

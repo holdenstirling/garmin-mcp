@@ -11,7 +11,7 @@ import { Choice } from './Choice'
 import { Screen } from '@/components/plan/ui'
 import { Segmented } from '@/components/nav/Segmented'
 import {
-  MILESTONE_LABEL, getCommunitySettings, putCommunitySettings,
+  MILESTONE_LABEL, TRIM_CHOICES, getCommunitySettings, putCommunitySettings,
   type CommunitySettings, type MilestoneType, type Usage,
 } from '@/lib/community'
 import { ClubsTab } from './Clubs'
@@ -143,6 +143,24 @@ function SharingSheet({ onClose }: { onClose: () => void }) {
                   </div>
                 </RowGroup>
               )}
+              <RowGroup as="h3" title="Route maps"
+                footer={`Outdoor GPS workouts only. The first and last ${s.routes_trim_m ?? 200} m are always cut off, so maps never show your door.${s.routes_home ? ` Routes starting within ${s.routes_home.radius_m.toLocaleString()} m of your hidden spot are only shown to you.` : ' To hide routes that start near home, open one of your maps and tap "Hide routes that start near here".'}`}>
+                <Row title="Show my route maps" subtitle="On your workouts, for you"
+                  trailing={<Switch label="Show my route maps" checked={s.routes_own !== false}
+                    onChange={(v) => void put({ routes_own: v }, { ...s, routes_own: v })} />} />
+                <Row title="Share my maps with friends" subtitle={s.routes_share === true ? 'Friends see the line on your shared workouts' : 'Off: only you see your maps'}
+                  trailing={<Switch label="Share my maps with friends" checked={s.routes_share === true}
+                    onChange={(v) => void put({ routes_share: v }, { ...s, routes_share: v })} />} />
+                <div className="px-3 py-2.5">
+                  <Choice label="Cut off the start and finish" value={String(s.routes_trim_m ?? 200)}
+                    options={TRIM_CHOICES.map((m) => [String(m), `${m} m`] as const)}
+                    onChange={(v) => { const m = Number(v) as 200 | 400 | 800; void put({ routes_trim_m: m }, { ...s, routes_trim_m: m }) }} />
+                </div>
+                {s.routes_home && (
+                  <Row title={`Hidden spot: ${s.routes_home.radius_m.toLocaleString()} m`} subtitle="Routes that start here stay private"
+                    trailing={<Button variant="ghost" className="h-11 px-3 text-body" onClick={() => void put({ routes_home: null }, { ...s, routes_home: null })}>Clear</Button>} />
+                )}
+              </RowGroup>
               <RowGroup as="h3" title="Shared milestones go to" footer="Never your heart rate, health data or where you trained.">
                 <div className="px-3 py-2.5">
                   <Choice label="Default audience" value={s.audience}

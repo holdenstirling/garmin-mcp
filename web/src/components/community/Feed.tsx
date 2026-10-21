@@ -25,6 +25,8 @@ import { blockUser, type SocialUser } from '@/lib/social'
 import { cn } from '@/lib/utils'
 import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/PersonLink'
 import { openActivity } from '@/lib/activitynav'
+import { RouteMini } from '@/components/route/RouteMap'
+import { ShareNudge } from '@/components/community/ShareNudge'
 import { messagePeople } from '@/lib/dm'
 import {
   CATEGORIES, CATEGORY_LABEL, COMMENT_LEN, FEELINGS, REACTIONS, TEMPLATES, TEXT_LEN,
@@ -207,6 +209,9 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
         <>
           {main && following > 0 && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
             <FeedHint onInvite={items.length > 0 ? onInvite : undefined} onShared={() => void load()} />
+          )}
+          {main && (filter === 'all' || filter === 'friends') && items.some((p) => !p.mine && p.kind === 'workout') && (
+            <ShareNudge onShared={() => void load()} />
           )}
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
@@ -722,8 +727,11 @@ export function PostCard({ post: p, imperial, onChange, onDelete, onBlocked, exp
         <CaptionSheet post={p} title={editing === 'edit' ? 'Edit post' : p.photos.length ? 'Photos' : 'Add photos'}
           onClose={() => setEditing(null)} onSaved={(np) => { onChange({ ...np, comments: p.comments }); setEditing(null) }} />
       )}
-      {p.workout && <WorkoutCard w={p.workout} imperial={imperial}
-        onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id) : () => setDetails(true)} />}
+      {p.workout && <WorkoutCard w={p.workout} imperial={imperial} who={p.mine ? null : p.user?.name ?? null}
+        onOpen={p.mine && p.workout.activity_id != null ? () => openActivity(p.workout!.activity_id)
+          // a friend's Garmin workout: its own page, as they share it (server checks this post is visible)
+          : /^\d+$/.test(String(p.workout.activity_id ?? '')) && (p.workout.source ?? 'garmin') === 'garmin'
+            ? () => openActivity(p.workout!.activity_id, p.author) : () => setDetails(true)} />}
       {details && p.workout && (
         <FriendWorkoutSheet w={p.workout} who={p.user?.name ?? 'They'} imperial={imperial} onClose={() => setDetails(false)}
           onMessage={p.user ? () => { setDetails(false); messagePeople([p.user!.id]) } : undefined} />
@@ -886,7 +894,7 @@ function Legs({ w, imperial }: { w: CardWorkout; imperial: boolean }) {
   )
 }
 
-function WorkoutCard({ w, imperial, onOpen }: { w: CardWorkout; imperial: boolean; onOpen?: () => void }) {
+function WorkoutCard({ w, imperial, onOpen, who }: { w: CardWorkout; imperial: boolean; onOpen?: () => void; who?: string | null }) {
   const fam = famOf(w)
   const headline = w.headline || w.highlight
   const via = SOURCE_LABEL[w.source ?? 'garmin'] ?? 'Garmin'
@@ -902,6 +910,13 @@ function WorkoutCard({ w, imperial, onOpen }: { w: CardWorkout; imperial: boolea
         </span>
       </div>
       {headline && <p className="m-0 text-small font-medium text-(--accent)">{headline}</p>}
+      {w.route && w.route.length > 1 && (
+        onOpen ? (
+          <button type="button" onClick={onOpen} aria-label={`Open the ${w.title.toLowerCase()} and its map`} className="block w-full rounded-xl text-left active:opacity-90">
+            <RouteMini line={w.route} label={who ? `${who}'s route` : 'Your route'} />
+          </button>
+        ) : <RouteMini line={w.route} label={who ? `${who}'s route` : 'Your route'} />
+      )}
       <StatGrid w={w} imperial={imperial} />
       <Legs w={w} imperial={imperial} />
       {splitsOk(fam) && w.splits && w.splits.length >= 2 && <SplitBars splits={w.splits} swim={fam === 'swim'} />}

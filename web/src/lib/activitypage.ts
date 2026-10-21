@@ -22,9 +22,16 @@ export type ActivityView = {
   numbers: ActivityNumbers; laps: ActivityLap[]; zones: ActivityZones | null
   planned: { id: string; date: string; title: string; kind: string; went: Went | null } | null
   checkin: Checkin | null; feedback: WorkoutFeedback | null; garmin_url: string | null
+  /** a friend's workout (opened with ?of=): whose it is. Never heart rate, calories or load. */
+  owner?: { id: string; name: string }
+  /** the Feed post for it, when there is one */
+  post_id?: string | null
+  /** an outdoor GPS route, trimmed at both ends (routes.py); only when the viewer may see it */
+  route?: [number, number][]
 }
 
-export const getActivity = (id: string) => getJSON<ActivityView>(`/api/activity/${encodeURIComponent(id)}`)
+export const getActivity = (id: string, of?: string) =>
+  getJSON<ActivityView>(`/api/activity/${encodeURIComponent(id)}${of ? `?of=${encodeURIComponent(of)}` : ''}`)
 
 /** A check-in's activity_id for this workout (server: activitypage.checkin_ref). */
 export const checkinRef = (key: string) => key.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
