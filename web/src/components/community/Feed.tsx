@@ -28,6 +28,8 @@ import { openActivity } from '@/lib/activitynav'
 import { RouteMini } from '@/components/route/RouteMap'
 import { ShareNudge } from '@/components/community/ShareNudge'
 import { WaitingRow } from '@/components/community/WaitingRow'
+import { FeedExtras } from '@/components/community/FeedExtras'
+import type { FeedExtras as FeedExtrasData } from '@/lib/community'
 import { FeedMap } from '@/components/community/FeedMap'
 import { messagePeople } from '@/lib/dm'
 import {
@@ -85,6 +87,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   const [groups, setGroups] = useState<FeedGroup[]>([])
   const [pinned, setPinned] = useState<Post | null>(null)
   const [waiting, setWaiting] = useState<Waiting[]>([])  // friends who haven't shared yet (WaitingRow)
+  const [life, setLife] = useState<FeedExtrasData | null>(null)  // feedlife.py: recap, club runs, races, new members
   const [caption, setCaption] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [more, setMore] = useState(false)
@@ -119,7 +122,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   const load = useCallback(() => {
     if (main) getMyMeetups().then((r) => setMeetups(r.meetups.filter((m) => m.my_rsvp === 'going').slice(0, 4)), () => { /* a bonus */ })
     return getCommunityFeed(null, clubId, scope, group).then((r) => {
-      setItems(r.items); setNext(r.next); setFollowing(r.following); setPinned(r.pinned ?? null); setWaiting(r.waiting ?? []); setError(null)
+      setItems(r.items); setNext(r.next); setFollowing(r.following); setPinned(r.pinned ?? null); setWaiting(r.waiting ?? []); setLife(r.extras ?? null); setError(null)
       if (main && r.drafts) return getDrafts().then((d) => setDrafts(d.drafts))
       if (main) setDrafts([])
     }, (e) => setError((e as Error).message))
@@ -177,6 +180,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
           onDismissed={(d) => setDrafts((xs) => xs.filter((x) => x.id !== d.id))} />
       )}
       {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
+      {main && <FeedExtras extras={life} imperial={imperial} onOpenClub={onOpenClub} />}
       {main && (
         <nav aria-label="Whose feed" className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 py-0.5 no-scrollbar">
           <div role="radiogroup" aria-label="Show" className="flex items-center gap-1.5">

@@ -222,7 +222,7 @@ export const getCommunityFeed = (cursor?: string | null, club?: string, scope: '
   if (group) q.set('group', group)
   if (scope !== 'all') q.set('scope', scope)
   const s = q.toString()
-  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null; waiting?: Waiting[] }>(`${P}/feed${s ? `?${s}` : ''}`)
+  return getJSON<{ items: Post[]; next: string | null; drafts: number | null; following: number; pinned?: Post | null; waiting?: Waiting[]; extras?: FeedExtras | null }>(`${P}/feed${s ? `?${s}` : ''}`)
 }
 export const getPost = (id: string) => getJSON<{ post: Post }>(pp(id))
 export const createPost = (b: PostInput) => counted(postJSON<{ post: Post }>(`${P}/posts`, b), 'share', { what: 'post' })
@@ -396,3 +396,16 @@ export const getAskShare = (uid: string) => getJSON<AskStatus>(`${P}/people/${en
 /** Ask them (one push from me by name, at most weekly). Asking shares nothing. */
 export const askShare = (uid: string) =>
   sendJSON<{ asked: boolean; reason?: AskStatus['reason']; next_at?: number }>('POST', `${P}/people/${encodeURIComponent(uid)}/ask-share`, {})
+// Feed extras (server: feedlife.py): no health data from anyone who didn't share it.
+export type LifePerson = { id: string; name: string }
+export type LifeUpcoming =
+  | { kind: 'meetup'; when: string; title: string; where: string; club: { id: string; name: string; emoji: string }
+      meetup_id: string; count: number; my_rsvp: 'going' | 'maybe' | null; people: LifePerson[] }
+  | { kind: 'race'; when: string; title: string; distance: string | null; people: LifePerson[] }
+export type LifeJoined = { kind: 'joined'; club: { id: string; name: string; emoji: string }; ts: number; count: number; people: LifePerson[] }
+export type LifeShout =
+  | { kind: 'most'; person: LifePerson; workouts: number }
+  | { kind: 'longest'; person: LifePerson; minutes: number; title: string }
+  | { kind: 'farthest'; person: LifePerson; km: number; title: string }
+export type LifeRecap = { kind: 'recap'; week: string; km: number; workouts: number; people: number; shoutouts: LifeShout[] }
+export type FeedExtras = { recap: LifeRecap | null; upcoming: LifeUpcoming[]; joined: LifeJoined[] }

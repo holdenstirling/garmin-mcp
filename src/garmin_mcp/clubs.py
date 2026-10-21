@@ -287,6 +287,23 @@ class Clubs:
         c = (self._doc.load().get("clubs") or {}).get(cid)
         return c["name"] if c and viewer in c["members"] else None
 
+    def recent_joins(self, viewer: str, since: float) -> list[dict[str, Any]]:
+        """People who joined one of ``viewer``'s clubs after ``since`` (not ``viewer``, nobody
+        blocked either way), newest first: ``{club, user_ids, ts}`` per club."""
+        out = []
+        for c in (self._doc.load().get("clubs") or {}).values():
+            if viewer not in c["members"]:
+                continue
+            new = [(u, int(ts)) for u, ts in (c.get("joined") or {}).items()
+                   if ts >= since and u != viewer and u in c["members"] and self._is_athlete(u)
+                   and not self._blocked(viewer, u)]
+            if new:
+                new.sort(key=lambda x: -x[1])
+                out.append({"club": {"id": c["id"], "name": c["name"], "emoji": c.get("emoji") or "🐇"},
+                            "user_ids": [u for u, _ in new], "ts": new[0][1]})
+        out.sort(key=lambda x: -x["ts"])
+        return out
+
     def admins_of(self, cid: str) -> list[str]:
         c = (self._doc.load().get("clubs") or {}).get(cid)
         return [m for m, r in (c or {}).get("members", {}).items() if self._admin(r)]
@@ -522,6 +539,7 @@ class Clubs:
         if self._count(d, uid) >= MAX_CLUBS:
             raise ClubError(f"You can be in up to {MAX_CLUBS} clubs.")
         c["members"][uid] = "member"
+        c.setdefault("joined", {})[uid] = int(self._clock())  # "new in your club" on the Feed
         (c.get("invites") or {}).pop(uid, None)
         (c.get("requests") or {}).pop(uid, None)
         return self._view(c, uid)

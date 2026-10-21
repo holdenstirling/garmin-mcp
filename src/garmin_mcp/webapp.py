@@ -3717,8 +3717,16 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 _cm_scan(uid, workouts=True)
         _ag.moments.wants_share = _cm_wants_share
         _ag.moments.share_scan = _cm_share_scan
+        from . import feedlife as _fl
+        _life = _fl.FeedLife(community=cm, clubs=clb, social=soc, now=_ag._now, events=_ag.events.list,
+                             store=store, clock=time.time)
+
         def _cm_tick(uid: str) -> None:
             cm.meetup_reminders(uid)
+            try:
+                _life.warm(uid)  # Monday: last week's crew recap, ready before they open the Feed
+            except Exception as e:
+                log_event(logger, logging.INFO, "feedlife_warm_failed", user_id=uid, error=type(e).__name__)
             try:
                 cm.ask_to_share(uid)  # once: friends follow you, share your workouts? (quiet hours respected)
             except Exception as e:
@@ -3735,7 +3743,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             shares_races=lambda u: soc.settings(u)["races"], today=lambda u: _ag._now(u).date(), now=_ag._now,
             home=_cm_home, local_groups=_local_finder.cached, chal=chal, chal_error=_chal.ChallengeError,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
-            host_ok=host_ok, origin=settings.public_base_url)
+            host_ok=host_ok, origin=settings.public_base_url, extras=lambda u: _life.extras(u))
 
         async def _feed_doctor(request: Request, user_id: str) -> Response:
             """Owner tool: why each friend's recent workouts are or aren't on the Feed.
