@@ -1,4 +1,5 @@
-// Me -> Usage (owners only; server usage.py, GET /app/api/usage/summary). Last 30 days of
+// Me -> Usage and traction (owners only; usage.py GET /app/api/usage/summary and traction.py
+// GET /app/api/usage/traction, each section with its go threshold). Last 30 days of
 // anonymous counts: active people, people coming back, where setup loses people, and what
 // gets tapped. Plain numbers and bars; no individual is ever shown.
 import { useCallback, useEffect, useState } from 'react'
@@ -9,6 +10,7 @@ import { getJSON } from '@/lib/api'
 import type { UsageSummary } from '@/lib/usage'
 import { getConnections, type SoonApp } from '@/lib/connections'
 import { cn } from '@/lib/utils'
+import { HEARD_OPTIONS, getTraction, type Traction } from '@/lib/traction'
 
 const STEP_LABEL: Record<string, string> = {
   intro: 'Started setup', race: 'Race', goal: 'Goal', you: 'About you', numbers: 'Numbers', week: 'Week', review: 'Review', complete: 'Plan built',
@@ -52,6 +54,112 @@ function Stat({ n, label }: { n: number | string; label: string }) {
   )
 }
 
+
+/** On track / getting there / not yet, against the go threshold (half of it = iterate). */
+function Goal({ value, target, unit = '%' }: { value: number | null; target: number; unit?: string }) {
+  const tone = value == null ? 'muted' : value >= target ? 'good' : value >= target / 2 ? 'mid' : 'low'
+  const word = { muted: 'No data yet', good: 'On track', mid: 'Getting there', low: 'Not yet' }[tone]
+  return (
+    <p className="m-0 flex items-center gap-2 text-small">
+      <span className={cn('rounded-full px-2 py-0.5 text-meta font-semibold',
+        tone === 'good' ? 'bg-(--accent) text-(--on-fill)' : tone === 'mid' ? 'bg-(--warning) text-black' : 'bg-(--bg-inset) text-(--text-secondary)')}>{word}</span>
+      <span className="text-(--text-secondary)">Goal: {target}{unit} or more</span>
+    </p>
+  )
+}
+const FUNNEL_LABEL: Record<string, string> = { signup: 'Signed up', area_set: 'Set their area', job: 'RSVP or posted a run', plan_built: 'Got a plan' }
+const FIRST_LABEL: Record<string, string> = {
+  area_set: 'Area set', rsvp: 'First RSVP', run_posted: 'First run posted', plan_built: 'First plan', post: 'First post', follow: 'First follow', watch_connected: 'Watch connected',
+}
+
+function TractionSections({ t }: { t: Traction }) {
+  const g = t.growth, a = t.activation, o = t.organizers, last = o.weeks[o.weeks.length - 1]
+  const srcMax = Math.max(1, ...g.sources.map((x) => x.users))
+  const wkMax = Math.max(1, ...t.weeks.map((w) => w.active))
+  return (
+    <>
+      <Section title="Growth" note={`"How did you hear about rabbt?" (optional, ${g.answered} answered). Joins counted from invite links and club pages.`}>
+        <div className="flex gap-2">
+          <Stat n={g.signups} label="New, 30 days" />
+          <Stat n={g.invite_joins} label="From invites" />
+          <Stat n={g.club_joins} label="From club pages" />
+        </div>
+        {g.sources.map((x) => <Bar key={x.id} label={HEARD_OPTIONS.find((h) => h.id === x.id)?.label ?? x.id} value={x.users} max={srcMax} />)}
+        {g.club_refs.length > 0 && g.club_refs.slice(0, 5).map((r) => <Bar key={r.slug} label={r.slug} value={r.users} max={g.club_refs[0]!.users} />)}
+      </Section>
+
+      <Section title="Activation" note="People who signed up in the last 30 days. A core job is an RSVP, a posted run or a plan.">
+        {a.funnel.map((f) => <Bar key={f.id} label={FUNNEL_LABEL[f.id] ?? f.id} value={f.users} max={Math.max(1, a.funnel[0]!.users)} suffix={f.pct != null ? ` · ${f.pct}%` : ''} />)}
+        <div className="flex gap-2"><Stat n={a.core7.pct == null ? '–' : `${a.core7.pct}%`} label={`Core job in 7 days (${a.core7.users}/${a.core7.cohort})`} /></div>
+        <Goal value={a.core7.pct} target={t.targets.core7_pct} />
+        <details className="text-small">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold text-(--accent)">Every first</summary>
+          {Object.entries(a.firsts).map(([k, v]) => (
+            <div key={k} className="flex justify-between py-0.5"><span className="text-(--text-secondary)">{FIRST_LABEL[k] ?? k}</span><span className="font-mono tabular-nums">{v}</span></div>
+          ))}
+        </details>
+      </Section>
+
+      <Section title="Retention" note="Of people who did a core job, the share still active in their 4th week.">
+        <div className="flex gap-2"><Stat n={t.retention.w4.pct == null ? '–' : `${t.retention.w4.pct}%`} label={`Week 4 (${t.retention.w4.users}/${t.retention.w4.cohort})`} /></div>
+        <Goal value={t.retention.w4.pct} target={t.targets.w4_pct} />
+        {t.weeks.length > 0 && (
+          <div className="mt-1 flex h-14 items-end gap-1" role="img" aria-label={`Weekly active people, last ${t.weeks.length} weeks`}>
+            {t.weeks.map((w) => <span key={w.week} title={`${w.week}: ${w.active}`} className="flex-1 rounded-t-sm bg-(--accent)/60"
+              style={{ height: `${w.active ? Math.max(6, Math.round((100 * w.active) / wkMax)) : 0}%` }} />)}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Organizers" note="Club runs, by week. Healthy = a club whose runs last week averaged 8 or more RSVPs. Repeat attendees came to 2 or more runs.">
+        <div className="flex gap-2">
+          <Stat n={o.healthy_clubs} label="Healthy clubs" />
+          <Stat n={o.clubs} label="Club pages" />
+          <Stat n={o.repeat_attendees} label="Repeat attendees" />
+        </div>
+        <Goal value={o.healthy_clubs} target={t.targets.clubs_weekly} unit=" clubs" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-small">
+            <thead><tr className="text-meta text-(--text-muted)"><th className="py-1 font-medium">Week of</th><th className="font-medium">New clubs</th><th className="font-medium">Runs posted</th><th className="font-medium">Runs held</th><th className="font-medium">RSVPs/run</th><th className="font-medium">Checked in</th></tr></thead>
+            <tbody className="font-mono tabular-nums">
+              {o.weeks.map((w) => (
+                <tr key={w.week} className="border-t border-(--border)"><td className="py-1 font-sans">{w.from.slice(5)}</td><td>{w.clubs_created}</td><td>{w.runs_posted}</td><td>{w.runs_held}</td><td>{w.rsvps_per_run ?? '–'}</td><td>{w.checkin_pct == null ? '–' : `${w.checkin_pct}%`}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {last && <p className="m-0 text-meta text-(--text-muted)">Goal: {t.targets.clubs_weekly} clubs posting weekly with {t.targets.rsvps_per_run}+ RSVPs per run.</p>}
+      </Section>
+
+      <Section title="Denver share" note="Active last full week with an area in the Denver metro, out of about 94,000 people who run with groups there. Clubs: club pages in Denver out of 26 known clubs.">
+        <div className="flex gap-2">
+          <Stat n={`${t.denver.pct}%`} label={`${t.denver.active.toLocaleString()} of ${t.denver.runners.toLocaleString()}`} />
+          <Stat n={t.denver.clubs_pct == null ? '–' : `${t.denver.clubs_pct}%`} label={`${t.denver.clubs} of ${t.denver.known_clubs} clubs`} />
+        </div>
+      </Section>
+
+      <Section title="Recommend score" note="Asked once on day 7: how likely to recommend rabbt (0 to 10). Score = % 9-10 minus % 0-6, last 90 days.">
+        <div className="flex gap-2">
+          <Stat n={t.nps.score ?? '–'} label={`${t.nps.answers} answers`} />
+          <Stat n={t.nps.promoters} label="9 or 10" />
+          <Stat n={t.nps.detractors} label="0 to 6" />
+        </div>
+        <Goal value={t.nps.score} target={t.targets.nps} unit="" />
+        {t.notes.length > 0 && (
+          <div className="flex flex-col gap-2 pt-1">
+            <h3 className="m-0 px-1 text-small font-semibold text-(--text)">Notes people left</h3>
+            {t.notes.slice(0, 10).map((n, i) => (
+              <blockquote key={i} className="m-0 rounded-lg bg-(--bg-inset) px-3 py-2 text-small leading-snug text-(--text)">
+                {n.note}<span className="mt-1 block text-meta text-(--text-muted)">{n.name || 'Someone'}{n.score != null ? `, ${n.score}/10` : ''} · {n.date}</span>
+              </blockquote>
+            ))}
+          </div>
+        )}
+      </Section>
+    </>
+  )
+}
+
 export function UsageScreen({ onClose }: { onClose: () => void }) {
   const [s, setS] = useState<UsageSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +168,8 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
     getJSON<UsageSummary>('/api/usage/summary').then(setS, (e: Error) => setError(e.message))
   }, [])
   useEffect(() => { load() }, [load])
+  const [t, setT] = useState<Traction | null>(null)
+  useEffect(() => { getTraction().then(setT, () => {}) }, [])
   // "I want this" on coming-soon apps (demand.py): one per person; counts are owner-only.
   const [soon, setSoon] = useState<SoonApp[] | null>(null)
   useEffect(() => { getConnections().then((c) => setSoon(c.soon ?? []), () => setSoon([])) }, [])
@@ -67,11 +177,12 @@ export function UsageScreen({ onClose }: { onClose: () => void }) {
   const peak = s ? Math.max(1, ...s.series.map((d) => d.dau)) : 1
   const ret = (r: { pct: number | null; returned: number; cohort: number }) => (r.pct == null ? '–' : `${r.pct}%`)
   return (
-    <Screen title="Usage" subtitle="Anonymous counts from the last 30 days." onBack={onClose} onClose={onClose}>
+    <Screen title="Usage and traction" subtitle="Counts only, no individuals. Last 30 days unless noted." onBack={onClose} onClose={onClose}>
       {error && <ErrorState message={`Couldn't load usage: ${error}`} onRetry={load} />}
       {!s && !error && <RowsSkeleton label="Loading usage" count={6} />}
       {s && (
         <div className="flex flex-col gap-3">
+          {t && <TractionSections t={t} />}
           <Section title="Active people" note="Daily, 7-day and 30-day unique people (counted with a code that changes every day).">
             <div className="flex gap-2">
               <Stat n={s.now.dau} label="Today" />

@@ -21,7 +21,6 @@ import { daysUntil } from '@/lib/events'
 import { dismissDraft, shareDraft } from '@/lib/community'
 import { UpNextCard, UpNextSkeleton } from '@/components/home/UpNextCard'
 import { WeekPanel } from '@/components/home/WeekPanel'
-import { NextDays } from '@/components/home/NextDays'
 import { HomeGreeting } from '@/components/home/HomeGlance'
 import { Section, SeeAll } from '@/components/ui/section'
 import { ReadinessSnapshot } from '@/components/home/ReadinessSnapshot'
@@ -43,6 +42,7 @@ import { QuickActions, SharePrompt } from '@/components/home/QuickActions'
 import { FriendsLatest } from '@/components/home/FriendsLatest'
 import { GettingStarted } from '@/components/home/GettingStarted'
 import { OneTip } from '@/components/home/OneTip'
+import { PulseCard } from '@/components/home/PulseCard'
 import { setNewcomer, useNewcomer } from '@/lib/newcomer'
 import { milestone } from '@/lib/traction'
 import { startBadgeSync } from '@/lib/unread'
@@ -1214,6 +1214,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
             {/* 1c. The one Getting started checklist: area, one thing near you, a plan. */}
             {athlete && <GettingStarted onJob={() => openCommunity('clubs')} onPlan={startSetup}
               onWatch={() => pushPage({ k: 'connections' })} onFriends={() => openCommunity('people')} watch={me.garmin.connected || me.oura.connected} />}
+            {athlete && <PulseCard />}
             {athlete && <OneTip id="today" text="Ask rabbt why any workout is on your plan, or what to try near you. The Ask bar is at the bottom." />}
 
             {/* 2. The one thing to do now (race week and sick mode sit right on top of it). */}
@@ -1238,13 +1239,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 onOpen={(tg) => tg === 'progress' ? goTab('progress') : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
             )}
 
-            {/* 4. This week: every day at a glance, then the next 3 days with the weather. */}
+            {/* 4. This week: every day at a glance (the old "Next 3 days" repeated it, so it's gone). */}
             {goal && (
               <Section title="This week">
                 <WeekPanel week={week} loading={weekLoading} error={weekError} onRetry={loadWeek} imperial={imperial}
                   refreshKey={feedTick} onOpenDay={openPlanDay} onOpenPlan={openPlan} onAskDay={askDay}
                   onOpenWeek={() => { try { sessionStorage.setItem(PLAN_VIEW_KEY, 'week') } catch { /* storage off */ } openPlan() }} />
-                {athlete && <NextDays refreshKey={feedTick} />}
               </Section>
             )}
 

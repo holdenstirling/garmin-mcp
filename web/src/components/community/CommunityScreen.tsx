@@ -32,6 +32,7 @@ import { MEETUP_KINDS } from '@/lib/events'
 import { Button } from '@/components/ui/button'
 import { CalendarPlus } from 'lucide-react'
 import { OneTip } from '@/components/home/OneTip'
+import { milestone } from '@/lib/traction'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
@@ -91,7 +92,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
       {settings && <SharingSheet onClose={() => setSettings(false)} />}
     {newMeetup && (
         <NewEventSheet only={MEETUP_KINDS} title="Post a meetup" imperial={imperial} onClose={() => setNewMeetup(false)}
-          onSaved={() => { setRunsKey((k) => k + 1); onChanged?.() }} onOpenPlan={() => onOpenPlan?.()} onBuildPlan={() => onBuildPlan?.()} />
+          onSaved={() => { milestone('run_posted'); setRunsKey((k) => k + 1); onChanged?.() }} onOpenPlan={() => onOpenPlan?.()} onBuildPlan={() => onBuildPlan?.()} />
       )}
       </Screen>
   )

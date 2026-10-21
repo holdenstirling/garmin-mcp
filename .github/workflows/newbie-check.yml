@@ -1,0 +1,42 @@
+# TEMPORARY (feat-newbie only, removed before merge): typecheck + test results as annotations,
+# because this branch's dev container can't reach the package registries.
+name: newbie-check
+on:
+  push:
+    branches: [feat-newbie]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: oven-sh/setup-bun@v2
+      - name: Typecheck
+        run: |
+          cd web && bun install --frozen-lockfile >/dev/null
+          if ./node_modules/.bin/tsc --noEmit > ../tsc.txt 2>&1; then echo "::notice title=tsc::clean"; else
+            msg=$(head -c 30000 ../tsc.txt | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'); echo "::error title=tsc::$msg"; fi
+      - name: Tests (head)
+        run: uv run -q pytest -q -p no:cacheprovider -rfE > head.txt 2>&1 || true
+      - name: Tests (base bf93b65)
+        run: |
+          git worktree add -q ../base bf93b65b
+          cd ../base && uv run -q pytest -q -p no:cacheprovider -rfE > ../base.txt 2>&1 || true
+      - name: Report
+        run: |
+          enc() { sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'; }
+          grep -E "^(FAILED|ERROR)" head.txt | cut -c1-110 | sort -u > h.txt || true
+          grep -E "^(FAILED|ERROR)" ../base.txt | cut -c1-110 | sort -u > b.txt || true
+          echo "::notice title=pytest-head::$(tail -n 1 head.txt) / base: $(tail -n 1 ../base.txt)"
+          new=$(comm -23 h.txt b.txt | head -c 30000 | enc)
+          [ -n "$new" ] && echo "::error title=pytest-new::$new" || echo "::notice title=pytest-new::none"
+          fixed=$(comm -13 h.txt b.txt | head -c 8000 | enc)
+          [ -n "$fixed" ] && echo "::notice title=pytest-fixed::$fixed" || true
+          grep -q "error" head.txt && grep -E "^E |Error" head.txt | head -40 | enc > e.txt && echo "::warning title=pytest-errors::$(cat e.txt | head -c 20000)" || true
