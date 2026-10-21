@@ -23,6 +23,9 @@ def test_profiles_inbox_friends_today_also_block_and_coach(env, tmp_path) -> Non
         assert any(i["kind"] == "follow_request" and i["open"] == {"k": "people"} for i in inbox["items"])
         eid = (await ann.get("/app/api/social")).json()["pending_in"][0]["edge_id"]
         await ann.post(f"/app/api/social/requests/{eid}/accept", headers=H, json={})
+        p = (await bob.get("/app/api/people/ann")).json()
+        assert p["following"] and p["workouts"] == [] and p["workouts_private"]  # Ann hasn't said yes
+        await ann.put("/app/api/community/settings", headers=H, json={"share_workouts": True})
 
         p = (await bob.get("/app/api/people/ann")).json()
         assert p["person"]["name"] == "Ann" and p["following"] and not p["workouts_hidden"]

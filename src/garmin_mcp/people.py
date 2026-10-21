@@ -156,6 +156,8 @@ class People:
         return {"person": p, "me": me, "city": city, "following": bool(following and not me),
                 "follows_you": follows_you, "pending": pending, "can_message": can_message,
                 "workouts": workouts[:10], "workouts_hidden": not following,
+                "workouts_private": bool(following and not me and self.feed is not None
+                                         and not self.feed.shares(uid)),
                 "stats": stats, "clubs": clubs, "races": self._public_races(uid, today),
                 "in_common": {"clubs": [c["name"] for c in clubs if c["shared"]]}}
 

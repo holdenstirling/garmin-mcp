@@ -58,6 +58,11 @@ export type PostWorkout = {
   /** which numbers fit (lib/sportstats): run, walk, hike, ride, indoor_ride, swim, row, paddle, ski,
    *  strength, mind, hiit, climb, brick, other; ``kind`` is Garmin's type (indoor_cycling, yoga) */
   family?: string; kind?: string
+  /** an outdoor GPS workout's route: [lat, lon] points, both ends already trimmed (routes.py).
+   *  Only when the viewer may see it (mine with my maps on; a friend's only once they share maps). */
+  route?: [number, number][]
+  /** mine only: there is a map but I turned "Show my route maps" off */
+  route_hidden?: boolean
   /** the one rate that fits the family: s/km (runs, walks, hikes), km/h (rides), s/100 m (swims),
    *  s/500 m (rows, paddles) */
   pace_s_km?: number; speed_kmh?: number; pace_s_100m?: number; pace_s_500m?: number
@@ -114,9 +119,23 @@ export type CommunitySettings = {
   default_view?: 'feed' | 'clubs'
   /** when my newest workout post went out (unix seconds), or null */
   last_shared_at?: number | null
+  /** Do friends see my workouts (Feed and friends' lists), community.py `sharing_consent`:
+   *  a yes here, or "share my workouts" saved earlier in friends settings when this was never answered */
+  sharing_effective?: boolean
+  /** why: yes (said yes here), earlier (friends settings, before this setting), off (said no), unanswered */
+  sharing_source?: 'yes' | 'earlier' | 'off' | 'unanswered'
+  /** route maps: show my own (default on); share with friends (null = not answered = off) */
+  routes_own?: boolean
+  routes_share?: boolean | null
+  /** metres cut off the start and finish of every map: 200, 400 or 800 */
+  routes_trim_m?: 200 | 400 | 800
+  /** routes that start inside this area never show to others; set from one of my maps */
+  routes_home?: { radius_m: number } | null
 }
-/** Effective "Share my workouts with friends" (community.py `sharing_workouts`): only after a yes. */
-export const sharingWorkouts = (s: CommunitySettings) => s.share_workouts === true
+/** Effective "Share my workouts with friends" (community.py `sharing_consent`): only after a yes. */
+export const sharingWorkouts = (s: CommunitySettings) => s.sharing_effective ?? s.share_workouts === true
+export const TRIM_CHOICES = [200, 400, 800] as const
+export const HOME_RADIUS_CHOICES = [200, 400, 800, 1600] as const
 export type Usage = { photos: number; bytes: number; max_photos: number; max_bytes: number }
 export type Sport = 'running' | 'trail' | 'cycling' | 'triathlon' | 'swimming' | 'walking' | 'multisport' | 'other'
 export const SPORTS: [Sport, string][] = [

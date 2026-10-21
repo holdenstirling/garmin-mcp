@@ -13,6 +13,8 @@ export type Profile = {
   person: PersonRef; me: boolean; city: string; following: boolean; follows_you: boolean; pending: boolean
   can_message: 'direct' | 'request' | null
   workouts: FeedWorkout[]; workouts_hidden: boolean
+  /** I follow them, but they haven't said yes to sharing workouts with friends */
+  workouts_private?: boolean
   stats: { workouts_4w: number; km_4w: number | null; minutes_4w: number | null } | null
   clubs: { id: string; name: string; emoji: string; sport: string; members: number | null; shared: boolean }[]
   races: { key: string; name: string; date: string; type: string; activity: string; neighborhood: string }[]

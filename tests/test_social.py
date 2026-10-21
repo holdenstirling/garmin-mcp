@@ -266,6 +266,9 @@ def test_http_flow_push_coalescing_and_photo(env, tmp_path) -> None:
         r = await bob.get("/app/api/social/people/ann/photo")
         assert r.status_code == 200 and r.content == JPEG
         assert (await cat.get("/app/api/social/people/ann/photo")).status_code == 404
+        # Ann hasn't said she shares workouts yet: Bob sees none. Saving "share my workouts" counts.
+        assert not [i for i in (await bob.get("/app/api/social/feed")).json()["items"] if i["user"]["id"] == "ann"]
+        assert (await ann.put("/app/api/social/settings", headers=H, json={"workouts": True})).status_code == 200
         feed = (await bob.get("/app/api/social/feed")).json()["items"]
         a = [i for i in feed if i["user"]["id"] == "ann"]
         assert len(a) == 2 and a[0]["user"]["name"] == "Ann" and a[0]["kudos"] == 0

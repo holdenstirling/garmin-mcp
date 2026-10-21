@@ -17,6 +17,7 @@ import { LevelBadge } from '@/components/progress/Progress'
 import { useSheetDrag } from '@/hooks/useSheetDrag'
 import { InviteToRaceSheet } from '@/components/events/RacePeople'
 import { cn } from '@/lib/utils'
+import { openActivity } from '@/lib/activitynav'
 import {
   acceptRequest, addCheer, blockUser, declineRequest, deleteCheer, follow, friendPhotoUrl, getFeed, getFriend,
   getPeople, giveKudos, markSocialSeen, newInviteCode, putSocialSettings, relativeDay, removeFollower, takeKudos,
@@ -169,7 +170,9 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
           {it.user.level != null && <LevelBadge level={it.user.level} size="sm" />}
         </button>
       )}
-      <div className={cn('flex items-start gap-2.5', !compact && 'mt-2.5')}>
+      <button type="button" onClick={() => openActivity(it.id, it.mine ? null : it.user.id)}
+        aria-label={`Open ${it.mine ? 'your' : `${it.user.name}'s`} ${it.title}`}
+        className={cn('flex w-full items-start gap-2.5 rounded-lg text-left active:bg-(--bg-inset)', !compact && 'mt-2.5')}>
         <SportTile sport={it.sport} size={36} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-lead font-medium text-(--text)">{it.title}</span>
@@ -180,7 +183,7 @@ function FeedCard({ it, imperial, onOpen, onUpdate, compact }: {
           </span>
         </span>
         {it.xp != null && <span className="shrink-0 text-caption font-semibold text-(--accent)">+{it.xp} XP</span>}
-      </div>
+      </button>
       <div className="mt-2.5 flex items-center gap-1">
         <button ref={kudosBtn} type="button" onClick={() => void toggleKudos()} disabled={it.mine} aria-pressed={it.you_kudoed}
           aria-label={it.mine ? `${it.kudos} kudos` : it.you_kudoed ? 'Take back kudos' : 'Give kudos'}

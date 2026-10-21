@@ -150,6 +150,13 @@ class Social:
     def settings(self, uid: str) -> dict[str, bool]:
         return self._settings_of(self._doc.load(), uid)
 
+    def explicit_workouts(self, uid: str) -> bool | None:
+        """The "workouts" share as the person saved it in these settings (None = never saved,
+        only the default). A saved yes counts as their earlier consent to share workouts."""
+        stored = ((self._doc.load().get("users") or {}).get(uid) or {}).get("settings") or {}
+        v = stored.get("workouts")
+        return v if isinstance(v, bool) else None
+
     def put_settings(self, uid: str, patch: Any) -> dict[str, bool]:
         if not isinstance(patch, dict):
             raise SocialError("settings must be an object")
@@ -575,10 +582,14 @@ class SocialFeed:
     """Followees' recent workouts, cached per followee for ``FEED_CACHE_S``."""
 
     def __init__(self, social: Social, *, activities: Callable[[str], tuple[date, list[dict[str, Any]]]],
-                 meta: Callable[[str], dict[str, Any]], clock: Callable[[], float] = time.monotonic) -> None:
+                 meta: Callable[[str], dict[str, Any]], clock: Callable[[], float] = time.monotonic,
+                 consent: Callable[[str], bool] | None = None) -> None:
         """``activities(uid)`` -> (their today, compact activities); ``meta(uid)`` -> name,
-        photo, picture, level, streak (called at most once per cache period)."""
+        photo, picture, level, streak (called at most once per cache period). ``consent(uid)``:
+        has this person agreed to share workouts with friends (community.sharing_consent)? Without
+        it, followers see none of their workouts. Unset (tests, no community) = settings only."""
         self.social = social
+        self.consent = consent
         self._acts = activities
         self._meta = meta
         self._clock = clock
@@ -635,8 +646,19 @@ class SocialFeed:
         e = self.entry(owner)
         if viewer == owner:
             return list(e["items"])
+        if not self.shares(owner):
+            return []
         s = self.social.settings(owner)
         return [v for it in e["items"] if (v := visible(it, s)) is not None]
+
+    def shares(self, owner: str) -> bool:
+        """Has ``owner`` consented to friends seeing their workouts?"""
+        if self.consent is None:
+            return True
+        try:
+            return bool(self.consent(owner))
+        except Exception:
+            return False
 
     def has_item(self, viewer: str, owner: str, aid: str) -> bool:
         return any(it["id"] == aid for it in self.visible_items(viewer, owner))
@@ -657,7 +679,7 @@ class SocialFeed:
         s = self.social.settings(owner)
         items = self.visible_items(viewer, owner)
         week: dict[str, Any] | None = None
-        if e["today"] and s["workouts"]:
+        if e["today"] and s["workouts"] and (viewer == owner or self.shares(owner)):
             today = date.fromisoformat(e["today"])
             monday = (today - timedelta(days=today.weekday())).isoformat()
             wk = [it for it in items if it["date"] >= monday]

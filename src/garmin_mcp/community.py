@@ -62,6 +62,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from . import mentions as _mn
+from . import routes as _rt
 from .appstore import AppStore
 from .explore import parse_distance_km
 from .logs import log_event
@@ -111,7 +112,7 @@ RACE_SCAN_DAYS = 7
 # Fields a workout card may carry. Anything else (HR, power, location, health) is dropped.
 WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "climb_m", "highlight",
                   "pace_s_km", "speed_kmh", "pace_s_100m", "splits", "headline", "auto", "source",
-                  "family", "kind", "pace_s_500m", "vertical_m", "sets", "reps", "legs")
+                  "family", "kind", "pace_s_500m", "vertical_m", "sets", "reps", "legs", "route")
 LEG_FIELDS = ("family", "km", "minutes", "pace_s_km", "speed_kmh", "pace_s_100m", "pace_s_500m")
 # Where a workout came from ("via Garmin" on its card). Garmin ids are ints; other sources use
 # "<source>:<id>" (workout ingestion adds ``source`` to each activity).
@@ -150,6 +151,11 @@ _PID = re.compile(r"^p[0-9a-f]{16}$")
 _ID = re.compile(r"^[a-z][0-9a-f]{12,16}$")
 _CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 _LEAD_EMOJI = re.compile(r"^[^\w]+")
+
+
+def _home_public(h: Any) -> dict[str, Any] | None:
+    """The hidden area as the owner's app sees it: its size only. Where it is stays on the server."""
+    return {"radius_m": int(h.get("radius_m") or 0)} if isinstance(h, dict) else None
 
 
 class CommunityError(ValueError):
@@ -464,6 +470,9 @@ class Community:
         # Set by webapp: ``workouts_of(uid) -> (garmin_acts, external_workouts)`` for the
         # one-time backfill when "Share my workouts with friends" turns on.
         self.workouts_of: Callable[[str], tuple[list[dict[str, Any]], list[dict[str, Any]]]] | None = None
+        # Set by webapp: ``route_of(uid, aid, trim_m) -> routes.from_details(...)`` (a Garmin
+        # GPS line, trimmed and simplified), fetched once when a workout post is made.
+        self.route_of: Callable[[str, int, int], dict[str, Any] | None] | None = None
         # Set by webapp: a push that opens a given app link (``(to, title, body, url)``), for
         # @mentions that open the exact post. Falls back to ``push``.
         self.push_link: Callable[[str, str, str, str], None] | None = None
@@ -497,7 +506,14 @@ class Community:
                 # None = never answered (off: sharing needs a yes).
                 "share_workouts": sw if isinstance(sw, bool) else None,
                 "share_prompted": bool(s.get("share_prompted")),
-                "share_since": s.get("share_since") if isinstance(s.get("share_since"), str) else None}
+                "share_since": s.get("share_since") if isinstance(s.get("share_since"), str) else None,
+                # Route maps: shown to me unless I turn them off; shared with friends only after I
+                # say yes (None = not asked yet = off); start and finish trimmed; an optional
+                # area where routes that start there are never shown to anyone else.
+                "routes_own": s.get("routes_own") is not False,
+                "routes_share": s.get("routes_share") if isinstance(s.get("routes_share"), bool) else None,
+                "routes_trim_m": s.get("routes_trim_m") if s.get("routes_trim_m") in _rt.TRIM_CHOICES else _rt.DEFAULT_TRIM_M,
+                "routes_home": s.get("routes_home") if isinstance(s.get("routes_home"), dict) else None}
 
     @staticmethod
     def sharing_workouts(s: dict[str, Any]) -> bool:
@@ -506,9 +522,32 @@ class Community:
         the connect sheet, the consent screen or the setting). Unanswered means off."""
         return s["share_workouts"] is True
 
+    def sharing_consent(self, uid: str, s: dict[str, Any] | None = None) -> bool:
+        """Has ``uid`` agreed to share workouts with friends? A yes here (prompt, connect sheet,
+        consent screen, setting) or, if never answered here, a "workouts" share they saved
+        themselves in the older friends settings (that was their earlier consent). A no here
+        always wins. Drives both the Feed's auto-shared posts and friends' workout lists."""
+        s = s if s is not None else self._settings_of(self._mine(uid).load())
+        if s["share_workouts"] is not None:
+            return s["share_workouts"] is True
+        try:
+            return self.social.explicit_workouts(uid) is True
+        except Exception:
+            return False
+
+    def sharing_source(self, uid: str, s: dict[str, Any]) -> str:
+        """``yes`` | ``earlier`` (saved in friends settings) | ``off`` (said no) | ``unanswered``."""
+        if s["share_workouts"] is True:
+            return "yes"
+        if s["share_workouts"] is False:
+            return "off"
+        return "earlier" if self.sharing_consent(uid, s) else "unanswered"
+
     def settings(self, uid: str) -> dict[str, Any]:
         self.require(uid)
-        return {**self._settings_of(self._mine(uid).load()), "last_shared_at": self.last_shared_at(uid)}
+        s = self._settings_of(self._mine(uid).load())
+        return {**s, "routes_home": _home_public(s["routes_home"]), "last_shared_at": self.last_shared_at(uid),
+                "sharing_effective": self.sharing_consent(uid, s), "sharing_source": self.sharing_source(uid, s)}
 
     def last_shared_at(self, uid: str) -> int | None:
         """When my newest workout post went out (auto or by hand), for "Sharing: On · last shared"."""
@@ -565,6 +604,17 @@ class Community:
             if a != "friends":
                 a = self._group_audience(uid, a)
             clean["share_audience"] = a
+        for k in ("routes_own", "routes_share"):
+            if k in patch:
+                if not isinstance(patch[k], bool):
+                    raise CommunityError(f"{k} must be true or false")
+                clean[k] = patch[k]
+        if "routes_trim_m" in patch:
+            if patch["routes_trim_m"] not in _rt.TRIM_CHOICES:
+                raise CommunityError("routes_trim_m must be 200, 400 or 800")
+            clean["routes_trim_m"] = patch["routes_trim_m"]
+        if "routes_home" in patch:
+            clean["routes_home"] = self._home_from(uid, patch["routes_home"])
         if "default_view" in patch:
             if patch["default_view"] not in VIEWS:
                 raise CommunityError("default_view must be feed or clubs")
@@ -576,7 +626,8 @@ class Community:
             was = self.sharing_workouts(cur)
             for k in ("milestones", "auto_share"):
                 cur[k] = {**cur[k], **clean.get(k, {})}
-            for k in ("audience", "share_workouts", "share_prompted", "share_audience", "default_view"):
+            for k in ("audience", "share_workouts", "share_prompted", "share_audience", "default_view",
+                      "routes_own", "routes_share", "routes_trim_m", "routes_home"):
                 if k in clean:
                     cur[k] = clean[k]
             if self.sharing_workouts(cur) and not was:
@@ -587,7 +638,50 @@ class Community:
             return cur
         out = self._mine(uid).update(apply)
         self.backfill(uid)
-        return {**out, "last_shared_at": self.last_shared_at(uid)}
+        o = self._settings_of({"settings": out})
+        return {**out, "routes_home": _home_public(o["routes_home"]), "last_shared_at": self.last_shared_at(uid),
+                "sharing_effective": self.sharing_consent(uid, o), "sharing_source": self.sharing_source(uid, o)}
+
+    def _home_from(self, uid: str, v: Any) -> dict[str, Any] | None:
+        """``null`` clears the hidden area; ``{"post_id", "radius_m"}`` sets it around where one of
+        my own route posts starts (the server's rounded start, never sent to the app)."""
+        if v is None:
+            return None
+        if not isinstance(v, dict) or v.get("radius_m") not in _rt.HOME_RADIUS_CHOICES:
+            raise CommunityError("Pick 200, 400, 800 or 1,600 m.")
+        try:
+            _, post = self._load(uid, v.get("post_id"))
+        except CommunityError:
+            raise CommunityError("That workout isn't yours.", 404) from None
+        cell = ((post.get("workout") or {}).get("route") or {}).get("start_cell")
+        if post.get("author") != uid or not (isinstance(cell, list) and len(cell) == 2):
+            raise CommunityError("That workout has no map to set this from.", 400)
+        return {"lat": float(cell[0]), "lon": float(cell[1]), "radius_m": int(v["radius_m"])}
+
+    def route_card(self, uid: str, aid: Any, card: dict[str, Any]) -> None:
+        """Add the GPS line to a workout card I'm about to post (outdoor Garmin workouts only;
+        best effort: no route is fine)."""
+        if self.route_of is None or not isinstance(aid, int) or not _rt.has_route(card.get("family"), card.get("kind")):
+            return
+        try:
+            s = self._settings_of(self._mine(uid).load())
+            r = self.route_of(uid, aid, s["routes_trim_m"])
+            if r:
+                card["route"] = r
+        except Exception as e:
+            log_event(logger, logging.INFO, "community_route_failed", user_id=uid, error=type(e).__name__)
+
+    def route_shown(self, viewer: str, author: str, route: Any) -> list[list[float]] | None:
+        """The line ``viewer`` may see on ``author``'s workout: the owner if their own maps are
+        on; anyone else only when the owner shares maps and it doesn't start in their hidden area."""
+        if not isinstance(route, dict):
+            return None
+        s = self._settings_of(self._mine(author).load())
+        if viewer == author:
+            return _rt.public(route) if s["routes_own"] else None
+        if s["routes_share"] is not True or _rt.near_home(route, s["routes_home"]):
+            return None
+        return _rt.public(route)
 
     def backfill(self, uid: str) -> list[str]:
         """Once, right after sharing turns on: post the last ``BACKFILL_DAYS`` days of workouts
@@ -710,6 +804,14 @@ class Community:
         v = norm_audience(post.get("audience") or post.get("visibility") or "friends")
         out = {k: post.get(k) for k in ("id", "author", "kind", "category", "text", "feeling", "event", "workout",
                                          "milestone", "created", "edited")}
+        if isinstance(out.get("workout"), dict):  # the stored route never leaves as is (start cell)
+            w = {k: v for k, v in out["workout"].items() if k != "route"}
+            line = self.route_shown(viewer, post["author"], out["workout"].get("route"))
+            if line:
+                w["route"] = line
+            elif mine and isinstance(out["workout"].get("route"), dict):
+                w["route_hidden"] = True  # mine, maps off: the card can say so
+            out["workout"] = w
         out["text"], out["mentions"] = self._shown_mentions(viewer, post)
         photos = post.get("photos") or ([post["photo"]] if post.get("photo") else [])
         out.update({
@@ -1272,9 +1374,11 @@ class Community:
         if uid.startswith("coach_") or not self.social.is_athlete(uid):
             return []
         s = self._settings_of(self._mine(uid).load())
-        if not self.sharing_workouts(s):
+        if not self.sharing_consent(uid, s):
             return []
-        since = s["share_since"] or today.isoformat()
+        # Earlier consent (friends settings) has no start date: the regular window applies.
+        since = s["share_since"] or (today.isoformat() if s["share_workouts"] is True
+                                     else (today - timedelta(days=days)).isoformat())
         rows = [r for r in _rows(acts) if activity_key(r["id"]) is not None
                 and 0 <= (today - r["date"]).days <= days and r["date"].isoformat() >= since]
         rows.sort(key=lambda r: (r["date"], str(r["id"])))
@@ -1300,6 +1404,7 @@ class Community:
             card["auto"] = True
             if isinstance(r["id"], int):  # Garmin: lap splits (where they mean something) and the reward headline
                 card.update(self._extras(uid, r["id"], splits=_sf.splits_ok(card["family"])))
+                self.route_card(uid, r["id"], card)
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},
                                workout=card, limited=False)
             out.append(post["id"])
@@ -1313,9 +1418,11 @@ class Community:
         if uid.startswith("coach_") or not self.social.is_athlete(uid):
             return []
         s = self._settings_of(self._mine(uid).load())
-        if not self.sharing_workouts(s):
+        if not self.sharing_consent(uid, s):
             return []
-        since = s["share_since"] or today.isoformat()
+        # Earlier consent (friends settings) has no start date: the regular window applies.
+        since = s["share_since"] or (today.isoformat() if s["share_workouts"] is True
+                                     else (today - timedelta(days=days)).isoformat())
         out: list[str] = []
         ws = sorted(workouts, key=lambda x: str(x.get("start")))
         for w in (ws[-cap:] if cap > 0 else []):
