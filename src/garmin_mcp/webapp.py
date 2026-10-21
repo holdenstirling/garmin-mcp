@@ -3731,6 +3731,37 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             photo_resp=_photo_resp, photo_cache=_photo_cache, read_json=read_json, user_for=auth.user_for,
             host_ok=host_ok, origin=settings.public_base_url)
 
+        async def _feed_doctor(request: Request, user_id: str) -> Response:
+            """Owner tool: why each friend's recent workouts are or aren't on the Feed.
+            ``?fix=1`` also runs the catch-up for everyone listed right now."""
+            if not auth.is_owner(user_id):
+                return _err(404, "Not found.")
+            fix = request.query_params.get("fix") == "1"
+
+            def work() -> dict[str, Any]:
+                people = []
+                for uid in [user_id, *soc.following_ids(user_id)]:
+                    row: dict[str, Any] = {"id": uid, "name": _soc_name(uid)}
+                    if fix:
+                        try:
+                            row["posted_now"] = len(cm.catch_up(uid, force=True))
+                        except Exception as e:
+                            row["posted_now"] = f"failed: {type(e).__name__}"
+                    try:
+                        row.update(cm.diagnose(uid))
+                    except Exception as e:
+                        row["error"] = f"diagnose failed: {type(e).__name__}"
+                    if soc_feed is not None:
+                        try:
+                            row["in_friends_list"] = len(soc_feed.visible_items(user_id, uid))
+                        except Exception:
+                            row["in_friends_list"] = None
+                    people.append(row)
+                return {"people": people}
+            return JSONResponse(await anyio.to_thread.run_sync(work))
+        community_routes.append(Route("/app/api/community/feed-doctor", _plan_api(_feed_doctor, mutating=False),
+                                      methods=["GET"]))
+
         # Club runs (clubs.py): the public club page /app/c/<slug> (clubpage.py: a link for an
         # Instagram bio, RSVP with name + email, waitlist, add to calendar, cancel link), the
         # check-in buddy (buddycheck.py) and "count this club run as today's run" (plans.py).

@@ -738,6 +738,108 @@ class Community:
                     self._caught.pop(k, None)
             return True
 
+    @staticmethod
+    def _post_share_key(post: dict[str, Any]) -> str | None:
+        """The ``auto:<key>`` a workout post was shared under (Garmin id, ``share_key`` for
+        other sources), or None."""
+        w = post.get("workout") or {}
+        if isinstance(w.get("share_key"), str):
+            return f"auto:{w['share_key']}"
+        k = activity_key(w.get("activity_id"))
+        return f"auto:{k}" if k is not None else None
+
+    def _share_keys(self, uid: str) -> tuple[set[str], set[str]]:
+        """(keys that have a post now, keys of other-source posts as ``source|day|minutes``)."""
+        have: set[str] = set()
+        loose: set[str] = set()
+        for p in (self._posts(uid).load().get("posts") or {}).values():
+            if p.get("author") != uid or not p.get("workout"):
+                continue
+            if (k := self._post_share_key(p)) is not None:
+                have.add(k)
+            w = p["workout"]
+            loose.add(f"{w.get('source') or ''}|{w.get('date') or ''}|{w.get('minutes')}")
+        return have, loose
+
+    def _candidates(self, uid: str, acts: list[dict[str, Any]], ext: list[dict[str, Any]],
+                    today: date) -> list[dict[str, Any]]:
+        """Workouts from the last ``BACKFILL_DAYS`` days, each with its share key."""
+        out: list[dict[str, Any]] = []
+        for r in _rows(acts):
+            if (k := activity_key(r["id"])) is not None and 0 <= (today - r["date"]).days <= BACKFILL_DAYS:
+                out.append({"key": f"auto:{k}", "id": r["id"], "date": r["date"].isoformat(), "source": "garmin",
+                            "loose": None})
+        for w in ext:
+            day = str(w.get("start") or "")[:10]
+            try:
+                d0 = date.fromisoformat(day)
+            except ValueError:
+                continue
+            if isinstance(w.get("key"), str) and 0 <= (today - d0).days <= BACKFILL_DAYS:
+                mins = w.get("minutes") if isinstance(w.get("minutes"), int | float) else None
+                out.append({"key": f"auto:{w['key']}", "id": w["key"], "date": day,
+                            "source": str(w.get("source") or ""),
+                            "loose": f"{w.get('source') or ''}|{day}|{round(mins) if mins else None}"})
+        return out
+
+    def _release_orphans(self, uid: str, cands: list[dict[str, Any]]) -> int:
+        """A workout whose share was claimed but whose post never got made (an error between
+        the two, or an older bug) would otherwise be stuck off the Feed forever. Drop those
+        claims so the normal share runs again. Never for a post the person deleted."""
+        have, loose = self._share_keys(uid)
+        stuck = [c["key"] for c in cands if c["key"] not in have and (c["loose"] is None or c["loose"] not in loose)]
+        if not stuck:
+            return 0
+
+        def apply(d: dict[str, Any]) -> int:
+            keys, gone = d.get("keys") or {}, d.get("removed") or {}
+            n = 0
+            for k in stuck:
+                if k in keys and k not in gone:
+                    del keys[k]
+                    n += 1
+            return n
+        return int(self._mine(uid).update(apply) or 0)
+
+    def diagnose(self, uid: str) -> dict[str, Any]:
+        """Why each of ``uid``'s recent workouts is or isn't on the Feed (owner tool)."""
+        s = self._settings_of(self._mine(uid).load())
+        info: dict[str, Any] = {"athlete": self.social.is_athlete(uid), "sharing": self.sharing_source(uid, s),
+                                "share_since": s.get("share_since"), "audience": s.get("share_audience") or "friends",
+                                "workouts": []}
+        if self.workouts_of is None:
+            info["error"] = "workouts_of not wired"
+            return info
+        try:
+            acts, ext = self.workouts_of(uid)
+        except Exception as e:
+            info["error"] = f"reading workouts failed: {type(e).__name__}"
+            return info
+        today = self._now(uid).date()
+        d = self._mine(uid).load()
+        keys, gone = d.get("keys") or {}, d.get("removed") or {}
+        have, loose = self._share_keys(uid)
+        since = s["share_since"] or (today.isoformat() if s["share_workouts"] is True
+                                     else (today - timedelta(days=BACKFILL_DAYS)).isoformat())
+        for c in self._candidates(uid, acts, ext, today):
+            if c["key"] in have or (c["loose"] is not None and c["loose"] in loose):
+                why = "on the Feed"
+            elif c["key"] in gone:
+                why = "they deleted the post"
+            elif not info["sharing"] in ("yes", "earlier"):
+                why = "sharing is off or unanswered"
+            elif c["date"] < since:
+                why = f"before sharing started ({since})"
+            elif c["key"] in keys:
+                why = "claimed but never posted (catch-up will retry)"
+            else:
+                why = "waiting for the next catch-up"
+            info["workouts"].append({"date": c["date"], "source": c["source"], "id": str(c["id"]), "status": why})
+        info["today"] = today.isoformat()
+        info["garmin_count"] = len(acts)
+        info["other_count"] = len(ext)
+        return info
+
     def catch_up(self, uid: str, *, force: bool = False) -> list[str]:
         """Post any workout from the last ``BACKFILL_DAYS`` days that should be on the Feed and
         isn't: the regular auto-share only runs when a sync finds something *new*, so a workout
@@ -753,6 +855,9 @@ class Community:
                 return []
             acts, ext = self.workouts_of(uid)
             today = self._now(uid).date()
+            freed = self._release_orphans(uid, self._candidates(uid, acts, ext, today))
+            if freed:
+                log_event(logger, logging.INFO, "feed_catch_up_released", user_id=uid, released=freed)
             out = self.auto_share_workouts(uid, acts, today, days=BACKFILL_DAYS, cap=BACKFILL_MAX)
             out += self.auto_share_external(uid, ext, today, days=BACKFILL_DAYS,
                                             cap=max(0, BACKFILL_MAX - len(out)))
@@ -1079,6 +1184,16 @@ class Community:
         gone = self._posts(uid).update(apply)
         if gone:
             self._drop_photos(uid, gone)
+            if (wk := self._post_share_key(gone)) is not None:  # deleted on purpose: never re-post it
+                day = self._now(uid).date().isoformat()
+
+                def removed(d: dict[str, Any]) -> None:
+                    r = d.setdefault("removed", {})
+                    r[wk] = day
+                    if len(r) > MAX_KEYS:
+                        for k in sorted(r, key=lambda k: r[k])[: len(r) - MAX_KEYS]:
+                            del r[k]
+                self._mine(uid).update(removed)
 
         def unindex(g: dict[str, Any]) -> None:
             (g.get("index") or {}).pop(pid, None)
@@ -1537,7 +1652,8 @@ class Community:
             card = {"activity_id": None, "source": str(w.get("source") or ""), "sport": sport, "family": fam,
                     "title": _sf.title(fam, raw), "date": day,
                     "km": round(km, 2) if km else None, "minutes": round(mins) if mins else None,
-                    "climb_m": None, "highlight": "", "auto": True, **_sf.pace_fields(fam, km, mins)}
+                    "climb_m": None, "highlight": "", "auto": True, "share_key": w["key"],
+                    **_sf.pace_fields(fam, km, mins)}
             if d0 < today:
                 card["late"] = True
             post = self.create(uid, {"text": "", "category": "other", "audience": self._share_audience(uid, s)},

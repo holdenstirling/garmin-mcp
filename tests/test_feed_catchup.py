@@ -85,3 +85,35 @@ def test_follow_needed(fx) -> None:
     assert cm.feed("cat")["items"] == []  # Cat doesn't follow Ann
     _follow(fx.soc, "cat", "ann")
     assert cm.feed("cat")["items"]
+
+
+def test_stuck_claim_without_a_post_is_retried(fx) -> None:
+    """A share claimed but never posted (an error in between) is retried by the catch-up."""
+    acts = _acts(NOON.date())
+    cm = _ready(fx, acts)
+    cm.put_settings("ann", {"share_workouts": True})
+    today = NOON.date()
+    cm.auto_share_workouts("ann", acts, today)  # claims and posts today's run
+
+    def lost(d):  # the post never got written (an error between claim and post)
+        d["posts"] = {}
+    cm._posts("ann").update(lost)
+    assert "auto:3" in (cm._mine("ann").load().get("keys") or {})
+    assert any(w["status"].startswith("claimed but never posted") for w in cm.diagnose("ann")["workouts"])
+    cm.catch_up("ann", force=True)
+    assert any(i["workout"]["activity_id"] == 3 for i in cm.feed("bob")["items"])
+    assert not any(w["status"].startswith("claimed") for w in cm.diagnose("ann")["workouts"])
+
+
+def test_deleted_workout_post_is_never_reposted(fx) -> None:
+    acts = _acts(NOON.date())
+    cm = _ready(fx, acts)
+    cm.put_settings("ann", {"share_workouts": True})
+    items = cm.feed("bob")["items"]
+    assert items
+    gone = items[0]
+    cm.delete("ann", gone["id"])
+    cm.catch_up("ann", force=True)
+    after = cm.feed("bob")["items"]
+    assert gone["workout"]["activity_id"] not in [i["workout"]["activity_id"] for i in after]
+    assert any(w["status"] == "they deleted the post" for w in cm.diagnose("ann")["workouts"])
