@@ -2,6 +2,9 @@
 // rate zones, the plan session it counted for ("How it went"), your check-in and Rabbit's
 // feedback. Opened from anywhere a finished workout shows (lib/activitynav openActivity).
 // Workouts another app recorded (Oura) are display-only: no "Ask Rabbit" for them.
+// A friend's workout (``of``, opened from the Feed or their profile) shows only what they share:
+// no heart rate, calories or training load, no check-in, coaching or fueling, and their route
+// only when they share maps (server: webapp _ap_friend_view).
 import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
 import { openBody } from '@/lib/body'
 import { RabbitInline } from '@/components/chat/RabbitText'
@@ -27,6 +30,8 @@ import { Related } from '@/components/nav/Related'
 import { WhoElse } from '@/components/people/WhoElse'
 import { sportIcon } from '@/lib/sportIcon'
 import { noDistance, sportFamily, type SportFamily } from '@/lib/sportstats'
+import { RouteMap } from '@/components/route/RouteMap'
+import { RouteControls } from '@/components/route/RouteControls'
 
 const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch' }
 const LOADING = ['Pulling up your workout…', 'Counting the laps…', 'Reading your heart rate…']
@@ -37,22 +42,27 @@ const hms = (s: number) => {
 }
 const distSport = (sport: string) => (sport === 'swim' ? 'swim' : sport === 'bike' ? 'bike' : 'run')
 
-export function ActivityScreen({ id, imperial, onClose, onAsk }: {
-  id: string; imperial: boolean; onClose: () => void; onAsk?: (text: string) => void
+export function ActivityScreen({ id, of, imperial, onClose, onAsk }: {
+  id: string
+  /** a friend's user id: their workout, as they share it */
+  of?: string
+  imperial: boolean; onClose: () => void; onAsk?: (text: string) => void
 }) {
   const [v, setV] = useState<ActivityView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
-  const load = useCallback(() => { setError(null); getActivity(id).then(setV, (e: Error) => setError(e.message)) }, [id])
+  const load = useCallback(() => { setError(null); getActivity(id, of).then(setV, (e: Error) => setError(e.message)) }, [id, of])
   useEffect(() => { load() }, [load])
   const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
 
   const when = v?.start ? `${fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' })}${v.start.length > 11 ? ` · ${new Date(v.start.replace(' ', 'T')).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}` : undefined
-  const ask = onAsk && v?.ai ? () => onAsk(askText(v, imperial)) : undefined
+  const friend = v?.owner ?? null
+  const ask = onAsk && v?.ai && !friend ? () => onAsk(askText(v, imperial)) : undefined
+  const sub = friend ? [friend.name, when].filter(Boolean).join(' · ') : when
 
   return (
-    <Screen title={v?.name ?? 'Workout'} subtitle={when} onClose={close} closing={closing}
-      footer={v ? (
+    <Screen title={v?.name ?? 'Workout'} subtitle={sub} onClose={close} closing={closing}
+      footer={v && !friend ? (
         <>
           {typeof v.id === 'number' && <div className="flex-1"><ShareWorkoutButton activityId={v.id} /></div>}
           {v.key && (
@@ -83,11 +93,11 @@ export function ActivityScreen({ id, imperial, onClose, onAsk }: {
         </div>
       )}
       {v && <ActivityBody v={v} imperial={imperial} onAsk={ask} onSaved={load} onClose={close} />}
-      {v && v.start && typeof v.id === 'number' && (
+      {v && !friend && v.start && typeof v.id === 'number' && (
         <WhoElse sport={v.sport} date={v.start.slice(0, 10)}
           share={{ type: 'workout', ref: { kind: 'activity', id: String(v.id) }, label: v.name ?? 'Workout' }} />
       )}
-      {v && (
+      {v && !friend && (
         <Related items={[
           { key: 'planned', icon: <CalendarDays className="size-5" />, label: v.planned ? `The planned ${v.planned.title}` : '', sub: 'What the plan asked for',
             onClick: v.planned ? () => { const p = v.planned!; close(); window.setTimeout(() => openWorkout(p.id, p.date), 220) } : null },
@@ -106,6 +116,7 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
   const n = v.numbers
   const ds = distSport(v.sport)
   const fam = sportFamily(v.family || v.sport)
+  const friend = v.owner ?? null
   const metaBits = [n.km ? fmtDist(n.km, imperial, ds) : '', n.moving_s ? fmtDuration(Math.round(n.moving_s / 60)) : '', `via ${SOURCE[v.source] ?? v.source}`]
   const stats: [string, string][] = []
   if (n.km) stats.push(['Distance', fmtDist(n.km, imperial, ds)])
@@ -137,6 +148,13 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
         line={v.planned ? `Counted for your planned ${v.planned.title}.` : n.te_label ? `Garmin training effect: ${n.te_label.charAt(0) + n.te_label.slice(1).toLowerCase().replace(/_/g, ' ')}.` : ''}
         chip={{ label: 'Done', cls: 'bg-(--accent) text-(--on-fill)' }} />
 
+      {v.route && v.route.length > 1 && (
+        <section aria-label="Route" className="flex flex-col gap-2">
+          <RouteMap line={v.route} label={friend ? `${friend.name}'s route` : 'Your route'} />
+          {!friend && typeof v.id === 'number' && <RouteControls postId={v.post_id ?? null} />}
+        </section>
+      )}
+
       {v.planned && (
         <section aria-label="Planned workout" className="flex flex-col gap-2">
           {v.planned.went && <HowItWent w={v.planned.went} imperial={imperial} sport={v.sport} />}
@@ -162,8 +180,8 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
 
       {v.zones && <ZonesCard z={v.zones} />}
       {v.laps.length > 0 && !noDistance(fam) && <LapsCard laps={v.laps} imperial={imperial} sport={v.sport} family={fam} />}
-      <ActivityFeedback v={v} onAsk={onAsk} onSaved={onSaved} />
-      {wantsFuelLog(v.numbers.moving_s ? Math.round(v.numbers.moving_s / 60) : null, v.planned?.kind, v.sport) && (
+      {!friend && <ActivityFeedback v={v} onAsk={onAsk} onSaved={onSaved} />}
+      {!friend && wantsFuelLog(v.numbers.moving_s ? Math.round(v.numbers.moving_s / 60) : null, v.planned?.kind, v.sport) && (
         <FuelLog fuelKey={`a:${v.key}`} minutes={Math.round((v.numbers.moving_s ?? v.numbers.elapsed_s ?? 3600) / 60)} sport={v.sport}
           title={v.planned?.title ?? v.name} date={v.start?.slice(0, 10) ?? ''} imperial={imperial} />
       )}
@@ -173,7 +191,12 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
           <ExternalLink className="size-5" aria-hidden /> Open in Garmin Connect
         </a>
       )}
-      {!v.ai && (
+      {friend && (
+        <p className="px-1 text-small text-(--text-muted)">
+          What {friend.name.split(' ')[0]} shares with friends. Heart rate and other health data stay private.
+        </p>
+      )}
+      {!v.ai && !friend && (
         <p className="px-1 text-small text-(--text-muted)">
           Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; rabbt's coaching doesn't use it.
         </p>

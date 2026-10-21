@@ -175,6 +175,7 @@ def make_routes(*, cm: Community, clubs: Clubs, plan_api: Callable[..., Any],
             have = await run(lambda: cm.workout_post(user_id, wid))
             if have is not None:  # already on the feed (auto-shared or shared before): no copy
                 return JSONResponse({"post": deco(await run(lambda: cm.get(user_id, have))), "already": True})
+            await run(lambda: cm.route_card(user_id, wid, card))
         post = await run(lambda: cm.create(user_id, b, workout=card))
         if wid is not None:
             await run(lambda: cm.claim_workout(user_id, wid))

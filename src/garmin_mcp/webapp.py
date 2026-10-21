@@ -3561,6 +3561,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             cm.push_link = lambda to, t, b, url: push.send(to, t, b, url=url)
         _ext_feed["share"] = cm.auto_share_external
         _share_consent["set"] = lambda uid, on: cm.put_settings(uid, {"share_workouts": on, "share_prompted": True})
+        if soc_feed is not None:  # friends' workout lists follow the same sharing consent as the Feed
+            soc_feed.consent = cm.sharing_consent
 
         def _cm_workouts(uid: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
             """Garmin activities and other sources' workouts, for the share-on backfill."""
@@ -3568,6 +3570,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             ext = _ext_w.visible(uid, acts) if _ext_w is not None else []
             return acts, ext
         cm.workouts_of = _cm_workouts
+
+        from . import routes as _routes
+        _route_cache: dict[tuple[str, int, int], tuple[float, dict[str, Any] | None]] = {}
+
+        def _cm_route(uid: str, aid: int, trim_m: int) -> dict[str, Any] | None:
+            """The trimmed, simplified GPS line of one Garmin activity (routes.py), cached 6 h."""
+            hit = _route_cache.get((uid, aid, trim_m))
+            if hit and time.time() - hit[0] < 6 * 3600:
+                return hit[1]
+            if not _garmin_connected(uid):
+                return None
+            details = _ag._service.read_uncached(uid, "get_activity_details",
+                                                 {"activity_id": str(aid), "maxchart": 10, "maxpoly": 4000})
+            r = _routes.from_details(details, trim_m=trim_m)
+            if len(_route_cache) > 400:
+                for k in sorted(_route_cache, key=lambda k: _route_cache[k][0])[:100]:
+                    _route_cache.pop(k, None)
+            _route_cache[(uid, aid, trim_m)] = (time.time(), r)
+            return r
+        cm.route_of = _cm_route
 
         def _cm_scan(uid: str, *, workouts: bool) -> None:
             today = _ag._now(uid).date()
@@ -3599,7 +3621,7 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
 
         def _cm_wants_share(uid: str) -> bool:
             try:
-                return _garmin_connected(uid) and cm.sharing_workouts(cm.settings(uid))
+                return _garmin_connected(uid) and cm.sharing_consent(uid)
             except Exception:
                 return False
 
@@ -4525,9 +4547,99 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 return _ap.build_imported(w, checkin=ck, feedback=_coach_fb({"kind": ""}, None, ck))
             raise ValueError("activity id")
 
+        _ap_cm = locals().get("cm")
+
+        def _ap_route(uid: str, view: dict[str, Any]) -> None:
+            """My own route on my workout page (when my maps are on): from my post if there is
+            one, else fetched (cached) the same trimmed way."""
+            if _ap_cm is None or not isinstance(view.get("id"), int):
+                return
+            from . import routes as _routes
+            if not _routes.has_route(view.get("family"), view.get("kind") or view.get("name")):
+                return
+            try:
+                s = _ap_cm.settings(uid)
+                if not s.get("routes_own", True):
+                    return
+                pid = _ap_cm.workout_post(uid, view["id"])
+                line = None
+                if pid is not None:
+                    post = _ap_cm.get(uid, pid)
+                    line = (post.get("workout") or {}).get("route")
+                    view["post_id"] = pid
+                if line is None and _ap_cm.route_of is not None:
+                    line = _routes.public(_ap_cm.route_of(uid, view["id"], s.get("routes_trim_m") or _routes.DEFAULT_TRIM_M))
+                if line:
+                    view["route"] = line
+            except Exception as e:
+                log_event(logger, logging.INFO, "activity_route_failed", error=type(e).__name__)
+
+        # Never on a friend's page: heart rate, calories, training load and effect (health data),
+        # and power (the friends' feed never shows it either).
+        _AP_PRIVATE = ("avg_hr", "max_hr", "calories", "training_load", "aerobic_te", "anaerobic_te", "te_label",
+                       "avg_power_w", "norm_power_w")
+
+        def _ap_friend_view(viewer: str, owner: str, raw: str) -> dict[str, Any]:
+            """A friend's workout page: only when ``viewer`` may see it (a Feed post of it they can
+            see, or it's in the friend's shared workout list), never heart rate, calories or
+            training load, distance and times only as the friend shares them, a route only as
+            the friend's map settings allow."""
+            if not raw.isdigit() or len(raw) > 20 or soc is None:
+                raise _UserError("That workout isn't available.", 404)
+            if soc.blocked_between(viewer, owner):
+                raise _UserError("That workout isn't available.", 404)
+            aid = int(raw)
+            post = None
+            if _ap_cm is not None:
+                pid = _ap_cm.workout_post(owner, aid)
+                if pid is not None:
+                    try:
+                        post = _ap_cm.get(viewer, pid)
+                    except Exception:
+                        post = None
+            listed = soc_feed is not None and soc.follows(viewer, owner) and soc_feed.has_item(viewer, owner, raw)
+            if post is None and not listed:
+                raise _UserError("That workout isn't available.", 404)
+            try:
+                _, acts = chat.agent.stats.activities(owner)
+            except Exception:
+                raise _UserError("Their workouts aren't reachable right now. Try again in a minute.", 503) from None
+            act = next((a for a in acts if a.get("activity_id") == aid), None)
+            if act is None:
+                raise _UserError("That workout isn't available.", 404)
+            laps, extra = _ap_detail(owner, aid)
+            view = _ap.build_view(act, laps=laps, extra={k: v for k, v in extra.items() if k != "calories"}, athlete={})
+            s = soc.settings(owner)
+            n = {k: v for k, v in view["numbers"].items() if k not in _AP_PRIVATE}
+            if not s["distance"]:
+                for k in ("km", "pace_s_per_km", "pace_s_per_100m", "pace_s_per_500m", "speed_kmh", "elevation_gain_m", "vertical_m"):
+                    n.pop(k, None)
+            if not s["times"]:
+                for k in ("moving_s", "elapsed_s"):
+                    n.pop(k, None)
+            laps_out = [] if not (s["distance"] and s["times"]) else [{k: v for k, v in lp.items() if k != "hr"} for lp in view["laps"]]
+            from . import sportfamily as _sfam
+            # Garmin's names often carry a place ("Denver Running"): the post's title, else the sport.
+            title = ((post or {}).get("workout") or {}).get("title") or _sfam.title(view.get("family") or "other", act.get("type") or act.get("sport"))
+            start = view.get("start") if s["times"] else (str(view.get("start") or "")[:10] or None)
+            out = {**view, "name": title, "start": start, "numbers": n, "laps": laps_out, "zones": None, "planned": None,
+                   "checkin": None, "feedback": None, "ai": False, "garmin_url": None,
+                   "owner": {"id": owner, "name": _soc_name(owner)}, "post_id": post["id"] if post else None}
+            if post is not None and (post.get("workout") or {}).get("route"):
+                out["route"] = post["workout"]["route"]
+            return out
+
         async def activity_get(request: Request, user_id: str) -> Response:
             raw = request.path_params["aid"]
-            return JSONResponse(await anyio.to_thread.run_sync(lambda: _ap_view(user_id, raw)))
+            of = (request.query_params.get("of") or "")[:80]
+            if of and of != user_id:
+                return JSONResponse(await anyio.to_thread.run_sync(lambda: _ap_friend_view(user_id, of, raw)))
+
+            def own() -> dict[str, Any]:
+                v = _ap_view(user_id, raw)
+                _ap_route(user_id, v)
+                return v
+            return JSONResponse(await anyio.to_thread.run_sync(own))
 
         home_routes += [
             Route("/app/api/activity/{aid}", _plan_api(activity_get, mutating=False), methods=["GET"]),
