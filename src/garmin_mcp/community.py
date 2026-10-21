@@ -598,7 +598,7 @@ class Community:
 
     def ask_status(self, viewer: str, friend: str) -> dict[str, Any]:
         """Can ``viewer`` ask ``friend`` to share workouts? ``reason`` when not: not_following,
-        shares (already), said_no, self. ``next_at``: when a recent ask allows another."""
+        shares (already), unavailable (their choice, not revealed), self. ``next_at``: when a recent ask allows another."""
         if viewer == friend:
             return {"can_ask": False, "reason": "self"}
         if (not self.social.is_athlete(friend) or self.social.blocked_between(viewer, friend)
@@ -606,7 +606,7 @@ class Community:
             return {"can_ask": False, "reason": "not_following"}
         s = self._settings_of(self._mine(friend).load())
         if s["share_workouts"] is False:
-            return {"can_ask": False, "reason": "said_no"}
+            return {"can_ask": False, "reason": "unavailable"}  # never reveal that they said no
         if self.sharing_consent(friend, s):
             return {"can_ask": False, "reason": "shares"}
         last = ((self._mine(friend).load().get("asked_by") or {}).get(viewer))

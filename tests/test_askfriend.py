@@ -27,7 +27,7 @@ def test_ask_once_a_week_and_only_the_undecided(fx) -> None:
 def test_never_ask_a_no_a_yes_or_a_stranger(fx) -> None:
     cm = fx.cm
     cm.put_settings("ann", {"share_workouts": False})
-    assert cm.ask_friend("bob", "ann") == {"asked": False, "reason": "said_no"}
+    assert cm.ask_friend("bob", "ann") == {"asked": False, "reason": "unavailable"}  # a no is never revealed
     cm.put_settings("ann", {"share_workouts": True})
     assert cm.ask_friend("bob", "ann")["reason"] == "shares"
     with pytest.raises(CommunityError):

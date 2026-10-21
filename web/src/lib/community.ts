@@ -390,7 +390,7 @@ export const followSuggested = (userId: string) =>
 
 /** Someone I follow who hasn't answered "share my workouts" (the Feed's waiting row). */
 export type Waiting = { id: string; name: string; asked_recently: boolean; user?: SocialUser | null }
-export type AskStatus = { can_ask: boolean; reason?: 'self' | 'not_following' | 'said_no' | 'shares' | 'asked_recently'; asked_recently?: boolean; next_at?: number }
+export type AskStatus = { can_ask: boolean; reason?: 'self' | 'not_following' | 'unavailable' | 'shares' | 'asked_recently'; asked_recently?: boolean; next_at?: number }
 /** Can I ask this friend to share their workouts? */
 export const getAskShare = (uid: string) => getJSON<AskStatus>(`${P}/people/${encodeURIComponent(uid)}/ask-share`)
 /** Ask them (one push from me by name, at most weekly). Asking shares nothing. */
