@@ -13,6 +13,8 @@ export type RhythmState = {
   strength_opt_in: boolean | null
   /** the rhythm has lifting days but strength isn't opted in yet */
   needs_strength_opt_in: boolean
+  /** the effective answer: an explicit opt-in, or Strength already picked as a favorite sport */
+  strength_on?: boolean
 }
 export type RhythmSaved = RhythmState & { plan?: BuiltPlan | null; warnings?: string[] }
 

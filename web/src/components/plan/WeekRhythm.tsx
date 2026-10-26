@@ -117,6 +117,7 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
   if (failed) return null  // the server doesn't offer it yet: nothing to show
   if (!st) return null
 
+  const on = st.strength_opt_in === true || (st.strength_opt_in == null && st.strength_on === true)
   const dirty = !sameRhythm(draft, st.week_rhythm)
 
   async function save(patch: { week_rhythm?: WeekRhythm; strength_opt_in?: boolean }, done: string) {
@@ -155,7 +156,7 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
 
   return (
     <Section title="Your week" description="Pick what goes on which day, like lifting Mon, Wed, Fri. Any lets rabbt choose.">
-      {st.needs_strength_opt_in && st.strength_opt_in !== true && (
+      {st.needs_strength_opt_in && !on && (
         <div role="note" className="flex items-start gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-3">
           <Dumbbell className="mt-0.5 size-5 shrink-0 text-(--accent)" aria-hidden />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -164,16 +165,16 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
           </div>
         </div>
       )}
-      <RhythmGrid value={draft} onChange={(r) => { setDraft(r); setMsg(null) }} strengthOptIn={st.strength_opt_in}
+      <RhythmGrid value={draft} onChange={(r) => { setDraft(r); setMsg(null) }} strengthOptIn={on ? true : st.strength_opt_in}
         onNeedOptIn={(d) => setAsking(d)} disabled={readOnly || busy} />
       <Card>
         <div className="flex min-h-14 items-center gap-3 px-4 py-3">
           <Dumbbell className="size-5 shrink-0 text-(--text-secondary)" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="m-0 text-body text-(--text)">Strength workouts</p>
-            <p className="m-0 text-meta text-(--text-muted)">{st.strength_opt_in === true ? 'On: exercises, sets and reps on lifting days' : 'Off: rabbt never schedules lifting'}</p>
+            <p className="m-0 text-meta text-(--text-muted)">{on ? 'On: exercises, sets and reps on lifting days' : 'Off: rabbt never schedules lifting'}</p>
           </div>
-          <Switch label="Strength workouts" checked={st.strength_opt_in === true} disabled={readOnly || busy} onChange={(v) => void strengthSwitch(v)} />
+          <Switch label="Strength workouts" checked={on} disabled={readOnly || busy} onChange={(v) => void strengthSwitch(v)} />
         </div>
       </Card>
       {warnings.length > 0 && (
