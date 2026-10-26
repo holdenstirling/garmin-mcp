@@ -190,6 +190,22 @@ class PlanService:
                   distance=plan["distance"])
         return out
 
+    def apply_rhythm(self, user_id: str) -> dict[str, Any]:
+        """Fit the athlete's weekly rhythm into the plan they have (rhythmfit.py): sessions
+        move to the right days from tomorrow on, nothing is regenerated, and anything set up
+        by hand, a trip, a sick day, a club run or race week stays put. Coach and imported
+        plans keep every session. Returns the plan with ``warnings`` and ``moved``."""
+        from . import rhythmfit as _rf
+        athlete = self._coach.athlete(user_id)
+        res: dict[str, Any] = {}
+
+        def fn(plan: dict[str, Any], today: date) -> None:
+            res.update(_rf.fit(plan, athlete, today, lambda s: self._orphan(plan, s)))
+        plan = self._edit(user_id, fn)
+        log_event(logger, logging.INFO, "plan_rhythm_applied", user_id=user_id, moved=res.get("moved", 0),
+                  added=res.get("added", 0), removed=res.get("removed", 0), coach=bool(plan.get("origin")))
+        return {**plan, "moved": res.get("moved", 0), "warnings": list(res.get("warnings") or [])}
+
     def install(self, user_id: str, goal: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
         """Replace the goal's plan doc with ``plan`` (a build, a coach import or an undo).
         Garmin workouts of the replaced plan from today on (and its orphans, and any parked by

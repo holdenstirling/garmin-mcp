@@ -51,7 +51,9 @@ PROFILE_DESC = (
     "(lift/weights/gym = strength). Before saving it, restate the whole week in one line and get "
     "a yes. If it has strength days and strength_opt_in isn't true, ask \"Want rabbt to schedule "
     "strength workouts?\" and set strength_opt_in true only on a yes. Saving week_rhythm or "
-    "strength_opt_in rebuilds their plan from today; tell them what changed and any warnings."
+    "strength_opt_in fits the week into the plan they already have from tomorrow on (sessions "
+    "move to the right days; their coach's plan, hand edits, trips and club runs stay); tell them "
+    "how many sessions moved and any warnings."
 )
 
 GOAL_DESC = (

@@ -723,11 +723,13 @@ class Agent:
                 raise GarminError(str(e)) from None
             out: dict[str, Any] = {"ok": True, "profile": profile}
             if {"week_rhythm", "strength_opt_in"} & set(args):
-                # The plan follows the new week from today on.
+                # The week is fitted into the plan they have (never regenerated: a coach's
+                # plan, hand edits, trips and club runs all stay).
                 try:
                     if self.plans is not None and self.plans.get(user_id) is not None:
-                        plan = self.plans.build(user_id, None)
+                        plan = self.plans.apply_rhythm(user_id)
                         out["plan_rebuilt"] = True
+                        out["sessions_moved"] = int(plan.get("moved") or 0)
                         out["plan_warnings"] = plan.get("warnings") or []
                         out["needs_strength_opt_in"] = bool(plan.get("needs_strength_opt_in"))
                 except Exception as e:  # saved anyway; the plan can be rebuilt from the Plan tab

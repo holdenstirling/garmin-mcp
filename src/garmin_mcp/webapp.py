@@ -966,17 +966,26 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         there is one) so it follows the new week. Returns the rhythm and the new plan."""
         assert plans is not None
         body = await read_json(request)
-        if not isinstance(body, dict) or not set(body) <= {"week_rhythm", "strength_opt_in"} or not body:
+        if not isinstance(body, dict) or not set(body) <= {"week_rhythm", "strength_opt_in", "rebuild"} \
+                or not set(body) - {"rebuild"} and body.get("rebuild") is not True:
             raise _UserError("Send week_rhythm and/or strength_opt_in.")
+        rebuild = body.pop("rebuild", False) is True
+        cur = plans.get(user_id)
+        if rebuild and cur is not None and cur.get("origin"):
+            raise _UserError("This plan came from your coach or a file, so rabbt won't rebuild it. "
+                             "Your week is fitted into it instead.")
 
         def run() -> dict[str, Any] | None:
-            _coach().update_athlete(user_id, body)
+            if body:
+                _coach().update_athlete(user_id, body)
             if plans.get(user_id) is None or _coach().active_goal(user_id) is None:
                 return None
-            return plans.build(user_id, None)
+            # Fit the week into the plan they have; a full rebuild only when they ask for it.
+            return plans.build(user_id, None) if rebuild else plans.apply_rhythm(user_id)
         plan = await _plan_call(run)
         out = _rhythm_view(user_id)
         return JSONResponse({**out, "plan": public_plan(plan, plans.today(user_id)) if plan else None,
+                             "moved": int((plan or {}).get("moved") or 0), "rebuilt": bool(plan) and rebuild,
                              "warnings": list((plan or {}).get("warnings") or [])})
 
     async def plan_delete(request: Request, user_id: str) -> Response:

@@ -98,8 +98,10 @@ export function StrengthOptInSheet({ busy, onYes, onNo }: { busy?: boolean; onYe
   )
 }
 
-/** Plan -> Edit plan: "Your week". Saving rebuilds the plan from today. */
-export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan) => void; readOnly?: boolean }) {
+/** Plan -> Edit plan: "Your week". Saving fits the week into the plan you have (sessions move,
+ * nothing is regenerated); a rabbt-built plan can also be rebuilt around it. `coachPlan`: the plan
+ * came from a coach or a file, so it's never rebuilt. */
+export function WeekRhythmSection({ onPlan, readOnly, coachPlan = false }: { onPlan?: (p: BuiltPlan) => void; readOnly?: boolean; coachPlan?: boolean }) {
   const [st, setSt] = useState<RhythmState | null>(null)
   const [draft, setDraft] = useState<WeekRhythm>({})
   const [busy, setBusy] = useState(false)
@@ -120,13 +122,15 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
   const on = st.strength_opt_in === true || (st.strength_opt_in == null && st.strength_on === true)
   const dirty = !sameRhythm(draft, st.week_rhythm)
 
-  async function save(patch: { week_rhythm?: WeekRhythm; strength_opt_in?: boolean }, done: string) {
+  async function save(patch: { week_rhythm?: WeekRhythm; strength_opt_in?: boolean; rebuild?: boolean }, done: string) {
     setBusy(true); setErr(null); setMsg(null); setWarnings([])
     try {
       const r = await putRhythm(patch)
       setSt(r); setDraft(clean(r.week_rhythm)); setWarnings(r.warnings ?? [])
       if (r.plan) onPlan?.(r.plan)
-      setMsg(done)
+      setMsg(r.plan && !r.rebuilt && r.moved != null
+        ? `${done} ${r.moved ? `Moved ${r.moved} session${r.moved === 1 ? '' : 's'} to fit your week.` : 'Your sessions already fit your week.'}`
+        : done)
       return r
     } catch (e) {
       setErr((e as Error).message || "Couldn't save just now. Try again.")
@@ -139,6 +143,14 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
     const r = await save({ strength_opt_in: true }, 'Strength workouts are on.')
     setAsking(null)
     if (r && day && day !== 'switch' && day !== 'note') setDraft((cur) => toggle(cur, day, 'strength'))
+  }
+
+  async function rebuildAround() {
+    const ok = await confirmAsk('Rebuild your plan around this week?', {
+      confirm: 'Rebuild',
+      detail: 'Rebuilds from today. Changes you made by hand to upcoming sessions are replaced.',
+    })
+    if (ok) await save({ rebuild: true }, 'Plan rebuilt around your week.')
   }
 
   async function strengthSwitch(v: boolean) {
@@ -190,6 +202,12 @@ export function WeekRhythmSection({ onPlan, readOnly }: { onPlan?: (p: BuiltPlan
           <Button variant="primary" className="h-12 flex-1 text-body" loading={busy}
             onClick={() => void save({ week_rhythm: clean(draft) }, 'Plan updated.')}>Save my week</Button>
         </div>
+      )}
+      {!readOnly && !coachPlan && !dirty && (st.week_rhythm && Object.keys(st.week_rhythm).length > 0) && (
+        <button type="button" disabled={busy} onClick={() => void rebuildAround()}
+          className="hit-44 self-start px-1 text-small font-medium text-(--accent) disabled:opacity-60">
+          Rebuild my plan around this week
+        </button>
       )}
       {asking && <StrengthOptInSheet busy={busy} onYes={() => void optIn()} onNo={() => setAsking(null)} />}
     </Section>

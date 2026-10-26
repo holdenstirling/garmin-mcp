@@ -16,7 +16,8 @@ export type RhythmState = {
   /** the effective answer: an explicit opt-in, or Strength already picked as a favorite sport */
   strength_on?: boolean
 }
-export type RhythmSaved = RhythmState & { plan?: BuiltPlan | null; warnings?: string[] }
+/** `moved`: sessions moved to fit the week (the plan is never regenerated unless `rebuilt`). */
+export type RhythmSaved = RhythmState & { plan?: BuiltPlan | null; warnings?: string[]; moved?: number; rebuilt?: boolean }
 
 export const DAYS: [Day, string, string][] = [
   ['mon', 'Mon', 'Monday'], ['tue', 'Tue', 'Tuesday'], ['wed', 'Wed', 'Wednesday'], ['thu', 'Thu', 'Thursday'],
@@ -26,7 +27,7 @@ export const SPORT_LABEL: Record<RhythmSport, string> = { run: 'Run', bike: 'Bik
 export const MAX_PER_DAY = 2
 
 export const getRhythm = () => getJSON<RhythmState>('/api/plan/rhythm')
-export const putRhythm = (patch: { week_rhythm?: WeekRhythm; strength_opt_in?: boolean }) =>
+export const putRhythm = (patch: { week_rhythm?: WeekRhythm; strength_opt_in?: boolean; rebuild?: boolean }) =>
   sendJSON<RhythmSaved>('PUT', '/api/plan/rhythm', patch)
 
 /** Tap a chip on one day: Any clears the day, Rest stands alone, at most two sports. */

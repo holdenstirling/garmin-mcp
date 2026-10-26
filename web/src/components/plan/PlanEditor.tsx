@@ -324,8 +324,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         </div>
       )}
 
-      {/* Your week (lib/rhythm.ts): lift Mon, Wed, Fri, bike Tue, Thu, Sat... Saving rebuilds the plan. */}
-      {!coachMode && <WeekRhythmSection readOnly={readOnly} onPlan={(p) => applied(p)} />}
+      {/* Your week (lib/rhythm.ts): lift Mon, Wed, Fri, bike Tue, Thu, Sat... Saving fits it into the plan. */}
+      {!coachMode && <WeekRhythmSection readOnly={readOnly} coachPlan={!!plan?.origin} onPlan={(p) => applied(p)} />}
       {!coachMode && <AdjustedSummary plan={plan} weekIndex={week?.index ?? null} />}
       <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
