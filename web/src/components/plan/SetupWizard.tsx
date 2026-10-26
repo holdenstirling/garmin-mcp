@@ -20,6 +20,8 @@ import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, 
 import { SetupReview } from './SetupReview'
 import { PhaseStrip, SPORT_ICON, WeekPreview } from './PlanParts'
 import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
+import { RhythmGrid, StrengthOptInSheet } from './WeekRhythm'
+import { clean as cleanRhythm, summary as rhythmSummary, syncDays, toggle as toggleRhythm, type Day, type WeekRhythm } from '@/lib/rhythm'
 import { LeverFields, usePreview } from './PlanFlow'
 import { EventBasics } from '@/components/events/EventForm'
 import { TYPE_DISTANCES, listEvents, type EventFields, type EventType } from '@/lib/events'
@@ -28,7 +30,7 @@ import { clearDraft, readDraft, writeDraft } from '@/lib/drafts'
 import { hoursLine } from '@/lib/planflow'
 import { RabbitNap } from '@/components/anim'
 
-const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'review', 'done'] as const
+const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'rhythm', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
 const STEP_NAME: Partial<Record<StepName, string>> = {
   race: 'Your goal', goal: 'A great day', you: 'About you', numbers: 'Your numbers', week: 'Your week', review: 'Your plan',
@@ -149,6 +151,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
   const setDraft: typeof setDraftState = (v) => { changed.current = true; setDraftState(v) }
   const [step, setStep] = useState<StepName>('intro')
   const [closing, setClosing] = useState(false)
+  const [liftAsk, setLiftAsk] = useState<Day | null>(null)  // "Add strength workouts?" from the rhythm step
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -182,11 +185,17 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
   const sports = sportsFor(g.distance)
   const setG = (p: Partial<GoalFull>) => setDraft((d) => ({ ...d, goal: { ...d.goal, ...p } }))
   const setA = (p: Partial<AthleteFull>) => setDraft((d) => ({ ...d, athlete: { ...d.athlete, ...p } }))
+  // The rhythm step: lifting / riding days become training days, Rest days stop being one.
+  const setRhythm = (r: WeekRhythm) => {
+    const days = syncDays(a.available_days, r)
+    setA({ week_rhythm: r, available_days: days, long_day: days.includes(a.long_day ?? '') ? a.long_day : days[days.length - 1] ?? null })
+  }
   const noRace = !!g.no_race
   // A training block has no race-day goal, so its "A great day" step is skipped.
   const shown = STEPS.filter((s) => !(noRace && s === 'goal'))
   const pos = shown.indexOf(step)
-  useEffect(() => { if (step !== 'done') track('setup_step', { step }) }, [step]) // lib/usage: setup funnel
+  // lib/usage: setup funnel (the optional rhythm step counts as "week" until usage.py lists it)
+  useEffect(() => { if (step !== 'done') track('setup_step', { step: step === 'rhythm' ? 'week' : step }) }, [step])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   // ------------------------------------------------------- validation ---
@@ -206,6 +215,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       if (!a.weekly_hours) return 'How many hours a week do you train now?'
       if ((a.available_days ?? []).length < 2) return 'Pick at least two training days.'
     }
+    if (step === 'rhythm' && (a.available_days ?? []).length < 2) return 'Leave at least two days that aren\'t Rest.'
     return null
   }, [step, g, a])
 
@@ -257,6 +267,8 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       if (athlete[k] === '' && k !== 'injuries' && k !== 'experience') delete athlete[k]
     }
     if (athlete.long_day && !(athlete.available_days ?? []).includes(athlete.long_day)) athlete.long_day = null
+    athlete.week_rhythm = cleanRhythm(athlete.week_rhythm)
+    if (athlete.strength_opt_in == null) delete athlete.strength_opt_in
     return { athlete, goal }
   }
   const newGoal = (draft.newGoal && !!me.goal) || !me.goal
@@ -307,7 +319,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
         </Button>
       ) : (
         <Button variant="primary" className="h-11 flex-1 text-body" onClick={next}>
-          {step === 'numbers' && !hasNumbers(a) ? 'Skip for now' : 'Continue'}
+          {step === 'numbers' && !hasNumbers(a) ? 'Skip for now' : step === 'rhythm' && !rhythmSummary(a.week_rhythm ?? {}) ? 'Skip' : 'Continue'}
         </Button>
       )}
     </>
@@ -507,6 +519,21 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
         </>
       )}
 
+      {step === 'rhythm' && (
+        <>
+          <StepIntro eyebrow="Optional" title="Want a set weekly rhythm?">
+            Like lifting Mon, Wed, Fri and biking Tue, Thu, Sat. Leave a day on Any and rabbt picks. Skip it and rabbt plans the whole week.
+          </StepIntro>
+          <RhythmGrid value={a.week_rhythm ?? {}} onChange={setRhythm} strengthOptIn={a.strength_opt_in}
+            onNeedOptIn={(d) => setLiftAsk(d)} />
+          {liftAsk && (
+            <StrengthOptInSheet
+              onYes={() => { const d = liftAsk; setLiftAsk(null); setA({ strength_opt_in: true }); setRhythm(toggleRhythm(a.week_rhythm ?? {}, d, 'strength')) }}
+              onNo={() => setLiftAsk(null)} />
+          )}
+        </>
+      )}
+
       {step === 'review' && busy && (
         <div className="flex flex-col items-center px-2 pt-6 text-center">
           <h3 className="font-display text-display-sm leading-tight text-(--brand)">Building your plan</h3>
@@ -553,6 +580,8 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
                   value={[g.goal_type === 'time' ? `Target ${g.target_time}` : g.goal_type === 'compete' ? 'Compete' : 'Finish strong',
                     (g.limiters ?? []).length ? `More ${(g.limiters ?? []).join(' and ')}` : ''].filter(Boolean).join(', ')} />
               )}
+              <ReviewRow label="Your week" onEdit={() => setStep('rhythm')}
+                value={[rhythmSummary(a.week_rhythm ?? {}) ?? 'rabbt picks each day', a.strength_opt_in ? 'strength workouts on' : null].filter(Boolean).join(', ')} />
               <ReviewRow label="You" onEdit={() => setStep('you')}
                 value={[levelLabel(a.level), a.age && `${a.age} yrs`, a.height_cm && (imperial ? `${cmToFtIn(a.height_cm).ft}'${cmToFtIn(a.height_cm).inch}"` : `${a.height_cm} cm`),
                   a.weight_kg && (imperial ? `${kgToLb(a.weight_kg)} lb` : `${a.weight_kg} kg`)].filter(Boolean).join(', ') || 'Not set'} />

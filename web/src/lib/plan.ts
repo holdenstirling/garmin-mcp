@@ -1,5 +1,6 @@
 // Plan builder API: the setup wizard's save, the built plan, session edits, Garmin sync.
 import { getJSON, sendJSON, type Athlete, type Goal, type Sport } from '@/lib/api'
+import type { WeekRhythm } from '@/lib/rhythm'
 
 export type Step =
   | { type: 'warmup' | 'steady' | 'work' | 'recover' | 'cooldown'; minutes?: number; meters?: number; zone: number }
@@ -16,12 +17,14 @@ export type PlanSession = {
   club_run?: { club_id: string; meetup_id: string; label: string } | null
   /** why rabbt (or you) changed it, in one line */
   why?: { kind: 'club' | 'sick' | 'travel' | 'readiness' | 'you'; text: string } | null
-  exercises?: { name: string; dose: string }[]; prehab?: { name: string; dose: string }[]
+  exercises?: Exercise[]; prehab?: Exercise[]
   fuel?: { carbs_g_per_h: number; total_carbs_g?: number; fluid_ml_per_h?: string; sodium_mg_per_h?: string; note: string } | null
   /** one line, e.g. "Fuel: 1 gel every 30 min · recovery snack after" (null when water is enough) */
   fuel_hint?: string | null
   steps: Step[]; legs: { sport: Sport; minutes: number; steps: Step[] }[]
 }
+/** A strength / mobility exercise: structured (sets, reps, rest, cue) or one `dose` line. */
+export type Exercise = { name: string; dose?: string; sets?: number | null; reps?: string | number | null; rest_s?: number | null; cue?: string | null }
 export type PlanDay = { date: string; sessions: PlanSession[] }
 export type PlanWeekBuilt = {
   index: number; start: string; phase: 'base' | 'build' | 'peak' | 'taper' | 'race'
@@ -64,6 +67,10 @@ export type AthleteFull = Athlete & Partial<AthleteNumbers> & Partial<AthleteTra
   plan_intensity?: 'gentle' | 'normal' | 'push' | null
   /** longest run / ride in the last month, minutes (the plan's first long session starts there) */
   longest_run_min?: number | null; longest_ride_min?: number | null
+  /** a set weekly rhythm (lib/rhythm.ts): which sports go on which weekday; missing day = Any */
+  week_rhythm?: WeekRhythm
+  /** strength workouts are opt-in: until true, the plan never schedules lifting */
+  strength_opt_in?: boolean | null
 }
 export type Trait = typeof TRAITS[number][0]
 export type Terrain = typeof TERRAIN[number][0]
