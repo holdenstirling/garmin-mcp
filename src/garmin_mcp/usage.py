@@ -39,7 +39,7 @@ from .appstore import AppStore
 # feed + clubs replaced community + races (Schedule holds events); old names still count for old clients
 TABS = frozenset({"rabbit", "plan", "feed", "clubs", "community", "races", "progress", "me"})
 CARDS = frozenset({"upnext", "ring", "race_grade", "reward", "actions"})
-SETUP_STEPS = ("intro", "race", "goal", "you", "numbers", "week", "review")
+SETUP_STEPS = ("intro", "race", "goal", "you", "numbers", "week", "rhythm", "review")
 SHARES = frozenset({"workout", "post", "month", "race", "plan", "invite", "profile"})
 RSVPS = frozenset({"meetup", "group", "race"})
 PUSHES = frozenset({"coach", "recap", "community", "workout", "brief", "other"})

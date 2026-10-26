@@ -46,7 +46,12 @@ PROFILE_DESC = (
     "Save durable facts about the athlete that hold across goals: experience, units (metric or "
     "imperial), typical weekly hours, usual training days, injuries/limitations, preferences "
     "(e.g. 'swim distances in yards', 'hates the treadmill'), age. Only fields the athlete told "
-    "you or confirmed; pass just the fields that changed."
+    "you or confirmed; pass just the fields that changed. Weekly rhythm: when they say which "
+    "sport goes on which day (\"lift Mon/Wed/Fri, bike Tue/Thu/Sat\"), set week_rhythm "
+    "(lift/weights/gym = strength). Before saving it, restate the whole week in one line and get "
+    "a yes. If it has strength days and strength_opt_in isn't true, ask \"Want rabbt to schedule "
+    "strength workouts?\" and set strength_opt_in true only on a yes. Saving week_rhythm or "
+    "strength_opt_in rebuilds their plan from today; tell them what changed and any warnings."
 )
 
 GOAL_DESC = (
@@ -183,6 +188,17 @@ AGENT_TOOLS: list[dict] = [
                 "long_day": {"type": "string", "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]},
                 "equipment": {"type": "array", "items": {"type": "string", "enum": [
                     "pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym"]}},
+                "week_rhythm": {
+                    "type": "object",
+                    "description": "Weekday -> 1-2 sports they want that day; leave a day out for "
+                                   "'any' (rabbt decides). 'rest' must be alone. {} clears it.",
+                    "properties": {d: {"type": "array", "maxItems": 2, "items": {
+                        "type": "string", "enum": ["run", "bike", "swim", "strength", "rest"]}}
+                        for d in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")},
+                    "additionalProperties": False,
+                },
+                "strength_opt_in": {"type": "boolean",
+                                    "description": "They said yes (true) or no (false) to strength workouts in the plan."},
             },
         },
     },

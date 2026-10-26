@@ -37,6 +37,8 @@ DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 LEVELS = ("new", "intermediate", "advanced")
 EQUIPMENT = ("pool", "open_water", "power_meter", "indoor_trainer", "hr_strap", "treadmill", "gym")
 DEFAULT_DAYS = ("tue", "wed", "thu", "sat", "sun")
+RHYTHM_SPORTS = ("run", "bike", "swim", "strength", "rest")
+RHYTHM_ENDURANCE = ("run", "bike", "swim")
 MAX_WEEKS = 52
 MAX_PER_DAY = 4
 # Favorite sports (athlete profile) -> the engine sport they train.
@@ -360,6 +362,11 @@ class Inputs:
     longest_run_min: float | None = None
     longest_ride_min: float | None = None
     no_race: bool = False  # a training block: no race week, the last week is lighter
+    # Weekly rhythm (coaching.validate_rhythm): weekday -> sports the athlete wants that day;
+    # a day not listed is "any". Strength days only count when ``strength`` is on.
+    rhythm: dict[str, list[str]] = field(default_factory=dict)
+    strength: bool = False          # opted into strength workouts (coaching.strength_on)
+    strength_asked: bool = False    # rhythm has strength days but strength isn't opted in
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
@@ -369,9 +376,27 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
         race = date.fromisoformat(goal["date"])
     except ValueError:
         raise PlanError("Race date must be YYYY-MM-DD.") from None
+    from .coaching import strength_on  # local: coaching's helpers, no import cycle at load
+    strength = strength_on(athlete)
+    raw_rhythm = athlete.get("week_rhythm") if isinstance(athlete.get("week_rhythm"), dict) else {}
+    rhythm: dict[str, list[str]] = {}
+    strength_asked = False
+    for d in DAYS:
+        sp = [s for s in (raw_rhythm.get(d) or []) if s in RHYTHM_SPORTS]
+        if "strength" in sp and not strength:
+            strength_asked = True
+            sp = [s for s in sp if s != "strength"]  # not opted in: the day is "any"
+        if sp:
+            rhythm[d] = sp
     days = [d for d in (athlete.get("available_days") or []) if d in DAYS] or list(DEFAULT_DAYS)
+    if rhythm:
+        # Rhythm days are training days; rest days never are.
+        days = [d for d in DAYS if (d in days or d in rhythm) and rhythm.get(d) != ["rest"]] or \
+            [d for d in DAYS if rhythm.get(d) != ["rest"]]
     long_day = athlete.get("long_day") if athlete.get("long_day") in DAYS else (
         "sat" if "sat" in days else days[-1])
+    if rhythm.get(long_day) == ["rest"]:
+        long_day = "sat" if "sat" in days else days[-1]
     if long_day not in days:
         days.append(long_day)
     css = athlete.get("swim_css")
@@ -396,7 +421,8 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   favorites=[f for f in (athlete.get("favorite_sports") or []) if f in FAVORITE_SPORTS],
                   injuries=str(athlete.get("injuries") or "")[:500], level_given=level_given,
                   longest_run_min=_pos("longest_run_min"), longest_ride_min=_pos("longest_ride_min"),
-                  no_race=goal.get("no_race") is True)
+                  no_race=goal.get("no_race") is True, rhythm=rhythm, strength=strength,
+                  strength_asked=strength_asked)
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -594,6 +620,135 @@ def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> di
         put(day, s)
         if s["kind"] in QUALITY:
             quality_days.add(day)
+    return out
+
+
+def _rsport(s: dict[str, Any]) -> str:
+    """The rhythm sport a session counts as (a brick is a bike day)."""
+    return "bike" if s["sport"] == "brick" else s["sport"]
+
+
+def _circ(a: str, b: str) -> int:
+    d = abs(DAYS.index(a) - DAYS.index(b))
+    return min(d, 7 - d)
+
+
+def strength_minutes(phase: str, recovery: bool, week_minutes: float) -> int:
+    """An opted-in strength day: 45-60 minutes (shorter in small weeks, recovery and taper)."""
+    if phase == "taper":
+        return 25
+    if recovery or week_minutes < 240:
+        return 40 if recovery else 45
+    return 60 if week_minutes >= 420 else 50
+
+
+def _place_rhythm(sessions: list[dict[str, Any]], inp: Inputs, *, phase: str, recovery: bool,
+                  week_minutes: float, race_kind: str, warn: set[str]) -> dict[str, list[dict[str, Any]]]:
+    """Weekly rhythm placement: each sport's sessions go on the days the athlete picked for it
+    (long one nearest the long day, quality ones spread out); a picked day with no session left
+    gets an easy one; sports with no picked days go on the open ("any") days; rest days stay
+    empty; strength days get the opted-in strength workout."""
+    rh = inp.rhythm
+    out: dict[str, list[dict[str, Any]]] = {d: [] for d in DAYS}
+    load = {d: 0 for d in DAYS}
+    train = [d for d in DAYS if d in inp.days and rh.get(d) != ["rest"]]
+    any_days = [d for d in train if d not in rh]
+    hard: set[str] = set()
+
+    def put(day: str, s: dict[str, Any]) -> None:
+        out[day].append(s)
+        load[day] += s.get("minutes") or 0
+        if s.get("kind") in QUALITY or s.get("kind") in ("long", "brick"):
+            hard.add(day)
+
+    def prio(s: dict[str, Any]) -> int:
+        return 0 if s.get("kind") in ("long", "brick") else 1 if s.get("kind") in QUALITY else 2
+
+    unpinned: list[dict[str, Any]] = []
+    bike_long_day: str | None = None
+    for sport in ("bike", "run", "swim"):
+        sdays = [d for d in train if sport in rh.get(d, [])]
+        ss = sorted((s for s in sessions if _rsport(s) == sport), key=prio)
+        if not sdays:
+            unpinned += ss
+            continue
+        avail = list(sdays)
+        for s in ss:
+            if not avail:
+                unpinned.append(s)  # more sessions than picked days: the rest go on open days
+                continue
+            if prio(s) == 0:
+                target = inp.long_day
+                if sport == "run" and bike_long_day is not None:
+                    target = DAYS[(DAYS.index(bike_long_day) + 1) % 7]
+                day = min(avail, key=lambda d: (_circ(d, target), -DAYS.index(d)))
+                if sport == "bike":
+                    bike_long_day = day
+            elif prio(s) == 1:
+                day = min(avail, key=lambda d: (sum(_circ(d, h) <= 1 for h in hard), load[d], DAYS.index(d)))
+            else:
+                day = min(avail, key=lambda d: (load[d], DAYS.index(d)))
+            put(day, s)
+            avail.remove(day)
+        if phase != "race":
+            fill_m = _r5(max(30, min(60, week_minutes * 0.08)))
+            for d in avail:  # picked for this sport but nothing left: an easy session
+                kind = "technique" if sport == "swim" else "recovery" if recovery else "easy"
+                put(d, make_session(sport, kind, fill_m, swim_pace=inp.swim_pace, phase=phase))
+
+    for s in sorted(unpinned, key=prio):
+        sport = _rsport(s)
+        pool = [d for d in train if len(out[d]) < MAX_PER_DAY]
+        if not pool:
+            warn.add("Your weekly rhythm has more sessions than days, so a few easy ones were left out.")
+            continue
+
+        def cost(d: str, s: dict[str, Any] = s, sport: str = sport) -> tuple[int, ...]:
+            same = sum(_rsport(x) == sport for x in out[d])
+            picked = 0 if d in any_days else 2 if "strength" in rh.get(d, []) else 1
+            long_pen = _circ(d, inp.long_day) if prio(s) == 0 else 0
+            near = sum(_circ(d, h) <= 1 for h in hard) if prio(s) < 2 else 0
+            return (same, picked, long_pen, near, load[d], DAYS.index(d))
+        day = min(pool, key=cost)
+        if day not in any_days and sport in ("run", "bike", "swim"):
+            warn.add(f"Your weekly rhythm has no {sport} days and few open days, so rabbt also put "
+                     f"{sport} sessions on days you picked for other things. Add a {sport} day for a cleaner week.")
+        put(day, s)
+
+    if inp.strength:
+        st_days = [d for d in DAYS if "strength" in rh.get(d, [])]
+        m = strength_minutes(phase, recovery, week_minutes)
+        for d in st_days:
+            nxt = DAYS[(DAYS.index(d) + 1) % 7]
+            key_next = any(x.get("kind") in QUALITY or x.get("kind") in ("long", "brick") for x in out[nxt])
+            s = make_session("strength", "strength", m, phase=phase)
+            s["variant"] = "light" if key_next or phase == "taper" else "heavy"
+            s["rhythm"] = True
+            put(d, s)
+    return out
+
+
+def rhythm_warnings(inp: Inputs, race_kind: str, distance: str) -> list[str]:
+    """Plain-word warnings when the weekly rhythm leaves too little room for the goal."""
+    rh = inp.rhythm
+    if not rh:
+        return []
+    out: list[str] = []
+    open_days = [d for d in inp.days if d not in rh]
+    need = {"run": ("run",), "bike": ("bike",), "tri": ("swim", "bike", "run"), "general": ()}.get(race_kind, ())
+    for sport in need:
+        n = sum(sport in v for v in rh.values())
+        if n == 0 and not open_days:
+            out.append(f"Your {distance} needs {sport} training, but your weekly rhythm has no {sport} "
+                       f"days. rabbt fit {sport} sessions on other days; adding a {sport} day would help.")
+    if race_kind == "run" and distance in ("half marathon", "marathon", "ultra"):
+        n = sum("run" in v for v in rh.values()) + len(open_days)
+        if n < 3:
+            out.append(f"A {distance} plan works best with at least 3 run days a week. Your rhythm "
+                       f"leaves {n}, so the runs are bigger to make up for it.")
+    if inp.strength_asked:
+        out.append("Your rhythm has strength days, but strength workouts are off. Turn them on and "
+                   "rabbt fills those days with lifting sessions; until then they're open days.")
     return out
 
 
@@ -890,6 +1045,14 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
     peak_h = max([h for (h, _), p in zip(hours, ph, strict=True) if p == "peak"] or
                  [h for (h, r) in hours if not r] or [start_h])
     split = _split(race_kind, inp.limiters, inp.favorites)
+    rhythm_strength = inp.strength and any("strength" in v for v in inp.rhythm.values())
+    if not inp.strength or rhythm_strength:
+        # Strength only for people who opted in; with strength days in the rhythm it's placed
+        # there (_place_rhythm) instead of as a share of the week.
+        split.pop("strength", None)
+        tot = sum(split.values()) or 1.0
+        split = {k: v / tot for k, v in split.items()}
+    warnings: set[str] = set()
     if race_kind == "tri" and inp.equipment and not {"pool", "open_water"} & set(inp.equipment):
         split.pop("swim", None)  # no water access: skip swims rather than plan the impossible
         tot = sum(split.values())
@@ -968,7 +1131,11 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                     sessions.append(make_session("brick" if k == "brick" else sport, k, _r5(m),
                                                  swim_pace=inp.swim_pace, phase=phase,
                                                  run_off=run_off or 20))
-            placed = _place(sessions, inp.days, inp.long_day)
+            if inp.rhythm:
+                placed = _place_rhythm(sessions, inp, phase=phase, recovery=rec, week_minutes=minutes,
+                                       race_kind=race_kind, warn=warnings)
+            else:
+                placed = _place(sessions, inp.days, inp.long_day)
             days = {}
             for i in range(7):
                 d = ws + timedelta(days=i)
@@ -991,22 +1158,31 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
             "race_date": inp.race_date.isoformat(), "distance": inp.distance, "no_race": inp.no_race,
             "race_kind": race_kind, "level": inp.level, "peak_hours": round(peak_h, 1),
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
-            "start_from": how["source"], "note": note, "weeks": weeks}
+            "start_from": how["source"], "note": note, "weeks": weeks,
+            "warnings": rhythm_warnings(inp, race_kind, inp.distance) + sorted(warnings),
+            "week_rhythm": inp.rhythm, "needs_strength_opt_in": inp.strength_asked}
 
 
 def apply_strength(weeks: list[dict[str, Any]], inp: Inputs, race_kind: str) -> None:
     """Phase- and sport-specific strength routines (plus prehab for listed injuries), and a
     weekly 20-minute mobility session when the athlete has injuries or likes yoga."""
-    from .strength import routine
+    from .strength import routine, workout
     want_mobility = bool(inp.injuries) or "yoga" in inp.favorites
     for w in weeks:
         for ss in w["days"].values():
             for x in ss:
-                if x["sport"] == "strength":
+                if x["sport"] == "strength" and x.get("rhythm"):
+                    r = workout(w["phase"], race_kind, x.get("variant") or "heavy", int(x.get("minutes") or 45),
+                                inp.injuries)
+                    x.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
+                    if not x.get("title_custom"):
+                        x["title"] = r["title"]
+                elif x["sport"] == "strength":
                     r = routine(w["phase"], race_kind, inp.injuries, mobility=x.get("kind") == "mobility")
                     x.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
         if want_mobility and w["phase"] != "race":
-            free = [d for d in sorted(w["days"]) if all(x["sport"] == "rest" for x in w["days"][d])]
+            free = [d for d in sorted(w["days"]) if all(x["sport"] == "rest" for x in w["days"][d])
+                    and inp.rhythm.get(DAYS[date.fromisoformat(d).weekday()]) != ["rest"]]
             if free:
                 d = free[len(free) // 2]
                 m = make_session("strength", "mobility", 20)

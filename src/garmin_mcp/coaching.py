@@ -66,7 +66,8 @@ TRAITS = ("climbing", "descending", "flats", "speed", "endurance", "heat", "cold
 TERRAIN = ("flat_roads", "rolling", "hills", "mountains", "trails", "track", "pool", "open_water", "trainer")
 MAX_RACE_HISTORY = 10
 _RACE_HISTORY_TEXT = {"name": 60, "distance": 20, "result": 40}
-_ATHLETE_LABEL = {"fuel_style": "fueling preference", "caffeine": "uses caffeine when fueling",
+_ATHLETE_LABEL = {"week_rhythm": "weekly rhythm (sport by day)", "strength_opt_in": "wants strength workouts in the plan",
+                  "fuel_style": "fueling preference", "caffeine": "uses caffeine when fueling",
                   "diet": "diet (for food suggestions)", "home_elevation_m": "home elevation", "altitude_acclimatized": "lives/trains at altitude",
                   "motivation": "why they race", "terrain_access": "terrain they can train on"}
 _LISTS = {"available_days": None, "equipment": None, "favorite_sports": None,
@@ -86,6 +87,46 @@ MAX_PLAN_FILES = 10
 
 class CoachError(ValueError):
     """Validation error whose message is safe to show the user."""
+
+
+RHYTHM_SPORTS = ("run", "bike", "swim", "strength", "rest")
+
+
+def validate_rhythm(v: Any) -> dict[str, list[str]]:
+    """The athlete's weekly rhythm: weekday -> 1-2 sports (or ["rest"] alone). A day left out
+    is "any": rabbt decides. ``None`` / ``{}`` clears it."""
+    if v in (None, {}):
+        return {}
+    if not isinstance(v, dict) or any(k not in _WEEKDAYS for k in v):
+        raise CoachError("week rhythm must map weekdays (mon..sun) to sports")
+    out: dict[str, list[str]] = {}
+    for day in _WEEKDAYS:
+        if day not in v:
+            continue
+        sports = v[day]
+        if sports in (None, [], "any"):
+            continue
+        if isinstance(sports, str):
+            sports = [sports]
+        if not isinstance(sports, list) or any(s not in RHYTHM_SPORTS for s in sports):
+            raise CoachError(f"week rhythm sports must be from {', '.join(RHYTHM_SPORTS)}")
+        sports = list(dict.fromkeys(sports))
+        if len(sports) > 2:
+            raise CoachError("at most 2 sports a day in your weekly rhythm")
+        if "rest" in sports and len(sports) > 1:
+            raise CoachError("a rest day can't have other sports")
+        out[day] = sports
+    return out
+
+
+def strength_on(athlete: dict[str, Any] | None) -> bool:
+    """Does the athlete want strength workouts? An explicit answer wins; never answered but
+    "strength" among favorite sports counts as their earlier choice."""
+    a = athlete or {}
+    v = a.get("strength_opt_in")
+    if isinstance(v, bool):
+        return v
+    return "strength" in (a.get("favorite_sports") or [])
 
 
 def is_imperial(athlete: dict[str, Any] | None) -> bool:
@@ -227,6 +268,8 @@ def _fmt_athlete(k: str, v: Any) -> str:
         return "; ".join(_flat(" ".join(x for x in (r.get("name"), f"({r['date']})" if r.get("date") else "",
                                                      r.get("distance"), r.get("result") and f"- {r['result']}") if x), 120)
                          for r in v if isinstance(r, dict))
+    if k == "week_rhythm" and isinstance(v, dict):
+        return "; ".join(f"{d} {'+'.join(v[d])}" for d in _WEEKDAYS if v.get(d)) + " (other days: any)" if v else "none"
     if isinstance(v, bool):
         return "yes" if v else "no"
     if isinstance(v, list):
@@ -322,6 +365,12 @@ class CoachStore:
             elif k == "intents":
                 from .intent import validate_intents  # local: intent imports this module
                 upd[k] = validate_intents(v)
+            elif k == "week_rhythm":
+                upd[k] = validate_rhythm(v)
+            elif k == "strength_opt_in":
+                if v is not None and not isinstance(v, bool):
+                    raise CoachError("strength opt-in must be true, false or empty")
+                upd[k] = v
             elif k == "long_day":
                 if v in (None, ""):
                     upd[k] = None

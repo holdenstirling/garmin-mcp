@@ -950,6 +950,35 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         plan = await _plan_call(lambda: plans.build(user_id, start if isinstance(start, str) else None))
         return _plan_resp(user_id, plan)
 
+    def _rhythm_view(user_id: str) -> dict[str, Any]:
+        from .coaching import strength_on
+        a = _coach().athlete(user_id)
+        rh = a.get("week_rhythm") if isinstance(a.get("week_rhythm"), dict) else {}
+        on = strength_on(a)
+        return {"week_rhythm": rh, "strength_opt_in": a.get("strength_opt_in") if isinstance(a.get("strength_opt_in"), bool) else None,
+                "strength_on": on, "needs_strength_opt_in": (not on) and any("strength" in v for v in rh.values())}
+
+    async def plan_rhythm_get(request: Request, user_id: str) -> Response:
+        return JSONResponse(await anyio.to_thread.run_sync(lambda: _rhythm_view(user_id)))
+
+    async def plan_rhythm_put(request: Request, user_id: str) -> Response:
+        """``{week_rhythm?, strength_opt_in?}``: save, then rebuild the plan from today (if
+        there is one) so it follows the new week. Returns the rhythm and the new plan."""
+        assert plans is not None
+        body = await read_json(request)
+        if not isinstance(body, dict) or not set(body) <= {"week_rhythm", "strength_opt_in"} or not body:
+            raise _UserError("Send week_rhythm and/or strength_opt_in.")
+
+        def run() -> dict[str, Any] | None:
+            _coach().update_athlete(user_id, body)
+            if plans.get(user_id) is None or _coach().active_goal(user_id) is None:
+                return None
+            return plans.build(user_id, None)
+        plan = await _plan_call(run)
+        out = _rhythm_view(user_id)
+        return JSONResponse({**out, "plan": public_plan(plan, plans.today(user_id)) if plan else None,
+                             "warnings": list((plan or {}).get("warnings") or [])})
+
     async def plan_delete(request: Request, user_id: str) -> Response:
         assert plans is not None
         out = await _plan_call(lambda: plans.delete(user_id))
@@ -5758,6 +5787,8 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         Route("/app/api/plan", _plan_api(plan_delete, mutating=True), methods=["DELETE"]),
         Route("/app/api/plan/setup", _plan_api(plan_setup, mutating=True), methods=["POST"]),
         Route("/app/api/plan/rebuild", _plan_api(plan_rebuild, mutating=True), methods=["POST"]),
+        Route("/app/api/plan/rhythm", _plan_api(plan_rhythm_get, mutating=False), methods=["GET"]),
+        Route("/app/api/plan/rhythm", _plan_api(plan_rhythm_put, mutating=True), methods=["PUT"]),
         Route("/app/api/plan/sessions", _plan_api(session_add, mutating=True), methods=["POST"]),
         Route("/app/api/plan/sessions/{session_id}", _plan_api(session_update, mutating=True),
               methods=["PATCH"]),

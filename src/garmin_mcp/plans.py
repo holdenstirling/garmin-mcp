@@ -1174,7 +1174,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                 g = s.get("garmin") or {}
                 ss.append({k: s.get(k) for k in ("id", "sport", "kind", "title", "minutes",
                                                  "detail", "meters", "edited", "travel", "time", "event_id",
-                                                 "sick", "sick_return")}
+                                                 "sick", "sick_return", "variant")}
                           | {"synced": bool(g.get("workout_ids")),
                              "steps": s.get("steps") or [], "legs": s.get("legs") or [],
                              "exercises": s.get("exercises") or [], "prehab": s.get("prehab") or [],
@@ -1188,6 +1188,8 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
     return {k: plan.get(k) for k in ("start", "first_day", "race_date", "distance", "race_kind", "no_race",
                                      "level", "peak_hours", "start_hours", "note", "created",
                                      "updated")} | {
+        "warnings": list(plan.get("warnings") or []), "week_rhythm": plan.get("week_rhythm") or {},
+        "needs_strength_opt_in": bool(plan.get("needs_strength_opt_in")),
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
         "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
         "race_changed": bool(plan.get("race_changed")),

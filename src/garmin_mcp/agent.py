@@ -104,7 +104,9 @@ most). Suggest changing the plan only when their data gives a reason, and say wh
 today's sessions aren't listed, check the plan (read_file) before prescribing a workout.
 - Keep memory current: save_goal for race details, save_plan for their training plan, \
 update_athlete_profile for stable facts about the athlete, update_notes for what you learn \
-during this block. Only save what they told you or confirmed, and say in one short line what \
+during this block. Which sport on which day ("lift Monday Wednesday Friday, bike Tuesday Thursday \
+Saturday") is week_rhythm: restate the week and confirm before saving, and schedule strength \
+workouts only after they say yes to strength (strength_opt_in). Only save what they told you or confirmed, and say in one short line what \
 you saved so they can correct it.
 - You can show charts with render_chart. When they ask to graph or chart something, make the \
 chart; never say you can't draw or fall back to text art.
@@ -716,9 +718,22 @@ class Agent:
             return {"ok": True, "chars": len(notes.strip()[:NOTES_MAX])}
         if name == "update_athlete_profile":
             try:
-                return {"ok": True, "profile": self.coach.update_athlete(user_id, args)}
+                profile = self.coach.update_athlete(user_id, args)
             except CoachError as e:
                 raise GarminError(str(e)) from None
+            out: dict[str, Any] = {"ok": True, "profile": profile}
+            if {"week_rhythm", "strength_opt_in"} & set(args):
+                # The plan follows the new week from today on.
+                try:
+                    if self.plans is not None and self.plans.get(user_id) is not None:
+                        plan = self.plans.build(user_id, None)
+                        out["plan_rebuilt"] = True
+                        out["plan_warnings"] = plan.get("warnings") or []
+                        out["needs_strength_opt_in"] = bool(plan.get("needs_strength_opt_in"))
+                except Exception as e:  # saved anyway; the plan can be rebuilt from the Plan tab
+                    out["plan_rebuilt"] = False
+                    out["plan_error"] = str(e)[:200] if isinstance(e, ValueError) else type(e).__name__
+            return out
         if name == "save_goal":
             fields = dict(args)
             replace = fields.pop("replace_current", False) is True
