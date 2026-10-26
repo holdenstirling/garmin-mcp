@@ -1,6 +1,7 @@
 // Workout day: the "Ready to go" screen before a session and the reaction card after one
 // (server: workoutday.py). Both are deterministic, no AI.
 import { getJSON } from '@/lib/api'
+import type { Exercise } from '@/lib/plan'
 import type { Checkin } from '@/lib/checkins'
 import { fmtDist as fmtDistBase } from '@/lib/format'
 
@@ -31,7 +32,7 @@ export type WorkoutSession = {
   time?: string | null
   meters?: number | null; detail: string; purpose: string; cue: string; sections: WSection[]
   warmup_min: number; cooldown_min: number; main_targets: Target[]
-  exercises: { name: string; dose: string }[]; prehab: { name: string; dose: string }[]
+  exercises: Exercise[]; prehab: Exercise[]
   fuel: WFuel | null; fuel_plan?: FuelPlan | null; garmin: { on_watch: boolean; syncable: boolean }
   status: 'planned' | 'done' | 'missed'; activity?: { id: number | null; name: string; minutes: number } | null
   gear: WGear[]

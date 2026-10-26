@@ -1,6 +1,7 @@
 // "Your plan" for a plan built in Rabbit: the season at a glance, week by week sessions you
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { AdjustedSummary } from './AdjustedSummary'
+import { WeekRhythmSection } from './WeekRhythm'
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
 import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
@@ -323,6 +324,8 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         </div>
       )}
 
+      {/* Your week (lib/rhythm.ts): lift Mon, Wed, Fri, bike Tue, Thu, Sat... Saving rebuilds the plan. */}
+      {!coachMode && <WeekRhythmSection readOnly={readOnly} onPlan={(p) => applied(p)} />}
       {!coachMode && <AdjustedSummary plan={plan} weekIndex={week?.index ?? null} />}
       <TPPlanBar tp={tp} onToast={setNote} />
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}

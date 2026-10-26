@@ -7,6 +7,7 @@
 // plus Rabbit's take (deterministic first, then "Ask Rabbit for more"). Actions stay pinned at
 // the bottom: Move, Edit, Ask Rabbit.
 import { smooth } from '@/lib/scrollMotion'
+import { ExerciseList } from '@/components/plan/ExerciseList'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
@@ -352,11 +353,7 @@ function SessionBody({ d, s, c, cal, status, imperial, onSynced, feedbackRef, on
       {s.exercises.length > 0 && (
         <Card>
           <Field label="Exercises">
-            <ul className="flex flex-col gap-1.5">
-              {[...s.exercises, ...s.prehab].map((e) => (
-                <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
-              ))}
-            </ul>
+            <ExerciseList items={[...s.exercises, ...s.prehab]} />
           </Field>
         </Card>
       )}

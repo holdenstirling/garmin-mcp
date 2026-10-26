@@ -1,6 +1,7 @@
 // Bottom sheet for one plan session: see its structure, change sport/type/length/day,
 // rename it, add notes, or delete it. In add mode it creates a new session on a day.
 import { useEffect, useState } from 'react'
+import { ExerciseList } from './ExerciseList'
 import { CalendarDays, MessageCircle, Mic, Send, Trash2, Zap } from 'lucide-react'
 import { CheckinChips, VoiceCheckIn } from '@/components/checkin/VoiceCheckIn'
 import { listCheckins, type Checkin } from '@/lib/checkins'
@@ -209,20 +210,12 @@ export function SessionSheet({ session, date, kinds, sports, raceDate, today = t
       {session && (session.exercises?.length ?? 0) > 0 && (
         <Card>
           <Field label={session.kind === 'mobility' ? 'Mobility' : 'Exercises'}>
-            <ul className="flex flex-col gap-1.5">
-              {session.exercises!.map((e) => (
-                <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
-              ))}
-            </ul>
+            <ExerciseList items={session.exercises!} />
           </Field>
           {(session.prehab?.length ?? 0) > 0 && (
             <Field label="Prehab for your injury notes" className="border-t border-(--border)"
               hint="General prehab, not a diagnosis. If pain is sharp, getting worse or changes how you move, see a physio.">
-              <ul className="flex flex-col gap-1.5">
-                {session.prehab!.map((e) => (
-                  <li key={e.name} className="flex gap-2 text-body"><span className="flex-1 text-(--text)">{e.name}</span><span className="text-(--text-muted)">{e.dose}</span></li>
-                ))}
-              </ul>
+              <ExerciseList items={session.prehab!} />
             </Field>
           )}
         </Card>
