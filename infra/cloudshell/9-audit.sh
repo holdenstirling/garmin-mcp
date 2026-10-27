@@ -61,7 +61,7 @@ PY
 source "$TMP/vm.env"
 
 [[ "${VM_STATUS:-}" == RUNNING ]] && pass "VM status RUNNING" || fail "VM status '${VM_STATUS:-unknown}'"
-info "machine type ${VM_TYPE:-?} (e2-micro: 2 shared vCPU, 1 GB RAM; one VM = single point of failure)"
+info "machine type ${VM_TYPE:-?} (e2-micro 1 GB, e2-small 2 GB; one VM = single point of failure)"
 info "external IP ${VM_IP:-none}, tags ${VM_TAGS:-none}, service account ${VM_SA:-none} (scopes: ${VM_SCOPES:-none})"
 [[ "${VM_OSLOGIN:-}" == TRUE ]] && pass "OS Login enabled" || warn "OS Login not enabled on the instance"
 [[ "${VM_BLOCK_KEYS:-}" == TRUE ]] && pass "project-wide SSH keys blocked" || warn "block-project-ssh-keys not set"

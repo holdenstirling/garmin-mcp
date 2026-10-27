@@ -25,7 +25,7 @@ import secrets
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
@@ -373,6 +373,7 @@ def _clip(obj: Any, limit: int) -> Any:
 class Agent:
     def __init__(self, service: GarminService, store: AppStore, backend: ModelBackend, *,
                  daily_token_budget: int, default_timezone: str = "America/Denver",
+                 global_daily_token_budget: int = 0,
                  proactive_backend: ModelBackend | None = None,
                  clock: Callable[[], float] = time.time) -> None:
         if service.allow_writes:
@@ -388,6 +389,8 @@ class Agent:
         # can run on a stronger model than chat.
         self._proactive_backend = proactive_backend or backend
         self._budget = daily_token_budget
+        # Everyone together, per UTC day (0 = no cap): a ceiling on the AI bill however many join.
+        self._global_budget = max(0, int(global_daily_token_budget or 0))
         self._tz = default_timezone
         self._clock = clock
         self.planner = WeekPlanner(self, clock=clock)
@@ -670,6 +673,22 @@ class Agent:
                 u["day"] = day
             u["tokens"] = int(u.get("tokens", 0)) + tokens
         self._store.user_doc(user_id, "usage").update(add)
+        if self._global_budget:
+            utc = datetime.fromtimestamp(self._clock(), UTC).date().isoformat()
+
+            def add_all(g: dict[str, Any]) -> None:
+                if g.get("day") != utc:
+                    g.clear()
+                    g["day"] = utc
+                g["tokens"] = int(g.get("tokens", 0)) + tokens
+            self._store.global_doc("usage-all").update(add_all)
+
+    def _global_used_today(self) -> int:
+        if not self._global_budget:
+            return 0
+        g = self._store.global_doc("usage-all").load()
+        utc = datetime.fromtimestamp(self._clock(), UTC).date().isoformat()
+        return int(g.get("tokens", 0)) if g.get("day") == utc else 0
 
 
     # -------------------------------------------------------------- tools --
@@ -883,6 +902,9 @@ class Agent:
 
         if self._used_today(user_id, day) >= self._budget:
             return finish("error", "You've reached today's chat limit. It resets tomorrow.")
+        if self._global_budget and self._global_used_today() >= self._global_budget:
+            log_event(logger, logging.WARNING, "agent_global_budget_reached", user_id=user_id)
+            return finish("error", "rabbt's coach is taking a breather for the rest of today. Your plan and workouts still work.")
 
         thread = self.coach.get_thread(user_id, thread_id)
         prompt = self.coach.context_block(user_id, now, thread,

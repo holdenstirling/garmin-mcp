@@ -137,7 +137,8 @@ class Settings:
     agent_effort: str = "low"
     agent_proactive_model: str = "claude-haiku-5-5"
     directory_model: str = "claude-haiku-5-5"  # clubs & leagues directory page extraction
-    agent_daily_token_budget: int = 2_000_000
+    agent_daily_token_budget: int = 400_000
+    agent_global_daily_token_budget: int = 20_000_000  # everyone together per UTC day (0 = no cap)
     agent_daily_messages: int = 40      # chat messages a person can send rabbt per local day (0 = no cap)
     agent_max_concurrent: int = 2
 
@@ -265,7 +266,8 @@ class Settings:
             agent_proactive_model=(os.environ.get("AGENT_PROACTIVE_MODEL", "").strip()
                                    or "claude-haiku-5-5"),
             directory_model=(os.environ.get("DIRECTORY_MODEL", "").strip() or "claude-haiku-5-5"),
-            agent_daily_token_budget=_int("AGENT_DAILY_TOKEN_BUDGET", 2_000_000),
+            agent_daily_token_budget=_int("AGENT_DAILY_TOKEN_BUDGET", 400_000),
+            agent_global_daily_token_budget=_int("AGENT_GLOBAL_DAILY_TOKEN_BUDGET", 20_000_000),
             agent_daily_messages=_int("AGENT_DAILY_MESSAGES", 40),
             agent_max_concurrent=_int("AGENT_MAX_CONCURRENT", 2),
         )

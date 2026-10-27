@@ -101,14 +101,14 @@ export function AccessScreen({ onClose }: { onClose: () => void }) {
                   People who can join
                   <select id={usesId} value={uses} onChange={(e) => setUses(Number(e.target.value))}
                     className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">
-                    {[1, 5, 10, 25].map((n) => <option key={n} value={n}>{n}</option>)}
+                    {[1, 5, 10, 25, 50, 75, 100].map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </label>
                 <label htmlFor={daysId} className="flex flex-1 flex-col gap-1 text-small text-(--text-secondary)">
                   Open for
                   <select id={daysId} value={days} onChange={(e) => setDays(Number(e.target.value))}
                     className="h-11 rounded-md border border-input bg-transparent px-2 text-lead text-(--text)">
-                    {[1, 7, 14, 30].map((n) => <option key={n} value={n}>{n} day{n === 1 ? '' : 's'}</option>)}
+                    {[1, 7, 14, 30, 60, 90].map((n) => <option key={n} value={n}>{n} day{n === 1 ? '' : 's'}</option>)}
                   </select>
                 </label>
               </div>

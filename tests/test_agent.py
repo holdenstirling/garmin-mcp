@@ -70,7 +70,8 @@ def env(tmp_path, fernet_key, registry):
 
     def agent(steps, **kw) -> tuple[Agent, Scripted]:
         backend = Scripted(steps)
-        return Agent(service, store, backend, daily_token_budget=kw.get("budget", 10_000)), backend
+        return Agent(service, store, backend, daily_token_budget=kw.get("budget", 10_000),
+                     global_daily_token_budget=kw.get("global_budget", 0)), backend
     return SimpleNamespace(tokens=tokens, store=store, service=service, agent=agent)
 
 
@@ -177,6 +178,17 @@ def test_daily_budget_stops_before_calling_model(env) -> None:
     assert len(backend.calls) == 2
     assert events[-1]["response"]["status"] == "error"
     assert "limit" in events[-1]["response"]["error"]
+
+
+def test_global_budget_pauses_everyone_but_never_crashes(env) -> None:
+    agent, backend = env.agent([(["a"], [], "end_turn")] * 4, global_budget=200)
+    go(agent, "friend", "1", lambda e: None)  # 120 tokens, all users together
+    go(agent, "holden", "2", lambda e: None)  # 240 > 200 after this
+    events, emit = collect()
+    go(agent, "friend", "3", emit)  # a different person, same shared ceiling
+    assert len(backend.calls) == 2
+    assert events[-1]["response"]["status"] == "error"
+    assert "breather" in events[-1]["response"]["error"]
 
 
 def test_refusal_and_iteration_cap(env) -> None:
