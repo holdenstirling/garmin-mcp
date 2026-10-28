@@ -1206,6 +1206,7 @@ def public_plan(plan: dict[str, Any] | None, today: date) -> dict[str, Any] | No
                                      "updated")} | {
         "warnings": list(plan.get("warnings") or []), "week_rhythm": plan.get("week_rhythm") or {},
         "needs_strength_opt_in": bool(plan.get("needs_strength_opt_in")),
+        "hyrox": plan.get("hyrox") or None,
         "events": plan.get("events") or [], "events_changed": bool(plan.get("events_changed")),
         "trips": [{k: t[k] for k in ("id", "start", "end", "label", "has")} for t in plan.get("trips", [])],
         "race_changed": bool(plan.get("race_changed")),

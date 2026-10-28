@@ -45,6 +45,7 @@ const FOCUS: { id: Focus; title: string; description: string; distance: string; 
   { id: 'fitness', title: 'All-round fitness', description: 'A mix of running, riding and strength to get fitter.', distance: 'other' },
 ]
 const BLOCK_WEEKS = [6, 8, 12, 16] as const
+const HYROX_DIVISIONS = [['open', 'Open'], ['pro', 'Pro'], ['doubles', 'Doubles'], ['relay', 'Relay']] as const
 const focusOf = (distance: string | undefined): Focus => {
   const s = sportsFor(distance)
   return distance === 'other' || !distance ? 'fitness' : s.includes('swim') ? 'tri' : s.length === 1 && s[0] === 'bike' ? 'bike' : 'run'
@@ -262,6 +263,8 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
       goal.no_race = false
     }
     if (g.goal_type !== 'time' || g.no_race) goal.target_time = null
+    if (g.distance === 'hyrox') goal.division = g.division ?? 'open'
+    else delete goal.division
     const athlete: Partial<AthleteFull> = { ...a }
     for (const k of Object.keys(athlete) as (keyof AthleteFull)[]) {
       if (athlete[k] === '' && k !== 'injuries' && k !== 'experience') delete athlete[k]
@@ -443,6 +446,17 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
                   if (Object.keys(ep).length) setDraft((d) => ({ ...d, event: { ...d.event, ...ep } }))
                 }} />
               {weeks != null && g.date && g.date > todayIso() && <p className="-mt-3 px-4 text-small text-(--text-muted)">{runwayHint(weeks)}</p>}
+              {g.distance === 'hyrox' && (
+                <Card>
+                  <Field label="Division" hint="8 x 1 km runs, each followed by a station. Check your division's weights on hyrox.com.">
+                    <ChipRow>
+                      {HYROX_DIVISIONS.map(([id, label]) => (
+                        <Chip key={id} selected={(g.division ?? 'open') === id} onClick={() => setG({ division: id })}>{label}</Chip>
+                      ))}
+                    </ChipRow>
+                  </Field>
+                </Card>
+              )}
               <Card>
                 <Field label="Course notes" hint="Optional: hilly, hot, wetsuit, altitude…">
                   <textarea className={areaCls} value={g.course ?? ''} maxLength={300} onChange={(e) => setG({ course: e.target.value })}

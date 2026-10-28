@@ -59,6 +59,7 @@ export const SPORTS = [
   ['yoga', 'Yoga', 'Fitness'],
   ['pilates', 'Pilates', 'Fitness'],
   ['hiit', 'CrossFit / HIIT', 'Fitness'],
+  ['hyrox', 'HYROX', 'Fitness'],
   ['strength', 'Strength training', 'Fitness'],
   ['spin', 'Spin class', 'Fitness'],
   ['golf', 'Golf', 'More'],
@@ -94,14 +95,14 @@ export const SPORT_TYPE: Record<SportId, EventType> = {
   softball: 'team_sport', kickball: 'team_sport', flag_football: 'team_sport', ultimate: 'team_sport',
   hockey: 'team_sport', rugby: 'team_sport', lacrosse: 'team_sport',
   pickleball: 'team_sport', tennis: 'team_sport', padel: 'team_sport', badminton: 'team_sport', squash: 'team_sport',
-  yoga: 'other', pilates: 'other', hiit: 'other', strength: 'other', spin: 'cycling',
+  yoga: 'other', pilates: 'other', hiit: 'other', hyrox: 'hyrox', strength: 'other', spin: 'cycling',
   golf: 'other', dance: 'other', martial_arts: 'other', other: 'other',
 }
 
 /** A sensible default sport for an event saved before sports existed (from its type). */
 export const TYPE_SPORT: Record<EventType, SportId> = {
   triathlon: 'triathlon', running: 'road_run', trail: 'trail_run', cycling: 'road_ride', swimming: 'pool_swim',
-  duathlon: 'duathlon', mountaineering: 'mountaineering', team_sport: 'volleyball', other: 'other',
+  duathlon: 'duathlon', mountaineering: 'mountaineering', team_sport: 'volleyball', hyrox: 'hyrox', other: 'other',
 }
 
 /** Local's activity filter (lib/activity) for each sport, so a sport also filters and colors like its group. */
@@ -117,7 +118,7 @@ export const SPORT_ACTIVITY: Record<SportId, ActivityId> = {
   softball: 'other', kickball: 'other', flag_football: 'other', ultimate: 'other', hockey: 'other',
   rugby: 'other', lacrosse: 'other',
   pickleball: 'pickleball', tennis: 'other', padel: 'other', badminton: 'other', squash: 'other',
-  yoga: 'yoga', pilates: 'yoga', hiit: 'other', strength: 'other', spin: 'ride',
+  yoga: 'yoga', pilates: 'yoga', hiit: 'other', hyrox: 'other', strength: 'other', spin: 'ride',
   golf: 'other', dance: 'other', martial_arts: 'other', other: 'other',
 }
 
@@ -133,7 +134,7 @@ export const SPORT_ICON: Record<SportId, typeof Bike> = {
   volleyball: Volleyball, beach_volleyball: Volleyball, soccer: Goal, basketball: Dribbble, softball: Target,
   kickball: CircleDot, flag_football: Flag, ultimate: Disc3, hockey: Shield, rugby: Trophy, lacrosse: Trophy,
   pickleball: CircleDot, tennis: CircleDot, padel: CircleDot, badminton: CircleDot, squash: CircleDot,
-  yoga: Flower2, pilates: Flower2, hiit: Dumbbell, strength: Dumbbell, spin: Gauge,
+  yoga: Flower2, pilates: Flower2, hiit: Dumbbell, hyrox: Dumbbell, strength: Dumbbell, spin: Gauge,
   golf: Flag, dance: Music, martial_arts: Swords, other: Activity,
 }
 

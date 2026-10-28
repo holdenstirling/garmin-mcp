@@ -7,7 +7,7 @@ export const COURSE_PROFILES: [CourseProfile, string][] = [
   ['flat', 'Flat'], ['rolling', 'Rolling'], ['hilly', 'Hilly'], ['mountainous', 'Mountainous'],
 ]
 
-export type EventType = 'triathlon' | 'running' | 'trail' | 'cycling' | 'swimming' | 'duathlon' | 'mountaineering' | 'team_sport' | 'other'
+export type EventType = 'triathlon' | 'running' | 'trail' | 'cycling' | 'swimming' | 'duathlon' | 'mountaineering' | 'team_sport' | 'hyrox' | 'other'
 
 export type EventInfo = {
   summary?: string; date?: string; location?: string; start_time?: string; distances?: string
@@ -143,7 +143,7 @@ export const WEEKDAYS: [Weekday, string][] = [
 export const EVENT_TYPES: [EventType, string][] = [
   ['triathlon', 'Triathlon'], ['running', 'Road run'], ['trail', 'Trail / ultra'], ['cycling', 'Cycling'],
   ['swimming', 'Swim'], ['duathlon', 'Duathlon'], ['mountaineering', 'Climb / hike'],
-  ['team_sport', 'Volleyball / team sport'], ['other', 'Other'],
+  ['team_sport', 'Volleyball / team sport'], ['hyrox', 'HYROX'], ['other', 'Other'],
 ]
 export const TYPE_LABEL = Object.fromEntries(EVENT_TYPES) as Record<EventType, string>
 
@@ -153,12 +153,12 @@ export const TYPE_DISTANCES: Record<EventType, string[]> = {
   running: ['5k', '10k', 'half marathon', 'marathon'],
   trail: ['10k', 'half marathon', 'marathon', 'ultra'],
   cycling: ['century ride', 'other'],
-  swimming: ['other'], duathlon: ['other'], mountaineering: ['other'], team_sport: ['other'], other: ['other'],
+  swimming: ['other'], duathlon: ['other'], mountaineering: ['other'], team_sport: ['other'], hyrox: ['hyrox'], other: ['other'],
 }
 export const DISTANCE_LABEL: Record<string, string> = {
   'sprint triathlon': 'Sprint', 'olympic triathlon': 'Olympic', '70.3': '70.3', '140.6': 'Ironman',
   '5k': '5K', '10k': '10K', 'half marathon': 'Half marathon', marathon: 'Marathon', ultra: 'Ultra',
-  'century ride': 'Century', other: 'Other',
+  'century ride': 'Century', hyrox: 'HYROX', other: 'Other',
 }
 
 export const INFO_LABEL: [keyof EventInfo, string][] = [

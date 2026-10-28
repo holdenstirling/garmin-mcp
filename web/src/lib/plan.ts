@@ -30,8 +30,13 @@ export type PlanWeekBuilt = {
   index: number; start: string; phase: 'base' | 'build' | 'peak' | 'taper' | 'race'
   recovery: boolean; hours: number; focus: string; days: PlanDay[]
 }
+export type HyroxLeg = { run: string; run_s: number; run_time: string; station: string; station_s: number; station_time: string }
+export type HyroxInfo = { division: 'open' | 'pro' | 'doubles' | 'relay'; weights_note: string
+  pacing: { total: string; run_pace_per_km: string; roxzone: string; legs: HyroxLeg[]; note: string; estimate: true } | null }
 export type BuiltPlan = {
-  start: string; first_day: string; race_date: string; distance: string; race_kind: 'tri' | 'run' | 'bike' | 'general'
+  start: string; first_day: string; race_date: string; distance: string; race_kind: 'tri' | 'run' | 'bike' | 'general' | 'hyrox'
+  /** HYROX race info: division and a pacing estimate when a target time is set */
+  hyrox?: HyroxInfo | null
   level: string; peak_hours: number; start_hours: number; note: string | null
   /** built for a training block, not a race (no race week) */
   no_race?: boolean
@@ -93,6 +98,8 @@ export type GoalFull = Goal & {
   priority?: 'A' | 'B' | 'C' | null; limiters?: string[]; course?: string; plan_source?: 'builder' | 'uploaded'
   /** a training block with no race: ``date`` is the block's last day */
   no_race?: boolean
+  /** HYROX division */
+  division?: 'open' | 'pro' | 'doubles' | 'relay' | null
 }
 
 /** Plan reads and session edits, for the athlete ('/api') or a coach ('/api/coach/athletes/{id}'). */
@@ -132,6 +139,7 @@ export const DISTANCES: { value: string; label: string; sports: Sport[] }[] = [
   { value: 'marathon', label: 'Marathon', sports: ['run'] },
   { value: 'ultra', label: 'Ultra', sports: ['run'] },
   { value: 'century ride', label: 'Century ride', sports: ['bike'] },
+  { value: 'hyrox', label: 'HYROX', sports: ['run', 'strength'] },
   { value: 'other', label: 'Something else', sports: ['bike', 'run'] },
 ]
 export const sportsFor = (distance: string | undefined): Sport[] =>
@@ -141,7 +149,7 @@ export const KIND_LABEL: Record<string, string> = {
   easy: 'Easy', long: 'Long', endurance: 'Endurance', recovery: 'Recovery', strides: 'Strides',
   tempo: 'Tempo', threshold: 'Threshold', vo2: 'VO2 max', racepace: 'Race pace', openers: 'Openers',
   shakeout: 'Shakeout', technique: 'Technique', css: 'CSS intervals', brick: 'Brick',
-  strength: 'Strength', rest: 'Rest', race: 'Race',
+  strength: 'Strength', rest: 'Rest', race: 'Race', hyrox: 'HYROX',
 }
 export const PHASE_LABEL: Record<PlanWeekBuilt['phase'], string> = {
   base: 'Base', build: 'Build', peak: 'Peak', taper: 'Taper', race: 'Race week',

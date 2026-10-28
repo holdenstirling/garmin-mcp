@@ -5,7 +5,7 @@
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Backpack, Bike, ChevronDown, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
+import { Activity, Backpack, Bike, ChevronDown, Dumbbell, ChevronRight, Compass, Footprints, Gauge, Globe, Layers, Mountain, Repeat, Search, Star, Trash2, Volleyball, Waves, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -51,7 +51,7 @@ function eventActivity(e: RaceEvent): ActivityId {
 
 const TYPE_ICON: Record<EventType, typeof Bike> = {
   triathlon: Layers, duathlon: Layers, running: Footprints, trail: Mountain, cycling: Bike,
-  swimming: Waves, mountaineering: Mountain, team_sport: Volleyball, other: Activity,
+  swimming: Waves, mountaineering: Mountain, team_sport: Volleyball, hyrox: Dumbbell, other: Activity,
 }
 
 export function EventsScreen({ hasBuiltPlan, onClose, onChanged, onOpenPlan, onBuildPlan, imperial = true, request, onRequestHandled, onDiscover }: {

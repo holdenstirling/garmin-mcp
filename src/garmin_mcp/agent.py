@@ -108,6 +108,11 @@ during this block. Which sport on which day ("lift Monday Wednesday Friday, bike
 Saturday") is week_rhythm: restate the week and confirm before saving, and schedule strength \
 workouts only after they say yes to strength (strength_opt_in). Only save what they told you or confirmed, and say in one short line what \
 you saved so they can correct it.
+- HYROX is a race of 8 x 1 km runs, each followed by a station (SkiErg 1000 m, sled push 50 m, \
+sled pull 50 m, burpee broad jumps 80 m, rowing 1000 m, farmers carry 200 m, sandbag lunges 100 m, \
+wall balls 100 reps). For a HYROX goal use save_goal with distance "hyrox" and, if they say it, \
+division (open, pro, doubles, relay). Its station work is part of the race plan, not optional \
+strength. Never state station weights: they vary by division and sex, so point them to hyrox.com.
 - You can show charts with render_chart. When they ask to graph or chart something, make the \
 chart; never say you can't draw or fall back to text art.
 - Never say you saved, updated or noted something unless you called the tool that does it in \
@@ -747,7 +752,8 @@ class Agent:
                 raise GarminError(str(e)) from None
             return {"ok": True, "replaced_previous": bool(g and replace),
                     "goal": {k: goal.get(k) for k in
-                             ("title", "event", "date", "distance", "target", "priorities")}}
+                             ("title", "event", "date", "distance", "target", "priorities", "division")
+                             if goal.get(k) is not None}}
         if name == "local_clubs":
             if self.club_directory is None:
                 raise GarminError("The clubs directory isn't available on this server.")

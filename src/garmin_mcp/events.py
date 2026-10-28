@@ -41,10 +41,10 @@ MAX_EVENTS = 60
 LOOKUPS_PER_DAY = 15
 
 TYPES = ("triathlon", "running", "trail", "cycling", "swimming", "duathlon", "mountaineering",
-         "team_sport", "other")
+         "team_sport", "hyrox", "other")
 # Event type -> what it trains (for the plan builder) and the distances that fit it.
 TYPE_SPORT = {"triathlon": "brick", "running": "run", "trail": "run", "cycling": "bike",
-              "swimming": "swim", "duathlon": "brick", "mountaineering": "run", "team_sport": "other",
+              "swimming": "swim", "duathlon": "brick", "mountaineering": "run", "team_sport": "other", "hyrox": "run",
               "other": "run"}
 TYPE_DISTANCES = {
     "triathlon": ("sprint triathlon", "olympic triathlon", "70.3", "140.6"),
@@ -55,6 +55,7 @@ TYPE_DISTANCES = {
     "duathlon": ("other",),
     "mountaineering": ("other",),
     "team_sport": ("other",),  # volleyball, pickleball, soccer, kickball: community and league games
+    "hyrox": ("hyrox",),  # 8 x 1 km run + 8 stations (hyrox.py)
     "other": ("other",),
 }
 _TEXT = {"name": 120, "distance": 40, "location": 120, "url": 300, "course": 300,
@@ -704,7 +705,7 @@ REPORT_TOOL: dict[str, Any] = {
             "suggested_type": {"type": "string", "enum": list(TYPES)},
             "suggested_distance": {"type": "string", "enum": ["sprint triathlon", "olympic triathlon", "70.3",
                                    "140.6", "5k", "10k", "half marathon", "marathon", "ultra",
-                                   "century ride", "other"]},
+                                   "century ride", "hyrox", "other"]},
             "suggested_course_profile": {"type": "string", "enum": list(COURSE_PROFILES)},
             "suggested_elevation_m": {"type": "integer", "description": "Typical altitude of the course in metres (start/finish town), only if published."},
             "sources": {"type": "array", "items": {"type": "string"}, "description": "https URLs used."},
