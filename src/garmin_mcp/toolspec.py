@@ -213,9 +213,14 @@ AGENT_TOOLS: list[dict] = [
                 "title": {"type": "string"},
                 "event": {"type": "string"},
                 "date": {"type": "string", "description": "YYYY-MM-DD"},
-                "distance": {"type": "string"},
+                "distance": {"type": "string",
+                             "description": "One of: sprint triathlon, olympic triathlon, 70.3, 140.6, 5k, 10k, "
+                                            "half marathon, marathon, ultra, century ride, hyrox, other. "
+                                            "HYROX (8 x 1 km run + 8 workout stations) is \"hyrox\"."},
                 "target": {"type": "string"},
                 "target_time": {"type": "string", "description": "H:MM:SS or MM:SS"},
+                "division": {"type": "string", "enum": ["open", "pro", "doubles", "relay"],
+                             "description": "HYROX division, only for a hyrox goal."},
                 "goal_type": {"type": "string", "enum": ["finish", "time", "compete"]},
                 "priority": {"type": "string", "enum": ["A", "B", "C"]},
                 "limiters": {"type": "array", "items": {"type": "string", "enum": ["swim", "bike", "run"]}},

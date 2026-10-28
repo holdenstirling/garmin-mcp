@@ -12,7 +12,7 @@ from typing import Any
 
 # Race-day carbohydrate target (g/h) by distance.
 RACE_CARBS = {"sprint triathlon": 30, "olympic triathlon": 60, "70.3": 80, "140.6": 90, "5k": 0,
-              "10k": 0, "half marathon": 40, "marathon": 70, "ultra": 80, "century ride": 70, "other": 60}
+              "10k": 0, "half marathon": 40, "marathon": 70, "ultra": 80, "century ride": 70, "hyrox": 30, "other": 60}
 RAMP_WEEKS = 16
 
 
@@ -27,6 +27,9 @@ def fuel(session: dict[str, Any], day: str, *, race_date: str | None, distance: 
     if session.get("sport") in ("rest", "strength") or (not is_race and minutes < 75):
         return None
     target = race_target(distance)
+    if is_race and (distance or "").lower() == "hyrox":
+        from .hyrox import FUEL_NOTE
+        return {"carbs_g_per_h": 30, "fluid_ml_per_h": "400-700", "sodium_mg_per_h": "300-600", "note": FUEL_NOTE}
     if is_race:
         if target == 0:
             return {"carbs_g_per_h": 0, "note": "Short race: a carb-rich breakfast 2-3 hours before is enough. Water as needed."}
@@ -171,6 +174,10 @@ def fuel_plan(session: dict[str, Any], day: str, athlete: dict[str, Any] | None 
                   "plan": ("Pool: keep a bottle on the deck and sip between sets."
                            if not long_ow else "Long open-water swim: take a gel just before, and one every 45 min if you can stop."),
                   "items": [], "carbs_g_per_h": 0}
+    elif kind == "hyrox" and session.get("variant") == "full_sim":
+        from .hyrox import FUEL_NOTE
+        during = {"headline": "Practise race fueling", "plan": FUEL_NOTE,
+                  "items": ["water at each station", "a gel (~25 g) around halfway"], "carbs_g_per_h": 30}
     elif strength or minutes < 60:
         during = {"headline": "Water is enough", "plan": "Sip water as you need it.", "items": [], "carbs_g_per_h": 0}
     elif gh == 0:

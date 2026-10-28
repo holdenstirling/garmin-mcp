@@ -2,6 +2,7 @@
 // can edit, add or delete, and syncing the next few weeks to your Garmin calendar.
 import { AdjustedSummary } from './AdjustedSummary'
 import { WeekRhythmSection } from './WeekRhythm'
+import { HyroxPacing } from './HyroxPacing'
 import { useCallback, useEffect, useState } from 'react'
 import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
 import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
@@ -325,6 +326,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
       )}
 
       {/* Your week (lib/rhythm.ts): lift Mon, Wed, Fri, bike Tue, Thu, Sat... Saving fits it into the plan. */}
+      {plan?.hyrox && <HyroxPacing info={plan.hyrox} />}
       {!coachMode && <WeekRhythmSection readOnly={readOnly} coachPlan={!!plan?.origin} onPlan={(p) => applied(p)} />}
       {!coachMode && <AdjustedSummary plan={plan} weekIndex={week?.index ?? null} />}
       <TPPlanBar tp={tp} onToast={setNote} />

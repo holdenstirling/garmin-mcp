@@ -62,6 +62,7 @@ CATALOG: tuple[tuple[str, str, str, str, str], ...] = (
     ("yoga", "Yoga", "Fitness", "other", "other"),
     ("pilates", "Pilates", "Fitness", "other", "other"),
     ("hiit", "CrossFit / HIIT", "Fitness", "other", "strength"),
+    ("hyrox", "HYROX", "Fitness", "hyrox", "strength"),
     ("strength", "Strength training", "Fitness", "other", "strength"),
     ("spin", "Spin class", "Fitness", "cycling", "bike"),
     ("golf", "Golf", "More", "other", "other"),

@@ -34,7 +34,7 @@ MAX_THREADS = 300
 STORED_TURNS = 200
 
 DISTANCES = ("sprint triathlon", "olympic triathlon", "70.3", "140.6", "5k", "10k",
-             "half marathon", "marathon", "ultra", "century ride", "other")
+             "half marathon", "marathon", "ultra", "century ride", "hyrox", "other")
 
 _ATHLETE_TEXT = {"experience": 300, "training_days": 200, "injuries": 500,
                  "preferences": 500, "home_location": 80, "motivation": 200, "season_goal": 140}
@@ -79,7 +79,9 @@ GOAL_EVENT_FIELDS = {"event": "name", "date": "date", "distance": "distance",
                      "goal_type": "goal_type", "target_time": "target_time", "course": "course"}
 _GOAL_TEXT = {"title": 80, "event": 120, "distance": 40, "target": 160, "priorities": 600,
               "plan": 12000, "notes": 2000, "course": 300}
-_GOAL_ENUM = {"goal_type": ("finish", "time", "compete"), "priority": ("A", "B", "C")}
+_GOAL_ENUM = {"goal_type": ("finish", "time", "compete"), "priority": ("A", "B", "C"),
+              # HYROX division (hyrox.DIVISIONS); only meaningful for a HYROX goal.
+              "division": ("open", "pro", "doubles", "relay")}
 _TIME_RE = re.compile(r"^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$")
 PLAN_CONTEXT_CHARS = 8000
 MAX_PLAN_FILES = 10
@@ -463,7 +465,7 @@ class CoachStore:
                 "distance": g.get("distance", ""), "target": g.get("target", ""),
                 "priorities": g.get("priorities", ""), "plan": g.get("plan", ""),
                 "plan_files": []}
-        for k in ("goal_type", "priority", "target_time", "limiters", "course", "no_race"):
+        for k in ("goal_type", "priority", "target_time", "limiters", "course", "no_race", "division"):
             if g.get(k) not in (None, "", [], False):
                 goal[k] = g[k]
 
@@ -788,7 +790,7 @@ class CoachStore:
                         if phase != "post-race" else f" on {g['date']} (already happened)")
             bits = [f"Active goal: {g.get('title')}{when}."]
             for k in ("event", "distance", "target", "target_time", "goal_type", "priority",
-                      "priorities", "limiters", "course"):
+                      "priorities", "limiters", "course", "division"):
                 if g.get(k):
                     v = ", ".join(g[k]) if isinstance(g[k], list) else g[k]
                     bits.append(f"{k.replace('_', ' ').capitalize()}: {v}.")

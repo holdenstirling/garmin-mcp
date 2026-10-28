@@ -63,8 +63,9 @@ def _circ(a: str, b: str) -> int:
     return min(d, 7 - d)
 
 
-def effective_rhythm(athlete: dict[str, Any]) -> tuple[dict[str, list[str]], bool, bool]:
-    """(rhythm without strength days unless opted in, strength on, strength asked)."""
+def effective_rhythm(athlete: dict[str, Any], *, keep_strength: bool = False) -> tuple[dict[str, list[str]], bool, bool]:
+    """(rhythm without strength days unless opted in, strength on, strength asked).
+    ``keep_strength``: a HYROX plan, whose lifting days take station work either way."""
     from .coaching import strength_on
     on = strength_on(athlete)
     raw = athlete.get("week_rhythm") if isinstance(athlete.get("week_rhythm"), dict) else {}
@@ -72,7 +73,7 @@ def effective_rhythm(athlete: dict[str, Any]) -> tuple[dict[str, list[str]], boo
     asked = False
     for d in DAYS:
         sp = [x for x in (raw.get(d) or []) if x in RHYTHM_SPORTS]
-        if "strength" in sp and not on:
+        if "strength" in sp and not on and not keep_strength:
             asked = True
             sp = [x for x in sp if x != "strength"]
         if sp:
@@ -82,15 +83,15 @@ def effective_rhythm(athlete: dict[str, Any]) -> tuple[dict[str, list[str]], boo
 
 def _rabbt_strength(s: dict[str, Any], coach_plan: bool) -> bool:
     """A strength session rabbt put in (safe to remove when strength is turned off)."""
-    if s["sport"] != "strength" or s.get("kind") == "mobility" or locked(s):
-        return False
+    if s["sport"] != "strength" or s.get("kind") in ("mobility", "hyrox") or locked(s):
+        return False  # HYROX station work is race training, never opt-in strength
     return bool(s.get("auto_strength")) or not coach_plan
 
 
 def fit(plan: dict[str, Any], athlete: dict[str, Any], today: date,
         orphan: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
     """Rearrange ``plan`` in place. Returns ``{"moved", "added", "removed", "warnings"}``."""
-    rh, strength_on, asked = effective_rhythm(athlete)
+    rh, strength_on, asked = effective_rhythm(athlete, keep_strength=plan.get("race_kind") == "hyrox")
     coach_plan = bool(plan.get("origin"))
     first = (today + timedelta(days=1)).isoformat()
     race = plan.get("race_date") or "9999-12-31"

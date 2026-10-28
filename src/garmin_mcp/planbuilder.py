@@ -66,6 +66,8 @@ RACES: dict[str, dict[str, Any]] = {
     "marathon": {"kind": "run", "peak": (6.0, 9.0, 12.0), "taper": 3, "long": {"run": 180}},
     "ultra": {"kind": "run", "peak": (8.0, 11.0, 14.0), "taper": 2, "long": {"run": 240}},
     "century ride": {"kind": "bike", "peak": (7.0, 10.0, 13.0), "taper": 1, "long": {"bike": 300}},
+    # HYROX: 8 x 1 km run + 8 stations (hyrox.py). Running plus station sessions.
+    "hyrox": {"kind": "hyrox", "peak": (5.0, 7.0, 9.0), "taper": 1, "long": {"run": 90}},
     "other": {"kind": "general", "peak": (5.0, 7.0, 9.0), "taper": 1,
               "long": {"bike": 150, "run": 90}},
 }
@@ -74,6 +76,9 @@ SPLIT = {
     "run": {"run": 0.88, "strength": 0.12},
     "bike": {"bike": 0.9, "strength": 0.1},
     "general": {"run": 0.45, "bike": 0.45, "strength": 0.1},
+    # "station": HYROX station work (sport strength, kind hyrox). It is race training, not the
+    # optional gym strength gated by strength_opt_in, so the strength pop below never touches it.
+    "hyrox": {"run": 0.6, "station": 0.4},
 }
 # Relative share of a sport's weekly minutes per session kind.
 WEIGHT = {"long": 2.2, "brick": 2.4, "endurance": 1.4, "threshold": 1.2, "tempo": 1.2,
@@ -86,7 +91,7 @@ KIND_TITLES = {
     "threshold": "Threshold {sport}", "vo2": "VO2 intervals", "racepace": "Race-pace {sport}",
     "technique": "Technique swim", "css": "CSS swim intervals", "strength": "Strength & mobility", "mobility": "Mobility",
     "brick": "Brick: bike + run", "openers": "Openers", "shakeout": "Shakeout {sport}",
-    "race": "Race day", "rest": "Rest day",
+    "race": "Race day", "rest": "Rest day", "hyrox": "HYROX stations",
 }
 SPORT_WORD = {"swim": "swim", "bike": "ride", "run": "run", "strength": "strength", "other": "session"}
 KINDS_BY_SPORT = {
@@ -96,7 +101,7 @@ KINDS_BY_SPORT = {
              "openers", "shakeout"),
     "swim": ("technique", "endurance", "css", "easy"),
     "brick": ("brick",),
-    "strength": ("strength", "mobility"),
+    "strength": ("strength", "mobility", "hyrox"),
     "other": ("easy",),
     "rest": ("rest",),
 }
@@ -115,6 +120,7 @@ def new_id() -> str:
 # Free-text distances people type ("100 mile", "Leadville Trail 100 Run", "half", "21.1k", "Ironman")
 # -> the builder's race keys. Checked in order; the first match wins.
 _ALIASES: list[tuple[str, str]] = [
+    (r"\bhy\s*rox\b", "hyrox"),
     (r"\b(sprint)\b.*\b(tri|triathlon)\b|\bsprint tri", "sprint triathlon"),
     (r"\bolympic\b|\bstandard\b.*\btri", "olympic triathlon"),
     (r"\b70\.3\b|half\s*iron|\bim\s*70", "70.3"),
@@ -335,7 +341,7 @@ def rebuild_session(s: dict[str, Any], *, swim_pace: float = 120.0, phase: str =
         if k in s:
             fresh[k] = s[k]
     if sport == "strength" and s.get("exercises") and s.get("kind") == fresh.get("kind"):
-        for k in ("exercises", "prehab", "detail"):
+        for k in ("exercises", "prehab", "detail") + (("variant", "title") if kind == "hyrox" else ()):
             if k in s:
                 fresh[k] = s[k]
     if s.get("detail_custom") and s.get("detail"):
@@ -367,6 +373,8 @@ class Inputs:
     rhythm: dict[str, list[str]] = field(default_factory=dict)
     strength: bool = False          # opted into strength workouts (coaching.strength_on)
     strength_asked: bool = False    # rhythm has strength days but strength isn't opted in
+    division: str | None = None     # HYROX division (hyrox.DIVISIONS)
+    target_time: str | None = None
 
 
 def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
@@ -381,9 +389,11 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
     raw_rhythm = athlete.get("week_rhythm") if isinstance(athlete.get("week_rhythm"), dict) else {}
     rhythm: dict[str, list[str]] = {}
     strength_asked = False
+    # HYROX: a "Lift" day takes the race's station work, opted into gym strength or not.
+    is_hyrox = race_key(goal.get("distance")) == "hyrox"
     for d in DAYS:
         sp = [s for s in (raw_rhythm.get(d) or []) if s in RHYTHM_SPORTS]
-        if "strength" in sp and not strength:
+        if "strength" in sp and not strength and not is_hyrox:
             strength_asked = True
             sp = [s for s in sp if s != "strength"]  # not opted in: the day is "any"
         if sp:
@@ -422,7 +432,9 @@ def inputs_from(athlete: dict[str, Any], goal: dict[str, Any]) -> Inputs:
                   injuries=str(athlete.get("injuries") or "")[:500], level_given=level_given,
                   longest_run_min=_pos("longest_run_min"), longest_ride_min=_pos("longest_ride_min"),
                   no_race=goal.get("no_race") is True, rhythm=rhythm, strength=strength,
-                  strength_asked=strength_asked)
+                  strength_asked=strength_asked,
+                  division=goal.get("division") if goal.get("division") in ("open", "pro", "doubles", "relay") else None,
+                  target_time=goal.get("target_time") if isinstance(goal.get("target_time"), str) else None)
 
 
 def phases(n: int, taper: int) -> list[str]:
@@ -451,11 +463,11 @@ DEFAULT_START_H = {"new": 1.5, "intermediate": 2.5, "advanced": 4.0}
 DEFAULT_LONG = {"run": {"new": 30, "intermediate": 40, "advanced": 50},
                 "bike": {"new": 45, "intermediate": 60, "advanced": 75}}
 # The smallest week that still makes a plan for each race kind (3 x ~25' runs, etc.).
-MIN_START_H = {"run": 1.25, "bike": 1.75, "tri": 2.5, "general": 1.5}
+MIN_START_H = {"run": 1.25, "bike": 1.75, "tri": 2.5, "general": 1.5, "hyrox": 2.0}
 # Weeks a new / experienced athlete needs to build safely for the distance.
 MIN_WEEKS = {"5k": (6, 4), "10k": (8, 6), "half marathon": (12, 8), "marathon": (18, 12),
              "ultra": (20, 14), "sprint triathlon": (8, 6), "olympic triathlon": (12, 8),
-             "70.3": (16, 12), "140.6": (24, 18), "century ride": (10, 8), "other": (6, 4)}
+             "70.3": (16, 12), "140.6": (24, 18), "century ride": (10, 8), "hyrox": (10, 8), "other": (6, 4)}
 
 
 def long_growth(prev: float, sport: str) -> float:
@@ -574,6 +586,35 @@ def _sport_kinds(sport: str, race_kind: str, phase: str, minutes: int, eq: list[
     return kinds[:n]
 
 
+def _is_quality(s: dict[str, Any]) -> bool:
+    """A hard session for spacing: interval kinds, and HYROX compromised runs and simulations."""
+    if s.get("kind") == "hyrox":
+        from .hyrox import HARD
+        return s.get("variant") in HARD
+    return s.get("kind") in QUALITY
+
+
+def _station_plan(phase: str, recovery: bool, minutes: int, sim: bool) -> list[tuple[str, int]]:
+    """HYROX station sessions for one week: (variant, minutes). Skills in base, compromised
+    running in build with a half simulation every ~3rd build week, a full simulation in the
+    peak, one short compromised session in the taper."""
+    if minutes < 25:
+        return []
+    clamp = lambda m: _r5(max(30, min(75, m)))  # noqa: E731
+    if recovery:
+        return [("stations", clamp(minutes * 0.6))]
+    if phase == "base":
+        return [("stations", clamp(minutes / 2))] * (2 if minutes >= 75 else 1)
+    if phase == "build":
+        first = ("half_sim", _r5(max(45, min(60, minutes * 0.6)))) if sim else ("compromised", clamp(minutes / 2))
+        return [first, ("stations", clamp(minutes - first[1]))] if minutes - first[1] >= 30 else [first]
+    if phase == "peak":
+        return [("full_sim", _r5(max(60, min(100, minutes * 0.7)))), ("compromised", clamp(minutes * 0.3))]
+    if phase == "taper":
+        return [("compromised", 30)]
+    return []
+
+
 def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> dict[str, list[dict[str, Any]]]:
     """Assign sessions to weekdays: long bike/brick on the long day, the long run the day
     after (or before), quality spread out, then by lightest day without the same sport."""
@@ -611,14 +652,14 @@ def _place(sessions: list[dict[str, Any]], days: list[str], long_day: str) -> di
         def cost(d: str) -> tuple[int, int, int, int]:
             same = sum(x["sport"] == s["sport"] for x in out[d])
             near = 0
-            if s["kind"] in QUALITY:
+            if _is_quality(s):
                 i = DAYS.index(d)
                 hard = quality_days | {long_day, run_long_day}
                 near = sum(DAYS[(i + o) % 7] in hard for o in (-1, 0, 1))
             return (same, near, load[d], DAYS.index(d))
         day = min(avail, key=cost)
         put(day, s)
-        if s["kind"] in QUALITY:
+        if _is_quality(s):
             quality_days.add(day)
     return out
 
@@ -658,11 +699,11 @@ def _place_rhythm(sessions: list[dict[str, Any]], inp: Inputs, *, phase: str, re
     def put(day: str, s: dict[str, Any]) -> None:
         out[day].append(s)
         load[day] += s.get("minutes") or 0
-        if s.get("kind") in QUALITY or s.get("kind") in ("long", "brick"):
+        if _is_quality(s) or s.get("kind") in ("long", "brick"):
             hard.add(day)
 
     def prio(s: dict[str, Any]) -> int:
-        return 0 if s.get("kind") in ("long", "brick") else 1 if s.get("kind") in QUALITY else 2
+        return 0 if s.get("kind") in ("long", "brick") else 1 if _is_quality(s) else 2
 
     unpinned: list[dict[str, Any]] = []
     bike_long_day: str | None = None
@@ -696,6 +737,18 @@ def _place_rhythm(sessions: list[dict[str, Any]], inp: Inputs, *, phase: str, re
                 kind = "technique" if sport == "swim" else "recovery" if recovery else "easy"
                 put(d, make_session(sport, kind, fill_m, swim_pace=inp.swim_pace, phase=phase))
 
+    # HYROX station work goes on "Lift" days (strength in the rhythm), else open days.
+    hx = [s for s in sessions if s.get("kind") == "hyrox"]
+    st_pick = [d for d in train if "strength" in rh.get(d, [])]
+    for s in sorted(hx, key=prio):
+        avail = [d for d in st_pick if not any(x.get("kind") == "hyrox" for x in out[d])]
+        if not avail:
+            unpinned.append(s)  # no lifting day left: an open day
+            continue
+        day = min(avail, key=lambda d, s=s: (sum(_circ(d, h) <= 1 for h in hard) if prio(s) < 2 else 0,
+                                             load[d], DAYS.index(d)))
+        put(day, s)
+
     for s in sorted(unpinned, key=prio):
         sport = _rsport(s)
         pool = [d for d in train if len(out[d]) < MAX_PER_DAY]
@@ -705,7 +758,7 @@ def _place_rhythm(sessions: list[dict[str, Any]], inp: Inputs, *, phase: str, re
 
         def cost(d: str, s: dict[str, Any] = s, sport: str = sport) -> tuple[int, ...]:
             same = sum(_rsport(x) == sport for x in out[d])
-            picked = 0 if d in any_days else 2 if "strength" in rh.get(d, []) else 1
+            picked = 0 if d in any_days else 2 if "strength" in rh.get(d, []) and s.get("kind") != "hyrox" else 1
             long_pen = _circ(d, inp.long_day) if prio(s) == 0 else 0
             near = sum(_circ(d, h) <= 1 for h in hard) if prio(s) < 2 else 0
             return (same, picked, long_pen, near, load[d], DAYS.index(d))
@@ -719,6 +772,8 @@ def _place_rhythm(sessions: list[dict[str, Any]], inp: Inputs, *, phase: str, re
         st_days = [d for d in DAYS if "strength" in rh.get(d, [])]
         m = strength_minutes(phase, recovery, week_minutes)
         for d in st_days:
+            if any(x.get("kind") == "hyrox" for x in out[d]):
+                continue  # HYROX station work already fills this lifting day
             nxt = DAYS[(DAYS.index(d) + 1) % 7]
             key_next = any(x.get("kind") in QUALITY or x.get("kind") in ("long", "brick") for x in out[nxt])
             s = make_session("strength", "strength", m, phase=phase)
@@ -735,7 +790,8 @@ def rhythm_warnings(inp: Inputs, race_kind: str, distance: str) -> list[str]:
         return []
     out: list[str] = []
     open_days = [d for d in inp.days if d not in rh]
-    need = {"run": ("run",), "bike": ("bike",), "tri": ("swim", "bike", "run"), "general": ()}.get(race_kind, ())
+    need = {"run": ("run",), "bike": ("bike",), "tri": ("swim", "bike", "run"), "general": (),
+            "hyrox": ("run",)}.get(race_kind, ())
     for sport in need:
         n = sum(sport in v for v in rh.values())
         if n == 0 and not open_days:
@@ -757,7 +813,8 @@ def _race_week(inp: Inputs, race_kind: str, week_start: date, plan_start: date,
     rd = inp.race_date
     days: dict[str, list[dict[str, Any]]] = {}
     sports = {"tri": ["bike", "run", "swim"], "run": ["run", "run", "run"],
-              "bike": ["bike", "bike", "bike"], "general": ["run", "bike", "run"]}[race_kind]
+              "bike": ["bike", "bike", "bike"], "general": ["run", "bike", "run"],
+              "hyrox": ["run", "run", "run"]}[race_kind]
     plan = {5: ("easy", sports[0], 45), 4: ("openers", sports[1], 35), 3: ("easy", sports[2], 30),
             1: ("shakeout", sports[0] if race_kind != "tri" else "run", 20)}
     for i in range(7):
@@ -770,7 +827,15 @@ def _race_week(inp: Inputs, race_kind: str, week_start: date, plan_start: date,
             race = make_session("other", "race", 0, title=f"Race day: {inp.title}")
             race["sport"] = "brick" if race_kind == "tri" else ("bike" if race_kind == "bike" else "run")
             race["kind"] = "race"
+            if race_kind == "hyrox":
+                from .hyrox import RACE_DAY
+                race["detail"] = RACE_DAY
             days[key] = [race]
+        elif race_kind == "hyrox" and out == 3:
+            from .hyrox import station_session
+            s = make_session("strength", "hyrox", 25, phase="race")
+            s.update(station_session("primer", "race", 25, division=inp.division))
+            days[key] = [s]
         elif out in plan:  # short sessions: they go in even on usual rest days
             kind, sport, m = plan[out]
             if sport == "swim" and "pool" not in inp.equipment and "open_water" not in inp.equipment and inp.equipment:
@@ -1061,6 +1126,8 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
 
     weeks: list[dict[str, Any]] = []
     long_prev: dict[str, float | None] = {sp: None for sp in ("run", "bike")}
+    build_n = 0  # full build weeks so far (HYROX: a half simulation every 3rd)
+    peak_sim = False
     for idx, (phase, (h, rec)) in enumerate(zip(ph, hours, strict=True), start=1):
         ws = week1 + timedelta(weeks=idx - 1)
         if phase == "race":
@@ -1074,9 +1141,24 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                 st_m = 0  # under 2 hours a week it's all endurance; strength comes in as it grows
             endurance = max(0.0, minutes - st_m)
             e_frac = sum(f for sp_, f in split.items() if sp_ != "strength") or 1.0
+            if phase == "build" and not rec:
+                build_n += 1
             for sport, frac in split.items():
                 sm = st_m if sport == "strength" else int(endurance * frac / e_frac)
                 if sport == "strength" and not sm:
+                    continue
+                if sport == "station":
+                    # HYROX station work (always in a HYROX plan, opted into strength or not).
+                    from .hyrox import station_session
+                    plan_v = _station_plan(phase, rec, sm, sim=build_n % 3 == 0 and build_n > 0)
+                    if phase == "peak":
+                        if peak_sim:
+                            plan_v = [("compromised", min(m, 75)) if v == "full_sim" else (v, m) for v, m in plan_v]
+                        peak_sim = True
+                    for j, (var, m) in enumerate(plan_v):
+                        s = make_session("strength", "hyrox", m, phase=phase)
+                        s.update(station_session(var, phase, m, week=idx + j, division=inp.division))
+                        sessions.append(s)
                     continue
                 kinds = _sport_kinds(sport, race_kind, phase, sm, inp.equipment, rec)
                 if race_kind == "tri" and sport == "bike" and phase in ("build", "peak") and not rec \
@@ -1131,6 +1213,10 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
                     sessions.append(make_session("brick" if k == "brick" else sport, k, _r5(m),
                                                  swim_pace=inp.swim_pace, phase=phase,
                                                  run_off=run_off or 20))
+                    if race_kind == "hyrox" and sport == "run" and k in ("threshold", "racepace"):
+                        sessions[-1]["title"] = "1 km repeats"
+                        sessions[-1]["detail"] = ("1 km repeats at your goal HYROX run pace. "
+                                                  + sessions[-1]["detail"])
             if inp.rhythm:
                 placed = _place_rhythm(sessions, inp, phase=phase, recovery=rec, week_minutes=minutes,
                                        race_kind=race_kind, warn=warnings)
@@ -1160,7 +1246,15 @@ def build_plan(athlete: dict[str, Any], goal: dict[str, Any], *, today: date,
             "start_hours": round(start_h, 1), "swim_pace": inp.swim_pace,
             "start_from": how["source"], "note": note, "weeks": weeks,
             "warnings": rhythm_warnings(inp, race_kind, inp.distance) + sorted(warnings),
-            "week_rhythm": inp.rhythm, "needs_strength_opt_in": inp.strength_asked}
+            "week_rhythm": inp.rhythm, "needs_strength_opt_in": inp.strength_asked,
+            **({"hyrox": _hyrox_info(inp)} if race_kind == "hyrox" else {})}
+
+
+def _hyrox_info(inp: Inputs) -> dict[str, Any]:
+    """HYROX race info for the plan screen: division and a pacing estimate (target time set)."""
+    from .hyrox import WEIGHTS_NOTE, pacing
+    return {"division": inp.division or "open", "pacing": pacing(inp.target_time, inp.division),
+            "weights_note": WEIGHTS_NOTE}
 
 
 def apply_strength(weeks: list[dict[str, Any]], inp: Inputs, race_kind: str) -> None:
@@ -1177,6 +1271,8 @@ def apply_strength(weeks: list[dict[str, Any]], inp: Inputs, race_kind: str) -> 
                     x.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
                     if not x.get("title_custom"):
                         x["title"] = r["title"]
+                elif x["sport"] == "strength" and x.get("kind") == "hyrox":
+                    continue  # station sessions carry their own exercises (hyrox.py)
                 elif x["sport"] == "strength":
                     r = routine(w["phase"], race_kind, inp.injuries, mobility=x.get("kind") == "mobility")
                     x.update(exercises=r["exercises"], prehab=r["prehab"], detail=r["detail"])
@@ -1425,6 +1521,7 @@ def week_focus(phase: str, recovery: bool, race_kind: str) -> str:
         "base": "Base: build aerobic endurance and consistency, mostly easy.",
         "build": "Build: add threshold work while the long sessions grow.",
         "peak": ("Peak: race-specific bricks and race-pace work." if race_kind == "tri"
+                 else "Peak: a full HYROX simulation and compromised running at race pace." if race_kind == "hyrox"
                  else "Peak: race-specific intensity at full volume."),
         "taper": "Taper: volume drops, keep a little intensity, arrive fresh.",
         "race": "Race week: short openers, lots of rest. You're ready.",
