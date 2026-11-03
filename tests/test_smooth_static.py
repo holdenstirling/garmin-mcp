@@ -39,7 +39,7 @@ def test_busy_buttons_keep_their_size() -> None:
 
 def test_tabs_stay_mounted_once_visited() -> None:
     s = (SRC / "screens" / "Chat.tsx").read_text()
-    for tab in ("plan", "feed", "clubs", "progress"):
+    for tab in ("plan", "friends", "you"):
         assert f"visited.has('{tab}')" in s, tab
         assert f"tab === '{tab}' && <div className=\"tab-page" not in s, tab
     assert "data-tab-hidden" in s and "TAB_SHOWN_EVENT" in s
@@ -86,6 +86,6 @@ def test_header_icons_have_their_own_tap_areas() -> None:
     # The bell sat 4px into its neighbours with enlarged tap areas (size="icon" + -mx-1), so a tap
     # near it could open Chats. Header icons are plain 44px buttons side by side.
     chat = (SRC / "screens" / "Chat.tsx").read_text()
-    block = chat[chat.index("const meButton = ("):chat.index("function renderHeader(")]
+    block = chat[chat.index("const headerIcons = ("):chat.index("function renderHeader(")]
     assert "-mx-1" not in block and 'size="icon"' not in block
     assert block.count("className={HEADER_ICON}") >= 2

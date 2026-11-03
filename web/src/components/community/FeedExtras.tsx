@@ -2,8 +2,10 @@
 // Feed: the Monday crew recap (last week, only people who share workouts), club runs and
 // friends' shared races coming up (club runs I'm already going to stay in "You're going"), and
 // who just joined my clubs. No health numbers from anyone who didn't share them.
-import { useState } from 'react'
-import { CalendarDays, Flag, MapPin, PartyPopper, Trophy, UserPlus, X } from 'lucide-react'
+// On the Feed these fold into ONE "This week with your crew" card (CrewCard): a one-line summary,
+// tap to open the recap, club runs, races, new members and friends who haven't shared yet.
+import { useState, type ReactNode } from 'react'
+import { CalendarDays, ChevronDown, Flag, MapPin, PartyPopper, Trophy, UserPlus, UsersRound, X } from 'lucide-react'
 import { fmtDist, fmtDuration } from '@/lib/format'
 import { meetupWhen, rsvpMeetup, type FeedExtras as Extras, type LifeJoined, type LifeRecap, type LifeShout, type LifeUpcoming } from '@/lib/community'
 import { cn } from '@/lib/utils'
@@ -25,6 +27,63 @@ function raceWhen(day: string): string {
   if (days === 1) return 'Tomorrow'
   if (days < 7) return `In ${days} days`
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+/** Joined rows shown before "and N more" (the rest open their club). */
+const JOINED_MAX = 3
+
+/** Feed: everything about the crew this week in one card. ``going`` is "You're going" (club runs
+ * I said yes to), ``waiting`` the friends who haven't shared yet (WaitingRow), each a ready node
+ * with its count, so the summary line can name them. Renders nothing when there's nothing. */
+export function CrewCard({ extras, imperial, onOpenClub, going, goingCount = 0, waiting, waitingLine }: {
+  extras: Extras | null | undefined; imperial: boolean; onOpenClub?: (id: string) => void
+  going?: ReactNode; goingCount?: number
+  waiting?: ReactNode; waitingLine?: string | null
+}) {
+  const [open, setOpen] = useState(false)
+  const upcoming = (extras?.upcoming ?? []).filter((u) => !(u.kind === 'meetup' && u.my_rsvp === 'going'))
+  const joined = extras?.joined ?? []
+  const recap = extras?.recap ?? null
+  const runs = upcoming.filter((u) => u.kind === 'meetup').length
+  const races = upcoming.length - runs
+  const newbies = joined.reduce((n, j) => n + j.count, 0)
+  const bits = [
+    recap && `${fmtDist(recap.km, imperial, null, { decimals: recap.km >= 100 ? 0 : 1 })} together last week`,
+    goingCount > 0 && `you're going to ${goingCount} ${goingCount === 1 ? 'run' : 'runs'}`,
+    runs > 0 && `${runs} club ${runs === 1 ? 'run' : 'runs'} coming up`,
+    races > 0 && `${races} ${races === 1 ? 'race' : 'races'} to cheer`,
+    newbies > 0 && `${newbies} new in your clubs`,
+    waitingLine,
+  ].filter(Boolean) as string[]
+  if (!bits.length) return null
+  const summary = bits.slice(0, 3).join(' · ') + (bits.length > 3 ? ` · ${bits.length - 3} more` : '')
+  return (
+    <section aria-label="This week with your crew" className="flex flex-col rounded-2xl border border-(--border) bg-(--bg-surface)">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        className="flex min-h-14 items-center gap-3 rounded-2xl px-4 py-3 text-left active:bg-(--bg-inset)">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
+          <UsersRound className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-semibold text-(--text)">This week with your crew</span>
+          <span className="block text-meta leading-snug text-(--text-secondary)">{summary}</span>
+        </span>
+        <ChevronDown className={cn('size-5 shrink-0 text-(--text-muted) transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-4 border-t border-(--border) px-4 pb-4 pt-3">
+          {recap && <Recap r={recap} imperial={imperial} />}
+          {going}
+          {upcoming.length > 0 && <Upcoming items={upcoming} onOpenClub={onOpenClub} inset />}
+          {joined.slice(0, JOINED_MAX).map((j) => <Joined key={`${j.club.id}-${j.ts}`} j={j} onOpenClub={onOpenClub} />)}
+          {joined.length > JOINED_MAX && (
+            <p className="m-0 px-1 text-small text-(--text-muted)">And {joined.length - JOINED_MAX} more new in your clubs. Open a club to see everyone.</p>
+          )}
+          {waiting}
+        </div>
+      )}
+    </section>
+  )
 }
 
 export function FeedExtras({ extras, imperial, onOpenClub }: {
@@ -89,11 +148,11 @@ function Recap({ r, imperial }: { r: LifeRecap; imperial: boolean }) {
 }
 
 // --------------------------------------------------------------- upcoming --
-function Upcoming({ items, onOpenClub }: { items: LifeUpcoming[]; onOpenClub?: (id: string) => void }) {
+function Upcoming({ items, onOpenClub, inset = false }: { items: LifeUpcoming[]; onOpenClub?: (id: string) => void; inset?: boolean }) {
   return (
     <section aria-labelledby="life-up-h" className="flex flex-col gap-3">
       <h2 id="life-up-h" className="section-title m-0 px-1">Coming up with your crew</h2>
-      <div className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 no-scrollbar">
+      <div className={cn('flex snap-x gap-3 overflow-x-auto pb-1 no-scrollbar', inset ? '-mx-4 px-4' : '-mx-5 px-5')}>
         {items.map((u) => u.kind === 'meetup'
           ? <MeetupTile key={`m-${u.meetup_id}-${u.when}`} m={u} onOpenClub={onOpenClub} />
           : <RaceTile key={`r-${u.title}-${u.when}`} r={u} />)}
