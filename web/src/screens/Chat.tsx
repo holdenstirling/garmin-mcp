@@ -270,6 +270,10 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const sick = useSick()
   const [homeMore, setHomeMore] = useState(() => { try { return localStorage.getItem(HOME_MORE_KEY) === '1' } catch { return false } })
   const [watchCardOff, setWatchCardOff] = useState(watchCardHidden)
+  // Home's "today" tip: fresh or not is decided once per visit. OneTip marks it seen as soon as it
+  // shows, so reading newcomer.tips live would pull it from the prompt slot right after it appears.
+  const todayTip = useRef<boolean | null>(null)
+  if (todayTip.current === null && newcomer) todayTip.current = !newcomer.tips.includes('today')
   const feed = useRef<HTMLDivElement>(null)
   // Was the user at the bottom of the feed? Kept current by scroll events, so that when the
   // feed resizes (keyboard opening/closing) we can keep the newest messages in view.
@@ -301,7 +305,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [eventReq, setEventReq] = useState<EventRequest | null>(null)
   // Friends tab: Friends (the feed) | Near me (runs, clubs, meetups); People (find friends and
   // buddies) opens from the Feed's + button.
-  const [friendsView, setFriendsView] = useState<CommunityView>('feed')
+  // A tab stored before the merge as 'clubs' (Near me) opens Friends on Near me.
+  const [friendsView, setFriendsView] = useState<CommunityView>(() => { try { return sessionStorage.getItem('rabbit.tab') === 'clubs' ? 'clubs' : 'feed' } catch { return 'feed' } })
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   // Home nudges that load themselves: whether each is up (Home shows one at a time).
@@ -1205,7 +1210,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       { id: 'firstvisit', show: hasWatch(me) ? false : undefined,
         render: (report) => <FirstVisitCard connected={hasWatch(me)} hideConnect onShown={report} onConnect={() => setPickWatch(true)}
           onOpen={(id) => id === 'clubs' ? openCommunity('clubs') : id === 'events' ? openDiscover() : id === 'friends' ? openCommunity('people') : openCommunity()} /> },
-      { id: 'tip', show: athlete && !!newcomer && !newcomer.tips.includes('today'),
+      { id: 'tip', show: athlete && todayTip.current === true,
         render: () => <OneTip id="today" text="Ask rabbt why any workout is on your plan, or what to try near you. The Ask bar is at the bottom." /> },
     ]
     const toggleMore = () => setHomeMore((v) => {

@@ -316,7 +316,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
             </div>
           ))}
           {!readOnly && (
-            <CalendarInsightsCard data={calIns.data} onReload={calIns.reload}
+            <CalendarInsightsCard quiet data={calIns.data} onReload={calIns.reload}
               onApplied={(p) => applied(p)} onAdjust={() => setAdjusting(true)}
               onTravel={(t) => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.label.slice(0, 60) })} />
           )}

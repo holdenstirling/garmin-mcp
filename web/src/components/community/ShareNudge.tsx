@@ -48,11 +48,13 @@ export function ShareNudge({ onShared, home = false, onShown, onShow }: {
     return () => { live = false }
   }, [])
   useEffect(() => { onShow?.(show && !done) }, [show, done]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onShow?.(false), []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!show) return null
 
   function later() {
     try { localStorage.setItem(KEY, String(Date.now())) } catch { /* private mode: hides for this visit */ }
     setShow(false)
+    onShown?.(false) // Home's prompt slot: the next prompt may come up now
   }
   async function share() {
     setBusy(true)

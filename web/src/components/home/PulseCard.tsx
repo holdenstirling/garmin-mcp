@@ -22,14 +22,14 @@ export function PulseCard({ onShown }: { onShown?: (shown: boolean) => void } = 
       <div role="status" className="flex items-center gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
         <RabbitNap size={36} mode="cheer" />
         <p className="m-0 flex-1 text-body font-semibold text-(--text)">Thank you! That really helps.</p>
-        <button type="button" aria-label="Close" className="flex size-11 items-center justify-center text-(--text-muted)" onClick={() => setAsk(false)}><X className="size-5" /></button>
+        <button type="button" aria-label="Close" className="flex size-11 items-center justify-center text-(--text-muted)" onClick={() => { setAsk(false); onShown?.(false) }}><X className="size-5" /></button>
       </div>
     )
   }
   async function send() {
     if (score == null) return
     setBusy(true)
-    try { await answerPulse(score, note.trim()); setSent(true) } catch { setAsk(false) } finally { setBusy(false) }
+    try { await answerPulse(score, note.trim()); setSent(true) } catch { setAsk(false); onShown?.(false) } finally { setBusy(false) }
   }
   return (
     <section aria-labelledby="pulse-q" className="flex flex-col gap-3 rounded-2xl border border-(--border) bg-(--bg-surface) p-4">
@@ -37,7 +37,7 @@ export function PulseCard({ onShown }: { onShown?: (shown: boolean) => void } = 
         <RabbitNap size={36} mode="think" />
         <h2 id="pulse-q" className="m-0 flex-1 pt-1 text-body-lg font-semibold leading-snug text-(--text)">How likely are you to recommend rabbt to a friend?</h2>
         <button type="button" aria-label="Not now" className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center text-(--text-muted)"
-          onClick={() => { setAsk(false); void dismissPulse().catch(() => {}) }}><X className="size-5" /></button>
+          onClick={() => { setAsk(false); onShown?.(false); void dismissPulse().catch(() => {}) }}><X className="size-5" /></button>
       </div>
       <div className="grid grid-cols-6 gap-1.5 min-[400px]:grid-cols-11" role="radiogroup" aria-label="0 is not likely, 10 is very likely">
         {Array.from({ length: 11 }, (_, i) => (

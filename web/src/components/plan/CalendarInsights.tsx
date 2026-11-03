@@ -44,8 +44,11 @@ function LoadDots({ days }: { days: CalDay[] }) {
   )
 }
 
-export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onReload }: {
+export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onReload, quiet = false }: {
   data: CalInsights | null
+  /** only when there's something to act on (a clash to fix, an undo, an error from a fix): the
+   *  Plan tab's one-alert slot, where an always-on card would hide every alert under it */
+  quiet?: boolean
   onApplied: (plan: BuiltPlan) => void
   onTravel: (t: { start: string; end: string; label: string }) => void
   onAdjust: () => void
@@ -76,6 +79,7 @@ export function CalendarInsightsCard({ data, onApplied, onTravel, onAdjust, onRe
   }
 
   const recs = data.recs.filter((r) => !hidden.has(r.id))
+  if (quiet && recs.length === 0 && !undo && !err) return null
   const shown = more ? recs : recs.slice(0, 3)
   const week = data.days.slice(0, 7)
   const packed = week.filter((d) => d.load === 'packed' || d.load === 'heavy').length
