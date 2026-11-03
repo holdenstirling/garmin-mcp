@@ -309,10 +309,12 @@ export function UndoBar({ id, onUndone, onDone }: { id: string; onUndone: (p: Bu
 }
 
 // ------------------------------------------------------- race switcher --
-export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild, onAdjust }: {
+export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild, onAdjust, onEdit }: {
   title: string; date: string | null
   /** "Adjust plan" next to "Change race" (the levers sheet) */
   onAdjust?: () => void
+  /** "Edit plan" next to "Change race" (the plan's settings sheet); wins over onAdjust */
+  onEdit?: () => void
   /** short facts under the race ("231 days to go", "Week 1 of 34"); a " · " string is split */
   sub?: string | string[]
   /** the plan for the newly picked race (null: it has no plan yet) */
@@ -323,6 +325,7 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild,
 }) {
   const [open, setOpen] = useState(false)
   const facts = (Array.isArray(sub) ? sub : (sub ?? '').split(' · ')).map((x) => x.trim()).filter(Boolean)
+  const second = onEdit ?? onAdjust
   return (
     <>
       <div className="flex w-full flex-col rounded-xl border border-(--border) bg-(--bg-surface)">
@@ -338,16 +341,16 @@ export function RaceSwitcher({ title, date, sub, onSwitched, onAddRace, onBuild,
             )}
           </span>
         </span>
-        <span className={cn('grid border-t border-(--border)', onAdjust && 'grid-cols-2 divide-x divide-(--border)')}>
+        <span className={cn('grid border-t border-(--border)', second && 'grid-cols-2 divide-x divide-(--border)')}>
           <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog"
             aria-label={`Change race. Now training for ${title}${date ? `, ${fmtDay(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`}
-            className={cn('flex min-h-12 items-center gap-1.5 whitespace-nowrap text-body font-semibold text-(--accent) active:bg-(--bg-inset)', onAdjust ? 'justify-center rounded-bl-xl px-2' : 'justify-between rounded-b-xl px-4')}>
-            Change race {!onAdjust && <ChevronDown className="size-5 shrink-0" aria-hidden />}
+            className={cn('flex min-h-12 items-center gap-1.5 whitespace-nowrap text-body font-semibold text-(--accent) active:bg-(--bg-inset)', second ? 'justify-center rounded-bl-xl px-2' : 'justify-between rounded-b-xl px-4')}>
+            Change race {!second && <ChevronDown className="size-5 shrink-0" aria-hidden />}
           </button>
-          {onAdjust && (
-            <button type="button" onClick={onAdjust}
+          {second && (
+            <button type="button" onClick={second} aria-haspopup={onEdit ? 'dialog' : undefined}
               className="flex min-h-12 items-center justify-center gap-1.5 whitespace-nowrap rounded-br-xl px-2 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
-              <SlidersHorizontal className="size-5 shrink-0" aria-hidden /> Adjust plan
+              <SlidersHorizontal className="size-5 shrink-0" aria-hidden /> {onEdit ? 'Edit plan' : 'Adjust plan'}
             </button>
           )}
         </span>
