@@ -45,7 +45,7 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
           sub="Pick the day and a start time; rabbt balances the rest of the week" onClick={pick(onWorkout)} />
       ) : (
         <Option icon={<Dumbbell className="size-6" />} title="A workout"
-          sub="Workouts live in a plan: get one first (about 3 minutes)" onClick={pick(onBuildPlan)} />
+          sub="Workouts live in a plan: get one first (about a minute)" onClick={pick(onBuildPlan)} />
       )}
       <Option icon={<CalendarPlus className="size-6" />} title="Add to my calendar"
         sub="A race, a trip or a big day; your plan works around it" onClick={pick(onEvent)} />
@@ -62,7 +62,7 @@ export function AddSheet({ hasPlan, onWorkout, onEvent, onTravel, onSick, onBuil
         sub="Search, check your contacts, invite by text or share your QR code" onClick={pick(() => openFindFriends())} />
       <p className="mt-3 px-1 text-body font-semibold text-(--text)">A plan</p>
       <Option icon={<RabbitLogo size={20} current />} title={hasPlan ? 'Rebuild my plan' : 'Get a plan'}
-        sub={hasPlan ? 'New race or new answers; your events stay' : 'Race, goals, your week: about 3 minutes'} onClick={pick(onBuildPlan)} />
+        sub={hasPlan ? 'New race or new answers; your events stay' : 'Race, goal, your week: about a minute'} onClick={pick(onBuildPlan)} />
       <Option icon={<FileUp className="size-6" />} title="Import a plan"
         sub="From a coach or app: a file, screenshots, pasted text or a template" onClick={pick(onImportPlan)} />
     </Sheet>

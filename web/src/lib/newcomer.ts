@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react'
 import { postJSON } from '@/lib/api'
 
-export type TipId = 'near_me' | 'plan' | 'friends' | 'today' | 'levels'
+export type TipId = 'near_me' | 'plan' | 'friends' | 'today'
 export type Newcomer = {
   since: string; days: number | null
   steps: { area: boolean; job: boolean; plan: boolean }

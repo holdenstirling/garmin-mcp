@@ -171,13 +171,15 @@ def test_salt_rotates_daily_and_old_hashes_go(svc) -> None:
 
 def test_funnel(svc) -> None:
     s, clock = svc
-    for uid, steps in (("a1", 7), ("a2", 3), ("a3", 1)):
-        s.record(uid, {"events": [ev("setup_step", clock, step=x) for x in usage.SETUP_STEPS[:steps]]
+    for uid, steps in (("a1", 5), ("a2", 3), ("a3", 1)):
+        s.record(uid, {"events": [ev("setup_step", clock, step=x) for x in usage.SETUP_FUNNEL[:steps]]
                        + [ev("setup_step", clock, step="intro")]})
     s.record("a1", {"events": [ev("setup_complete", clock)]})
+    s.record("a2", {"events": [ev("setup_step", clock, step="numbers")]})  # an older client: still accepted
     f = {x["step"]: (x["users"], x["pct"]) for x in s.summary()["funnel"]}
     assert f["intro"] == (3, 100) and f["race"] == (2, 67) and f["goal"] == (2, 67)
-    assert f["you"] == (1, 33) and f["complete"] == (1, 33)
+    assert f["week"] == (1, 33) and f["complete"] == (1, 33)
+    assert "you" not in f and "numbers" not in f  # the four-step setup: the funnel shows current steps
 
 
 # -------------------------------------------------------------------- API --

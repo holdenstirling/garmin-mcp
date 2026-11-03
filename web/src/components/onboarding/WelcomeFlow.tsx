@@ -1,8 +1,8 @@
-// "What brings you to Rabbit?": the welcome on first sign-in, a short friendly chat with one
-// question per screen (full: hello -> what brings you -> where do you run -> how did you hear ->
-// you're set), a lighter sheet once for people who were set up before this existed (lite: pick
-// -> area -> set), and Settings -> "How you use Rabbit" (edit: pick -> set). The area step is
-// skipped when an area is already saved. Then "Share your workouts with friends?" (the opt-in
+// "What brings you to rabbt?": the welcome on first sign-in, at most four screens (full: hello and
+// what brings you -> where do you run -> share -> you're set, with "how did you hear" as an
+// optional question on the last screen), a lighter sheet once for people who were set up before
+// this existed (lite: pick -> area -> set), and Me -> "How you use rabbt" (edit: pick -> set). The
+// area step is skipped when an area is already saved. "Share your workouts with friends?" (the opt-in
 // consent, community.py share_workouts; skipped once answered; Not now leaves it unanswered) with
 // the map follow-up (MapShareAsk) after a yes. No Garmin here: "Connect a watch" comes later. Saves athlete.intents (tap order =
 // priority) and welcomed_at; skipping also counts as seen. lib/intent.ts has the copy and logic.
@@ -62,7 +62,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   /** saved = the answer (or skip) reached the server; next = where to go now (null: stay) */
   onFinish: (r: { saved: boolean; intents: Intent[] | null; next: NextStep | null }) => void
 }) {
-  const [step, setStep] = useState<Step>(mode === 'full' ? 'hello' : 'pick')
+  const [step, setStep] = useState<Step>('pick')
   const [picks, setPicks] = useState<Intent[]>(initial)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -88,11 +88,11 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
     }, () => {})  // not an athlete yet / offline: no share step
   }, [mode])
 
+  // Four screens at most: the hello sits on top of "What brings you", and "how did you hear"
+  // is an optional question on the last screen ('hello' and 'heard' stay as names only).
   const steps: Step[] = [
-    ...(mode === 'full' ? ['hello' as const] : []),
     'pick',
     ...(mode !== 'edit' && !hadArea ? ['area' as const] : []),
-    ...(mode === 'full' ? ['heard' as const] : []),
     ...(mode !== 'edit' && (askShare || step === 'share') ? ['share' as const] : []),
     'yours',
   ]
@@ -131,7 +131,6 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   function pickHeard(src: HeardSource) {
     setHeard(src)
     void saveHeard(src).catch(() => {}) // optional and best effort
-    window.setTimeout(() => setStep(after('heard')), 280) // a beat to see the tick
   }
   async function answerShare(yes: boolean) {
     setShare('busy'); setShareErr(null)
@@ -188,6 +187,12 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
   ) : step === 'pick' ? (
     <div className="flex flex-1 flex-col gap-4 px-5 pb-2">
       {art}
+      {mode === 'full' && (
+        <HopIn className="flex flex-col items-center gap-1 px-1 text-center">
+          <p className="m-0 text-body font-medium text-(--text-secondary)">{first ? `Hi ${first}! I'm rabbt.` : "Hi! I'm rabbt."}</p>
+          <p className="m-0 font-display text-title leading-tight text-(--brand)">{TAGLINE}</p>
+        </HopIn>
+      )}
       {ask('What brings you here?', 'Pick one to start. You can do it all later.')}
       <div className="flex flex-col gap-2.5" role="group" aria-label="Start with">
         {QUICK_STARTS.map((q, i) => {
@@ -297,7 +302,7 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
       {art}
       {share === 'yes'
         ? ask('Your crew will see you move!', 'Your last few days are on the Feed now, and new workouts follow after each sync.', 'Sharing is on.')
-        : ask('Share your workouts with friends?', SHARE_CONSENT_LINE, 'Last one!')}
+        : ask('Share your workouts with friends?', SHARE_CONSENT_LINE)}
       {share === 'yes' ? (
         <HopIn index={1}><MapShareAsk /></HopIn>
       ) : (
@@ -333,6 +338,22 @@ export function WelcomeFlow({ mode, initial, name, garmin, hasPlan, onFinish }: 
         ))}
       </ul>
       <p className="text-center text-small text-(--text-muted)">Change this any time in Me, under How you use rabbt.</p>
+      {mode === 'full' && (
+        <div className="flex flex-col gap-2 border-t border-(--border) pt-4">
+          <p className="m-0 text-center text-body font-semibold text-(--text)">How did you hear about rabbt? <span className="font-normal text-(--text-muted)">(optional)</span></p>
+          <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="How did you hear about rabbt">
+            {HEARD_OPTIONS.map((o) => (
+              <button key={o.id} type="button" aria-pressed={heard === o.id} disabled={heard !== null} onClick={() => pickHeard(o.id)}
+                className={cn('flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-small font-semibold active:scale-[0.98]',
+                  heard === o.id ? 'border-(--accent) bg-(--accent-subtle) text-(--accent)' : 'border-(--border) bg-(--bg-surface) text-(--text)')}>
+                {o.label}
+                {heard === o.id && <Check className="rb-pop size-4 shrink-0" aria-hidden />}
+              </button>
+            ))}
+          </div>
+          {heard && <p className="m-0 text-center text-small text-(--accent)">Thanks!</p>}
+        </div>
+      )}
     </div>
   )
 

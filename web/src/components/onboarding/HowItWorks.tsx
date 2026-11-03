@@ -1,6 +1,6 @@
 // "How rabbt works": five short cards (swipe or Next) for anyone who isn't sure where to go.
-// Opens from Me, Home's footer link and Settings via openHowItWorks(); HowItWorksHost lives in
-// the app shell.
+// Opens from one place, Me > Help > How rabbt works, via openHowItWorks(); HowItWorksHost lives
+// in the app shell.
 import { useEffect, useRef, useState } from 'react'
 import { CalendarDays, MapPin, MessageCircle, Newspaper, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'

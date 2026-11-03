@@ -1,8 +1,7 @@
-// Me > Look and feel: System / Light / Dark (lib/theme) and "Take the tour" again.
-import { Compass, Monitor, Moon, Sun } from 'lucide-react'
-import { Group, Icon, Row } from '@/components/settings/Grouped'
+// Me > Look and feel: System / Light / Dark (lib/theme). "Take the tour" lives in Me > Help.
+import { Monitor, Moon, Sun } from 'lucide-react'
+import { Group } from '@/components/settings/Grouped'
 import { THEME_LABEL, setTheme, useTheme, type Theme } from '@/lib/theme'
-import { startTour } from '@/lib/tour'
 import { haptic } from '@/lib/haptics'
 import { cn } from '@/lib/utils'
 
@@ -27,7 +26,6 @@ export function AppearanceGroup() {
           ))}
         </div>
       </div>
-      <Row icon={<Icon><Compass /></Icon>} title="Take the tour" subtitle="A one-minute look around rabbt" onClick={startTour} />
     </Group>
   )
 }

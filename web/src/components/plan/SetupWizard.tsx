@@ -1,9 +1,11 @@
-// Guided setup: race (or no race: a training block) -> goal -> you -> your numbers -> your week
-// -> review, then rabbt builds a periodized plan and (optionally) puts the next sessions on your
-// Garmin. Answers are kept as a local draft so leaving halfway loses nothing.
+// Guided setup in four steps: race (or no race: a training block) -> goal and experience ->
+// your week (with an optional weekly rhythm) -> review, then rabbt builds a periodized plan and
+// (optionally) puts the next sessions on your Garmin. Body details, heart rate, FTP and paces
+// are optional and live in Training profile (or come from Garmin), not here. Answers are kept
+// as a local draft so leaving halfway loses nothing.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { TARGET_PRESETS, TimeFields } from '@/components/ui/TimeFields'
-import { CalendarDays, HeartPulse, Route, Target, Upload, User, Watch } from 'lucide-react'
+import { CalendarDays, Route, Target, Upload, Watch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { celebrate } from '@/components/fx/motion'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -12,14 +14,13 @@ import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { ATTACH_INPUT_ID } from '@/components/chat/Composer'
 import type { Me } from '@/lib/api'
 import {
-  DISTANCES, cmToFtIn, fmtPace, getGarminNumbers, guessUnits, kgToLb, KM_PER_MI,
-  setupPlan, sportsFor, syncGarmin, weeksUntil,
+  DISTANCES, guessUnits, setupPlan, sportsFor, syncGarmin, weeksUntil,
   type AthleteFull, type BuiltPlan, type GoalFull, type SyncResult,
 } from '@/lib/plan'
 import { Card, Chip, ChipRow, Field, MultiChoice, OptionCard, Progress, Screen, StepIntro, areaCls } from './ui'
 import { SetupReview } from './SetupReview'
 import { PhaseStrip, SPORT_ICON, WeekPreview } from './PlanParts'
-import { GarminFill, NumbersFields, WeekFields, YouFields } from './ProfileFields'
+import { WeekFields } from './ProfileFields'
 import { RhythmGrid, StrengthOptInSheet } from './WeekRhythm'
 import { clean as cleanRhythm, summary as rhythmSummary, syncDays, toggle as toggleRhythm, type Day, type WeekRhythm } from '@/lib/rhythm'
 import { LeverFields, usePreview } from './PlanFlow'
@@ -30,11 +31,16 @@ import { clearDraft, readDraft, writeDraft } from '@/lib/drafts'
 import { hoursLine } from '@/lib/planflow'
 import { RabbitNap } from '@/components/anim'
 
-const STEPS = ['intro', 'race', 'goal', 'you', 'numbers', 'week', 'rhythm', 'review', 'done'] as const
+const STEPS = ['intro', 'race', 'goal', 'week', 'review', 'done'] as const
 type StepName = typeof STEPS[number]
 const STEP_NAME: Partial<Record<StepName, string>> = {
-  race: 'Your goal', goal: 'A great day', you: 'About you', numbers: 'Your numbers', week: 'Your week', review: 'Your plan',
+  race: 'Your goal', goal: 'A great day', week: 'Your week', review: 'Your plan',
 }
+const LEVELS = [
+  ['new', 'New to this', 'First race at this distance, or under a year of steady training.'],
+  ['intermediate', 'A few seasons in', "You've done races like this and train most weeks."],
+  ['advanced', 'Experienced', 'Years of structured training; you handle big weeks.'],
+] as const
 
 // No race: what the block trains for, and the distance it builds toward (sets the sports).
 type Focus = 'run' | 'bike' | 'tri' | 'fitness'
@@ -155,7 +161,6 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
   const [liftAsk, setLiftAsk] = useState<Day | null>(null)  // "Add strength workouts?" from the rhythm step
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [note, setNote] = useState<string | null>(null)
   const [plan, setPlan] = useState<BuiltPlan | null>(null)
   const [sync, setSync] = useState<{ days: number; result: SyncResult | null; busy: boolean; error: string | null }>({ days: 14, result: null, busy: false, error: null })
 
@@ -182,7 +187,6 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
   const g = draft.goal
   const a = draft.athlete
-  const imperial = a.units !== 'metric'
   const sports = sportsFor(g.distance)
   const setG = (p: Partial<GoalFull>) => setDraft((d) => ({ ...d, goal: { ...d.goal, ...p } }))
   const setA = (p: Partial<AthleteFull>) => setDraft((d) => ({ ...d, athlete: { ...d.athlete, ...p } }))
@@ -192,11 +196,11 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
     setA({ week_rhythm: r, available_days: days, long_day: days.includes(a.long_day ?? '') ? a.long_day : days[days.length - 1] ?? null })
   }
   const noRace = !!g.no_race
-  // A training block has no race-day goal, so its "A great day" step is skipped.
-  const shown = STEPS.filter((s) => !(noRace && s === 'goal'))
+  // Every plan gets all four steps; a training block's "goal" step only asks about experience.
+  const shown = STEPS
   const pos = shown.indexOf(step)
-  // lib/usage: setup funnel (the optional rhythm step counts as "week" until usage.py lists it)
-  useEffect(() => { if (step !== 'done') track('setup_step', { step: step === 'rhythm' ? 'week' : step }) }, [step])
+  // lib/usage: setup funnel (usage.py SETUP_STEPS; the old you/numbers/rhythm ids stay accepted)
+  useEffect(() => { if (step !== 'done') track('setup_step', { step }) }, [step])
   const close = () => { setClosing(true); setTimeout(onClose, 200) }
 
   // ------------------------------------------------------- validation ---
@@ -214,36 +218,17 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
     }
     if (step === 'week') {
       if (!a.weekly_hours) return 'How many hours a week do you train now?'
-      if ((a.available_days ?? []).length < 2) return 'Pick at least two training days.'
+      if ((a.available_days ?? []).length < 2) return 'Pick at least two training days (Rest days in your rhythm don\'t count).'
     }
-    if (step === 'rhythm' && (a.available_days ?? []).length < 2) return 'Leave at least two days that aren\'t Rest.'
     return null
   }, [step, g, a])
 
   const next = () => {
     if (problem) { setError(problem); return }
-    setError(null); setNote(null)
+    setError(null)
     setStep(shown[Math.min(pos + 1, shown.length - 1)]!)
   }
-  const back = () => { setError(null); setNote(null); setStep(shown[Math.max(0, pos - 1)]!) }
-
-  async function fillFromGarmin() {
-    setBusy(true); setNote(null)
-    try {
-      const { numbers } = await getGarminNumbers()
-      const filled: string[] = []
-      const patch: Partial<AthleteFull> = {}
-      for (const [k, v] of Object.entries(numbers) as [keyof AthleteFull, unknown][]) {
-        if (v == null || (a[k] != null && a[k] !== '')) continue
-        ;(patch as Record<string, unknown>)[k] = v
-        filled.push(k.replace(/_/g, ' '))
-      }
-      setA(patch)
-      setNote(filled.length ? `Filled in from Garmin: ${filled.join(', ')}.` : 'Nothing new from Garmin; your answers stay as they are.')
-    } catch (e) {
-      setNote((e as Error).message)
-    } finally { setBusy(false) }
-  }
+  const back = () => { setError(null); setStep(shown[Math.max(0, pos - 1)]!) }
 
   // What the server builds from (setup and the live Review preview send the same thing).
   const payload = () => {
@@ -322,7 +307,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
         </Button>
       ) : (
         <Button variant="primary" className="h-11 flex-1 text-body" onClick={next}>
-          {step === 'numbers' && !hasNumbers(a) ? 'Skip for now' : step === 'rhythm' && !rhythmSummary(a.week_rhythm ?? {}) ? 'Skip' : 'Continue'}
+          Continue
         </Button>
       )}
     </>
@@ -342,16 +327,15 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             </span>
             <h3 className="font-display text-display leading-tight text-(--brand)">Let's build your plan</h3>
             <p className="mt-2 max-w-sm text-body-lg leading-snug text-(--text-secondary)">
-              A few questions about your goal and your week. Training for a race or not, rabbt turns
-              them into a week-by-week plan with structured workouts, and can put them on your Garmin.
+              A few quick questions about your goal and your week. rabbt turns them into a
+              week-by-week plan and can put the workouts on your watch.
             </p>
           </div>
           <Card>
             {[
               [Target, 'Your goal', 'A race, or just getting fitter'],
-              [User, 'About you', 'Experience, body and any injuries'],
-              [HeartPulse, 'Your numbers', 'Heart rate, FTP and paces, if you know them'],
-              [CalendarDays, 'Your week', 'Hours, training days and equipment'],
+              [CalendarDays, 'Your week', 'Hours and training days'],
+              [Route, 'Your plan', 'Check it, tweak it, start it'],
             ].map(([Icon, t, s]) => {
               const I = Icon as typeof Target
               return (
@@ -366,7 +350,7 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             })}
           </Card>
           <p className="px-1 text-center text-meta text-(--text-muted)">
-            About 3 minutes.{me.garmin.connected ? ' rabbt can fill in what Garmin already knows.' : ''}
+            About a minute. Heart rate, paces and body details are optional and can come later{me.garmin.connected ? ', or straight from Garmin' : ''}.
           </p>
           <div className="flex flex-col gap-2">
             <Button variant="primary" className="h-12 text-body-lg" onClick={next}>Get started</Button>
@@ -470,57 +454,53 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
 
       {step === 'goal' && (
         <>
-          <StepIntro eyebrow="Your goal" title="What would make it a great day?" />
-          <div className="flex flex-col gap-2">
-            <OptionCard selected={g.goal_type === 'finish'} title="Finish strong" description="Get to the line healthy and enjoy it." onClick={() => setG({ goal_type: 'finish' })} />
-            <OptionCard selected={g.goal_type === 'time'} title="Hit a time" description="You have a target time in mind." onClick={() => setG({ goal_type: 'time' })} />
-            <OptionCard selected={g.goal_type === 'compete'} title="Compete" description="Chasing a podium, an age-group place or a qualifying spot." onClick={() => setG({ goal_type: 'compete' })} />
-          </div>
-          <Card>
-            {g.goal_type === 'time' && (
-              <Field label="Target time">
-                <TimeFields label="Target time" value={g.target_time} onChange={(v) => setG({ target_time: v })}
-                  presets={TARGET_PRESETS[g.distance ?? '']} scrollOnMount />
-              </Field>
-            )}
-            {sports.length > 1 && (
-              <Field label="Which sport needs the most work? (optional)" hint="rabbt adds a little extra time there. Skip it if none of these fit.">
-                <MultiChoice value={(g.limiters ?? []) as ('swim' | 'bike' | 'run')[]}
-                  options={sports.filter((s): s is 'swim' | 'bike' | 'run' => s === 'swim' || s === 'bike' || s === 'run').map((s) => [s, s[0]!.toUpperCase() + s.slice(1)] as const)}
-                  onChange={(v) => setG({ limiters: v })} />
-                {(g.limiters ?? []).length > 0 && (
-                  <button type="button" className="min-h-11 self-start text-small font-medium text-(--accent)" onClick={() => setG({ limiters: [] })}>None of these</button>
+          {!noRace && (
+            <>
+              <StepIntro eyebrow="Your goal" title="What would make it a great day?" />
+              <div className="flex flex-col gap-2">
+                <OptionCard selected={g.goal_type === 'finish'} title="Finish strong" description="Get to the line healthy and enjoy it." onClick={() => setG({ goal_type: 'finish' })} />
+                <OptionCard selected={g.goal_type === 'time'} title="Hit a time" description="You have a target time in mind." onClick={() => setG({ goal_type: 'time' })} />
+                <OptionCard selected={g.goal_type === 'compete'} title="Compete" description="Chasing a podium, an age-group place or a qualifying spot." onClick={() => setG({ goal_type: 'compete' })} />
+              </div>
+              {g.goal_type === 'time' && (
+                <Card>
+                  <Field label="Target time">
+                    <TimeFields label="Target time" value={g.target_time} onChange={(v) => setG({ target_time: v })}
+                      presets={TARGET_PRESETS[g.distance ?? '']} scrollOnMount />
+                  </Field>
+                </Card>
+              )}
+            </>
+          )}
+          <StepIntro eyebrow="About you" title="How experienced are you?">
+            This sets how hard the plan ramps up. Not sure? rabbt starts gently and adjusts as your workouts come in.
+          </StepIntro>
+          <ChipRow>
+            {LEVELS.map(([id, label]) => (
+              <Chip key={id} selected={a.level === id} onClick={() => setA({ level: a.level === id ? null : id })}>{label}</Chip>
+            ))}
+          </ChipRow>
+          {a.level && <p className="-mt-2 px-1 text-small text-(--text-muted)">{LEVELS.find(([id]) => id === a.level)?.[2]}</p>}
+          {!noRace && (
+            <details className="rounded-xl border border-(--border) bg-(--bg-surface)">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-body font-medium text-(--text) [&::-webkit-details-marker]:hidden">
+                <span className="flex-1">More about your goal</span><span className="text-meta text-(--accent)">Optional</span>
+              </summary>
+              <div className="border-t border-(--border)">
+                {sports.length > 1 && (
+                  <Field label="Which sport needs the most work?" hint="rabbt adds a little extra time there.">
+                    <MultiChoice value={(g.limiters ?? []) as ('swim' | 'bike' | 'run')[]}
+                      options={sports.filter((s): s is 'swim' | 'bike' | 'run' => s === 'swim' || s === 'bike' || s === 'run').map((s) => [s, s[0]!.toUpperCase() + s.slice(1)] as const)}
+                      onChange={(v) => setG({ limiters: v })} />
+                  </Field>
                 )}
-              </Field>
-            )}
-            <Field label="Anything else that matters?" hint="Optional: worries, priorities, why this race, or anything the options above missed.">
-              <textarea className={areaCls} value={g.priorities ?? ''} maxLength={600} onChange={(e) => setG({ priorities: e.target.value })}
-                placeholder="e.g. First half Ironman, nervous about the swim" />
-            </Field>
-          </Card>
-        </>
-      )}
-
-      {step === 'you' && (
-        <>
-          <StepIntro eyebrow="About you" title="Tell rabbt about yourself">
-            This sets how hard the plan ramps up. All of it is optional except your experience.
-          </StepIntro>
-          {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
-          {note && <p className="px-1 text-small text-(--accent)">{note}</p>}
-          <YouFields a={a} setA={setA} sports={sports} />
-        </>
-      )}
-
-      {step === 'numbers' && (
-        <>
-          <StepIntro eyebrow="Your numbers" title="Training zones">
-            These set the targets on your watch. Skip any you don't know: workouts then use
-            your Garmin heart-rate zones.
-          </StepIntro>
-          {me.garmin.connected && <GarminFill busy={busy} onClick={() => void fillFromGarmin()} />}
-          {note && <p className="px-1 text-small text-(--accent)">{note}</p>}
-          <NumbersFields a={a} setA={setA} sports={sports} />
+                <Field label="Anything else that matters?" hint="Worries, priorities, why this race.">
+                  <textarea className={areaCls} value={g.priorities ?? ''} maxLength={600} onChange={(e) => setG({ priorities: e.target.value })}
+                    placeholder="e.g. First half Ironman, nervous about the swim" />
+                </Field>
+              </div>
+            </details>
+          )}
         </>
       )}
 
@@ -530,16 +510,17 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
             rabbt starts close to what you do now and builds gradually from there.
           </StepIntro>
           <WeekFields a={a} setA={setA} sports={sports} />
-        </>
-      )}
-
-      {step === 'rhythm' && (
-        <>
-          <StepIntro eyebrow="Optional" title="Want a set weekly rhythm?">
-            Like lifting Mon, Wed, Fri and biking Tue, Thu, Sat. Leave a day on Any and rabbt picks. Skip it and rabbt plans the whole week.
-          </StepIntro>
-          <RhythmGrid value={a.week_rhythm ?? {}} onChange={setRhythm} strengthOptIn={a.strength_opt_in}
-            onNeedOptIn={(d) => setLiftAsk(d)} />
+          <details className="rounded-xl border border-(--border) bg-(--bg-surface)" open={!!rhythmSummary(a.week_rhythm ?? {})}>
+            <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-3 px-4 py-2 text-body font-medium text-(--text) [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">Set a weekly rhythm</span>
+              <span className="text-meta text-(--accent)">{rhythmSummary(a.week_rhythm ?? {}) ?? 'Optional'}</span>
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-(--border) p-3">
+              <p className="m-0 px-1 text-small text-(--text-secondary)">Like lifting Mon, Wed, Fri and biking Tue, Thu, Sat. Leave a day on Any and rabbt picks.</p>
+              <RhythmGrid value={a.week_rhythm ?? {}} onChange={setRhythm} strengthOptIn={a.strength_opt_in}
+                onNeedOptIn={(d) => setLiftAsk(d)} />
+            </div>
+          </details>
           {liftAsk && (
             <StrengthOptInSheet
               onYes={() => { const d = liftAsk; setLiftAsk(null); setA({ strength_opt_in: true }); setRhythm(toggleRhythm(a.week_rhythm ?? {}, d, 'strength')) }}
@@ -594,17 +575,14 @@ export function SetupWizard({ me, onClose, onDone, onOpenPlan, onUploadPlan }: {
                   value={[g.goal_type === 'time' ? `Target ${g.target_time}` : g.goal_type === 'compete' ? 'Compete' : 'Finish strong',
                     (g.limiters ?? []).length ? `More ${(g.limiters ?? []).join(' and ')}` : ''].filter(Boolean).join(', ')} />
               )}
-              <ReviewRow label="Your week" onEdit={() => setStep('rhythm')}
+              <ReviewRow label="Your week" onEdit={() => setStep('week')}
                 value={[rhythmSummary(a.week_rhythm ?? {}) ?? 'rabbt picks each day', a.strength_opt_in ? 'strength workouts on' : null].filter(Boolean).join(', ')} />
-              <ReviewRow label="You" onEdit={() => setStep('you')}
-                value={[levelLabel(a.level), a.age && `${a.age} yrs`, a.height_cm && (imperial ? `${cmToFtIn(a.height_cm).ft}'${cmToFtIn(a.height_cm).inch}"` : `${a.height_cm} cm`),
-                  a.weight_kg && (imperial ? `${kgToLb(a.weight_kg)} lb` : `${a.weight_kg} kg`)].filter(Boolean).join(', ') || 'Not set'} />
-              <ReviewRow label="Numbers" onEdit={() => setStep('numbers')}
-                value={[a.threshold_hr && `Threshold heart rate ${a.threshold_hr}`, a.ftp_w && `Threshold power ${a.ftp_w} W`,
-                  a.run_threshold_pace && `Threshold pace ${fmtPace(imperial ? a.run_threshold_pace * KM_PER_MI : a.run_threshold_pace)}/${imperial ? 'mi' : 'km'}`,
-                  a.swim_css && `Swim pace ${fmtPace(a.swim_css)}/100m`].filter(Boolean).join(', ') || 'Heart-rate zones from Garmin'} />
+              <ReviewRow label="Experience" onEdit={() => setStep('goal')} value={levelLabel(a.level) || 'Not sure: rabbt starts gently'} />
             </div>
           </details>
+          <p className="px-1 text-small text-(--text-muted)">
+            Heart rate, paces, FTP and body details are optional. Add them anytime in Training profile{me.garmin.connected ? ', or let Garmin fill them in' : ''}; workouts use your watch's zones until then.
+          </p>
           {me.goal?.plan && !draft.newGoal && (
             <p className="px-1 text-small text-(--warning-text)">
               {noRace && !me.goal.no_race
@@ -667,9 +645,6 @@ function typeForDistance(d: string | undefined | null): EventType {
   return hit ? hit[0] : 'other'
 }
 
-function hasNumbers(a: Partial<AthleteFull>): boolean {
-  return [a.resting_hr, a.max_hr, a.threshold_hr, a.ftp_w, a.run_threshold_pace, a.swim_css].some((v) => v != null)
-}
 const levelLabel = (l: AthleteFull['level']) => l === 'new' ? 'New to this' : l === 'intermediate' ? 'A few seasons in' : l === 'advanced' ? 'Experienced' : ''
 
 function runwayHint(weeks: number): string {
