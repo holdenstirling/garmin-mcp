@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { UnitsGroup } from '@/components/settings/UnitsRow'
-import { Bell, Compass, LogOut, Plug } from 'lucide-react'
+import { Bell, LogOut } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { photoUrl } from '@/lib/photo'
 import { Group, Icon, LargeGroups, Row, Switch } from '@/components/settings/Grouped'
@@ -8,30 +8,19 @@ import { ShareRow } from '@/components/settings/ShareRow'
 import { SharedLinks } from '@/components/settings/SharedLinks'
 import { LocationRow } from '@/components/settings/LocationRow'
 import { PrivacyRows } from '@/components/settings/PrivacyRows'
-import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
 import { CoachingSettings } from '@/components/CoachingSettings'
 import { signOut, type Me } from '@/lib/api'
 import { disablePush, enablePush, isStandalone, pushSupported, sendTestPush, thisDeviceSubscribed } from '@/lib/push'
 
-// "Garmin, Oura · 1 more to connect" for the Connected apps row.
-function connectedLine(me: Me): string {
-  const on = [me.garmin.connected && 'Garmin', me.apple?.connected && 'Apple Watch', me.oura.connected && 'Oura',
-    me.whoop?.connected && 'WHOOP', me.calendar.connected && 'Google Calendar'].filter(Boolean) as string[]
-  const avail = 1 + (me.apple?.available ? 1 : 0) + (me.oura.available ? 1 : 0) + (me.calendar.available ? 1 : 0)
-    + (me.whoop?.available ? 1 : 0)
-  if (!on.length) return 'Connect Garmin, Apple Watch, Oura or Google Calendar'
-  const left = avail - on.length
-  return `${on.join(', ')}${left > 0 ? ` · ${left} more to connect` : ''}`
-}
-
-// Settings sheet content: notifications, device checks, account. Integrations live on their
-// own page (Me -> Connected apps); this sheet only links there (and closes first).
+// Settings sheet content: units, coaching, links, location, notifications, privacy, account.
+// Connected apps and "How you use rabbt" live in Me only (one place each), not here.
 // Profile, plan, events, gear and people live in their tabs (Me, Plan, Events).
-export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
+export function SettingsPanels({ me, onChange, onDevDone }: {
   me: Me
   onChange: () => void
   onDevDone: () => void
-  onOpenConnections: () => void
+  /** kept for callers; Connected apps now opens from Me */
+  onOpenConnections?: () => void
 }) {
   const [pushMsg, setPushMsg] = useState<string | null>(null)
   const [here, setHere] = useState<boolean | null>(null) // this device subscribed?
@@ -84,17 +73,6 @@ export function SettingsPanels({ me, onChange, onDevDone, onOpenConnections }: {
   return (
     <LargeGroups.Provider value>
     <div className="settings flex flex-col gap-7">
-      <Group label="Apps" description="Connect, sync or disconnect your watch, ring and calendar.">
-        <Row icon={<Icon><Plug /></Icon>} title="Connected apps"
-          subtitle={connectedLine(me)} onClick={onOpenConnections} />
-      </Group>
-
-      {me.role === 'athlete' && (
-        <Group label="Your home screen" description="What you came for shows up first on rabbt's home.">
-          <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
-        </Group>
-      )}
-
       {me.role === 'athlete' && <UnitsGroup me={me} onChange={onChange} />}
 
       {me.garmin.connected && me.chat.available && (

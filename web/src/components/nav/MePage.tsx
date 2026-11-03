@@ -1,7 +1,7 @@
 // "Me" (from the avatar in every tab header): who you are and everything around your
 // training that isn't the plan, progress or events, plus Connected apps and Settings. Friends
 // live in Community. Every row is opened by Chat.tsx's page stack (pushed, with a back arrow).
-import { Bandage, ChartColumn, ChevronRight, ClipboardList, Compass, Handshake, KeyRound, Mail, Plug, Search, Settings, ShieldCheck, User, UserCheck, Users, Wrench } from 'lucide-react'
+import { Bandage, ChartColumn, ChevronRight, ClipboardList, Compass, Handshake, KeyRound, Mail, MessageCircle, Plug, Search, Settings, ShieldCheck, User, UserCheck, Users, Wrench } from 'lucide-react'
 import { ShareWorkoutsRow } from '@/components/settings/ShareWorkoutsRow'
 import { AppearanceGroup } from '@/components/settings/AppearanceRow'
 import { RabbitLogo } from '@/components/RabbitLogo'
@@ -19,10 +19,23 @@ import { intentsOf, intentsSummary, openWelcome } from '@/lib/intent'
 import type { LegalSlug } from '@/lib/legal'
 import { openFindFriends } from '@/lib/friends'
 import { openHowItWorks } from '@/components/onboarding/HowItWorks'
+import { startTour } from '@/lib/tour'
+import { consentOf } from '@/lib/legal'
 import { CircleQuestionMark } from 'lucide-react'
 
 export type MeRow = 'profile' | 'memory' | 'gear' | 'friends' | 'coaches' | 'inbox' | 'athletes' | 'settings' | 'findcoach' | 'coachstatus'
   | 'connections' | 'access' | 'usage' | 'partners' | 'legal' | 'nearme' | 'plan'
+
+// "Garmin, Oura · 1 more to connect" for the Connected apps row (moved here from Settings).
+function connectedLine(me: Me): string {
+  const on = [me.garmin.connected && 'Garmin', me.apple?.connected && 'Apple Watch', me.oura.connected && 'Oura',
+    me.whoop?.connected && 'WHOOP', me.calendar.connected && 'Google Calendar'].filter(Boolean) as string[]
+  if (!on.length) return 'Connect a watch: Garmin, Apple Watch, Oura, and more'
+  const avail = 1 + (me.apple?.available ? 1 : 0) + (me.oura.available ? 1 : 0) + (me.calendar.available ? 1 : 0)
+    + (me.whoop?.available ? 1 : 0)
+  const left = avail - on.length
+  return `${on.join(', ')}${left > 0 ? ` · ${left} more to connect` : ''}`
+}
 
 const Count = ({ n, label }: { n: number; label: string }) => (
   <span className="flex items-center gap-1.5">
@@ -40,6 +53,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
   // First week: the advanced rows wait (nothing removed); "Show everything" brings them now.
   const n = useNewcomer()
   const full = !n?.first_week
+  const contact = consentOf(me)?.contact ?? null
   return (
     <Screen title="Me" subtitle="Your profile, coaching, connected apps and settings." onClose={onClose}>
       <LargeGroups.Provider value>
@@ -73,7 +87,6 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
           <Row icon={<Icon><Compass /></Icon>} title="How you use rabbt" subtitle={intentsSummary(intentsOf(me))} onClick={openWelcome} />
         )}
         <Row icon={<Icon><Users /></Icon>} title="Find friends" subtitle="Search, contacts, invite by text, QR code" onClick={() => openFindFriends()} />
-        <Row icon={<Icon><CircleQuestionMark /></Icon>} title="How rabbt works" subtitle="A quick tour of what you can do" onClick={openHowItWorks} />
       </Group>
 
       {full && (
@@ -117,7 +130,7 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
       )}
 
       <Group label="Apps">
-        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle="Connect a watch: Garmin, Apple Watch, Oura, and more"
+        <Row icon={<Icon><Plug /></Icon>} title="Connected apps" subtitle={connectedLine(me)}
           onClick={() => onOpen('connections')} />
         <Row icon={<Icon tone="muted"><Settings /></Icon>} title="Settings" subtitle="Notifications, units, account"
           onClick={() => onOpen('settings')} />
@@ -129,6 +142,16 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         <Row icon={<Icon><ShieldCheck /></Icon>} title="Privacy & legal" subtitle="Privacy policy, terms, download or delete your data"
           onClick={() => onOpen('legal')} />
         <Row icon={<Icon tone="muted"><KeyRound /></Icon>} title="Sign-in" subtitle="Passkeys on your devices" onClick={() => onOpen('access')} />
+      </Group>
+
+      {/* Help lives in one place: the tips again, the longer walkthrough, and a way to reach a person. */}
+      <Group label="Help">
+        <Row icon={<Icon><Compass /></Icon>} title="Take the tour" subtitle="Three quick tips about the tabs" onClick={startTour} />
+        <Row icon={<Icon><CircleQuestionMark /></Icon>} title="How rabbt works" subtitle="What you can do, in five cards" onClick={openHowItWorks} />
+        {contact && (
+          <Row icon={<Icon><MessageCircle /></Icon>} title="Contact" subtitle={contact}
+            onClick={() => { window.location.href = `mailto:${contact}?subject=${encodeURIComponent('rabbt')}` }} />
+        )}
       </Group>
 
       {me.role === 'athlete' && n && (n.first_week || n.show_all) && (

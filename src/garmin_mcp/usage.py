@@ -40,6 +40,9 @@ from .appstore import AppStore
 TABS = frozenset({"rabbit", "plan", "feed", "clubs", "community", "races", "progress", "me"})
 CARDS = frozenset({"upnext", "ring", "race_grade", "reward", "actions"})
 SETUP_STEPS = ("intro", "race", "goal", "you", "numbers", "week", "rhythm", "review")
+# The four-step setup (Nov 2026): you, numbers and rhythm left setup, but older clients may still
+# send them, so they stay accepted above; the funnel shows the current steps.
+SETUP_FUNNEL = ("intro", "race", "goal", "week", "review")
 SHARES = frozenset({"workout", "post", "month", "race", "plan", "invite", "profile"})
 RSVPS = frozenset({"meetup", "group", "race"})
 PUSHES = frozenset({"coach", "recap", "community", "workout", "brief", "other"})
@@ -243,7 +246,7 @@ def summarize(days: dict[str, dict[str, Any]], today: date) -> dict[str, Any]:
     rows = [days.get(s) or {} for s in span]
     series = [{"date": s, "dau": int(r.get("dau", 0)), "wau": int(r.get("wau", 0)), "mau": int(r.get("mau", 0))}
               for s, r in zip(span, rows, strict=True)]
-    steps = [{"step": s, "users": _sum(rows, "u", f"setup_step.step={s}")} for s in SETUP_STEPS]
+    steps = [{"step": s, "users": _sum(rows, "u", f"setup_step.step={s}")} for s in SETUP_FUNNEL]
     steps.append({"step": "complete", "users": _sum(rows, "u", "setup_complete")})
     top = steps[0]["users"] or max((s["users"] for s in steps), default=0)
     for s in steps:
