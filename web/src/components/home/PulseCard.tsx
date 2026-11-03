@@ -9,13 +9,13 @@ import { areaCls } from '@/components/plan/ui'
 import { cn } from '@/lib/utils'
 import { answerPulse, dismissPulse, getPulse } from '@/lib/traction'
 
-export function PulseCard() {
+export function PulseCard({ onShown }: { onShown?: (shown: boolean) => void } = {}) {
   const [ask, setAsk] = useState(false)
   const [score, setScore] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { getPulse().then((r) => setAsk(r.ask), () => {}) }, [])
+  useEffect(() => { getPulse().then((r) => { setAsk(r.ask); onShown?.(r.ask) }, () => onShown?.(false)) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   if (!ask) return null
   if (sent) {
     return (

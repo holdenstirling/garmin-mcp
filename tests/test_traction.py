@@ -210,6 +210,8 @@ def test_api_newcomer_checklist_tips_and_first_week(env, tmp_path) -> None:  # n
             r = (await n.post("/app/api/newcomer", headers=H, json={"tip": "near_me"})).json()
             r = (await n.post("/app/api/newcomer", headers=H, json={"tip": "near_me", "done": "job"})).json()
             assert r["tips"] == ["near_me"] and r["steps"]["job"] is True
+            if nc["since"] != "existing":  # getting things done no longer ends the calm first week
+                assert r["first_week"] is True
             r = (await n.post("/app/api/newcomer", headers=H, json={"show_all": True})).json()
             assert r["show_all"] is True and r["first_week"] is False
             assert (await n.get("/app/api/me")).json()["newcomer"]["since"] == nc["since"]  # stamped once

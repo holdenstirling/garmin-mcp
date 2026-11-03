@@ -1,6 +1,6 @@
 // Newcomers (server: /me.newcomer, POST /api/newcomer): the one Getting started checklist
-// (set your area, do one thing near you, get a plan), first-week mode (a calmer app until the
-// first real thing is done, or for 7 days; "Show everything" in Me turns it off) and the
+// (set your area, do one thing near you, get a plan), first-week mode (a calmer app for the
+// first 7 days, whatever gets done; "Show everything" in Me turns it off) and the
 // one-time tips, all stored on the person's own profile.
 import { useSyncExternalStore } from 'react'
 import { postJSON } from '@/lib/api'
@@ -25,8 +25,11 @@ export function setNewcomer(n: Newcomer | null | undefined) {
 export function useNewcomer(): Newcomer | null {
   return useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l) } }, () => current, () => current)
 }
-/** True while the app should stay calm (first week, nothing done yet, not "Show everything"). */
-export const useFirstWeek = () => useNewcomer()?.first_week === true
+/** True while the app should stay calm: the first 7 days, unless "Show everything" is on.
+ *  The one calm switch for every tab (Home uses it; Plan, Friends and Me can too). */
+export const useCalm = () => useNewcomer()?.first_week === true
+/** Same as useCalm (older name). */
+export const useFirstWeek = useCalm
 
 async function send(body: Record<string, unknown>): Promise<void> {
   try { set(await postJSON<Newcomer>('/api/newcomer', body)) } catch { /* best effort */ }

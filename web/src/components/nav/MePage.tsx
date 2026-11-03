@@ -8,7 +8,6 @@ import { RabbitLogo } from '@/components/RabbitLogo'
 import { Avatar } from '@/components/Avatar'
 import { Screen } from '@/components/plan/ui'
 import { Group, Icon, LargeGroups, Row, Switch } from '@/components/settings/Grouped'
-import { GettingStarted } from '@/components/home/GettingStarted'
 import { setShowAll, useNewcomer } from '@/lib/newcomer'
 import { LevelBadge } from '@/components/progress/Progress'
 import { photoUrl } from '@/lib/photo'
@@ -63,9 +62,6 @@ export function MePage({ me, goal, progress, onOpen, onOpenDoc, onClose }: {
         </span>
         <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
       </button>
-
-      {me.role === 'athlete' && <GettingStarted onJob={() => onOpen('nearme')} onPlan={() => onOpen('plan')}
-        onWatch={() => onOpen('connections')} onFriends={() => openFindFriends()} watch={me.garmin.connected || me.oura.connected} />}
 
       <Group label="Account">
         <Row icon={<Icon><User /></Icon>} title="Training profile" subtitle="You, goals, zones and your week" onClick={() => onOpen('profile')} />

@@ -1,14 +1,14 @@
 // The one Getting started checklist (Today and Me): three steps built on the two reasons people
 // come, set your area, do one thing near you, get a plan. Replaces the old setup ring, the
 // "Get started 3 of 6" card and the Progress setup line (their data still exists; quests and XP
-// are unchanged). The area is asked right here, no navigation. When all three are done it says
-// so once with a little cheer and offers the optional extras, then folds away.
+// are unchanged). The area is asked right here, no navigation. Lives on Home only (in its one
+// prompt slot) and is gone for good once all three are done or it's hidden.
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { RabbitNap, burst } from '@/components/anim'
 import { AreaInline } from '@/components/local/AreaInline'
 import { cn } from '@/lib/utils'
-import { hideChecklist, useNewcomer } from '@/lib/newcomer'
+import { hideChecklist, useNewcomer, type Newcomer } from '@/lib/newcomer'
 
 type Step = { id: 'area' | 'job' | 'plan'; title: string; line: string; action: string }
 const STEPS: Step[] = [
@@ -16,6 +16,11 @@ const STEPS: Step[] = [
   { id: 'job', title: 'Do one thing near you', line: 'Say you are going to a run, or post one.', action: 'Find a run' },
   { id: 'plan', title: 'Get a plan', line: 'About 3 minutes. It moves when life does.', action: 'Get a plan' },
 ]
+
+/** Whether the checklist has anything left to show (Home's prompt slot decides with this). */
+export function checklistShows(n: Newcomer | null): boolean {
+  return !!n && !n.checklist_hidden && !STEPS.every((s) => n.steps[s.id])
+}
 
 export function GettingStarted({ onJob, onPlan, onWatch, onFriends, watch, className }: {
   onJob: () => void; onPlan: () => void
@@ -34,7 +39,7 @@ export function GettingStarted({ onJob, onPlan, onWatch, onFriends, watch, class
     wasAll.current = all
   }, [all])
   useEffect(() => { if (n?.steps.area) setAreaOpen(false) }, [n?.steps.area])
-  if (!n || n.checklist_hidden || (n.since === 'existing' && all)) return null
+  if (!checklistShows(n) || !n) return null
   const next = STEPS.find((s) => !n.steps[s.id])
 
   return (

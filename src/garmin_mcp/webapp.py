@@ -331,9 +331,10 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
             days = (datetime.now(UTC).date() - date.fromisoformat(since)).days if since != "existing" else None
         except ValueError:
             days = None
-        done = steps["area"] and (steps["job"] or steps["plan"])
+        # A calmer app for the whole first week: setting up well (area, plan) no longer ends it
+        # on day 1. "Show everything" in Me turns it off.
         return {"since": since, "days": days, "steps": steps,
-                "first_week": days is not None and days < 7 and not done and p.get("show_all") is not True,
+                "first_week": days is not None and days < 7 and p.get("show_all") is not True,
                 "show_all": p.get("show_all") is True, "checklist_hidden": p.get("checklist_hidden") is True,
                 "tips": [t for t in (p.get("tips_seen") or []) if t in TIP_IDS]}
 

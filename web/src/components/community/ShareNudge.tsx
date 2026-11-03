@@ -23,21 +23,26 @@ export function askLine(f?: { count: number; names: string[] }): string {
   return `${f.names[0]} and ${rest} other${rest > 1 ? 's' : ''} want to see your workouts. Share them?`
 }
 
-export function ShareNudge({ onShared, home = false }: { onShared?: () => void; home?: boolean }) {
+export function ShareNudge({ onShared, home = false, onShown }: {
+  onShared?: () => void; home?: boolean
+  /** Home's prompt slot: whether the ask shows, once known */
+  onShown?: (shown: boolean) => void
+}) {
   const [show, setShow] = useState(false)
   const [line, setLine] = useState(askLine())
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   useEffect(() => {
-    if (dismissedRecently()) return
+    if (dismissedRecently()) { onShown?.(false); return }
     let live = true
     getCommunitySettings().then((r) => {
       const s = r.settings
+      if (!live) return
       // On Home, only when someone actually follows you (the Feed shows it either way).
-      if (live && s.sharing_effective === false && s.sharing_source !== 'off' && (!home || (s.followers?.count ?? 0) > 0)) {
-        setLine(askLine(s.followers)); setShow(true)
-      }
-    }, () => {})
+      const ask = s.sharing_effective === false && s.sharing_source !== 'off' && (!home || (s.followers?.count ?? 0) > 0)
+      if (ask) { setLine(askLine(s.followers)); setShow(true) }
+      onShown?.(ask)
+    }, () => { if (live) onShown?.(false) })
     return () => { live = false }
   }, [])
   if (!show) return null

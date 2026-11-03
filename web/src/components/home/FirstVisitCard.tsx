@@ -15,17 +15,21 @@ export function firstVisitHidden(): boolean {
   try { return window.localStorage.getItem(HIDE) === '1' } catch { return false }
 }
 
-export function FirstVisitCard({ connected, onConnect, onOpen }: {
+export function FirstVisitCard({ connected, onConnect, onOpen, onShown, hideConnect = false }: {
   connected: boolean
   onConnect: () => void
   onOpen: (id: FirstVisitItem['id']) => void
+  /** Home's prompt slot: whether it shows, once known */
+  onShown?: (shown: boolean) => void
+  /** Home has its own one "Connect your watch" card: leave the button out here */
+  hideConnect?: boolean
 }) {
   const [fv, setFv] = useState<FirstVisit | null>(null)
   const [gone, setGone] = useState(firstVisitHidden)
   useEffect(() => {
-    if (connected || gone) return
+    if (connected || gone) { onShown?.(false); return }
     let live = true
-    getFirstVisit().then((r) => { if (live) setFv(r) }, () => {})
+    getFirstVisit().then((r) => { if (live) { setFv(r); onShown?.(!!r.show) } }, () => { if (live) onShown?.(false) })
     return () => { live = false }
   }, [connected, gone])
   if (connected || gone || !fv?.show) return null
@@ -62,7 +66,7 @@ export function FirstVisitCard({ connected, onConnect, onOpen }: {
           )
         })}
       </ul>
-      <Button variant="default" className="mt-4 w-full border-(--accent)/40 font-semibold text-(--accent)" onClick={onConnect}>{fv.primary.label}</Button>
+      {!hideConnect && <Button variant="default" className="mt-4 w-full border-(--accent)/40 font-semibold text-(--accent)" onClick={onConnect}>{fv.primary.label}</Button>}
       <p className="mt-2 text-center text-small text-(--text-muted)">{fv.primary.detail}</p>
     </section>
   )

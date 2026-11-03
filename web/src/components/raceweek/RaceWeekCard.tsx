@@ -43,13 +43,25 @@ function countdown(days: number): string {
   return days === 0 ? 'Race day' : days === 1 ? 'Tomorrow' : `${days} days to go`
 }
 
-export function RaceWeekCard({ refreshKey = 0, onOpen }: { refreshKey?: number; onOpen: (eventId: string) => void }) {
+export function RaceWeekCard({ refreshKey = 0, onOpen, onShown }: {
+  refreshKey?: number; onOpen: (eventId: string) => void
+  /** Home's prompt slot: whether anything shows, once both reads are back */
+  onShown?: (shown: boolean) => void
+}) {
   const [card, setCard] = useState<Card | null>(null)
   const [friends, setFriends] = useState<FriendRacing[]>([])
   useEffect(() => {
-    getRaceWeekCard().then((r) => setCard(r.raceweek), () => setCard(null))
-    getFriendsRacing().then((r) => setFriends(r.friends), () => setFriends([]))
-  }, [refreshKey])
+    let live = true
+    Promise.all([
+      getRaceWeekCard().then((r) => r.raceweek, () => null),
+      getFriendsRacing().then((r) => r.friends, () => [] as FriendRacing[]),
+    ]).then(([c, f]) => {
+      if (!live) return
+      setCard(c); setFriends(f)
+      onShown?.(!!c || f.length > 0)
+    })
+    return () => { live = false }
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const since = useTicker(friends.some((f) => f.state === 'racing'))
   if (!card && !friends.length) return null
   return (

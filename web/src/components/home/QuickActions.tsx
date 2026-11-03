@@ -147,12 +147,12 @@ export function SharePrompt({ onShown }: { onShown?: (shown: boolean) => void })
       if (!live) return
       setS(r.settings)
       if (r.settings.share_workouts == null && !r.settings.share_prompted) void putCommunitySettings({ share_prompted: true }).catch(() => {})
-    }, () => {})
+    }, () => { if (live) onShown?.(false) })
     return () => { live = false }
   }, [])
   const hidden = !s || s.share_workouts != null || (s.share_prompted && answered === null && !askedThisVisit)
   if (!hidden) askedThisVisit = true
-  useEffect(() => { onShown?.(!hidden && answered === null) }, [hidden, answered]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (s) onShown?.(!hidden && answered === null) }, [s, hidden, answered]) // eslint-disable-line react-hooks/exhaustive-deps
   if (hidden) return null
   if (answered !== null) {
     return (
