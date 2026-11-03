@@ -4,13 +4,14 @@ import { AdjustedSummary } from './AdjustedSummary'
 import { WeekRhythmSection } from './WeekRhythm'
 import { HyroxPacing } from './HyroxPacing'
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, Thermometer, Trash2, Undo2, Watch } from 'lucide-react'
+import { CalendarDays, FileUp, MessageCircle, Plane, RefreshCw, SlidersHorizontal, Thermometer, Timer, Trash2, Undo2, Watch } from 'lucide-react'
 import { SICK_CHANGED_EVENT, openSick } from '@/lib/sick'
 import { SickBanner } from './SickHost'
 import { Button } from '@/components/ui/button'
 import { GarminEmpty } from '@/components/garmin/GarminEmpty'
 import { Group, Icon, Row } from '@/components/settings/Grouped'
 import { Section } from '@/components/ui/section'
+import { Sheet } from '@/components/ui/Sheet'
 import { BlocksEntry } from '@/components/blocks/BlocksEntry'
 import { RabbitLoader } from '@/components/RabbitLoader'
 import type { Me, Sport } from '@/lib/api'
@@ -76,6 +77,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
   const [closing, setClosing] = useState(false)
   const [weekIdx, setWeekIdx] = useState<number | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
+  const [editOpen, setEditOpen] = useState(false)   // the "Edit plan" sheet
   // Events on calendar days (lib/events), so a day shows the race / group run / trip it holds.
   const [events, setEvents] = useState<RaceEvent[]>([])
   useEffect(() => {
@@ -271,7 +273,7 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
 
   return (
     <Screen title="Your plan" subtitle={`${goalTitle} · ${raceDay}`} closing={closing} onClose={close}>
-      {/* Which race the plan trains for (switch: each race keeps its plan) + Adjust my plan */}
+      {/* Which race the plan trains for (switch: each race keeps its plan) + Edit plan */}
       {coachMode ? (
         <div className="px-1">
           <p className="text-body text-(--text-secondary)">
@@ -280,56 +282,55 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <RaceSwitcher title={goalTitle} date={plan.race_date}
-            sub={[daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done',
-              plan.current_week ? `Week ${plan.current_week} of ${plan.weeks.length}` : `${plan.weeks.length} weeks`]}
-            onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
-            onAddRace={onOpenEvents} onBuild={onRebuild} onAdjust={readOnly ? undefined : () => setAdjusting(true)} />
-          {undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
-          {!readOnly && <SickBanner />}
-          {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}
-        </div>
+        <RaceSwitcher title={goalTitle} date={plan.race_date}
+          sub={[daysToRace > 0 ? `${daysToRace} day${daysToRace === 1 ? '' : 's'} to go` : daysToRace === 0 ? 'Race day!' : 'Race done',
+            plan.current_week ? `Week ${plan.current_week} of ${plan.weeks.length}` : `${plan.weeks.length} weeks`]}
+          onSwitched={(p) => { if (p) { setPlan(p); setWeekIdx(p.current_week ?? p.weeks[0]?.index ?? null); loadCal() } onChanged(); onMeChanged?.() }}
+          onAddRace={onOpenEvents} onBuild={onRebuild} onEdit={() => setEditOpen(true)} />
       )}
-      {plan.origin && (
-        <div className="px-1">
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-small text-(--text-secondary)">
-            {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : plan.origin.kind === 'block' ? `Built for ${plan.origin.name ?? 'your training block'}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-            {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
-            {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-meta" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>}
-          </p>
-        </div>
-      )}
-      {!coachMode && proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
+      {!coachMode && undo && <UndoBar id={undo} onUndone={(p) => { setUndo(null); applied(p) }} onDone={() => setUndo(null)} />}
       {note && <p className="px-1 text-small text-(--accent)" role="status">{note}</p>}
-      {!coachMode && !readOnly && (
-        <CalendarInsightsCard data={calIns.data} onReload={calIns.reload}
-          onApplied={(p) => applied(p)} onAdjust={() => setAdjusting(true)}
-          onTravel={(t) => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.label.slice(0, 60) })} />
-      )}
-      {!coachMode && !calIns.data?.connected && suggestions.map((t) => (
-        <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
-          <Plane className="size-5 shrink-0 text-(--accent)" />
-          <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
-            On your calendar: <span className="text-(--text)">{t.title}</span>, {fmtDay(t.start, { month: 'short', day: 'numeric' })}{t.end !== t.start ? ` – ${fmtDay(t.end, { month: 'short', day: 'numeric' })}` : ''}
-          </p>
-          <Button variant="default" className="h-8 px-3 text-meta" onClick={() => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.title.slice(0, 60) })}>Plan around it</Button>
-        </div>
-      ))}
-      {!coachMode && (plan.events_changed || plan.race_changed) && (
-        <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
-          <p className="min-w-0 flex-1 text-small leading-snug text-(--accent)">
-            {plan.race_changed ? 'Your race date or distance changed since this plan was built.' : 'Your events changed since this plan was built.'}
-            {' '}Rebuild to fit {plan.race_changed ? 'it' : 'them'} in (session edits are replaced).</p>
-          <Button variant="primary" className="h-8 px-3 text-meta" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
-        </div>
-      )}
 
-      {/* Your week (lib/rhythm.ts): lift Mon, Wed, Fri, bike Tue, Thu, Sat... Saving fits it into the plan. */}
-      {plan?.hyrox && <HyroxPacing info={plan.hyrox} />}
-      {!coachMode && <WeekRhythmSection readOnly={readOnly} coachPlan={!!plan?.origin} onPlan={(p) => applied(p)} />}
-      {!coachMode && <AdjustedSummary plan={plan} weekIndex={week?.index ?? null} />}
-      <TPPlanBar tp={tp} onToast={setNote} />
+      {/* At most ONE alert above the calendar: the first of these that has something to say
+          (each renders nothing when it doesn't), in this order. The rest wait their turn. */}
+      {!coachMode && (
+        <div className="flex flex-col empty:hidden [&>*:not(:first-child)]:hidden">
+          {!readOnly && <SickBanner />}
+          {(plan.events_changed || plan.race_changed) && (
+            <div className="flex items-center gap-3 rounded-xl border border-(--accent)/30 bg-(--accent-subtle) px-3.5 py-2.5">
+              <p className="min-w-0 flex-1 text-small leading-snug text-(--accent)">
+                {plan.race_changed ? 'Your race date or distance changed since this plan was built.' : 'Your events changed since this plan was built.'}
+                {' '}Rebuild to fit {plan.race_changed ? 'it' : 'them'} in (session edits are replaced).</p>
+              <Button variant="primary" className="h-8 px-3 text-meta" loading={rebuilding} onClick={() => void doRebuild()}>Rebuild</Button>
+            </div>
+          )}
+          {proposal && <AdjustCard p={proposal} onDone={(p, msg) => { if (p) applied(p); setProposal(null); setNote(msg) }} />}
+          {!readOnly && <WeekCheckCard onApplied={(p) => applied(p)} />}
+          {!calIns.data?.connected && suggestions.slice(0, 1).map((t) => (
+            <div key={t.start} className="flex items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-2.5">
+              <Plane className="size-5 shrink-0 text-(--accent)" />
+              <p className="min-w-0 flex-1 text-small leading-snug text-(--text-secondary)">
+                On your calendar: <span className="text-(--text)">{t.title}</span>, {fmtDay(t.start, { month: 'short', day: 'numeric' })}{t.end !== t.start ? ` – ${fmtDay(t.end, { month: 'short', day: 'numeric' })}` : ''}
+              </p>
+              <Button variant="default" className="h-8 px-3 text-meta" onClick={() => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.title.slice(0, 60) })}>Plan around it</Button>
+            </div>
+          ))}
+          {!readOnly && (
+            <CalendarInsightsCard data={calIns.data} onReload={calIns.reload}
+              onApplied={(p) => applied(p)} onAdjust={() => setAdjusting(true)}
+              onTravel={(t) => setTravel({ start: t.start < today ? today : t.start, end: t.end, label: t.label.slice(0, 60) })} />
+          )}
+          <AdjustedSummary plan={plan} weekIndex={week?.index ?? null} />
+          {plan.hyrox && (
+            <button type="button" onClick={() => setEditOpen(true)}
+              className="flex min-h-11 items-center gap-2 self-start rounded-full bg-(--accent-subtle) px-4 text-meta font-semibold text-(--accent) active:opacity-80">
+              <Timer className="size-4" aria-hidden /> Your HYROX pacing
+            </button>
+          )}
+        </div>
+      )}
+      {coachMode && plan?.hyrox && <HyroxPacing info={plan.hyrox} />}
+
       {/* Week / month calendar (plancal.py): drag or Move sessions, fixes, mileage */}
       <PlanCalendar plan={plan} cal={planCal} imperial={imperial} today={today} week={week} onWeek={setWeekIdx}
         onAdjust={!coachMode && !readOnly ? () => setAdjusting(true) : undefined}
@@ -348,81 +349,101 @@ export function PlanEditor({ me, goalTitle, onClose, onRebuild, onAsk, onChanged
         onStart={onOpenWorkout && !coachMode ? (s) => onOpenWorkout(s.id) : undefined}
         onAsk={coachMode ? undefined : (s, date) => { close?.(); onAsk(`About my ${s.title} on ${fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' })}: `) }} />
 
-      {/* The season (phases, hours by week, events in the plan) is the calendar's "Plan overview" sheet. */}
-
-      {!coachMode && <>
-      {/* Garmin */}
-      <Section title="Send to your watch" description={me.garmin.connected
-        ? 'Upcoming workouts go to your Garmin calendar with steps and targets. Moved or edited workouts update on the next sync.'
-        : 'Connect Garmin to get each workout on your watch.'}>
-      <Group>
-        <Field label={me.garmin.connected ? (lastSync ? `Last synced ${lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${synced} on your calendar` : 'Not synced yet') : 'Connect Garmin'}>
-          {me.garmin.connected ? (
-            <div className="flex flex-col gap-2.5">
-              <div className="flex gap-2">
-                <select aria-label="How far ahead" value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))}
-                  className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text)">
-                  {[7, 14, 28].map((n) => <option key={n} value={n}>Next {n} days</option>)}
-                </select>
-                <Button variant="default" className="h-11 flex-1 gap-1.5 text-body font-semibold text-(--accent)" loading={sync.busy === 'sync'}
-                  disabled={sync.busy != null} onClick={() => void doSync()}>
-                  <Watch className="size-5" /> Sync
-                </Button>
-                {(synced > 0 || plan.pending_removals > 0) && (
-                  <Button variant="default" className="h-11 px-4 text-body" loading={sync.busy === 'remove'}
-                    disabled={sync.busy != null} onClick={() => void doRemove()}>Remove</Button>
-                )}
-              </div>
-              {sync.busy === 'sync' && <RabbitLoader inline className="text-small" label="Sending to your watch…" />}
-              {plan.pending_removals > 0 && !sync.result && (
-                <p className="text-meta text-(--text-muted)">{plan.pending_removals} old workout{plan.pending_removals === 1 ? '' : 's'} will be cleared from Garmin on the next sync.</p>
+      {/* Everything that changes the plan (not what's on it today) lives in one sheet:
+          adjusting, the weekly rhythm, HYROX pacing, sending to the watch and the plan tools. */}
+      {!coachMode && editOpen && (
+        <Sheet title="Edit plan" onClose={() => setEditOpen(false)} portal>
+          <div className="flex flex-col gap-6">
+            {!readOnly && (
+              <Group>
+                <Row icon={<Icon><SlidersHorizontal /></Icon>} title="Adjust plan" subtitle="Hours, days, how hard, long day"
+                  onClick={() => { setEditOpen(false); setAdjusting(true) }} />
+              </Group>
+            )}
+            {plan.hyrox && <HyroxPacing info={plan.hyrox} />}
+            <WeekRhythmSection readOnly={readOnly} coachPlan={!!plan?.origin} onPlan={(p) => applied(p)} />
+            {/* Garmin */}
+            <Section title="Send to your watch" description={me.garmin.connected
+              ? 'Upcoming workouts go to your Garmin calendar with steps and targets. Moved or edited workouts update on the next sync.'
+              : 'Connect Garmin to get each workout on your watch.'}>
+            <Group>
+              <Field label={me.garmin.connected ? (lastSync ? `Last synced ${lastSync.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${synced} on your calendar` : 'Not synced yet') : 'Connect Garmin'}>
+                {me.garmin.connected ? (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex gap-2">
+                      <select aria-label="How far ahead" value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))}
+                        className="h-11 shrink-0 rounded-md border border-input bg-transparent px-2 text-body text-(--text)">
+                        {[7, 14, 28].map((n) => <option key={n} value={n}>Next {n} days</option>)}
+                      </select>
+                      <Button variant="default" className="h-11 flex-1 gap-1.5 text-body font-semibold text-(--accent)" loading={sync.busy === 'sync'}
+                        disabled={sync.busy != null} onClick={() => void doSync()}>
+                        <Watch className="size-5" /> Sync
+                      </Button>
+                      {(synced > 0 || plan.pending_removals > 0) && (
+                        <Button variant="default" className="h-11 px-4 text-body" loading={sync.busy === 'remove'}
+                          disabled={sync.busy != null} onClick={() => void doRemove()}>Remove</Button>
+                      )}
+                    </div>
+                    {sync.busy === 'sync' && <RabbitLoader inline className="text-small" label="Sending to your watch…" />}
+                    {plan.pending_removals > 0 && !sync.result && (
+                      <p className="text-meta text-(--text-muted)">{plan.pending_removals} old workout{plan.pending_removals === 1 ? '' : 's'} will be cleared from Garmin on the next sync.</p>
+                    )}
+                    {sync.result && <SyncSummary result={sync.result} />}
+                    {sync.removed != null && <p className="text-small text-(--accent)">Removed {sync.removed} workout{sync.removed === 1 ? '' : 's'} from your Garmin calendar.</p>}
+                  </div>
+                ) : me.garmin.can_connect ? (
+                  <GarminEmpty what="workout" compact />
+                ) : <p className="text-small text-(--text-muted)">Garmin isn't available on this server.</p>}
+              </Field>
+            </Group>
+            {sync.error && <p className="px-1 text-small text-(--danger)" role="alert">{sync.error}</p>}
+            </Section>
+            <TPPlanBar tp={tp} onToast={setNote} />
+            <BlocksEntry compact />
+            {/* Plan actions */}
+            <Section title="Plan tools" description="Ask about it, plan around trips or sick days, or start over.">
+            <Group>
+              <Row icon={<Icon><MessageCircle /></Icon>} title="Ask rabbt about my plan" subtitle="Questions, swaps, travel weeks"
+                onClick={() => { setEditOpen(false); close?.(); onAsk('About my plan: ') }} />
+              <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
+                onClick={() => { setEditOpen(false); onOpenEvents() }} />
+              <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
+                onClick={() => { setEditOpen(false); setTravel('new') }} />
+              {!readOnly && (
+                <Row icon={<Icon><Thermometer /></Icon>} title="I'm sick" subtitle={plan.sick?.active ? `Sick mode on · day ${plan.sick.day}` : 'Rest or short easy days, then an easy return'}
+                  onClick={() => { setEditOpen(false); openSick() }} />
               )}
-              {sync.result && <SyncSummary result={sync.result} />}
-              {sync.removed != null && <p className="text-small text-(--accent)">Removed {sync.removed} workout{sync.removed === 1 ? '' : 's'} from your Garmin calendar.</p>}
-            </div>
-          ) : me.garmin.can_connect ? (
-            <GarminEmpty what="workout" compact />
-          ) : <p className="text-small text-(--text-muted)">Garmin isn't available on this server.</p>}
-        </Field>
-      </Group>
-      {sync.error && <p className="px-1 text-small text-(--danger)" role="alert">{sync.error}</p>}
-      </Section>
-
-      <BlocksEntry compact />
-
-      {/* Plan actions */}
-      <Section title="Plan tools" description="Ask about it, plan around trips or sick days, or start over.">
-      <Group>
-        <Row icon={<Icon><MessageCircle /></Icon>} title="Ask rabbt about my plan" subtitle="Questions, swaps, travel weeks"
-          onClick={() => { close?.(); onAsk('About my plan: ') }} />
-        <Row icon={<Icon><CalendarDays /></Icon>} title="Events" subtitle="Add B and C races, group sessions and trips; they go into the plan"
-          onClick={onOpenEvents} />
-        <Row icon={<Icon><Plane /></Icon>} title="Travel mode" subtitle="Days away: swap sessions for hotel gym, treadmill or runs"
-          onClick={() => setTravel('new')} />
-        {!readOnly && (
-          <Row icon={<Icon><Thermometer /></Icon>} title="I'm sick" subtitle={plan.sick?.active ? `Sick mode on · day ${plan.sick.day}` : 'Rest or short easy days, then an easy return'}
-            onClick={openSick} />
-        )}
-        {plan.trips.map((t) => (
-          <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
-            trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-meta" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>} />
-        ))}
-        <Row icon={<Icon><FileUp /></Icon>} title="Add a plan" subtitle="A file, pasted text, Zwift workouts or a template"
-          onClick={() => void loadImport(true)} />
-        <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
-          onClick={onRebuild} />
-        {confirmDelete ? (
-          <div className="flex items-center gap-2 px-4 py-3">
-            <span className="min-w-0 flex-1 text-body text-(--text)">Delete this plan{synced ? ' and its Garmin workouts' : ''}?</span>
-            <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
-            <Button variant="destructive" className="h-9 px-3 text-small" loading={deleting} onClick={() => void doDelete()}>Delete</Button>
+              {plan.trips.map((t) => (
+                <Row key={t.id} title={`${t.label}`} subtitle={`${fmtDay(t.start, { month: 'short', day: 'numeric' })} – ${fmtDay(t.end, { month: 'short', day: 'numeric' })} · travel mode on`}
+                  trailing={<Button variant="ghost" className="h-8 gap-1 px-2 text-meta" onClick={() => void removeTravel(t.id).then((r) => applied(r.plan), (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>} />
+              ))}
+              <Row icon={<Icon><FileUp /></Icon>} title="Add a plan" subtitle="A file, pasted text, Zwift workouts or a template"
+                onClick={() => { setEditOpen(false); void loadImport(true) }} />
+              <Row icon={<Icon><RefreshCw /></Icon>} title="Change race or answers" subtitle="Rebuilds the plan from the setup questions"
+                onClick={() => { setEditOpen(false); onRebuild() }} />
+              {confirmDelete ? (
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <span className="min-w-0 flex-1 text-body text-(--text)">Delete this plan{synced ? ' and its Garmin workouts' : ''}?</span>
+                  <Button variant="default" className="h-9 px-3 text-small" onClick={() => setConfirmDelete(false)}>Keep</Button>
+                  <Button variant="destructive" className="h-9 px-3 text-small" loading={deleting} onClick={() => void doDelete()}>Delete</Button>
+                </div>
+              ) : (
+                <Row icon={<Icon tone="danger"><Trash2 /></Icon>} title="Delete plan" danger onClick={() => setConfirmDelete(true)} />
+              )}
+            </Group>
+            </Section>
+            {plan.origin && (
+              <div className="px-1">
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 text-small text-(--text-secondary)">
+                  {plan.origin.kind === 'coach' ? `Loaded by ${plan.origin.by_name}` : plan.origin.kind === 'block' ? `Built for ${plan.origin.name ?? 'your training block'}` : `Loaded from your file (${plan.origin.source})`} on {new Date(plan.origin.at * 1000).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  {imp?.status.last && imp.status.last.at === plan.origin.at && ` · +${imp.status.last.added} new, ${imp.status.last.changed} changed, ${imp.status.last.removed} removed`}
+                  {!coachMode && imp?.status.undo && <Button variant="ghost" className="h-11 gap-1 px-2 text-meta" onClick={() => void OWN_IMPORT.undo().then(() => { setImp(null); load(); onChanged() }, (e) => setSync((x) => ({ ...x, error: (e as Error).message })))}><Undo2 className="size-4" /> Undo</Button>}
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <Row icon={<Icon tone="danger"><Trash2 /></Icon>} title="Delete plan" danger onClick={() => setConfirmDelete(true)} />
-        )}
-      </Group>
-      </Section>
-      </>}
+        </Sheet>
+      )}
 
       {imp?.open && <OwnPlanImport api={OWN_IMPORT} status={imp.status} hasPlan onClose={() => setImp((x) => x && { ...x, open: false })} onApplied={() => { setImp(null); load(); onChanged() }} />}
       {travel && (

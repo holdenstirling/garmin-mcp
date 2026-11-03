@@ -1409,13 +1409,24 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-(--accent)" />
               </button>
-              <Group>
-                <SettingsRow icon={<Icon tone="muted"><Upload /></Icon>} title="I already have a plan"
-                  subtitle="A file, screenshots, pasted text or a template" onClick={() => setAddPlan(true)} />
-              </Group>
             </>
           )}
-          {(goal || builtPlan) && <BlocksEntry />}
+          {/* One clear way in (Get a plan, above); the other ways wait behind one row. */}
+          <details className="group rounded-xl border border-(--border) bg-(--bg-surface)">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-body font-semibold text-(--text) [&::-webkit-details-marker]:hidden">
+              <span className="min-w-0 flex-1">{goal?.plan ? 'More plan options' : 'Other ways to add a plan'}</span>
+              <ChevronRight className="size-5 shrink-0 text-(--text-muted) transition-transform group-open:rotate-90" aria-hidden />
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-(--border) p-3">
+              {!goal?.plan && (
+                <Group>
+                  <SettingsRow icon={<Icon tone="muted"><Upload /></Icon>} title="I already have a plan"
+                    subtitle="A file, screenshots, pasted text or a template" onClick={() => setAddPlan(true)} />
+                </Group>
+              )}
+              {(goal || builtPlan) && <BlocksEntry />}
+            </div>
+          </details>
         </Screen>
       </TabScreen>
     )

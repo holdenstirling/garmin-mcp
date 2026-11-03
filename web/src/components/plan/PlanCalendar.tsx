@@ -10,7 +10,7 @@
 // Deep link: lib/plancal openPlanDay(date) (sessionStorage keys read on mount + an event).
 import { smooth } from '@/lib/scrollMotion'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flag, GripVertical, Map as MapIcon, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flag, GripVertical, List as ListIcon, Map as MapIcon, Pencil, Plane, Plus, Undo2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Segmented } from '@/components/nav/Segmented'
 import { Sheet } from '@/components/ui/Sheet'
@@ -633,7 +633,8 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
 
   return (
     <section ref={rootRef} className="flex scroll-mt-4 flex-col gap-3" data-cal-root data-no-tab-swipe={drag ? '' : undefined} aria-label="Plan calendar">
-      <div className="w-full"><Segmented label="Calendar view" value={view} options={[['day', 'Today'], ['week', 'Week'], ['list', 'List'], ['month', 'Month']] as const}
+      {/* Three views up front; the List is a small toggle beside Plan overview (a week as one list). */}
+      <div className="w-full"><Segmented label="Calendar view" value={view === 'list' ? 'week' : view} options={[['day', 'Today'], ['week', 'Week'], ['month', 'Month']] as const}
         onChange={(v) => v === 'day' ? openDay(view === 'day' ? day : today) : setView(v)} /></div>
       <div className="flex flex-col gap-0.5 px-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -641,6 +642,12 @@ export function PlanCalendar({ plan, cal, imperial, today, week, onWeek, editabl
             className="flex min-h-11 items-center gap-2 whitespace-nowrap text-body font-semibold text-(--accent)">
             <MapIcon className="size-5" aria-hidden />Plan overview
           </button>
+          {(view === 'week' || view === 'list') && (
+            <button type="button" onClick={() => setView(view === 'list' ? 'week' : 'list')} aria-pressed={view === 'list'}
+              className="flex min-h-11 items-center gap-1.5 whitespace-nowrap text-body font-medium text-(--text-secondary)">
+              <ListIcon className="size-5" aria-hidden />{view === 'list' ? 'Show days' : 'Show as list'}
+            </button>
+          )}
           <span className="ml-auto">{(view === 'week' || view === 'list') && editToggle}</span>
         </div>
         {cal?.total.run && cal.total.run.planned > 0 && (
