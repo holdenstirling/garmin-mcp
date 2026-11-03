@@ -112,8 +112,7 @@ import { cn } from '@/lib/utils'
 import { HomeStart } from '@/components/home/HomeStart'
 import { NearTonight } from '@/components/home/NearTonight'
 import { NEW_EVENT_EVENT } from '@/lib/events'
-import { HowItWorksHost, openHowItWorks } from '@/components/onboarding/HowItWorks'
-import { CircleQuestionMark } from 'lucide-react'
+import { HowItWorksHost } from '@/components/onboarding/HowItWorks'
 import { CALENDAR_KINDS, requestPostRun } from '@/lib/events'
 import { NewEventSheet } from '@/screens/lazyScreens'
 
@@ -1287,10 +1286,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                         skipWatchFor={upnext?.secondary?.kind === 'send_to_watch' ? upnext.session?.id : null} skipCheer={friendsLatest} />
                     </Section>
                   )}
-                  <button type="button" onClick={openHowItWorks}
-                    className="inline-flex min-h-11 items-center gap-2 self-center rounded-full px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
-                    <CircleQuestionMark className="size-5" aria-hidden /> New here? How rabbt works
-                  </button>
                 </div>
               )}
             </section>
@@ -1411,7 +1406,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
-                  <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
+                  <span className="block text-meta text-(--text-muted)">About a minute · race, goal, your week</span>
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-(--accent)" />
               </button>
@@ -1629,7 +1624,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-(--accent) text-(--on-fill)"><RabbitLogo size={20} current /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-lead font-semibold text-(--accent)">Get a plan</span>
-                <span className="block text-meta text-(--text-muted)">About 3 minutes · race, goals, you, your week</span>
+                <span className="block text-meta text-(--text-muted)">About a minute · race, goal, your week</span>
               </span>
               <ChevronRight className="size-5 shrink-0 text-(--accent)" />
             </button>

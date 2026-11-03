@@ -14,7 +14,7 @@ type Step = { id: 'area' | 'job' | 'plan'; title: string; line: string; action: 
 const STEPS: Step[] = [
   { id: 'area', title: 'Set your area', line: 'Your city or zip, so Near me fills in.', action: 'Set' },
   { id: 'job', title: 'Do one thing near you', line: 'Say you are going to a run, or post one.', action: 'Find a run' },
-  { id: 'plan', title: 'Get a plan', line: 'About 3 minutes. It moves when life does.', action: 'Get a plan' },
+  { id: 'plan', title: 'Get a plan', line: 'About a minute. It moves when life does.', action: 'Get a plan' },
 ]
 
 /** Whether the checklist has anything left to show (Home's prompt slot decides with this). */
