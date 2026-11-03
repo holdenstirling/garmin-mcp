@@ -503,7 +503,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       if (p === 'people' || p === 'clubs' || p === 'feed') openCommunity(p)
       else if (p === 'events') openRaces()
       else if (p === 'plan') openPlan()
-      else if (p === 'progress') goTab('progress')
+      else if (p === 'progress') openProgress()
       else if (p === 'connections') pushPage({ k: 'connections' })
     }
     window.addEventListener(OPEN_PLACE_EVENT, onPlace)
@@ -1272,7 +1272,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
                     onPlanChanged={() => { loadToday(); loadWeek() }} />}
                   {!calm && stripFirst(intents) && (
                     <IntentStrip intents={intents} me={me} progress={progress} refreshKey={feedTick}
-                      onOpen={(tg) => tg === 'progress' ? goTab('progress') : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
+                      onOpen={(tg) => tg === 'progress' ? openProgress() : tg === 'events' ? openRaces() : tg === 'explore' ? openDiscover() : tg === 'coach' ? openMeRow('inbox') : tg === 'friends' ? openCommunity() : showScreen(tg)} />
                   )}
                   {athlete && hasWatch(me) && (
                     <Section title="How you're doing" action={<SeeAll label="Details" ariaLabel="Open Progress" onClick={openProgress} />}>
@@ -1759,7 +1759,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
       {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('today') }} />}
       <HowItWorksHost />
-      <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : s === 'local' ? openCommunity('clubs') : doQuest(s)} />
+      <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? openProgress() : s === 'local' ? openCommunity('clubs') : doQuest(s)} />
 
       {notifsOpen && <NotificationsSheet onClose={() => setNotifsOpen(false)} />}
       {newDm && (
