@@ -5,8 +5,6 @@ import { requestPlanFix } from '@/lib/plancal'
 import { Bell, ChevronLeft, ChevronRight, FileText, History, MessageCircle, MessagesSquare, Plus, Upload } from 'lucide-react'
 import { AddSheet } from '@/components/nav/AddSheet'
 import { useEdgeSwipe } from '@/hooks/useEdgeSwipe'
-import { Avatar } from '@/components/Avatar'
-import { photoUrl } from '@/lib/photo'
 import { ConversationScreen, NewMessageSheet, AccessScreen, AddPlanLauncher, CoachApp, CoachInbox, CoachStatusSheet, CoachesScreen, CommunityScreen, ConnectSheet, ConnectionsScreen, WatchPicker, EventsScreen, ExploreScreen, FindCoachScreen, GearScreen, MePage, MemorySheet, PlanEditor, PlanSheet, ProfileScreen, RaceFitScreen, RacePackScreen, RaceWeekScreen, RecapSheet, ActivityScreen, RaceChecklistScreen, ConvertPlanScreen, SettingsPanels, SetupWizard, StatsScreen, ThreadsSheet, WorkoutDayScreen } from '@/screens/lazyScreens'
 import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
@@ -66,7 +64,8 @@ import { RabbitLoader } from '@/components/RabbitLoader'
 import { setCurrentSources } from '@/lib/sources'
 import { Group, Icon, Row as SettingsRow } from '@/components/settings/Grouped'
 import { WeekList } from '@/components/week/WeekStrip'
-import { TAB_IDS, TabBar, readTab, saveTab, useSocialBadge, type TabId } from '@/components/nav/TabBar'
+import { TAB_IDS, TabBar, migrateTab, readTab, saveTab, useSocialBadge, type AnyTabId, type TabId } from '@/components/nav/TabBar'
+import { YouProgress } from '@/components/nav/YouProgress'
 import { useTabSwipe } from '@/hooks/useTabSwipe'
 import { setUsageOff, track, trackAppOpen } from '@/lib/usage'
 import { PullToRefresh, celebrate, reducedMotion, signalReplyDone } from '@/components/fx'
@@ -167,11 +166,10 @@ type PlanScreen = 'setup' | 'profile' | 'coach' | 'coaches' | 'athletes' | 'race
 // opened from a page is pushed (back arrow to the previous one + X), a top-level destination
 // (the avatar, Up next, a moment, a notification) replaces the stack, a tab switch clears it.
 // Phone Back / Escape pop one level (Screen + lib/overlays); X closes the whole stack.
-type Page = { k: 'me' } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string; of?: string } | { k: 'checklist'; id: string }
+type Page = { k: 'progress'; recap?: boolean; week?: string } | { k: 'screen'; s: PlanScreen } | { k: 'fit'; id: string } | { k: 'workout'; sessionId?: string } | { k: 'activity'; id: string; of?: string } | { k: 'checklist'; id: string }
   | { k: 'dm'; id: string } | { k: 'connections' } | { k: 'access' } | { k: 'usage' } | { k: 'partners' } | { k: 'legal'; doc?: LegalSlug } | { k: 'raceweek'; id: string; section?: string } | { k: 'block'; id: string }
   | { k: 'person'; id: string } | { k: 'friends'; section?: 'me'; add?: string; q?: string } | { k: 'post'; id: string; comment?: string }
-const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}${p.of ? `:${p.of}` : ''}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'friends' ? `friends:${p.add ?? ''}` : p.k === 'post' ? `post:${p.id}:${p.comment ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k
-type ProgressView = 'overview' | 'recap'
+const pageKey = (p: Page) => p.k === 'block' ? `block:${p.id}` : p.k === 'screen' ? p.s : p.k === 'workout' ? `workout:${p.sessionId ?? ''}` : p.k === 'activity' ? `activity:${p.id}${p.of ? `:${p.of}` : ''}` : p.k === 'checklist' ? `checklist:${p.id}` : p.k === 'dm' ? `dm:${p.id}` : p.k === 'fit' ? `fit:${p.id}` : p.k === 'raceweek' ? `raceweek:${p.id}` : p.k === 'person' ? `person:${p.id}` : p.k === 'friends' ? `friends:${p.add ?? ''}` : p.k === 'post' ? `post:${p.id}:${p.comment ?? ''}` : p.k === 'legal' ? `legal:${p.doc ?? ''}` : p.k === 'progress' ? `progress:${p.recap ? 'recap' : ''}` : p.k
 // Schedule tab: the plan calendar, your events, or finding races and events nearby.
 type ScheduleView = 'plan' | 'events' | 'discover'
 /** Schedule "+ Add" / an event tapped on the calendar: open the event editor (new, or that event). */
@@ -211,7 +209,6 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [pages, setPages] = useState<Page[]>([])
   const [revealed, setRevealed] = useState(false) // the top page came back from a pop: no slide-in
   const topPage = pages[pages.length - 1] ?? null
-  const meOpen = topPage?.k === 'me'
   // At most one sheet: opening a page closes the sheet that opened it first.
   const dropSheet = () => { setSheet(null); setClosing(false); setCoachAsk(false) }
   const pushPage = (pg: Page) => {
@@ -265,12 +262,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // feed resizes (keyboard opening/closing) we can keep the newest messages in view.
   const atBottom = useRef(true)
 
-  // Tabs (components/nav/TabBar): Rabbit | Plan | Community | Events | Progress; Me opens from
-  // the header avatar. The last tab is kept for this browser session; notification links pick their own.
+  // Tabs (components/nav/TabBar): Today | Plan | Friends (with Near me) | You (progress, profile,
+  // settings). The last tab is kept for this browser session; notification links pick their own.
+  // Older tab ids ('rabbit', 'feed', 'clubs', 'progress') still work: setTab maps them.
   const openParam = useRef(new URLSearchParams(window.location.search).get('open')).current
-  const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'progress' : openParam === 'coach' ? 'rabbit'
-    : openParam === 'community' ? 'feed' : readTab())
-  const setTab = useCallback((t: TabId) => { setTabState(t); saveTab(t) }, [])
+  const [tab, setTabState] = useState<TabId>(() => openParam === 'recap' ? 'you' : openParam === 'coach' ? 'today'
+    : openParam === 'community' ? 'friends' : readTab())
+  const setTab = useCallback((t: AnyTabId) => { const m = migrateTab(t) ?? 'today'; setTabState(m); saveTab(m) }, [])
   // Tabs stay mounted once visited (hidden when not shown): switching back is instant, with no
   // refetch flash and the scroll position kept.
   const [visited, setVisited] = useState<ReadonlySet<TabId>>(() => new Set([tab]))
@@ -279,8 +277,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     try { window.dispatchEvent(new CustomEvent(TAB_SHOWN_EVENT, { detail: tab })) } catch { /* ignore */ }
   }, [tab])
   const tabCls = (t: TabId) => `tab-page min-h-0 flex-1 flex-col ${tab === t ? 'flex' : 'hidden'}`
-  const [progressView, setProgressView] = useState<ProgressView>(openParam === 'recap' ? 'recap' : 'overview')
-  const [recapWeek, setRecapWeek] = useState<string | undefined>(undefined)
+  // A recap link (?open=recap) opens You with the weekly recap on top.
+  useEffect(() => { if (openParam === 'recap') showPage({ k: 'progress', recap: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // A tab stored before the split as 'races' (Events) opens Schedule on Events.
   const [schedView, setSchedView] = useState<ScheduleView>(() => { try { return sessionStorage.getItem('rabbit.tab') === 'races' ? 'events' : 'plan' } catch { return 'plan' } })
   // Schedule "+ Add": the add sheet, and requests handed to the plan / events pages.
@@ -288,8 +286,9 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [calendarAdd, setCalendarAdd] = useState(false) // Plan + Add -> Add to my calendar (race, trip, big day)
   const [addWorkout, setAddWorkout] = useState<{ date: string; n: number } | null>(null)
   const [eventReq, setEventReq] = useState<EventRequest | null>(null)
-  // Friends: Updates | People (find friends and buddies). Near me is runs, clubs and meetups only.
-  const [friendsView, setFriendsView] = useState<'feed' | 'people'>('feed')
+  // Friends tab: Friends (the feed) | Near me (runs, clubs, meetups); People (find friends and
+  // buddies) opens from the Feed's + button.
+  const [friendsView, setFriendsView] = useState<CommunityView>('feed')
   const [communityClub, setCommunityClub] = useState<string | null>(null)
   const [friendsLatest, setFriendsLatest] = useState(false)
   const [shareAsk, setShareAsk] = useState(false)  // Home: the share-workouts question is showing
@@ -334,7 +333,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   useEffect(() => {
     if ((prevStatus.current === 'streaming' || prevStatus.current === 'busy') && status === 'idle') {
       void refreshThreads(); onChange()
-      if (tab !== 'rabbit') signalReplyDone() // the Rabbit tab wiggles
+      if (tab !== 'today') signalReplyDone() // the Today tab's rabbit wiggles
     }
     prevStatus.current = status
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -411,7 +410,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const showScreen = (sc: PlanScreen) => pushPage({ k: 'screen', s: sc })
   const startSetup = () => showScreen('setup')
   // A tab, with whatever was open on top of it closed.
-  const goTab = (t: TabId) => {
+  const goTab = (t: AnyTabId) => {
     if (sheet) { setSheet(null); setClosing(false) }
     closePages()
     setTab(t)
@@ -425,16 +424,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const openRaces = () => { setSchedView('events'); goTab('plan') }
   const openDiscover = () => { setSchedView('discover'); goTab('plan') }
   const openEvent = (id: string) => { setSchedView('events'); setEventReq((r) => ({ open: id, n: (r?.n ?? 0) + 1 })); goTab('plan') }
-  const openProgress = () => { setProgressView('overview'); goTab('progress') }
-  const openRecap = (week?: string) => { setRecapWeek(week); setProgressView('recap'); goTab('progress') }
+  // Progress lives under You: its full page (and the weekly recap) open on top of the You tab.
+  const openProgress = () => { goTab('you'); showPage({ k: 'progress' }) }
+  const openRecap = (week?: string) => { goTab('you'); showPage({ k: 'progress', recap: true, week }) }
   const openCommunity = (v: CommunityView = 'feed', club?: string) => {
-    // Feed is its own tab; clubs and people share the Local tab (id 'clubs').
-    if (v === 'feed' || v === 'people') { setFriendsView(v); goTab('feed'); return }
-    setCommunityClub(club ?? null); goTab('clubs')
+    // One Friends tab: the feed, People, and Near me (runs, clubs, meetups; a club page open).
+    if (v === 'clubs') setCommunityClub(club ?? null)
+    setFriendsView(v); goTab('friends')
   }
   // Nothing open over the tabs: progress, Today and live sync refresh.
   const overlayFree = !pages.some((p) => p.k === 'screen') && !sheet && !connect
-  const homeInView = tab === 'rabbit' && overlayFree
+  const homeInView = tab === 'today' && overlayFree
   // Gamification: level, streak, this week and setup quests (status banner, Me, Progress).
   const [progress, setProgress] = useState<Progress | null>(null)
   // First session or first week: no full-screen level-up / badge moment, one quiet toast instead.
@@ -547,7 +547,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       const id = (e as CustomEvent<{ id?: string }>).detail?.id
       if (!id) return
       dropSheet(); setRevealed(false); setNewDm(null)
-      setPages((st) => (st.length && st[st.length - 1]?.k !== 'me' ? [...st, { k: 'dm', id }] : [{ k: 'dm', id }]))
+      setPages((st) => (st.length ? [...st, { k: 'dm', id }] : [{ k: 'dm', id }]))
     }
     const onNew = (e: Event) => setNewDm((e as CustomEvent<{ to?: string[]; share?: DMShare }>).detail ?? {})
     window.addEventListener(OPEN_DM_EVENT, onOpen)
@@ -602,14 +602,14 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // returns there (the same person again moves to the top instead of stacking twice).
   const openPersonPage = (id: string) => {
     if (!id) return
-    if (id === me.user_id) { showPage({ k: 'me' }); return }
+    if (id === me.user_id) { goTab('you'); return }
     pushPage({ k: 'person', id })
   }
   // Any "open this item" target (a notification, a Related row, a card): its exact page or tab.
   const openTargetNow = (t: NotifOpen) => {
     dropSheet(); setNotifsOpen(false)
     switch (t.k) {
-      case 'dm': setRevealed(false); setPages((st) => (st.length && st[st.length - 1]?.k !== 'me' ? [...st, { k: 'dm', id: t.id }] : [{ k: 'dm', id: t.id }])); break
+      case 'dm': setRevealed(false); setPages((st) => (st.length ? [...st, { k: 'dm', id: t.id }] : [{ k: 'dm', id: t.id }])); break
       case 'person': openPersonPage(t.id); break
       case 'activity': setRevealed(false); setPages((st) => st.length ? [...st, { k: 'activity', id: t.id }] : [{ k: 'activity', id: t.id }]); break
       case 'checklist': pushPage({ k: 'checklist', id: t.id }); break
@@ -914,7 +914,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     return now
   })
   const itemTs = (it: ChatItem) => (it as { ts?: number }).ts ?? 0
-  const readingLog = tab === 'rabbit' && isCoach && homeView === 'chat'
+  const readingLog = tab === 'today' && isCoach && homeView === 'chat'
   useEffect(() => {
     if (!readingLog || !items.length) return
     const newest = Math.max(...items.map(itemTs))
@@ -936,7 +936,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const screen = useRef<HTMLDivElement>(null)
   const under = useRef<HTMLDivElement>(null)
   const underFeed = useRef<HTMLDivElement>(null)
-  const { slideIn, slideBack } = useEdgeSwipe(screen, under, { enabled: tab === 'rabbit' && inChat && !sheet && !menu && !peek, onBack: goBack })
+  const { slideIn, slideBack } = useEdgeSwipe(screen, under, { enabled: tab === 'today' && inChat && !sheet && !menu && !peek, onBack: goBack })
   // Opening a chat from the log slides it in over the log.
   const wasInChat = useRef(inChat)
   useLayoutEffect(() => {
@@ -954,7 +954,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [week, setWeek] = useState<PlanWeek | null>(null)
   const [weekLoading, setWeekLoading] = useState(false)
   const [weekError, setWeekError] = useState(false)
-  const needWeek = !!goal && (tab === 'plan' || (tab === 'rabbit' && isCoach))
+  const needWeek = !!goal && (tab === 'plan' || (tab === 'today' && isCoach))
   const loadWeek = useCallback(() => {
     setWeekLoading(true)
     getPlanWeek().then((w) => { setWeek(w); setWeekError(false) }, () => setWeekError(true))
@@ -1029,7 +1029,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const lastRow = shownRows[shownRows.length - 1]
   const chips = status === 'idle' && me.chat.available && lastRow?.kind === 'message' && lastRow.item.role === 'agent' && !lastRow.item.error
     ? replyChips(lastRow.item.text) : []
-  const idlePrompt = useRotatingPrompt(tab === 'rabbit' && status === 'idle' && !composerFocus, composerPrompts(intents))
+  const idlePrompt = useRotatingPrompt(tab === 'today' && status === 'idle' && !composerFocus, composerPrompts(intents))
   const coachThread = coachId ? byId[coachId] : undefined
 
   // Rabbit's one status slot, most important first.
@@ -1049,10 +1049,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // Typing on a phone: the keyboard needs the room, so the banner, Today and the tab bar step aside.
   const typing = composerFocus
 
-  // "Me" (profile, coaching, Settings) opens from the avatar in every tab header.
+  // Two header icons on every tab: Search and Notifications. Messages sit in the Friends header;
+  // profile, progress and settings are the You tab.
   // Header icons are 44px buttons side by side: no enlarged tap areas reaching into a neighbour
   // (the bell's and chat's used to overlap, so a tap near the bell could open Chats).
-  const meButton = (<div className="-mr-1 flex shrink-0 items-center">
+  const headerIcons = (withMessages: boolean) => (<div className="-mr-1 flex shrink-0 items-center">
     <SearchButton imperial={me.athlete.units !== 'metric'} />
     {me.role === 'athlete' && (
       <button type="button" className={HEADER_ICON}
@@ -1062,19 +1063,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         {notifCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
       </button>
     )}
-    {/* Chat with Rabbit, from every tab: the chats list (pick one or start a new one). */}
-    <button type="button" className={HEADER_ICON} data-tour="chat"
-      aria-label={dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages'}
-      onClick={() => { setChatsView('people'); open('threads') }}>
-      <MessagesSquare className="size-6" aria-hidden />
-      {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-    </button>
-    <button className="relative flex size-11 shrink-0 items-center justify-center rounded-full" aria-label={
-      me.coach_unread > 0 ? `Me, ${me.coach_unread} unread from your coach` : 'Me'} onClick={() => showPage({ k: 'me' })}>
-      <Avatar name={me.profile.name || me.user_id} picture={me.profile.picture} photo={photoUrl(me.photo)} />
-      {me.coach_unread > 0 && <span className="absolute right-1 top-1 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
-    </button>
+    {/* Messages (friends, your coach): in the Friends header only. */}
+    {withMessages && (
+      <button type="button" className={HEADER_ICON} data-tour="chat"
+        aria-label={dmCount > 0 ? `Messages, ${dmCount} unread` : 'Messages'}
+        onClick={() => { setChatsView('people'); open('threads') }}>
+        <MessagesSquare className="size-6" aria-hidden />
+        {dmCount > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-(--accent) ring-2 ring-(--bg)" aria-hidden />}
+      </button>
+    )}
   </div>)
+  const meButton = headerIcons(false)
 
   function renderHeader(isLog: boolean, under = false) {
     return (
@@ -1305,14 +1304,13 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   // ------------------------------------------------------------------ tabs ---
   const imperial = me.athlete.units !== 'metric'
   const selectTab = (t: TabId) => {
-    if (t === tab && t === 'rabbit') {
+    if (t === tab && t === 'today') {
       // Rabbit again: back to the log from a chat, else to its newest entries.
       if (inChat || pending) { if (pending) setPending(null); else slideBack() }
       else if (showHome) homeScroll.current?.scrollTo({ top: 0, behavior: smooth() })
       else setHomeView('home') // Today again from rabbt's chat: back to Today
       return
     }
-    if (t === 'clubs' && t !== tab) setCommunityClub(null) // Near me opens on its list
     setTab(t)
   }
   // Swipe between tabs (touch; hooks/useTabSwipe) and usage counts (lib/usage: tab views, app open).
@@ -1336,11 +1334,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     if (me.newcomer?.steps.plan) milestone('plan_built')
     if (hasWatch(me)) milestone('watch_connected')
   }, [me.newcomer, me.garmin.connected, me.oura.connected, me.whoop?.connected, me.apple?.connected]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { track('tab_view', { tab: meOpen ? 'me' : tab }) }, [tab, meOpen])
+  useEffect(() => { track('tab_view', { tab }) }, [tab])
   const soonRace = !!goal?.date && daysUntil(goal.date) >= 0 && daysUntil(goal.date) <= 14
   const tabDots: Partial<Record<TabId, string | false>> = {
     plan: soonRace && 'race soon',
-    feed: friendsDot && 'new from friends',
+    friends: (friendsDot || dmCount > 0) && (dmCount > 0 ? 'new messages' : 'new from friends'),
+    you: me.coach_unread > 0 && 'new from your coach',
   }
   const openMeRow = (r: MeRow) => {
     if (r === 'nearme') { closePages(); openCommunity('clubs'); return }
@@ -1421,21 +1420,12 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     )
   }
 
-  function progressTab() {
-    // First week: no recaps yet (nothing to recap); Overview only.
-    const seg = calm ? undefined : <Segmented label="Progress" value={progressView} onChange={setProgressView}
-      options={[['overview', 'Overview'], ['recap', 'Weekly recap']] as const} />
-    if (progressView === 'recap' && !calm) {
-      return (
-        <TabScreen key="recap" title="Progress" top={seg} action={meButton}>
-          <RecapSheet week={recapWeek} onClose={() => setProgressView('overview')} onAsk={tellRabbit} />
-        </TabScreen>
-      )
-    }
+  // You: progress at a glance (the full Progress page and weekly recap open on top), then Me.
+  function youTab() {
     return (
-      <TabScreen key="overview" title="Progress" top={seg} action={meButton} lead={calm ? undefined : <MonthRecapEntry onOpen={setMonthCard} />}>
-        <StatsScreen onOpenPlan={builtPlan ? openPlan : undefined}
-          onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
+      <TabScreen key="you" title="You" action={meButton}
+        lead={<YouProgress progress={progress} onOpen={openProgress} recap={calm ? undefined : <MonthRecapEntry onOpen={setMonthCard} />} />}>
+        <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onOpenDoc={(doc) => pushPage({ k: 'legal', doc })} onClose={closePages} />
       </TabScreen>
     )
   }
@@ -1473,7 +1463,11 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
 
   function renderPage(pg: Page) {
     switch (pg.k) {
-      case 'me': return <MePage me={me} goal={goal} progress={progress} onOpen={openMeRow} onOpenDoc={(doc) => pushPage({ k: 'legal', doc })} onClose={closePages} />
+      case 'progress': return pg.recap
+        ? <RecapSheet week={pg.week} onClose={pages.length > 1 ? popPage : closePages} onAsk={tellRabbit} />
+        : <StatsScreen onClose={closePages} onOpenPlan={builtPlan ? openPlan : undefined}
+          onOpenRecap={calm ? undefined : () => pushPage({ k: 'progress', recap: true })}
+          onAsk={tellRabbit} onOpenGear={() => showScreen('gear')} onOpenSession={(id) => setWorkout({ sessionId: id })} />
       case 'legal': return pg.doc
         ? <DocScreen slug={pg.doc} onClose={pages.length > 1 ? popPage : closePages} />
         : <PrivacyLegalScreen me={me} onClose={closePages} onOpenSettings={() => open('settings')} onOpenConnections={() => pushPage({ k: 'connections' })} />
@@ -1528,7 +1522,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   return (
     <div ref={shell} className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${typing ? '' : 'with-tabbar'}`}>
       {/* Rabbit stays mounted under the other tabs (its chat, scroll and stream live on). */}
-      <div className={`relative min-h-0 flex-1 flex-col overflow-hidden ${tab === 'rabbit' ? 'flex' : 'hidden'}`}>
+      <div className={`relative min-h-0 flex-1 flex-col overflow-hidden ${tab === 'today' ? 'flex' : 'hidden'}`}>
       {inChat && (
         // A still copy of Rabbit's log under the open chat, revealed by the edge swipe.
         <div ref={under} inert aria-hidden className="absolute inset-0 flex flex-col bg-background" style={{ visibility: 'hidden' }}>
@@ -1709,24 +1703,16 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         <NewEventSheet only={CALENDAR_KINDS} title="Add to my calendar" imperial={imperial} onClose={() => setCalendarAdd(false)}
           onSaved={() => { onChange(); loadWeek(); setEventReq((r) => ({ n: (r?.n ?? 0) + 1 })) }} onOpenPlan={openPlan} onBuildPlan={startSetup} />
       )}
-      {visited.has('feed') && (
-        <div className={tabCls('feed')} data-tab-hidden={tab !== 'feed' || undefined}>
-          <TabScreen key="feed" action={meButton}>
-            <CommunityScreen section="feed" imperial={imperial} view={friendsView} onView={(v) => openCommunity(v)} onChanged={onChange}
-              club={null} onClub={(id) => { if (id) openCommunity('clubs', id) }} />
-          </TabScreen>
-        </div>
-      )}
-      {visited.has('clubs') && (
-        <div className={tabCls('clubs')} data-tab-hidden={tab !== 'clubs' || undefined}>
-          <TabScreen key="clubs" action={meButton}>
-            <CommunityScreen section="clubs" imperial={imperial} view="clubs"
-              onView={(v) => openCommunity(v)} onChanged={onChange} club={communityClub} onClub={setCommunityClub}
+      {visited.has('friends') && (
+        <div className={tabCls('friends')} data-tab-hidden={tab !== 'friends' || undefined}>
+          <TabScreen key="friends" action={headerIcons(true)}>
+            <CommunityScreen imperial={imperial} view={friendsView} onView={(v) => openCommunity(v)} onChanged={onChange}
+              club={communityClub} onClub={(id) => { setCommunityClub(id); if (id) setFriendsView('clubs') }}
               onOpenPlan={openPlan} onBuildPlan={startSetup} />
           </TabScreen>
         </div>
       )}
-      {visited.has('progress') && <div className={tabCls('progress')} data-tab-hidden={tab !== 'progress' || undefined}>{progressTab()}</div>}
+      {visited.has('you') && <div className={tabCls('you')} data-tab-hidden={tab !== 'you' || undefined}>{youTab()}</div>}
       {!typing && <TabBar tab={tab} onSelect={selectTab} dots={tabDots} />}
       {topPage && (
         <div key={pageKey(topPage)} className={`page-stack${leaving ? ' page-stack--leaving' : revealed ? ' page-stack--revealed' : pages.length > 1 ? ' page-stack--pushed' : ''}`}>
@@ -1753,7 +1739,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
       )}
       {voice && <VoiceCheckIn open sessionId={voice?.sessionId} activityId={voice?.activityId} title={voice?.title} onClose={() => setVoice(null)} onSaved={(_, xp) => { loadToday(); if (xp) getProgress().then(setProgress, () => {}) }} />}
       <div role="status" aria-live="polite" aria-atomic="true">{toast && <div key={toast.n} className="rabbit-toast">{toast.msg}</div>}</div>
-      {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('rabbit') }} />}
+      {me.role === 'athlete' && <Tour userId={me.user_id} auto={!typing} onStart={() => { closePages(); goTab('today') }} />}
       <HowItWorksHost />
       <WelcomeGate me={me} onSaved={onChange} onNext={(s) => s === 'progress' ? goTab('progress') : s === 'local' ? openCommunity('clubs') : doQuest(s)} />
 

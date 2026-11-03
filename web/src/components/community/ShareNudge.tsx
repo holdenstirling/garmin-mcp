@@ -23,7 +23,11 @@ export function askLine(f?: { count: number; names: string[] }): string {
   return `${f.names[0]} and ${rest} other${rest > 1 ? 's' : ''} want to see your workouts. Share them?`
 }
 
-export function ShareNudge({ onShared, home = false }: { onShared?: () => void; home?: boolean }) {
+export function ShareNudge({ onShared, home = false, onShow }: {
+  onShared?: () => void; home?: boolean
+  /** told whether the ask is up, so the Feed shows one prompt at a time */
+  onShow?: (shown: boolean) => void
+}) {
   const [show, setShow] = useState(false)
   const [line, setLine] = useState(askLine())
   const [busy, setBusy] = useState(false)
@@ -40,6 +44,7 @@ export function ShareNudge({ onShared, home = false }: { onShared?: () => void; 
     }, () => {})
     return () => { live = false }
   }, [])
+  useEffect(() => { onShow?.(show && !done) }, [show, done]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!show) return null
 
   function later() {

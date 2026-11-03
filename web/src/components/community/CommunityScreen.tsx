@@ -1,4 +1,5 @@
-// Two tabs share this screen (section): Friends ("Updates | People"), and Near me (runs, clubs, meetups). The feed is calm on purpose: what people choose
+// The Friends tab: "Friends | Near me" on top. Friends is the feed (People, Find friends, Sharing and
+// New group sit behind its + button); Near me is runs, clubs and meetups. The feed is calm on purpose: what people choose
 // to share (life events, races, PRs) and milestones as drafts until you tap Share, never
 // every workout. Clubs: local run clubs and crews with meetups and challenges. Featured clubs
 // (owner-promoted) lead Feed and Clubs; feed groups open as their own page.
@@ -30,15 +31,13 @@ import { openFindFriends } from '@/lib/friends'
 import { NewEventSheet } from '@/components/events/EventsScreen'
 import { MEETUP_KINDS } from '@/lib/events'
 import { Button } from '@/components/ui/button'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, ChevronLeft } from 'lucide-react'
 import { OneTip } from '@/components/home/OneTip'
 import { milestone } from '@/lib/traction'
 
 export type CommunityView = 'feed' | 'clubs' | 'people'
 
-export function CommunityScreen({ section = 'feed', imperial, view, onView, onChanged, club, onClub, onOpenPlan, onBuildPlan }: {
-  /** which tab: Feed (the feed and feed groups) or Clubs (clubs and people) */
-  section?: 'feed' | 'clubs'
+export function CommunityScreen({ imperial, view, onView, onChanged, club, onClub, onOpenPlan, onBuildPlan }: {
   imperial: boolean; view: CommunityView; onView: (v: CommunityView) => void; onChanged?: () => void
   /** an open club page (from a meetup reminder or the "You're going" strip) */
   club: string | null; onClub: (id: string | null) => void
@@ -61,10 +60,16 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
   // Viewing clears that part of the app icon badge (cheers/comments, friend requests, club invites).
   useEffect(() => { void markSeen(view === 'feed' ? 'cheers' : view === 'people' ? 'requests' : 'invites') }, [view])
   return (
-    <Screen title={section === 'feed' ? 'Friends' : 'Near me'}
-      subtitle={section === 'feed' ? (view === 'people' ? 'Find friends and running buddies' : 'What your friends and groups are up to') : 'Runs, clubs and meetups near you'}
-      headerExtra={section === 'feed' ? <Segmented label="Friends" value={view === 'people' ? 'people' : 'feed'} onChange={onView}
-        options={[['feed', 'Updates'], ['people', 'People']] as const} /> : undefined}>
+    <Screen title="Friends"
+      subtitle={view === 'clubs' ? 'Runs, clubs and meetups near you' : view === 'people' ? 'Find friends and running buddies' : 'What your friends and groups are up to'}
+      headerExtra={<Segmented label="Friends or near me" value={view === 'clubs' ? 'clubs' : 'feed'} onChange={onView}
+        options={[['feed', 'Friends'], ['clubs', 'Near me']] as const} />}>
+      {view === 'people' && (
+        <button type="button" onClick={() => onView('feed')}
+          className="-mt-1 inline-flex min-h-11 items-center gap-1.5 self-start rounded-full px-2 text-body font-semibold text-(--accent) active:bg-(--bg-inset)">
+          <ChevronLeft className="size-5" aria-hidden /> Back to updates
+        </button>
+      )}
       {view === 'clubs' && <OneTip id="near_me" text="Tap a club or a pin to see when they meet. Tap Going and rabbt reminds you the night before." />}
       {view === 'feed' && <OneTip id="friends" text="Your workouts post here after each sync, for friends only. Turn sharing off in Me, under Sharing." />}
       {view === 'clubs' && (
@@ -80,6 +85,7 @@ export function CommunityScreen({ section = 'feed', imperial, view, onView, onCh
         <FeaturedStrip items={featured} onOpenClub={openClub} />
       )}
       {view === 'feed' && <CommunityFeed imperial={imperial} onInvite={() => openFindFriends()} onSettings={() => setSettings(true)} onOpenClub={openClub}
+        onPeople={() => onView('people')}
         onOpenGroup={setGroup} onNewGroup={() => setNewGroup(true)} groupsKey={groupsKey} />}
       {view === 'clubs' && <ClubsTab imperial={imperial} openId={club} onOpen={onClub} />}
       {newGroup && <GroupSheet onClose={() => setNewGroup(false)}

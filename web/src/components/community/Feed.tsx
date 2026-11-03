@@ -2,8 +2,12 @@
 // meetups coming up, and calm post cards (category, text, up to 10 photos, linked event, four
 // reactions with a burst, one-level comment threads). Also a club's feed (``clubId``): the
 // composer posts to that club. Nothing is ever posted without a tap. Filter chips: All / Friends /
-// each feed group / Clubs; a group's own feed (``groupId``) posts to that group only. My fresh
-// auto-shared workout is pinned on top for an hour with "Add a photo or caption".
+// each feed group / Clubs (only once you have a group or a club); a group's own feed (``groupId``)
+// posts to that group only. My fresh auto-shared workout is pinned on top for an hour with "Add a
+// photo or caption". The main feed keeps its chrome to one row (chips or a label, the map icon and
+// one + button for Share something / Find friends / People / Sharing / New group) plus one "This
+// week with your crew" card, and shows one prompt at a time: ShareNudge, else the friends who
+// haven't shared yet (in the crew card), else FeedHint.
 import { confirmAsk } from '@/lib/confirm'
 import { useRefreshOnShow } from '@/hooks/useRefreshOnShow'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -26,9 +30,9 @@ import { PersonAvatar as TapAvatar, PersonLink } from '@/components/people/Perso
 import { openActivity } from '@/lib/activitynav'
 import { RouteMini } from '@/components/route/RouteMap'
 import { ShareNudge } from '@/components/community/ShareNudge'
-import { WaitingRow } from '@/components/community/WaitingRow'
+import { WaitingRow, waitingLine } from '@/components/community/WaitingRow'
 import { PersonAvatar } from '@/components/community/PersonAvatar'
-import { FeedExtras } from '@/components/community/FeedExtras'
+import { CrewCard } from '@/components/community/FeedExtras'
 import type { FeedExtras as FeedExtrasData } from '@/lib/community'
 import { FeedMap } from '@/components/community/FeedMap'
 import { messagePeople } from '@/lib/dm'
@@ -67,8 +71,10 @@ type Template = (typeof TEMPLATES)[number]
 /** Feed filter: everyone, friends, my clubs' posts, or one feed group (``g:<id>``). */
 type Filter = 'all' | 'friends' | 'clubs' | `g:${string}`
 
-export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, onInvite, onSettings, onOpenClub, onOpenGroup, onNewGroup, groupsKey }: {
+export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, onInvite, onSettings, onPeople, onOpenClub, onOpenGroup, onNewGroup, groupsKey }: {
   imperial: boolean; clubId?: string; clubName?: string; onInvite?: () => void; onSettings?: () => void
+  /** People: find friends and running buddies (the Friends tab's People view) */
+  onPeople?: () => void
   onOpenClub?: (id: string) => void
   /** a feed group's own feed (GroupPage): reads and posts to that group only */
   groupId?: string; groupName?: string
@@ -96,6 +102,9 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   })
   const setMode = (m: 'list' | 'map') => { setModeState(m); try { localStorage.setItem('rabbt.feed.view', m) } catch { /* fine */ } }
   const [mapDetails, setMapDetails] = useState<Post | null>(null)
+  const [plus, setPlus] = useState(false)  // the + sheet: share, find friends, people, sharing, new group
+  const [hasClubs, setHasClubs] = useState(false)
+  const [nudgeUp, setNudgeUp] = useState(false)  // ShareNudge is showing: the other prompts wait
   const main = !clubId && !groupId
   const showMap = main && mode === 'map'
   /** Same as a feed card: my workout or a friend's Garmin workout opens its page; others a sheet. */
@@ -111,6 +120,7 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
 
   useEffect(() => {
     if (!main) return
+    getClubs().then((r) => setHasClubs(r.clubs.length > 0), () => { /* chips stay hidden */ })
     listGroups().then((r) => {
       setGroups(r.groups)
       setFilter((f) => (f.startsWith('g:') && !r.groups.some((g) => `g:${g.id}` === f) ? 'all' : f))
@@ -135,7 +145,12 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
     catch (e) { setError((e as Error).message) } finally { setMore(false) }
   }
   const chips: [Filter, string][] = [['all', 'All'], ['friends', 'Friends'],
-    ...groups.map((g): [Filter, string] => [`g:${g.id}`, `${g.emoji} ${g.name}`]), ['clubs', 'Clubs']]
+    ...groups.map((g): [Filter, string] => [`g:${g.id}`, `${g.emoji} ${g.name}`]), ...(hasClubs ? [['clubs', 'Clubs'] as [Filter, string]] : [])]
+  // Chips only mean something once there's a group or a club to pick.
+  const showChips = main && (groups.length > 0 || hasClubs || filter !== 'all')
+  const friendsView = filter === 'all' || filter === 'friends'
+  // One prompt at a time: ShareNudge, else who hasn't shared yet (in the crew card), else FeedHint.
+  const showWaiting = main && friendsView && !nudgeUp && waiting.length > 0
   const openGroup = filter.startsWith('g:') ? groups.find((g) => `g:${g.id}` === filter) : undefined
   const put = (p: Post) => setItems((xs) => (xs ?? []).map((x) => (x.id === p.id ? p : x)))
   const drop = (id: string) => setItems((xs) => (xs ?? []).filter((x) => x.id !== id))
@@ -145,7 +160,36 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
   return (
     <>
       {main && <PullToRefresh onRefresh={load} />}
-      <div className="flex flex-col gap-3">
+      {main ? (
+        <div className="flex items-center gap-2">
+          {showChips ? (
+            <nav aria-label="Whose feed" className="min-w-0 flex-1 overflow-x-auto py-0.5 no-scrollbar">
+              <div role="radiogroup" aria-label="Show" className="flex items-center gap-1.5">
+                {chips.map(([v, label]) => (
+                  <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
+                    className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-small font-semibold transition-colors',
+                      filter === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary) active:bg-(--border)')}>{label}</button>
+                ))}
+              </div>
+            </nav>
+          ) : (
+            <p className="m-0 min-w-0 flex-1 px-1 text-small font-semibold text-(--text-secondary)">
+              {mode === 'map' ? 'Shared workouts on the map' : 'Latest from your people'}
+            </p>
+          )}
+          <button type="button" aria-pressed={mode === 'map'} aria-label={mode === 'map' ? 'Show the list' : 'Show the map'}
+            onClick={() => setMode(mode === 'map' ? 'list' : 'map')}
+            className={cn('flex size-11 shrink-0 items-center justify-center rounded-full border border-(--border) transition-colors',
+              mode === 'map' ? 'bg-(--accent-subtle) text-(--accent)' : 'bg-(--bg-surface) text-(--text-secondary) active:bg-(--bg-inset)')}>
+            {mode === 'map' ? <List className="size-5" aria-hidden /> : <MapIcon className="size-5" aria-hidden />}
+          </button>
+          <button type="button" aria-haspopup="dialog" aria-label="Share something, find friends or change sharing"
+            onClick={() => setPlus(true)}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-(--accent) text-(--on-fill) shadow-sm active:opacity-90">
+            <Plus className="size-6" aria-hidden />
+          </button>
+        </div>
+      ) : (
         <button type="button" onClick={() => setComposer('blank')}
           className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
@@ -158,55 +202,17 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
             <span className="block text-meta text-(--text-muted)">A photo, a race, a thank you</span>
           </span>
         </button>
-        {main && (onInvite || onSettings) && (
-          <div className="flex gap-2">
-            {onInvite && (
-              <Button variant="default" className="h-11 flex-1 gap-2 px-4 text-body" onClick={onInvite}>
-                <UserPlus className="size-5" aria-hidden /> Find friends
-              </Button>
-            )}
-            {onSettings && (
-              <Button variant="default" className="h-11 shrink-0 gap-2 px-3.5 text-body" aria-label="Sharing settings" onClick={onSettings}>
-                <SlidersHorizontal className="size-5" aria-hidden /><span className="hidden min-[360px]:inline">Sharing</span>
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
       {drafts.length > 0 && (
         <DraftsTray drafts={drafts} onShared={(d, p) => { setDrafts((xs) => xs.filter((x) => x.id !== d.id)); add(p) }}
           onDismissed={(d) => setDrafts((xs) => xs.filter((x) => x.id !== d.id))} />
       )}
-      {meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
-      {main && <FeedExtras extras={life} imperial={imperial} onOpenClub={onOpenClub} />}
-      {main && (
-        <nav aria-label="Whose feed" className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 py-0.5 no-scrollbar">
-          <div role="radiogroup" aria-label="Show" className="flex items-center gap-1.5">
-            {chips.map(([v, label]) => (
-              <button key={v} type="button" role="radio" aria-checked={filter === v} onClick={() => setFilter(v)}
-                className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-small font-semibold transition-colors',
-                  filter === v ? 'bg-(--accent) text-(--on-fill)' : 'bg-(--bg-inset) text-(--text-secondary) active:bg-(--border)')}>{label}</button>
-            ))}
-          </div>
-          {onNewGroup && (
-            <button type="button" onClick={onNewGroup}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-(--border-strong) px-4 text-small font-semibold text-(--accent) active:bg-(--bg-inset)">
-              <Plus className="size-5" aria-hidden /> New group
-            </button>
-          )}
-        </nav>
-      )}
-      {main && (
-        <div role="radiogroup" aria-label="Feed view" className="grid grid-cols-2 gap-1 rounded-xl bg-(--bg-inset) p-1">
-          {([['list', 'List', List], ['map', 'Map', MapIcon]] as const).map(([v, label, Icon]) => (
-            <button key={v} type="button" role="radio" aria-checked={mode === v} onClick={() => setMode(v)}
-              className={cn('inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body font-semibold transition-colors',
-                mode === v ? 'bg-(--bg-surface) text-(--text) shadow-sm' : 'text-(--text-secondary) active:bg-(--border)')}>
-              <Icon className="size-5" aria-hidden /> {label}
-            </button>
-          ))}
-        </div>
-      )}
+      {main ? (
+        <CrewCard extras={life} imperial={imperial} onOpenClub={onOpenClub}
+          going={meetups.length > 0 ? <ComingUp meetups={meetups} onOpenClub={onOpenClub} inset /> : undefined} goingCount={meetups.length}
+          waiting={showWaiting ? <WaitingRow key={waiting.map((w) => w.id).join()} people={waiting} /> : undefined}
+          waitingLine={showWaiting ? waitingLine(waiting.map((w) => w.name)) : null} />
+      ) : meetups.length > 0 && <ComingUp meetups={meetups} onOpenClub={onOpenClub} />}
       {main && openGroup && onOpenGroup && (
         <button type="button" onClick={() => onOpenGroup(openGroup.id)}
           className="flex min-h-14 items-center gap-3 rounded-xl border border-(--border) bg-(--bg-surface) px-4 py-3 text-left active:bg-(--bg-inset)">
@@ -245,13 +251,12 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
         </>
       ) : (
         <>
-          {main && following > 0 && (filter === 'all' || filter === 'friends') && !items.some((p) => !p.mine && p.kind === 'workout') && (
+          {main && friendsView && items.some((p) => !p.mine && p.kind === 'workout') && (
+            <ShareNudge onShared={() => void load()} onShow={setNudgeUp} />
+          )}
+          {main && following > 0 && friendsView && !nudgeUp && waiting.length === 0 && !items.some((p) => !p.mine && p.kind === 'workout') && (
             <FeedHint onInvite={items.length > 0 ? onInvite : undefined} onShared={() => void load()} />
           )}
-          {main && (filter === 'all' || filter === 'friends') && items.some((p) => !p.mine && p.kind === 'workout') && (
-            <ShareNudge onShared={() => void load()} />
-          )}
-          {main && (filter === 'all' || filter === 'friends') && waiting.length > 0 && <WaitingRow key={waiting.map((w) => w.id).join()} people={waiting} />}
           {items.length === 0 && (
             <EmptyRabbit hero size={60} mode={!main ? 'peek' : 'sleep'} className="rounded-2xl border border-(--border) bg-(--bg-surface) px-5 py-6"
               title={group ? 'Nothing in this group yet' : !main || filter !== 'all' ? 'Quiet in here' : following === 0 ? 'Find your people' : 'Nothing shared yet'}
@@ -293,6 +298,32 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
         <FriendWorkoutSheet w={mapDetails.workout} who={mapDetails.user?.name ?? 'They'} imperial={imperial} onClose={() => setMapDetails(null)}
           onMessage={mapDetails.user ? () => { const u = mapDetails.user!; setMapDetails(null); messagePeople([u.id]) } : undefined} />
       )}
+      {plus && (
+        <Sheet title="Friends" onClose={() => setPlus(false)} bodyClassName="flex flex-col gap-1 p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          {([
+            ['Share something', 'A photo, a race, a thank you', SquarePen, () => setComposer('blank')],
+            onInvite && ['Find friends', 'Contacts, search or a QR code', UserPlus, onInvite],
+            onPeople && ['People and running buddies', 'Requests, who you follow, buddies', Users, onPeople],
+            onNewGroup && ['New group', 'Share with just a few people', UsersRound, onNewGroup],
+            onSettings && ['Sharing settings', 'What you share and who sees it', SlidersHorizontal, onSettings],
+          ] as const).filter(Boolean).map((row) => {
+            const [title, sub, Icon, act] = row as readonly [string, string, typeof Plus, () => void]
+            return (
+              <button key={title} type="button" onClick={() => { setPlus(false); act() }}
+                className="flex min-h-14 items-center gap-3 rounded-xl px-3 py-2.5 text-left active:bg-(--bg-inset)">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-(--accent-subtle) text-(--accent)" aria-hidden>
+                  <Icon className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body font-semibold text-(--text)">{title}</span>
+                  <span className="block text-meta text-(--text-muted)">{sub}</span>
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden />
+              </button>
+            )
+          })}
+        </Sheet>
+      )}
       {composer && (
         <Composer clubId={clubId} clubName={clubName} groupId={groupId ?? openGroup?.id} groupName={groupName ?? openGroup?.name}
           groups={groups} template={composer === 'blank' ? null : composer}
@@ -307,11 +338,11 @@ export function CommunityFeed({ imperial, clubId, clubName, groupId, groupName, 
 }
 
 // ------------------------------------------------------------- coming up ---
-function ComingUp({ meetups, onOpenClub }: { meetups: Meetup[]; onOpenClub?: (id: string) => void }) {
+function ComingUp({ meetups, onOpenClub, inset = false }: { meetups: Meetup[]; onOpenClub?: (id: string) => void; inset?: boolean }) {
   return (
     <section aria-labelledby="going-h" className="flex flex-col gap-3">
       <h2 id="going-h" className="section-title m-0 px-1">You're going</h2>
-      <div className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-1 no-scrollbar">
+      <div className={cn('flex snap-x gap-3 overflow-x-auto pb-1 no-scrollbar', inset ? '-mx-4 px-4' : '-mx-5 px-5')}>
         {meetups.map((m) => (
           <button key={`${m.id}-${m.next}`} type="button" onClick={() => { if (m.club) onOpenClub?.(m.club.id) }}
             className="flex w-[15rem] shrink-0 snap-start flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) p-4 text-left active:bg-(--bg-inset)">

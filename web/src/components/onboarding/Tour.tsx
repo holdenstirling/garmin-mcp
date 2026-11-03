@@ -1,4 +1,4 @@
-// First-run tour: six quick coach marks over the tab bar and search (about a minute). A
+// First-run tour: five quick coach marks over the tab bar and search (about a minute). A
 // spotlight rings the real control and a small card explains it; Next / Back / Skip, Escape
 // and the phone's Back close it (useDialog), focus stays in the card. Shown once per account
 // on this device, after nothing else is open (welcome flow, setup, sheets); again from
@@ -11,12 +11,10 @@ import { TOUR_EVENT, markTourDone, tourDone } from '@/lib/tour'
 
 type Step = { target: string; title: string; body: string }
 const STEPS: Step[] = [
-  { target: 'tab-rabbit', title: 'Today', body: "What to do today: your workout, runs near you tonight and your next step. Tap Ask rabbt at the bottom to ask your coach anything." },
+  { target: 'tab-today', title: 'Today', body: "What to do today: your workout, runs near you tonight and your next step. Tap Ask rabbt at the bottom to ask your coach anything." },
   { target: 'tab-plan', title: 'Plan', body: 'Your training plan and your calendar. Tap a day for the full workout; move it if life gets in the way.' },
-  { target: 'tab-feed', title: 'Friends', body: "What your friends and groups are up to. Make a group with just a few people." },
-  { target: 'tab-clubs', title: 'Near me', body: 'Runs, clubs, leagues and events near you, on a list or a map. Post a run for others to join.' },
-  { target: 'tab-progress', title: 'Progress', body: 'How your fitness is trending, in plain words.' },
-  { target: 'chat', title: 'Messages', body: 'Messages with friends and your coach. To ask rabbt, use the Ask rabbt bar on Today.' },
+  { target: 'tab-friends', title: 'Friends', body: "What your friends and groups are up to, and Near me: runs, clubs and meetups around you. Messages live up top here." },
+  { target: 'tab-you', title: 'You', body: 'Your progress, profile, connected apps and settings.' },
   { target: 'search', title: 'Search', body: 'Find people, clubs, races and workouts (planned or done) from any screen.' },
 ]
 const PAD = 6
