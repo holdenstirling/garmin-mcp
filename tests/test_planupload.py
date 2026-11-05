@@ -441,14 +441,14 @@ def test_upload_api_formats_templates_export_and_permissions(env, tmp_path) -> N
             pv = r.json()["preview"]
             assert pv["totals"]["sessions"] == 11 and pv["name"] is None and "week grid" in pv["warnings"][0]
             # Unknown columns: a mapping step, then the same file with the mapping.
-            odd = b"Quand,Sport,Seance,Duree\n2026-11-03,run,Footing,45\n2026-11-05,bike,Velo,90\n2026-11-07,run,Long,100\n"
+            odd = f"Quand,Sport,Seance,Duree\n{(today + timedelta(days=2)).isoformat()},run,Footing,45\n{(today + timedelta(days=4)).isoformat()},bike,Velo,90\n{(today + timedelta(days=6)).isoformat()},run,Long,100\n".encode()
             r = await a.post(f"{own}/file?name=fr.csv", headers=H, content=odd)
             assert r.status_code == 200 and r.json()["mapping"]["name"] == "fr.csv"
             m = json.dumps({"header_row": 0, "cols": {"date": 0, "sport": 1, "title": 2, "duration": 3}})
             r = await a.post(f"{own}/file?name=fr.csv&map={m}", headers=H, content=odd)
             assert r.status_code == 201 and r.json()["preview"]["totals"]["sessions"] == 3
             # Several files in one request: a Zwift workout named by week/day + a CSV.
-            csv = b"date,sport,title,minutes\n2026-11-04,swim,Drills,40\n"
+            csv = f"date,sport,title,minutes\n{(today + timedelta(days=3)).isoformat()},swim,Drills,40\n".encode()
             q = f"name=W1D3%20Over.zwo&name=more.csv&size={len(ZWO)}&size={len(csv)}&mode=replace"
             start = (today + timedelta(days=(7 - today.weekday()) % 7 or 7)).isoformat()
             r = await a.post(f"{own}/file?{q}&start={start}", headers=H, content=ZWO + csv)

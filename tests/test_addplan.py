@@ -446,7 +446,7 @@ def test_api_link_photos_templates_and_permissions(env, tmp_path, monkeypatch) -
             return "text", b"Week 1: Tue easy run 40'", "Google Doc.txt"
         if "private" in url:
             raise LinkError("That document isn't public, so rabbt can't open it.")
-        return "csv", b"date,sport,title,minutes\n2026-11-03,run,Easy,40\n2026-11-05,bike,Ride,60\n", "Google Sheet.csv"
+        return "csv", f"date,sport,title,minutes\n{(today + timedelta(days=2)).isoformat()},run,Easy,40\n{(today + timedelta(days=4)).isoformat()},bike,Ride,60\n".encode(), "Google Sheet.csv"
     monkeypatch.setattr(planlinks, "fetch_google", fake_fetch)
     athlete_app, coach_app = _apps(env, tmp_path, agent)
     own = "/app/api/plan/import"
