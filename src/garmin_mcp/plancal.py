@@ -1000,7 +1000,8 @@ def calendar_view(plan: dict[str, Any], acts: list[dict[str, Any]], today: date,
             continue
         extra.setdefault(day, []).append({
             "id": a.get("activity_id"), "name": str(a.get("name") or "Workout")[:80], "sport": sport_of(a.get("sport")),
-            "km": _num(a.get("distance_km")), "minutes": _dur_min(a.get("duration")), "avg_hr": _num(a.get("avg_hr"))})
+            "km": _num(a.get("distance_km")), "minutes": _dur_min(a.get("duration")), "avg_hr": _num(a.get("avg_hr")),
+            **({"source": "manual", "key": a.get("activity_id")} if a.get("manual") else {})})
     months: dict[str, Any] = {}
     for w in plan.get("weeks", []):
         for i in range(7):

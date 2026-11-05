@@ -10,7 +10,7 @@ import { smooth } from '@/lib/scrollMotion'
 import { ExerciseList } from '@/components/plan/ExerciseList'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Activity, Bike, BookOpen, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
+import { Activity, Bike, BookOpen, ClipboardList, CalendarClock, Check, ChevronDown, Clock, CloudSun, Compass, Footprints, Lightbulb, MessageCircle, Moon, Pencil, Repeat, TriangleAlert, Utensils, Watch, Wind, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
 import { ShareButton } from '@/components/ui/ShareSheet'
@@ -31,6 +31,7 @@ import { checkinChips, createCheckin, type Checkin } from '@/lib/checkins'
 import { cn } from '@/lib/utils'
 import { InfoTip } from '@/components/ui/InfoTip'
 import { openActivity } from '@/lib/activitynav'
+import { WORKLOG_CHANGED, openLogWorkout } from '@/lib/worklog'
 import {
   CHECKLIST, fmtTemp, getWorkoutFeedback, getWorkoutToday, readChecklist, writeChecklist,
   type CheckInRequest, type Target, type Weather, type WorkoutFeedback, type WorkoutSession, type WorkoutToday, type WSection, type WStep,
@@ -79,6 +80,10 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
     getCalendar().then((r) => setCal(r.cal), () => setCal(null))
   }, [sid])
   useEffect(() => { load() }, [load])
+  useEffect(() => {  // logged by hand (lib/worklog): this session may be done now
+    window.addEventListener(WORKLOG_CHANGED, load)
+    return () => window.removeEventListener(WORKLOG_CHANGED, load)
+  }, [load])
   const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
 
   const s = data?.state === 'session' ? data.session : null
@@ -112,6 +117,12 @@ export function WorkoutDayScreen({ sessionId, imperial, onClose, onAsk, onCheckI
             <Button variant="primary" className="h-11 min-w-0 flex-1 px-2 text-body"
               onClick={() => feedbackRef.current?.scrollIntoView({ behavior: smooth(), block: 'start' })}>
               How did it go?
+            </Button>
+          ) : s.id && data && data.date <= data.today ? (
+            <Button variant="primary" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body"
+              onClick={() => openLogWorkout({ session: { id: s.id!, date: data.date, title: s.title, sport: s.sport, minutes: s.minutes,
+                exercises: s.exercises } })}>
+              <ClipboardList className="size-5 shrink-0" aria-hidden /> Log workout
             </Button>
           ) : onAsk && (
             <Button variant="default" className="h-11 min-w-0 flex-1 gap-1.5 px-2 text-body" aria-label="Ask rabbt"

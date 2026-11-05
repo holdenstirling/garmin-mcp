@@ -3686,13 +3686,17 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
         if push:  # @mentions open the exact post
             cm.push_link = lambda to, t, b, url: push.send(to, t, b, url=url)
         _ext_feed["share"] = cm.auto_share_external
+        # A workout logged by hand reaches friends like a synced one (sport, time and distance
+        # only; never sets or weights), when sharing is on. Background: the save returns at once.
+        _ag.worklog.on_change.append(lambda uid: cm.spawn(lambda: cm.catch_up(uid, force=True)))
         _share_consent["set"] = lambda uid, on: cm.put_settings(uid, {"share_workouts": on, "share_prompted": True})
         if soc_feed is not None:  # friends' workout lists follow the same sharing consent as the Feed
             soc_feed.consent = cm.sharing_consent
 
         def _cm_workouts(uid: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
             """Garmin activities and other sources' workouts, for the share-on backfill."""
-            acts = _ag.stats.activities(uid)[1] if _garmin_connected(uid) else []
+            # Garmin's year plus anything logged by hand; without Garmin, just the hand-logged ones.
+            acts = _ag.stats.activities(uid)[1] if _garmin_connected(uid) else _ag.worklog.compact(uid)
             ext = _ext_w.visible(uid, acts) if _ext_w is not None else []
             return acts, ext
         cm.workouts_of = _cm_workouts
@@ -4726,6 +4730,18 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 fb = _coach_fb(sess or {"kind": "", "sport": _ap.sport_of(act.get("sport"))},
                                (planned or {}).get("went"), ck)
                 return _ap.build_view(act, laps=laps, extra=extra, athlete=athlete, planned=planned, checkin=ck, feedback=fb)
+            if raw.startswith("manual:"):
+                from .worklog import WorklogError as _WLE
+                try:
+                    lw = chat.agent.worklog.get(uid, raw)
+                except _WLE:
+                    raise _UserError("That logged workout isn't there anymore.", 404) from None
+                ck = _ap_last_checkin(uid, _ap.checkin_ref(raw), lw.get("session_id"))
+                v = _ap.build_imported({"key": lw["key"], "source": "manual", "sport": lw["sport"], "name": lw["title"],
+                                        "start": f"{lw['date']}T{lw.get('time') or '12:00'}:00", "minutes": lw.get("minutes"),
+                                        "km": lw.get("km")}, checkin=ck, feedback=_coach_fb({"kind": ""}, None, ck))
+                v.update({"ai": True, "logged": lw})
+                return v
             if re.fullmatch(r"[a-z]{2,12}:[A-Za-z0-9_.-]{1,64}", raw) and _ext_w is not None:
                 w = next((x for x in _ext_w.all(uid) if x.get("key") == raw), None)
                 if w is None:
@@ -4827,6 +4843,62 @@ def build_app_routes(settings: Settings, auth: WebAuth, token_store: TokenStore,
                 _ap_route(user_id, v)
                 return v
             return JSONResponse(await anyio.to_thread.run_sync(own))
+
+        # Workouts logged by hand (worklog.py): lifting sets and weights, or any workout without a watch.
+        from .worklog import WorklogError as _WorklogError
+
+        def _wl_unit(uid: str) -> str:
+            return "kg" if (chat.agent.coach.athlete(uid) or {}).get("units") == "metric" else "lb"
+
+        def _wl_call(fn: Callable[[], Any]) -> Any:
+            try:
+                return fn()
+            except _WorklogError as e:
+                raise _UserError(str(e), 404 if "isn't there" in str(e) else 400) from None
+
+        async def worklog_list(request: Request, user_id: str) -> Response:
+            wl = chat.agent.worklog
+            today = chat.agent._now(user_id).date()
+            try:
+                start = date.fromisoformat(request.query_params.get("from") or (today - timedelta(days=30)).isoformat())
+                end = date.fromisoformat(request.query_params.get("to") or today.isoformat())
+            except ValueError:
+                raise _UserError("from and to must be YYYY-MM-DD.") from None
+            if (end - start).days > 400:
+                raise _UserError("At most 400 days at a time.")
+            items = await anyio.to_thread.run_sync(lambda: wl.between(user_id, start, end))
+            return JSONResponse({"items": items, "unit": _wl_unit(user_id)})
+
+        async def worklog_create(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            w = await anyio.to_thread.run_sync(lambda: _wl_call(lambda: chat.agent.worklog.add(user_id, body, unit=_wl_unit(user_id))))
+            log_event(logger, logging.INFO, "worklog_added", user_id=user_id, sport=w["sport"],
+                      exercises=len(w.get("exercises") or []), linked=bool(w.get("session_id")))
+            return JSONResponse({"item": w}, status_code=201)
+
+        async def worklog_update(request: Request, user_id: str) -> Response:
+            body = await read_json(request)
+            wid = request.path_params["wid"]
+            w = await anyio.to_thread.run_sync(lambda: _wl_call(lambda: chat.agent.worklog.update(user_id, wid, body, unit=_wl_unit(user_id))))
+            return JSONResponse({"item": w})
+
+        async def worklog_delete(request: Request, user_id: str) -> Response:
+            wid = request.path_params["wid"]
+            await anyio.to_thread.run_sync(lambda: _wl_call(lambda: chat.agent.worklog.delete(user_id, wid)))
+            return JSONResponse({"ok": True})
+
+        async def worklog_history(request: Request, user_id: str) -> Response:
+            name = (request.query_params.get("name") or "")[:60]
+            items = await anyio.to_thread.run_sync(lambda: chat.agent.worklog.history(user_id, name))
+            return JSONResponse({"name": name, "items": items})
+
+        home_routes += [
+            Route("/app/api/workouts/manual", _plan_api(worklog_list, mutating=False), methods=["GET"]),
+            Route("/app/api/workouts/manual", _plan_api(worklog_create, mutating=True), methods=["POST"]),
+            Route("/app/api/workouts/manual/{wid}", _plan_api(worklog_update, mutating=True), methods=["PATCH"]),
+            Route("/app/api/workouts/manual/{wid}", _plan_api(worklog_delete, mutating=True), methods=["DELETE"]),
+            Route("/app/api/workouts/exercise-history", _plan_api(worklog_history, mutating=False), methods=["GET"]),
+        ]
 
         home_routes += [
             Route("/app/api/activity/{aid}", _plan_api(activity_get, mutating=False), methods=["GET"]),

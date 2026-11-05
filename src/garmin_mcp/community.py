@@ -119,7 +119,7 @@ WORKOUT_FIELDS = ("activity_id", "sport", "title", "date", "km", "minutes", "cli
 LEG_FIELDS = ("family", "km", "minutes", "pace_s_km", "speed_kmh", "pace_s_100m", "pace_s_500m")
 # Where a workout came from ("via Garmin" on its card). Garmin ids are ints; other sources use
 # "<source>:<id>" (workout ingestion adds ``source`` to each activity).
-SOURCES = ("garmin", "oura", "whoop", "apple", "coros", "strava", "polar", "suunto", "wahoo")
+SOURCES = ("garmin", "oura", "whoop", "apple", "coros", "strava", "polar", "suunto", "wahoo", "manual")
 _SRC_ID = re.compile(r"^[a-z]{2,12}:[A-Za-z0-9_.-]{1,64}$")
 
 
@@ -375,7 +375,7 @@ def workout_card(acts: list[dict[str, Any]], aid: int | str, today: date) -> dic
         loss = act.get("elevation_loss_m")
         if isinstance(loss, int | float) and loss > 0:
             card["vertical_m"] = int(loss)
-    if fam in ("strength", "hiit"):
+    if fam in ("strength", "hiit") and not act.get("manual"):  # a hand-logged lift's sets stay private
         for k in ("total_sets", "total_reps"):
             v = act.get(k)
             if isinstance(v, int) and not isinstance(v, bool) and v > 0:

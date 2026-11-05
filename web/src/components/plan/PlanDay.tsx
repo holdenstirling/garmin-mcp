@@ -267,7 +267,7 @@ function DaySession({ s, c, date, today, imperial, cal, unread, a }: {
 }
 
 /** Where a workout outside the plan came from (workouts.py sources). */
-const SOURCE_NAME: Record<string, string> = { oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch', manual: 'added by you' }
+const SOURCE_NAME: Record<string, string> = { oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch', manual: 'Logged by you' }
 
 export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidden, extra, actions, onAdd }: {
   plan: BuiltPlan; cal: CalView | null; imperial: boolean; today: string
@@ -358,7 +358,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
       {extra}
       {did.length > 0 && (
         <section aria-label="Workouts you did" className="flex flex-col gap-1 rounded-xl border border-(--border) bg-(--bg-surface) px-3.5 py-3">
-          <p className="text-meta font-semibold text-(--text-secondary)">{did.some((a) => a.source && a.source !== 'garmin') ? (work.length ? 'Also from your apps' : 'From your apps') : work.length ? 'Also from Garmin' : 'From Garmin'}</p>
+          <p className="text-meta font-semibold text-(--text-secondary)">{did.every((a) => a.source === 'manual') ? (work.length ? 'Also logged' : 'Logged by you') : did.some((a) => a.source && a.source !== 'garmin') ? (work.length ? 'Also from your apps' : 'From your apps') : work.length ? 'Also from Garmin' : 'From Garmin'}</p>
           <ul className="flex flex-col">
             {did.map((a, i) => {
               const I = SPORT_ICON[(a.sport in SPORT_ICON ? a.sport : 'other') as keyof typeof SPORT_ICON] ?? Check
@@ -371,7 +371,7 @@ export function PlanDay({ plan, cal, imperial, today, date, onDate, unread, hidd
                   <span className="min-w-0 flex-1">
                     <span className="block text-body font-medium text-(--text)">{a.name}</span>
                     <span className="block text-meta text-(--text-muted)">
-                      {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : '', a.source && a.source !== 'garmin' ? `via ${SOURCE_NAME[a.source] ?? a.source}` : ''].filter(Boolean).join(' · ')}
+                      {[a.km ? fmtDist(a.km, imperial, a.sport === 'swim' ? 'swim' : a.sport === 'bike' ? 'bike' : 'run') : '', a.minutes ? fmtDuration(a.minutes) : '', a.avg_hr ? `avg ${Math.round(a.avg_hr)} bpm` : '', a.source === 'manual' ? 'Logged by you' : a.source && a.source !== 'garmin' ? `via ${SOURCE_NAME[a.source] ?? a.source}` : ''].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {a.id != null || a.key ? <ChevronRight className="size-5 shrink-0 text-(--text-muted)" aria-hidden /> : <Check className="size-5 shrink-0 text-(--accent)" aria-label="Done" />}

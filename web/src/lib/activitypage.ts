@@ -1,6 +1,7 @@
 // One recorded workout (server: activitypage.py, GET /app/api/activity/{id}).
 import { getJSON } from '@/lib/api'
 import type { Checkin } from '@/lib/checkins'
+import type { LoggedWorkout } from '@/lib/worklog'
 import type { WorkoutFeedback } from '@/lib/workout'
 import type { Went } from '@/lib/plancal'
 
@@ -28,6 +29,8 @@ export type ActivityView = {
   post_id?: string | null
   /** an outdoor GPS route, trimmed at both ends (routes.py); only when the viewer may see it */
   route?: [number, number][]
+  /** a workout the athlete logged by hand (lib/worklog): its sets, weights and notes */
+  logged?: LoggedWorkout
 }
 
 export const getActivity = (id: string, of?: string) =>

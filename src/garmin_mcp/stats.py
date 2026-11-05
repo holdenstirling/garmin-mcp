@@ -331,6 +331,9 @@ class StatsService:
         self._guard = threading.Lock()
         self._on_invalidate: list[Callable[[str], None]] = []
         self._locks: dict[str, threading.Lock] = {}
+        # Workouts the athlete logged by hand (worklog.py): compact rows merged into every read,
+        # left out where Garmin recorded the same one (Garmin wins). Set by the Agent.
+        self.extra: Callable[[str], list[dict[str, Any]]] | None = None
 
     def _lock(self, user_id: str) -> threading.Lock:
         with self._guard:
@@ -343,6 +346,28 @@ class StatsService:
         the first one reads Garmin and the rest wait on the per-user lock and reuse it
         (Garmin rate-limits at ~30 calls/min)."""
         today = self._now(user_id).date()
+        try:
+            today, acts = self._garmin_activities(user_id, today, fresh)
+        except Exception:
+            logged = self._logged(user_id, [], today)
+            if not logged:  # no Garmin and nothing logged by hand: callers see the error as before
+                raise
+            return today, logged
+        logged = self._logged(user_id, acts, today)
+        return today, (sorted(acts + logged, key=lambda a: str(a.get("date") or ""), reverse=True) if logged else acts)
+
+    def _logged(self, user_id: str, garmin: list[dict[str, Any]], today: date) -> list[dict[str, Any]]:
+        if self.extra is None:
+            return []
+        try:
+            from .worklog import dedupe
+            since = (today - timedelta(days=HISTORY_DAYS)).isoformat()
+            rows = [r for r in self.extra(user_id) if str(r.get("date") or "")[:10] >= since]
+            return dedupe(garmin, rows)
+        except Exception:  # a broken log never breaks the Garmin view
+            return []
+
+    def _garmin_activities(self, user_id: str, today: date, fresh: bool) -> tuple[date, list[dict[str, Any]]]:
         asked = self._clock()
         hit = self._acts.get(user_id)
         if hit and not fresh and asked - hit[0] < CACHE_S and hit[1] == today:

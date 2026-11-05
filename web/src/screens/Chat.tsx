@@ -10,6 +10,9 @@ import { planLine } from '@/components/chat/PlanPins'
 import { PageStack, Screen, TabScreen } from '@/components/plan/ui'
 import { Sheet as BottomSheet } from '@/components/ui/Sheet'
 import { WATCH_PICK_EVENT, hasWatch, type ConnApp, type ConnectRequest } from '@/lib/connections'
+import { OPEN_LOG_EVENT, WORKLOG_CHANGED, type LogRequest } from '@/lib/worklog'
+import { announcePlanReload } from '@/lib/planflow'
+import { LogWorkoutSheet } from '@/components/workout/LogWorkoutSheet'
 import { TPPlanSection } from '@/components/plan/TPItems'
 import type { CommunityView } from '@/components/community/CommunityScreen'
 import { Celebration, SetupScreen } from '@/components/progress/Progress'
@@ -242,6 +245,8 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
   const [connect, setConnect] = useState<ConnectRequest | null>(null)
   // "Which watch do you wear?" (components/connect/WatchPicker): generic Connect your watch buttons.
   const [pickWatch, setPickWatch] = useState(false)
+  // Log a workout by hand (lib/worklog): from a planned session, the + Add sheet or an edit.
+  const [logReq, setLogReq] = useState<LogRequest | null>(null)
   const [addPlan, setAddPlan] = useState(false)
   // A plan file -> full Rabbit workouts (lib/planconvert): read, review, apply.
   const [converting, setConverting] = useState(false)
@@ -479,9 +484,17 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
     // GarminEmpty, setup quests, any screen: that app's connect popup (lib/connections).
     const onConnect = (e: Event) => setConnect({ app: ((e as CustomEvent<ConnApp | undefined>).detail) ?? 'garmin' })
     const onPick = () => setPickWatch(true)
+    const onLog = (e: Event) => setLogReq((e as CustomEvent<LogRequest>).detail ?? {})
+    // A workout logged by hand: today's card, the plan and its calendar re-read.
+    const onLogged = () => { setFeedTick((n) => n + 1); loadToday(); announcePlanReload() }
     window.addEventListener(CONNECT_GARMIN_EVENT, onConnect)
     window.addEventListener(WATCH_PICK_EVENT, onPick)
-    return () => { window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect); window.removeEventListener(WATCH_PICK_EVENT, onPick) }
+    window.addEventListener(OPEN_LOG_EVENT, onLog)
+    window.addEventListener(WORKLOG_CHANGED, onLogged)
+    return () => {
+      window.removeEventListener(CONNECT_GARMIN_EVENT, onConnect); window.removeEventListener(WATCH_PICK_EVENT, onPick)
+      window.removeEventListener(OPEN_LOG_EVENT, onLog); window.removeEventListener(WORKLOG_CHANGED, onLogged)
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Shared training blocks (lib/blocks openBlock): Plan, Community, a moment -> the block page.
@@ -1830,6 +1843,7 @@ export function Chat({ me, onChange }: { me: Me; onChange: () => void }) {
         </BottomSheet>
       )}
       {pickWatch && <WatchPicker onClose={() => setPickWatch(false)} />}
+      {logReq && <LogWorkoutSheet req={logReq} imperial={me.athlete.units !== 'metric'} onClose={() => setLogReq(null)} onToast={showToast} />}
       {connect && (
         <ConnectSheet key={`${connect.app}:${connect.result ?? ''}`} me={me} req={connect} onClose={closeConnect}
           onChanged={onChange} onToast={showToast} />

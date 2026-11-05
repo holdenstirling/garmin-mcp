@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-7)', 'var(--chart-5)',
   'var(--chart-4)', 'var(--chart-8)', 'var(--chart-6)']
 const famOf = (w: PostWorkout) => sportFamily(w.family || w.sport, w.family ? null : w.kind)
-const SOURCE: Record<string, string> = { apple: 'Apple Watch', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', strava: 'Strava' }
+const SOURCE: Record<string, string> = { apple: 'Apple Watch', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', strava: 'Strava', manual: 'Logged by hand' }
 
 function dayLabel(d: string): string {
   const day = new Date(`${d.slice(0, 10)}T12:00:00`)

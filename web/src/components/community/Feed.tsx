@@ -925,7 +925,7 @@ function PhotoGrid({ urls, who = 'the' }: { urls: string[]; who?: string }) {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
-  garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', coros: 'COROS', strava: 'Strava', polar: 'Polar', suunto: 'Suunto', wahoo: 'Wahoo',
+  garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', apple: 'Apple Watch', coros: 'COROS', strava: 'Strava', polar: 'Polar', suunto: 'Suunto', wahoo: 'Wahoo', manual: 'rabbt',
 }
 
 type CardWorkout = NonNullable<Post['workout']>

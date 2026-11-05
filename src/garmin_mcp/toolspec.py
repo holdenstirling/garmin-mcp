@@ -101,6 +101,14 @@ CHART_DESC = (
     "it, add a sentence or two on what the chart shows, but don't repeat every number."
 )
 
+LOG_DESC = (
+    "Log a workout the athlete finished, by hand: lifting sessions with each exercise's sets "
+    "(reps and weight), or a run, ride, swim or class without a watch. It shows on its day, "
+    "counts toward their plan (a planned session that day becomes done) and stats, and the Feed "
+    "only ever shows sport, time and distance (never sets or weights). Only call it after they "
+    "confirmed what to log. Garmin workouts sync on their own; don't log those again."
+)
+
 CLUBS_DESC = (
     "Run clubs, trail groups, tri clubs, group rides, masters swims and adult social sports "
     "leagues near the athlete's home city, from rabbt's directory of public club and league web "
@@ -291,6 +299,42 @@ AGENT_TOOLS: list[dict] = [
             "type": "object",
             "properties": {"notes": {"type": "string", "maxLength": 2000}},
             "required": ["notes"],
+        },
+    },
+    {
+        "name": "log_workout",
+        "description": LOG_DESC,
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sport": {"type": "string", "enum": ["strength", "run", "bike", "swim", "walk", "hike", "other"]},
+                "date": {"type": "string", "description": "YYYY-MM-DD, today or earlier (default today)."},
+                "time": {"type": "string", "description": "Optional start, HH:MM 24h."},
+                "title": {"type": "string", "maxLength": 80},
+                "minutes": {"type": "integer", "minimum": 1, "maximum": 1440},
+                "km": {"type": "number", "minimum": 0, "description": "Distance in km (convert miles: x 1.609)."},
+                "rpe": {"type": "integer", "minimum": 1, "maximum": 10},
+                "notes": {"type": "string", "maxLength": 600},
+                "session_id": {"type": "string", "description": "The planned session this was, if the context lists it."},
+                "exercises": {"type": "array", "maxItems": 30, "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "maxLength": 60},
+                        "note": {"type": "string", "maxLength": 140},
+                        "sets": {"type": "array", "maxItems": 20, "items": {
+                            "type": "object",
+                            "properties": {
+                                "reps": {"type": "string", "description": "e.g. \"5\", \"8-10\", \"30s\"."},
+                                "weight": {"type": "number", "minimum": 0},
+                                "unit": {"type": "string", "enum": ["lb", "kg"]},
+                            },
+                            "required": ["reps"],
+                        }},
+                    },
+                    "required": ["name", "sets"],
+                }},
+            },
+            "required": ["sport"],
         },
     },
 ]

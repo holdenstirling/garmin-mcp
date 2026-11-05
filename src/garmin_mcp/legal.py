@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from html import escape
 
-VERSION = "2026-10-21"          # consent re-prompts when this changes
-UPDATED = "October 21, 2026"
+VERSION = "2026-11-05"          # consent re-prompts when this changes
+UPDATED = "November 5, 2026"
 OPERATOR = "Holden Ottolini"
 DEFAULT_CONTACT = "holdenstirling@gmail.com"
 GOVERNING = "Colorado, USA"
@@ -89,7 +89,7 @@ PRIVACY = """
 <li><b>Apple Watch</b> (when you set it up): rabbt can't read Apple Health itself. An iPhone Shortcut you build sends your recent workouts to rabbt with a personal import key, and rabbt keeps only each workout's sport, start time, duration and distance; heart rate, calories and anything else the Shortcut sends are thrown away. These workouts are shown in your day and, if you share workouts, as a workout card for friends; like Oura's, they don't count toward streaks, stats or plan matching. rabbt stores only a one-way hash of your import key. Turning Apple Watch off revokes the key, and you can choose to delete the imported workouts too.</li>
 <li><b>Google Calendar</b> (when you connect it, read-only): event times, used to spot busy days and travel.</li>
 <li><b>TrainingPeaks</b> (when you connect it): rabbt reads the planned workouts on your TrainingPeaks calendar (title, sport, duration, distance, description, coach notes and structure) from 2 weeks back to 6 weeks ahead. You connect by pasting your TrainingPeaks session value; rabbt stores it encrypted, never logs it and never asks for your TrainingPeaks password. rabbt writes to TrainingPeaks only when you choose rabbt as your plan (it adds, updates and deletes the planned workouts it created for your next 14 days and never changes or deletes ones it didn't create) or when you move a TrainingPeaks workout in rabbt. Completed workouts are not imported from TrainingPeaks; they come from Garmin only.</li>
-<li><b>What you enter</b>: your profile and training answers, goals, races, gear, photo, plan files you upload, chats and coach messages.</li>
+<li><b>What you enter</b>: your profile and training answers, goals, races, gear, photo, plan files you upload, chats and coach messages, and workouts you log by hand (sport, time, distance, effort, notes, and for lifting the exercises, sets, reps and weights). If you share workouts, friends see a logged workout's sport, time and distance only, never its sets or weights.</li>
 <li><b>Health-related entries</b>: workout feedback (effort, how it felt), niggles and pain notes, and fueling logs. rabbt treats these, and your heart rate, sleep and recovery data, as sensitive health information.</li>
 <li><b>Social content</b>: posts, comments, cheers, direct messages, clubs, groups and events, your training-buddy profile (if you turn it on) and links you share.</li>
 <li><b>Finding friends</b>: your @handle, and a phone number if you choose to add one (it isn't verified, is never shown to anyone and is only used so people who have it can find you). When you check your contacts, the emails and phone numbers you pick are compared with people on rabbt and then thrown away: rabbt doesn't store or log them, and never contacts anyone in them. In Me &rarr; Privacy &amp; legal &rarr; How friends find you, you choose whether people can find you by name, email or phone.</li>
@@ -111,7 +111,7 @@ PRIVACY = """
 </ul>
 
 <h2>AI processing</h2>
-<p>rabbt's coach uses Anthropic's Claude API. It receives your messages, your training profile and plan, relevant Garmin numbers, your own notes and the calendar summary above, and it can search the web. It never receives Oura, WHOOP or Apple Watch data or any password, sign-in token or import key. Anthropic's <a href="https://www.anthropic.com/legal/commercial-terms" rel="noopener">commercial terms</a> don't allow it to train its models on what rabbt sends through the API. AI replies can be wrong; see the <a href="/app/terms">terms</a>.</p>
+<p>rabbt's coach uses Anthropic's Claude API. It receives your messages, your training profile and plan, relevant Garmin numbers, workouts you log by hand (sets, weights, time and effort), your own notes and the calendar summary above, and it can search the web. It never receives Oura, WHOOP or Apple Watch data or any password, sign-in token or import key. Anthropic's <a href="https://www.anthropic.com/legal/commercial-terms" rel="noopener">commercial terms</a> don't allow it to train its models on what rabbt sends through the API. AI replies can be wrong; see the <a href="/app/terms">terms</a>.</p>
 
 <h2>Who else sees your data</h2>
 <ul>

@@ -37,6 +37,7 @@ from .coaching import CoachError, CoachStore, training_phase
 from .logs import log_event
 from .providers import GarminError, ReauthRequired
 from .toolspec import AGENT_TOOLS
+from .worklog import Worklog, WorklogError, summary as _worklog_summary
 from .tools import GarminService
 from .history import summarize
 from .voice import PROMPT_VOICE
@@ -108,6 +109,12 @@ during this block. Which sport on which day ("lift Monday Wednesday Friday, bike
 Saturday") is week_rhythm: restate the week and confirm before saving, and schedule strength \
 workouts only after they say yes to strength (strength_opt_in). Only save what they told you or confirmed, and say in one short line what \
 you saved so they can correct it.
+- Logging a finished workout by hand ("did squats 3x5 at 185, bench 3x8 at 135", "ran 3 miles \
+without my watch"): restate it in one short line (exercises with sets x reps @ weight, or sport, \
+time and distance) and ask "Log it?". Only after a yes, call log_workout; then say it's logged. \
+If something needed is unclear (which day, a weight or rep count), ask before logging. Never say \
+you logged a workout unless log_workout returned ok in this turn. Weights stay in the athlete's \
+unit (lb for imperial). recent_activities lists hand-logged workouts too (source "manual").
 - HYROX is a race of 8 x 1 km runs, each followed by a station (SkiErg 1000 m, sled push 50 m, \
 sled pull 50 m, burpee broad jumps 80 m, rowing 1000 m, farmers carry 200 m, sandbag lunges 100 m, \
 wall balls 100 reps). For a HYROX goal use save_goal with distance "hyrox" and, if they say it, \
@@ -408,6 +415,10 @@ class Agent:
         self.plans.fitness_of = lambda uid: fitness_from(*reversed(self.stats.activities(uid)))
         self.progress = Progress(store, clock=clock)
         self.checkins = CheckinStore(store, clock=clock, today=lambda uid: self._now(uid).date())
+        # Workouts logged by hand (worklog.py): counted like Garmin's everywhere stats are read.
+        self.worklog = Worklog(store, today=lambda uid: self._now(uid).date(), clock=clock)
+        self.stats.extra = self.worklog.compact
+        self.worklog.on_change.append(lambda uid: self.stats.invalidate(uid))
         # Rabbit moments (moments.py): deterministic updates in the Rabbit log; push is set by the app.
         self.moments = Moments(store, self.coach, now=self._now, clock=clock, stats=self.stats.get,
                                events=self.events.list, grade=self._main_grade)
@@ -703,13 +714,32 @@ class Agent:
         if name == "recent_activities":
             days = args.get("days", 7)
             sport = args.get("sport")
-            out = self._service.recent_activities(
-                user_id, int(days) if isinstance(days, int | float) else 7,
-                sport if isinstance(sport, str) and sport.strip() else None)
+            n = int(days) if isinstance(days, int | float) else 7
+            today = self._now(user_id).date()
+            logged = self.worklog.between(user_id, today - timedelta(days=max(1, n) - 1), today)
+            try:
+                out = self._service.recent_activities(user_id, n, sport if isinstance(sport, str) and sport.strip() else None)
+            except GarminError:
+                if not logged:
+                    raise
+                out = {"activities": [], "note": "Garmin isn't connected; only workouts logged by hand are listed."}
             out = _with_weekdays(out)
             if self.coach.athlete(user_id).get("units") != "metric":
                 out["activities"] = [to_imperial(a) for a in out.get("activities", [])]
+            if logged:
+                out["logged_by_hand"] = [{"date": w["date"], "time": w.get("time"), "sport": w["sport"],
+                                          "title": w["title"], "minutes": w.get("minutes"), "km": w.get("km"),
+                                          "rpe": w.get("rpe"), "exercises": _worklog_summary(w), "notes": w.get("notes"),
+                                          "source": "manual"} for w in logged]
             return out
+        if name == "log_workout":
+            unit = "kg" if self.coach.athlete(user_id).get("units") == "metric" else "lb"
+            try:
+                w = self.worklog.add(user_id, args, unit=unit)
+            except WorklogError as e:
+                raise GarminError(str(e)) from None
+            return {"ok": True, "logged": {"id": w["id"], "date": w["date"], "sport": w["sport"], "title": w["title"],
+                                           "exercises": _worklog_summary(w), "minutes": w.get("minutes")}}
         if name == "training_history":
             weeks = args.get("weeks", 16)
             weeks = max(4, min(52, int(weeks))) if isinstance(weeks, int | float) else 16

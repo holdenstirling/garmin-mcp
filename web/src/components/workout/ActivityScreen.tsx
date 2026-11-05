@@ -9,7 +9,7 @@ import { FuelLog, wantsFuelLog } from '@/components/body/FuelLog'
 import { openBody } from '@/lib/body'
 import { RabbitInline } from '@/components/chat/RabbitText'
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, ExternalLink, HeartPulse, MessageCircle } from 'lucide-react'
+import { CalendarDays, ExternalLink, HeartPulse, MessageCircle, Pencil } from 'lucide-react'
 import { RabbitLogo } from '@/components/RabbitLogo'
 import { Button } from '@/components/ui/button'
 import { shareToFriends } from '@/lib/dm'
@@ -26,6 +26,7 @@ import { fmtDist, fmtDuration, fmtPaceKm, fmtSpeed, fmtSwim100 } from '@/lib/for
 import { openWorkout } from '@/lib/workoutnav'
 import { cn } from '@/lib/utils'
 import { openPlanDay } from '@/lib/plancal'
+import { WORKLOG_CHANGED, openLogWorkout, setLine, type LoggedWorkout } from '@/lib/worklog'
 import { Related } from '@/components/nav/Related'
 import { WhoElse } from '@/components/people/WhoElse'
 import { sportIcon } from '@/lib/sportIcon'
@@ -33,7 +34,7 @@ import { noDistance, sportFamily, type SportFamily } from '@/lib/sportstats'
 import { RouteMap } from '@/components/route/RouteMap'
 import { RouteControls } from '@/components/route/RouteControls'
 
-const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch' }
+const SOURCE: Record<string, string> = { garmin: 'Garmin', oura: 'Oura', whoop: 'WHOOP', coros: 'COROS', apple: 'Apple Watch', manual: 'you (logged by hand)' }
 const LOADING = ['Pulling up your workout…', 'Counting the laps…', 'Reading your heart rate…']
 
 const hms = (s: number) => {
@@ -54,6 +55,12 @@ export function ActivityScreen({ id, of, imperial, onClose, onAsk }: {
   const load = useCallback(() => { setError(null); getActivity(id, of).then(setV, (e: Error) => setError(e.message)) }, [id, of])
   useEffect(() => { load() }, [load])
   const close = () => { setClosing(true); window.setTimeout(onClose, 200) }
+  useEffect(() => {  // edited or removed in the log sheet
+    const on = () => { if (id.startsWith('manual:')) getActivity(id, of).then(setV, () => close()) }
+    window.addEventListener(WORKLOG_CHANGED, on)
+    return () => window.removeEventListener(WORKLOG_CHANGED, on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, of])
 
   const when = v?.start ? `${fmtDay(v.start.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' })}${v.start.length > 11 ? ` · ${new Date(v.start.replace(' ', 'T')).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}` : undefined
   const friend = v?.owner ?? null
@@ -70,6 +77,11 @@ export function ActivityScreen({ id, of, imperial, onClose, onAsk }: {
               onSendInRabbit={typeof v.id === 'number'
                 ? () => shareToFriends({ type: 'workout', ref: { kind: 'activity', id: String(v.id) }, label: v.name ?? 'Workout' })
                 : undefined} />
+          )}
+          {v.logged && (
+            <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={() => openLogWorkout({ edit: v.logged })}>
+              <Pencil className="size-5" aria-hidden /> Edit
+            </Button>
           )}
           {ask && (
             <Button variant="default" className="h-11 flex-1 gap-1.5 text-body" onClick={ask}>
@@ -92,6 +104,7 @@ export function ActivityScreen({ id, of, imperial, onClose, onAsk }: {
           <Button variant="default" onClick={load}>Try again</Button>
         </div>
       )}
+      {v?.logged && <LoggedDetails w={v.logged} imperial={imperial} />}
       {v && <ActivityBody v={v} imperial={imperial} onAsk={ask} onSaved={load} onClose={close} />}
       {v && !friend && v.start && typeof v.id === 'number' && (
         <WhoElse sport={v.sport} date={v.start.slice(0, 10)}
@@ -196,12 +209,40 @@ function ActivityBody({ v, imperial, onAsk, onSaved, onClose }: {
           What {friend.name.split(' ')[0]} shares with friends. Heart rate and other health data stay private.
         </p>
       )}
+      {v.logged && !friend && (
+        <p className="px-1 text-small text-(--text-muted)">Logged by you. Friends only see the sport and time, never your sets or weights.</p>
+      )}
       {!v.ai && !friend && (
         <p className="px-1 text-small text-(--text-muted)">
           Recorded by {SOURCE[v.source] ?? v.source}. Shown here for you only; rabbt's coaching doesn't use it.
         </p>
       )}
     </>
+  )
+}
+
+/** The sets and weights of a workout logged by hand. */
+function LoggedDetails({ w, imperial }: { w: LoggedWorkout; imperial: boolean }) {
+  if (!w.exercises.length && !w.notes && !w.rpe) return null
+  return (
+    <section aria-label="What you logged" className="flex flex-col gap-3 rounded-xl border border-(--border) bg-(--bg-surface) p-4">
+      {w.exercises.length > 0 && (
+        <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+          {w.exercises.map((e, i) => (
+            <li key={`${e.name}-${i}`} className="flex items-baseline gap-2">
+              <span className="min-w-0 flex-1 text-body text-(--text)">{e.name}</span>
+              <span className="shrink-0 text-body font-semibold tabular-nums text-(--text)">{setLine(e.sets)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {(w.rpe || (!w.exercises.length && w.km)) && (
+        <p className="m-0 text-small text-(--text-secondary)">
+          {[w.rpe ? `Effort ${w.rpe} of 10` : '', !w.exercises.length && w.km ? fmtDist(w.km, imperial, w.sport) : ''].filter(Boolean).join(' · ')}
+        </p>
+      )}
+      {w.notes && <p className="m-0 text-small leading-snug text-(--text-secondary)">{w.notes}</p>}
+    </section>
   )
 }
 
